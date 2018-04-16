@@ -8,7 +8,6 @@ public class ChronicleService {
 
     public void logData() {
 //        DO STUFF
-//        RETURN NOTHING
     }
 
 }
