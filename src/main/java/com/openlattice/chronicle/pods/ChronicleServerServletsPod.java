@@ -33,8 +33,8 @@ public class ChronicleServerServletsPod {
     public DispatcherServletConfiguration edmServlet() {
 
         return new DispatcherServletConfiguration(
-                "chronicleServer",
-                new String[] { "/chronicleServer/*" },
+                "chronicle",
+                new String[] { "/chronicle/*" },
                 1,
                 Lists.<Class<?>>newArrayList( ChronicleServerMvcPod.class ) );
     }

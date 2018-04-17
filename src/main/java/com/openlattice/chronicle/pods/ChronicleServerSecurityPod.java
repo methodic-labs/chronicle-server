@@ -41,11 +41,11 @@ public class ChronicleServerSecurityPod extends Auth0SecurityPod {
         //TODO: Lock these down
         http.authorizeRequests()
                 .antMatchers( HttpMethod.OPTIONS ).permitAll()
-                .antMatchers( HttpMethod.POST, "/chronicleServer/principals/users/" ).authenticated()
-                .antMatchers( HttpMethod.PUT, "/chronicleServer/principals/users/*" ).authenticated()
-                .antMatchers( HttpMethod.GET, "/chronicleServer/edm/**" ).permitAll()
-                .antMatchers( "/chronicleServer/data/entitydata/*" ).permitAll()
-                .antMatchers( "/chronicleServer/**" ).authenticated();
+                .antMatchers( HttpMethod.POST, "/chronicle/principals/users/" ).permitAll()
+                .antMatchers( HttpMethod.PUT, "/chronicle/principals/users/*" ).authenticated()
+                .antMatchers( HttpMethod.GET, "/chronicle/edm/**" ).permitAll()
+                .antMatchers( "/chronicle/data/entitydata/*" ).permitAll()
+                .antMatchers( "/chronicle/**" ).authenticated();
     }
 
 }

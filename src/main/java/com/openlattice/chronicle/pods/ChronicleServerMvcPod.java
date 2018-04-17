@@ -20,23 +20,12 @@
 
 package com.openlattice.chronicle.pods;
 
+import com.openlattice.chronicle.chronicle.ChronicleController;
 import com.openlattice.chronicle.constants.CustomMediaType;
 import com.openlattice.chronicle.converters.CsvHttpMessageConverter;
 import com.openlattice.chronicle.converters.YamlHttpMessageConverter;
 import com.openlattice.chronicle.util.ChronicleServerExceptionHandler;
 import com.openlattice.data.DataApi;
-import com.openlattice.chronicle.analysis.controllers.AnalysisController;
-import com.openlattice.chronicle.apps.controllers.AppController;
-import com.openlattice.chronicle.authorization.controllers.AuthorizationsController;
-import com.openlattice.chronicle.data.controllers.DataController;
-import com.openlattice.chronicle.directory.controllers.PrincipalDirectoryController;
-import com.openlattice.chronicle.edm.controllers.EdmController;
-import com.openlattice.chronicle.linking.controllers.LinkingController;
-import com.openlattice.chronicle.permissions.controllers.PermissionsController;
-import com.openlattice.chronicle.requests.controllers.RequestsController;
-import com.openlattice.chronicle.search.controllers.SearchController;
-import com.openlattice.controllers.OrganizationsController;
-import com.openlattice.controllers.SyncController;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ryantenney.metrics.spring.config.annotation.EnableMetrics;
 import java.util.List;
@@ -57,12 +46,8 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurationSupp
 
 @Configuration
 @ComponentScan(
-        basePackageClasses = { DataController.class, SearchController.class,
-                PermissionsController.class, AuthorizationsController.class,
-                PrincipalDirectoryController.class,
-                EdmController.class, OrganizationsController.class,
-                ChronicleServerExceptionHandler.class, LinkingController.class, AnalysisController.class,
-                SyncController.class, RequestsController.class, AppController.class },
+        basePackageClasses = { ChronicleController.class,
+                ChronicleServerExceptionHandler.class},
         includeFilters = @ComponentScan.Filter(
                 value = { org.springframework.stereotype.Controller.class,
                         org.springframework.web.bind.annotation.RestControllerAdvice.class },

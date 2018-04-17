@@ -24,8 +24,9 @@ public class ChronicleController implements ChronicleApi {
             method = RequestMethod.POST,
             produces = { MediaType.APPLICATION_JSON_VALUE, CustomMediaType.TEXT_CSV_VALUE } )
     public void logData(
-            @PathVariable( STUDY_ID ) studyId,
-            @PathVariable( PARTICIPANT_ID ) participantId) {
+            @PathVariable( STUDY_ID ) String studyId,
+            @PathVariable( PARTICIPANT_ID ) String participantId) {
 //            Do something with the data?
     }
+
 }

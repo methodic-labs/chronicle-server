@@ -30,4 +30,4 @@ hikari:
 
 #graphite:
 #    host: "jarvis"
-#    global-prefix: "chronicleServer"
+#    global-prefix: "chronicle"
