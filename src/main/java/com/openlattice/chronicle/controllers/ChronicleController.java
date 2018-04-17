@@ -1,5 +1,6 @@
-package com.openlattice.chronicle.chronicle;
+package com.openlattice.chronicle.controllers;
 
+import com.openlattice.chronicle.services.ChronicleService;
 import com.openlattice.chronicle.ChronicleApi;
 import com.openlattice.chronicle.constants.CustomMediaType;
 import org.springframework.http.MediaType;

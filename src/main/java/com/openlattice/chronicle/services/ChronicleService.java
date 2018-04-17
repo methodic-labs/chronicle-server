@@ -1,4 +1,4 @@
-package com.openlattice.chronicle.chronicle;
+package com.openlattice.chronicle.services;
 
 public class ChronicleService {
 

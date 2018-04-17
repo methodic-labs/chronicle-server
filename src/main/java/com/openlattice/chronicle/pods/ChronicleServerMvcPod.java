@@ -20,7 +20,7 @@
 
 package com.openlattice.chronicle.pods;
 
-import com.openlattice.chronicle.chronicle.ChronicleController;
+import com.openlattice.chronicle.controllers.ChronicleController;
 import com.openlattice.chronicle.constants.CustomMediaType;
 import com.openlattice.chronicle.converters.CsvHttpMessageConverter;
 import com.openlattice.chronicle.converters.YamlHttpMessageConverter;
