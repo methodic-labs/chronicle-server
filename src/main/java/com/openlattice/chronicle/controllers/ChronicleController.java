@@ -14,7 +14,7 @@ import javax.inject.Inject;
 import java.util.UUID;
 import java.util.Set;
 
-// TODO: what to put in the producers = {} part???
+// TODO: Do I need the Override
 @RestController
 @RequestMapping( ChronicleApi.CONTROLLER )
 public class ChronicleController implements ChronicleApi {
@@ -41,7 +41,7 @@ public class ChronicleController implements ChronicleApi {
     public void enrollDevice( @PathVariable( STUDY_ID) UUID studyId,
                               @PathVariable( PARTICIPANT_ID ) UUID participantId,
                               @PathVariable( DEVICE_ID ) String deviceId) {
-        ChronicleService.enrollDevice( studyId, participantId, deviceId);
+        ChronicleService.enrollDevice( studyId, participantId, deviceId );
     }
 
     @Override
@@ -139,7 +139,7 @@ public class ChronicleController implements ChronicleApi {
             consumes = MediaType.APPLICATION_JSON_VALUE )
     public void updateParticipantMetadata( @PathVariable( PARTICIPANT_ID ) UUID participantId,
                                            @RequestBody MetadataUpdate metadataupdate) {
-        ChronicleService.updateParticipantMetadata( participantId, metadataupdate);
+        ChronicleService.updateParticipantMetadata( participantId, metadataupdate );
     }
 
     @Override
@@ -149,7 +149,7 @@ public class ChronicleController implements ChronicleApi {
             consumes = MediaType.APPLICATION_JSON_VALUE )
     public void updateStudyMetadata( @PathVariable( STUDY_ID ) UUID studyId,
                                      @RequestBody MetadataUpdate metadataupdate){
-        ChronicleService.updateStudyMetadata( studyId, metadataupdate);
+        ChronicleService.updateStudyMetadata( studyId, metadataupdate );
     }
 
     @Override
@@ -188,6 +188,6 @@ public class ChronicleController implements ChronicleApi {
             consumes = MediaType.APPLICATION_JSON_VALUE )
     public void removeParticipantsFromStudy( @PathVariable( STUDY_ID )UUID studyId,
                                               @PathVariable( PARTICIPANT_ID ) UUID participantId) {
-        ChronicleService.removeParticipantFromStudy( studyId, participantId );
+        ChronicleService.removeParticipantsFromStudy( studyId, participantId );
     }
 }
