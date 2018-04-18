@@ -138,8 +138,8 @@ public class ChronicleController implements ChronicleApi {
             method = RequestMethod.PATCH,
             consumes = MediaType.APPLICATION_JSON_VALUE )
     public void updateParticipantMetadata( @PathVariable( PARTICIPANT_ID ) UUID participantId,
-                                           @RequestBody MetadataUpdate metadataupdate) {
-        ChronicleService.updateParticipantMetadata( participantId, metadataupdate );
+                                           @RequestBody MetadataUpdate metadataUpdate) {
+        ChronicleService.updateParticipantMetadata( participantId, metadataUpdate );
     }
 
     @Override
@@ -148,8 +148,8 @@ public class ChronicleController implements ChronicleApi {
             method = RequestMethod.PATCH,
             consumes = MediaType.APPLICATION_JSON_VALUE )
     public void updateStudyMetadata( @PathVariable( STUDY_ID ) UUID studyId,
-                                     @RequestBody MetadataUpdate metadataupdate){
-        ChronicleService.updateStudyMetadata( studyId, metadataupdate );
+                                     @RequestBody MetadataUpdate metadataUpdate){
+        ChronicleService.updateStudyMetadata( studyId, metadataUpdate );
     }
 
     @Override
