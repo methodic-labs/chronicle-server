@@ -20,8 +20,6 @@
 
 package com.openlattice.chronicle.pods;
 
-import static com.openlattice.chronicle.util.Util.returnAndLog;
-
 import com.dataloom.mappers.ObjectMappers;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.eventbus.EventBus;
@@ -35,29 +33,16 @@ import com.openlattice.authorization.AbstractSecurableObjectResolveTypeService;
 import com.openlattice.authorization.AuthorizationManager;
 import com.openlattice.authorization.AuthorizationQueryService;
 import com.openlattice.authorization.DbCredentialService;
-import com.openlattice.authorization.EdmAuthorizationHelper;
 import com.openlattice.authorization.HazelcastAbstractSecurableObjectResolveTypeService;
 import com.openlattice.authorization.HazelcastAclKeyReservationService;
 import com.openlattice.authorization.HazelcastAuthorizationService;
 import com.openlattice.authorization.PostgresUserApi;
 import com.openlattice.authorization.Principals;
 import com.openlattice.clustering.DistributedClusterer;
-import com.openlattice.data.DataGraphManager;
-import com.openlattice.data.DataGraphService;
 import com.openlattice.data.DatasourceManager;
 import com.openlattice.data.ids.HazelcastEntityKeyIdService;
 import com.openlattice.data.serializers.FullQualifiedNameJacksonDeserializer;
 import com.openlattice.data.serializers.FullQualifiedNameJacksonSerializer;
-import com.openlattice.data.storage.HazelcastEntityChronicleServer;
-import com.openlattice.chronicle.apps.services.AppService;
-import com.openlattice.chronicle.services.AnalysisService;
-import com.openlattice.chronicle.services.EdmManager;
-import com.openlattice.chronicle.services.EdmService;
-import com.openlattice.chronicle.services.LinkingService;
-import com.openlattice.chronicle.services.ODataStorageService;
-import com.openlattice.chronicle.services.PostgresEntitySetManager;
-import com.openlattice.chronicle.services.SearchService;
-import com.openlattice.chronicle.services.SyncTicketService;
 import com.openlattice.directory.UserDirectoryService;
 import com.openlattice.edm.properties.PostgresTypeManager;
 import com.openlattice.edm.schemas.SchemaQueryService;
@@ -68,8 +53,6 @@ import com.openlattice.linking.HazelcastLinkingGraphs;
 import com.openlattice.linking.HazelcastListingService;
 import com.openlattice.linking.HazelcastVertexMergingService;
 import com.openlattice.linking.components.Clusterer;
-import com.openlattice.matching.DistributedMatcher;
-import com.openlattice.merging.DistributedMerger;
 import com.openlattice.neuron.Neuron;
 import com.openlattice.neuron.pods.NeuronPod;
 import com.openlattice.organizations.HazelcastOrganizationService;
@@ -141,10 +124,6 @@ public class ChronicleServerServicesPod {
         return new PostgresSchemaQueryService( hikariDataSource );
     }
 
-    @Bean
-    public PostgresEntitySetManager entitySetManager() {
-        return new PostgresEntitySetManager( hikariDataSource );
-    }
 
     @Bean
     public HazelcastSchemaManager schemaManager() {
@@ -158,18 +137,6 @@ public class ChronicleServerServicesPod {
         return new PostgresTypeManager( hikariDataSource );
     }
 
-    @Bean
-    public EdmManager dataModelService() {
-        return new EdmService(
-                hikariDataSource,
-                hazelcastInstance,
-                aclKeyReservationService(),
-                authorizationManager(),
-                entitySetManager(),
-                entityTypeManager(),
-                schemaManager(),
-                datasourceManager() );
-    }
 
     @Bean
     public HazelcastAclKeyReservationService aclKeyReservationService() {
@@ -186,22 +153,6 @@ public class ChronicleServerServicesPod {
         return new HazelcastLinkingGraphs( hazelcastInstance );
     }
 
-    @Bean
-    public ODataStorageService odataStorageService() {
-        return new ODataStorageService(
-                hazelcastInstance,
-                dataModelService() );
-    }
-
-    @Bean
-    public HazelcastEntityChronicleServer cassandraDataManager() {
-        return new HazelcastEntityChronicleServer(
-                hazelcastInstance,
-                executor,
-                defaultObjectMapper(),
-                idService(),
-                datasourceManager() );
-    }
 
     @Bean
     public SecurePrincipalsManager principalService() {
@@ -231,21 +182,6 @@ public class ChronicleServerServicesPod {
     }
 
     @Bean
-    public SearchService searchService() {
-        return new SearchService();
-    }
-
-    @Bean
-    public EdmAuthorizationHelper edmAuthorizationHelper() {
-        return new EdmAuthorizationHelper( dataModelService(), authorizationManager() );
-    }
-
-    @Bean
-    public SyncTicketService sts() {
-        return new SyncTicketService( hazelcastInstance );
-    }
-
-    @Bean
     public RequestQueryService rqs() {
         return new RequestQueryService( hikariDataSource );
     }
@@ -261,36 +197,6 @@ public class ChronicleServerServicesPod {
     }
 
     @Bean
-    public DistributedMatcher matcher() {
-        return new DistributedMatcher( hazelcastInstance, dataModelService() );
-    }
-
-    @Bean
-    public DistributedMerger merger() {
-        return new DistributedMerger( hazelcastInstance,
-                hazelcastListingService(),
-                dataModelService(),
-                datasourceManager() );
-    }
-
-    @Bean
-    public LinkingService linkingService() {
-        return returnAndLog( new LinkingService(
-                linkingGraph(),
-                matcher(),
-                clusterer(),
-                merger(),
-                eventBus,
-                dataModelService(),
-                datasourceManager() ), "Checkpoint linking service" );
-    }
-
-    @Bean
-    public AnalysisService analysisService() {
-        return new AnalysisService();
-    }
-
-    @Bean
     public Graph loomGraph() {
         return new Graph( executor, hazelcastInstance );
     }
@@ -301,17 +207,6 @@ public class ChronicleServerServicesPod {
     }
 
     @Bean
-    public DataGraphManager dataGraphService() {
-        return new DataGraphService(
-                hazelcastInstance,
-                cassandraDataManager(),
-                loomGraph(),
-                idService(),
-                executor,
-                eventBus );
-    }
-
-    @Bean
     public DbCredentialService dcs() {
         return new DbCredentialService( hazelcastInstance, pgUserApi() );
     }
@@ -319,17 +214,6 @@ public class ChronicleServerServicesPod {
     @Bean
     public HazelcastVertexMergingService vms() {
         return new HazelcastVertexMergingService( hazelcastInstance );
-    }
-
-    @Bean
-    public AppService appService() {
-        return returnAndLog( new AppService( hazelcastInstance,
-                dataModelService(),
-                organizationsManager(),
-                authorizationQueryService(),
-                authorizationManager(),
-                principalService(),
-                aclKeyReservationService() ), "Checkpoint app service" );
     }
 
     @Bean

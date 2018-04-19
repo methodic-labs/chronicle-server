@@ -26,17 +26,17 @@ public class ChronicleController implements ChronicleApi {
     public void logData(
             @PathVariable( STUDY_ID ) UUID studyId,
             @PathVariable( PARTICIPANT_ID ) UUID participantId) {
-        ChronicleService.logData( studyId, participantId );
+        chronicleService.logData( studyId, participantId );
     }
 
     @Override
     @RequestMapping(
-            path = STUDY_ID + PARTICIPANT_ID + DEVICE_ID_PATH,
+            path = STUDY_ID + PARTICIPANT_ID + DEVICE_ID,
             method = RequestMethod.POST,
             consumes = MediaType.APPLICATION_JSON_VALUE )
     public void enrollDevice( @PathVariable( STUDY_ID) UUID studyId,
                               @PathVariable( PARTICIPANT_ID ) UUID participantId,
                               @PathVariable( DEVICE_ID ) String deviceId) {
-        ChronicleService.enrollDevice( studyId, participantId, deviceId );
+        chronicleService.enrollDevice( studyId, participantId, deviceId );
     }
 }

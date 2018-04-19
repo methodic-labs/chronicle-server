@@ -1,9 +1,6 @@
 package com.openlattice.chronicle.services;
 
 import com.google.common.eventbus.EventBus;
-import com.hazelcast.core.HazelcastInstance;
-import com.openlattice.hazelcast.HazelcastMap;
-import com.openlattice.authorization.HazelcastAclKeyReservationService;
 
 import javax.inject.Inject;
 import java.util.UUID;
@@ -16,11 +13,11 @@ public class ChronicleService {
 
     public ChronicleService() { }
 
-    public void logData( studyId, participantId ) {
+    public void logData( UUID studyId, UUID participantId ) {
 //        TODO: Parse the data and integrate with datamodel
     }
 
-    public void enrollDevice( studyId, participantId, deviceId ) {
+    public void enrollDevice( UUID studyId, UUID participantId, String deviceId ) {
 //        TODO
     }
 

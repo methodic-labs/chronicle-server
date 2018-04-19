@@ -21,8 +21,8 @@
 package com.openlattice.chronicle.util;
 
 import com.openlattice.authorization.ForbiddenException;
-import com.openlattice.chronicle.exceptions.BatchException;
-import com.openlattice.chronicle.exceptions.ResourceNotFoundException;
+import com.openlattice.datastore.exceptions.BatchException;
+import com.openlattice.datastore.exceptions.ResourceNotFoundException;
 import com.openlattice.edm.exceptions.TypeExistsException;
 import com.openlattice.exceptions.ApiExceptions;
 import com.openlattice.exceptions.ErrorsDTO;
