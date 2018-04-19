@@ -1,12 +1,10 @@
 package com.openlattice.chronicle.controllers;
 
+import com.google.common.collect.SetMultimap;
 import com.openlattice.chronicle.services.ChronicleService;
 import com.openlattice.chronicle.ChronicleApi;
 import org.springframework.http.MediaType;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.*;
 
 import javax.inject.Inject;
 import java.util.UUID;
@@ -25,8 +23,9 @@ public class ChronicleController implements ChronicleApi {
             consumes = MediaType.APPLICATION_JSON_VALUE )
     public void logData(
             @PathVariable( STUDY_ID ) UUID studyId,
-            @PathVariable( PARTICIPANT_ID ) UUID participantId) {
-        chronicleService.logData( studyId, participantId );
+            @PathVariable( PARTICIPANT_ID ) UUID participantId,
+            @RequestBody SetMultimap<UUID, Object> data) {
+        chronicleService.logData( studyId, participantId, data );
     }
 
     @Override

@@ -1,5 +1,6 @@
 package com.openlattice.chronicle.services;
 
+import com.google.common.collect.SetMultimap;
 import com.google.common.eventbus.EventBus;
 
 import javax.inject.Inject;
@@ -13,7 +14,7 @@ public class ChronicleService {
 
     public ChronicleService() { }
 
-    public void logData( UUID studyId, UUID participantId ) {
+    public void logData(UUID studyId, UUID participantId, SetMultimap<UUID, Object> data) {
 //        TODO: Parse the data and integrate with datamodel
     }
 
