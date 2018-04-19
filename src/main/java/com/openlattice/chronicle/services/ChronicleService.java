@@ -15,11 +15,13 @@ public class ChronicleService {
     public ChronicleService() { }
 
     public void logData(UUID studyId, UUID participantId, SetMultimap<UUID, Object> data) {
-//        TODO: Parse the data and integrate with datamodel
+//        TODO: Parse the data and integrate with datamodel. Where is it stored?
+//        Waiting on exactly what data I will be getting to do this part
     }
 
     public void enrollDevice( UUID studyId, UUID participantId, String deviceId ) {
-//        TODO
+//        TODO: Associate the participantId to the deviceId
+//        Not sure how this is done.
     }
 
 }
