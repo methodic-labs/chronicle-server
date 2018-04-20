@@ -28,6 +28,7 @@ public class ChronicleController implements ChronicleApi {
             @PathVariable( ENTITY_SET_ID ) UUID entitySetId,
             @RequestBody SetMultimap<UUID, Object> data ) {
         //  allow to proceed only if the participant is in the study and the device is associated as well
+        //  TODO: finish exception logic
         if ( verifyParticipant( studyId, participantId ) && verifyDevice( studyId, participantId, deviceId ) ) {
             try {
                 chronicleService.logData( studyId, participantId, deviceId, entitySetId, data );
@@ -49,6 +50,7 @@ public class ChronicleController implements ChronicleApi {
             @PathVariable( PARTICIPANT_ID ) UUID participantId,
             @PathVariable( DEVICE_ID ) String deviceId ) {
         //  allow to proceed only if the participant is in the study and the device has not been associated yet
+        //  TODO: finish exception logic
         if ( verifyParticipant( studyId, participantId ) && !verifyDevice( studyId, participantId, deviceId ) ) {
             try {
                 chronicleService.enrollDevice( studyId, participantId, deviceId );
@@ -71,6 +73,11 @@ public class ChronicleController implements ChronicleApi {
             @PathVariable( PARTICIPANT_ID ) UUID participantId,
             @PathVariable( DEVICE_ID ) String deviceId ) {
         //  validate that this device belongs to this participant in this study
+        //  look up in association entitySet between device and participant, and device and study to see if it exists?
+        //  DataApi.getEntity(entitySetId :UUID, entityKeyId :UUID)
+        // TODO: Waiting on data model to exist, then ready to implement
+        return true;
+
     }
 
     @Override
@@ -83,5 +90,9 @@ public class ChronicleController implements ChronicleApi {
             @PathVariable( STUDY_ID ) UUID studyId,
             @PathVariable( PARTICIPANT_ID ) UUID participantId ) {
         //  validate that this participant belongs in this study
+        //  look up in association entitySet between study and participant if the participant is present
+        //  DataApi.getEntity(entitySetId :UUID, entityKeyId :UUID)
+        // TODO: Waiting on data model to exist, then ready to implement
+        return true;
     }
 }

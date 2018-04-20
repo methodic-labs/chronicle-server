@@ -45,6 +45,7 @@ public class ChronicleService {
     }
 
     public void enrollDevice( UUID studyId, UUID participantId, String deviceId ) {
+        //  TODO: Need the data model to exist before I can do anything here.
         //  previous logic already verified the participant and that the device is not already connected.
         //  add the device and associate to the participant and to the study
         //  this will be two associations device --> person, device --> study
