@@ -27,6 +27,7 @@ public class ChronicleController implements ChronicleApi {
             @PathVariable( DEVICE_ID ) String deviceId,
             @PathVariable( ENTITY_SET_ID ) UUID entitySetId,
             @RequestBody SetMultimap<UUID, Object> data ) {
+//      allow to proceed only if the participant is in the study and the device is associated as welll
         if( verifyParticipant( studyId, participantId ) && verifyDevice( studyId, participantId, deviceId ) ){
         chronicleService.logData( studyId, participantId, deviceId, entitySetId, data );}
         else {
@@ -42,6 +43,7 @@ public class ChronicleController implements ChronicleApi {
     public void enrollDevice( @PathVariable( STUDY_ID ) UUID studyId,
                               @PathVariable( PARTICIPANT_ID ) UUID participantId,
                               @PathVariable( DEVICE_ID ) String deviceId ) {
+//      allow to proceed only if the participant is in the study and the device has not been associated yet
         if ( verifyParticipant( studyId, participantId ) && !verifyDevice( studyId, participantId, deviceId )) {
         chronicleService.enrollDevice( studyId, participantId, deviceId );}
         else {
@@ -58,7 +60,7 @@ public class ChronicleController implements ChronicleApi {
     public Boolean verifyDevice( @PathVariable( STUDY_ID ) UUID studyId,
                                  @PathVariable( PARTICIPANT_ID ) UUID participantId,
                                  @PathVariable( DEVICE_ID ) String deviceId ) {
-//        here I validate that this device belongs to this participant in this study
+//        validate that this device belongs to this participant in this study
 //
     }
 
@@ -70,6 +72,6 @@ public class ChronicleController implements ChronicleApi {
             produces = MediaType.APPLICATION_JSON_VALUE )
     public Boolean verifyParticipant( @PathVariable( STUDY_ID ) UUID studyId,
                                       @PathVariable( PARTICIPANT_ID ) UUID participantId ) {
-//        here I want to validate that this participant belongs in this study
+//        validate that this participant belongs in this study
     }
 }
