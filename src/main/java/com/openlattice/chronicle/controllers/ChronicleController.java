@@ -27,11 +27,15 @@ public class ChronicleController implements ChronicleApi {
             @PathVariable( DEVICE_ID ) String deviceId,
             @PathVariable( ENTITY_SET_ID ) UUID entitySetId,
             @RequestBody SetMultimap<UUID, Object> data ) {
-//      allow to proceed only if the participant is in the study and the device is associated as welll
-        if( verifyParticipant( studyId, participantId ) && verifyDevice( studyId, participantId, deviceId ) ){
-        chronicleService.logData( studyId, participantId, deviceId, entitySetId, data );}
-        else {
-//            Throw an error?
+//      allow to proceed only if the participant is in the study and the device is associated as well
+        if( verifyParticipant( studyId, participantId ) && verifyDevice( studyId, participantId, deviceId ) ) {
+            try {
+                chronicleService.logData(studyId, participantId, deviceId, entitySetId, data);
+            } catch ( Exception e ) {
+//               throw new Error
+            }
+        } else {
+//            What? Send error message?
         }
     }
 
@@ -45,9 +49,13 @@ public class ChronicleController implements ChronicleApi {
                               @PathVariable( DEVICE_ID ) String deviceId ) {
 //      allow to proceed only if the participant is in the study and the device has not been associated yet
         if ( verifyParticipant( studyId, participantId ) && !verifyDevice( studyId, participantId, deviceId )) {
-        chronicleService.enrollDevice( studyId, participantId, deviceId );}
-        else {
-//            Throw an error?
+            try {
+                chronicleService.enrollDevice( studyId, participantId, deviceId );
+            } catch ( Exception e ) {
+//                 throw new Error
+            }
+        } else {
+//            What? Send error message?
         }
     }
 
