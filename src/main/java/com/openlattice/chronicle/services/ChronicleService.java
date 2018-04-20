@@ -1,7 +1,9 @@
 package com.openlattice.chronicle.services;
 
+import com.openlattice.data.DataApi;
 import com.google.common.collect.SetMultimap;
 import com.google.common.eventbus.EventBus;
+import com.openlattice.data.requests.BulkDataCreation;
 
 import javax.inject.Inject;
 import java.util.UUID;
@@ -14,14 +16,14 @@ public class ChronicleService {
 
     public ChronicleService() { }
 
-    public void logData(UUID studyId, UUID participantId, SetMultimap<UUID, Object> data) {
-//        TODO: Parse the data and integrate with datamodel. Where is it stored?
-//        Waiting on exactly what data I will be getting to do this part
+    public void logData(UUID studyId, UUID participantId, String deviceId, UUID entitySetId, SetMultimap<UUID, Object> data) {
+        DataApi.createEntityAndAssociationData( BulkDataCreation data );
     }
 
     public void enrollDevice( UUID studyId, UUID participantId, String deviceId ) {
-//        TODO: Associate the participantId to the deviceId
-//        Not sure how this is done.
+//        verify the participant is enrolled in study ( verifyParticipant() --> true )
+//        check to make sure the device does not already exist ( aka verifyDevice() --> false )
+//        If false, then add the device and associate to the participant and to the study
     }
 
 }
