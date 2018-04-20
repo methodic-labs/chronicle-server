@@ -17,13 +17,27 @@ public class ChronicleService {
     public ChronicleService() { }
 
     public void logData(UUID studyId, UUID participantId, String deviceId, UUID entitySetId, SetMultimap<UUID, Object> data) {
-        DataApi.createEntityAndAssociationData( BulkDataCreation data );
+//     create the syncTicket
+//          create a fake syncId UUID
+//              How is this done? can I use xxxxxxxx-xxxx-Mxxx-Nxxx-xxxxxxxxxxxx
+//          DataApi.acquireSyncTicket( entitySetId, fakeSyncId )
+
+//     create the associations
+//          Association( Key, srcKey, dstKey, data )
+//          EntityKey( entitySetId (uuid), syncId (uuid), entityId (string) )
+//          Key = (entitySetId, fakeSyncId, ? )
+//          srcKey = (entitySetIdOfSrc, fakeSyncId, ? ) Do I use the same syncId?
+//          dstKey = (entitySetIdOfDst, fakeSyncId, ? ) Do I use the same syncId?
+
+//     create the BulkData
+//          var bulkData = new BulkDataCreation(syncTicket, data, associations)
+//     DataApi.createEntityAndAssociationData( BulkDataCreation bulkData );
     }
 
     public void enrollDevice( UUID studyId, UUID participantId, String deviceId ) {
-//        verify the participant is enrolled in study ( verifyParticipant() --> true )
-//        check to make sure the device does not already exist ( aka verifyDevice() --> false )
-//        If false, then add the device and associate to the participant and to the study
+//     verify the participant is enrolled in study ( verifyParticipant() --> true )
+//     check to make sure the device does not already exist ( aka verifyDevice() --> false )
+//     If false, then add the device and associate to the participant and to the study
     }
 
 }
