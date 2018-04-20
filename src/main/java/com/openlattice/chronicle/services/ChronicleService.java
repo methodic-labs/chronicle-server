@@ -15,30 +15,41 @@ public class ChronicleService {
     @Inject
     private EventBus eventBus;
 
-    public ChronicleService() { }
+    public ChronicleService() {
+    }
 
-    public void logData(UUID studyId, UUID participantId, String deviceId, UUID entitySetId, SetMultimap<UUID, Object> data) {
-//     create the syncTickets
-//          create a fake syncId UUID
-//              How is this done? can I use xxxxxxxx-xxxx-Mxxx-Nxxx-xxxxxxxxxxxx
-//          DataApi.acquireSyncTicket( entitySetId, fakeSyncId )
+    public void logData(
+            UUID studyId,
+            UUID participantId,
+            String deviceId,
+            UUID entitySetId,
+            SetMultimap<UUID, Object> data ) {
+        //  TODO: Need the data model to exist before I can do anything here.
+        //  create the syncTickets
+        //  create a fake syncId UUID
+        //  How is this done? can I use xxxxxxxx-xxxx-Mxxx-Nxxx-xxxxxxxxxxxx
+        //  DataApi.acquireSyncTicket( entitySetId, fakeSyncId )
 
-//     create the associations
-//        var association = new Association( Key, srcKey, dstKey, data )
-//              create one for each association and then combine into Set<associations>
-//              EntityKey = ( entitySetId (uuid), syncId (uuid), entityId (string) )
-//              Entity = ( EntityKey, data )
-//          Key = ( entitySetId, fakeSyncId, ? )
-//          srcKey = ( entitySetIdOfSrc, fakeSyncId, ? ) Do I use the same syncId?
-//          dstKey = ( entitySetIdOfDst, fakeSyncId, ? ) Do I use the same syncId?
+        //  create the associations
+        //  var association = new Association( Key, srcKey, dstKey, data )
+        //  create one for each association and then combine into Set<associations>
+        //  EntityKey = ( entitySetId (uuid), syncId (uuid), entityId (string) )
+        //  Entity = ( EntityKey, data )
+        //  Key = ( entitySetId, fakeSyncId, ? )
+        //  srcKey = ( entitySetIdOfSrc, fakeSyncId, ? ) Do I use the same syncId?
+        //  dstKey = ( entitySetIdOfDst, fakeSyncId, ? ) Do I use the same syncId?
 
-//     create the BulkData
-//          var bulkData = new BulkDataCreation( Set<syncTickets>, Set<entities>, Set<associations> )
-//     DataApi.createEntityAndAssociationData( BulkDataCreation bulkData );
+        //  create the BulkData
+        //  var bulkData = new BulkDataCreation( Set<syncTickets>, Set<entities>, Set<associations> )
+        //  DataApi.createEntityAndAssociationData( BulkDataCreation bulkData );
     }
 
     public void enrollDevice( UUID studyId, UUID participantId, String deviceId ) {
-//     add the device and associate to the participant and to the study
+        //  previous logic already verified the participant and that the device is not already connected.
+        //  add the device and associate to the participant and to the study
+        //  this will be two associations device --> person, device --> study
+        //  aka write a line to these association tables, createAssociationData() does not exist in lattice-js yet.
+        //  DataApi.createEntityAndAssociationData()
     }
 
 }

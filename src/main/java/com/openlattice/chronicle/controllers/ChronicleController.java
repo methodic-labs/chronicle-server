@@ -27,15 +27,15 @@ public class ChronicleController implements ChronicleApi {
             @PathVariable( DEVICE_ID ) String deviceId,
             @PathVariable( ENTITY_SET_ID ) UUID entitySetId,
             @RequestBody SetMultimap<UUID, Object> data ) {
-//      allow to proceed only if the participant is in the study and the device is associated as well
-        if( verifyParticipant( studyId, participantId ) && verifyDevice( studyId, participantId, deviceId ) ) {
+        //  allow to proceed only if the participant is in the study and the device is associated as well
+        if ( verifyParticipant( studyId, participantId ) && verifyDevice( studyId, participantId, deviceId ) ) {
             try {
-                chronicleService.logData(studyId, participantId, deviceId, entitySetId, data);
+                chronicleService.logData( studyId, participantId, deviceId, entitySetId, data );
             } catch ( Exception e ) {
-//               throw new Error
+                //  Throw new Error
             }
         } else {
-//            What? Send error message?
+            //  Send error message?
         }
     }
 
@@ -44,18 +44,19 @@ public class ChronicleController implements ChronicleApi {
             path = STUDY_ID_PATH + PARTICIPANT_ID_PATH + DEVICE_ID_PATH,
             method = RequestMethod.POST,
             consumes = MediaType.APPLICATION_JSON_VALUE )
-    public void enrollDevice( @PathVariable( STUDY_ID ) UUID studyId,
-                              @PathVariable( PARTICIPANT_ID ) UUID participantId,
-                              @PathVariable( DEVICE_ID ) String deviceId ) {
-//      allow to proceed only if the participant is in the study and the device has not been associated yet
-        if ( verifyParticipant( studyId, participantId ) && !verifyDevice( studyId, participantId, deviceId )) {
+    public void enrollDevice(
+            @PathVariable( STUDY_ID ) UUID studyId,
+            @PathVariable( PARTICIPANT_ID ) UUID participantId,
+            @PathVariable( DEVICE_ID ) String deviceId ) {
+        //  allow to proceed only if the participant is in the study and the device has not been associated yet
+        if ( verifyParticipant( studyId, participantId ) && !verifyDevice( studyId, participantId, deviceId ) ) {
             try {
                 chronicleService.enrollDevice( studyId, participantId, deviceId );
             } catch ( Exception e ) {
-//                 throw new Error
+                //  throw new Error
             }
         } else {
-//            What? Send error message?
+            //  Send error message?
         }
     }
 
@@ -65,11 +66,11 @@ public class ChronicleController implements ChronicleApi {
             method = RequestMethod.GET,
             consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE )
-    public Boolean verifyDevice( @PathVariable( STUDY_ID ) UUID studyId,
-                                 @PathVariable( PARTICIPANT_ID ) UUID participantId,
-                                 @PathVariable( DEVICE_ID ) String deviceId ) {
-//        validate that this device belongs to this participant in this study
-//
+    public Boolean verifyDevice(
+            @PathVariable( STUDY_ID ) UUID studyId,
+            @PathVariable( PARTICIPANT_ID ) UUID participantId,
+            @PathVariable( DEVICE_ID ) String deviceId ) {
+        //  validate that this device belongs to this participant in this study
     }
 
     @Override
@@ -78,8 +79,9 @@ public class ChronicleController implements ChronicleApi {
             method = RequestMethod.GET,
             consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE )
-    public Boolean verifyParticipant( @PathVariable( STUDY_ID ) UUID studyId,
-                                      @PathVariable( PARTICIPANT_ID ) UUID participantId ) {
-//        validate that this participant belongs in this study
+    public Boolean verifyParticipant(
+            @PathVariable( STUDY_ID ) UUID studyId,
+            @PathVariable( PARTICIPANT_ID ) UUID participantId ) {
+        //  validate that this participant belongs in this study
     }
 }
