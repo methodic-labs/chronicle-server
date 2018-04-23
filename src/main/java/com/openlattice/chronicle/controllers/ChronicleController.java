@@ -1,17 +1,25 @@
 package com.openlattice.chronicle.controllers;
 
-import com.google.common.collect.SetMultimap;
 import com.openlattice.chronicle.services.ChronicleService;
+import com.openlattice.datastore.exceptions.ResourceNotFoundException;
 import com.openlattice.chronicle.ChronicleApi;
+
+import com.google.common.collect.SetMultimap;
+
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
 
 @RestController
 @RequestMapping( ChronicleApi.CONTROLLER )
 public class ChronicleController implements ChronicleApi {
+
+    private static final Logger logger = LoggerFactory.getLogger( ChronicleController.class );
 
     @Inject
     private ChronicleService chronicleService;
@@ -32,11 +40,13 @@ public class ChronicleController implements ChronicleApi {
         if ( verifyParticipant( studyId, participantId ) && verifyDevice( studyId, participantId, deviceId ) ) {
             try {
                 chronicleService.logData( studyId, participantId, deviceId, entitySetId, data );
-            } catch ( Exception e ) {
-                //  Throw new Error
-            }
+            } catch ( ExecutionException e ) {
+                logger.error(
+                        "Unable to write data logs for user " + participantId
+                                + " and entity set " + entitySetId + "." );
+                throw new ResourceNotFoundException( "Unable to write data logs." );            }
         } else {
-            //  Send error message?
+            //  TODO: handle error for when verification fails
         }
     }
 
@@ -54,11 +64,13 @@ public class ChronicleController implements ChronicleApi {
         if ( verifyParticipant( studyId, participantId ) && !verifyDevice( studyId, participantId, deviceId ) ) {
             try {
                 chronicleService.enrollDevice( studyId, participantId, deviceId );
-            } catch ( Exception e ) {
-                //  throw new Error
+            } catch ( ExecutionException e ) {
+                logger.error(
+                        "Unable to enroll device " + deviceId + " for participant " + participantId +".");
+                throw new ResourceNotFoundException( "Unable to enroll device." );
             }
         } else {
-            //  Send error message?
+            //  TODO: handle error for when verification fails
         }
     }
 

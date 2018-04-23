@@ -17,13 +17,13 @@ public class ChronicleService {
 
     public ChronicleService() {
     }
-
+//  TODO: add in throws exception!
     public void logData(
             UUID studyId,
             UUID participantId,
             String deviceId,
             UUID entitySetId,
-            SetMultimap<UUID, Object> data ) {
+            SetMultimap<UUID, Object> data ) throws Exception {
         //  TODO: Need the data model to exist before I can do anything here.
 
         //  TEMPLATE FOR BULK DATA CREATION
@@ -58,9 +58,10 @@ public class ChronicleService {
         //
 
         //  DataApi.createEntityAndAssociationData( BulkDataCreation bulkData );
+        //  TODO: Make sure to return any errors??? Currently void method.
     }
 
-    public void enrollDevice( UUID studyId, UUID participantId, String deviceId ) {
+    public void enrollDevice( UUID studyId, UUID participantId, String deviceId ) throws Exception {
         //  previous logic already verified the participant and that the device is not already connected.
         //  add the device and associate to the participant and to the study
         //  this will be two associations device --> person, device --> study
