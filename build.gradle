@@ -61,22 +61,22 @@ apply plugin: 'kotlin'
 
 mainClassName = "com.openlattice.chronicle.ChronicleServer"
 
-def DS_XMS = "$System.env.CHRONICLE_SERVER_XMS"
-def DS_XMX = "$System.env.CHRONICLE_SERVER_XMX"
-def DS_ARGS = "$System.env.CHRONICLE_SERVER_ARGS"
+def CS_XMS = "$System.env.CHRONICLE_SERVER_XMS"
+def CS_XMX = "$System.env.CHRONICLE_SERVER_XMX"
+def CS_ARGS = "$System.env.CHRONICLE_SERVER_ARGS"
 def PARALLEL = "$System.env.PARALLELISM"
 def GC = "$System.env.GC"
 
-if (DS_XMS == 'null' || DS_XMS == null || DS_XMS == "") {
-    DS_XMS = '-Xms1g'
+if (CS_XMS == 'null' || CS_XMS == null || CS_XMS == "") {
+    CS_XMS = '-Xms1g'
 }
 
-if (DS_XMX == 'null' || DS_XMX == null || DS_XMX == "") {
-    DS_XMX = '-Xms4g'
+if (CS_XMX == 'null' || CS_XMX == null || CS_XMX == "") {
+    CS_XMX = '-Xms4g'
 }
 
-if (DS_ARGS == 'null' || DS_ARGS == null || DS_ARGS == "") {
-    DS_ARGS = 'local postgres'
+if (CS_ARGS == 'null' || CS_ARGS == null || CS_ARGS == "") {
+    CS_ARGS = 'local postgres'
 }
 
 
@@ -88,15 +88,15 @@ if (GC == 'null' || GC == null || GC == "") {
     GC = "-XX:+UseG1GC"
 }
 
-println "Using java args for running ${projectName}: Xms=" + DS_XMS + ",Xmx=" + DS_XMX + " -server"
+println "Using java args for running ${projectName}: Xms=" + CS_XMS + ",Xmx=" + CS_XMX + " -server"
 
-applicationDefaultJvmArgs = [DS_XMS, DS_XMX, "-server", GC, PARALLEL]
+applicationDefaultJvmArgs = [CS_XMS, CS_XMX, "-server", GC, PARALLEL]
 sourceCompatibility = JavaVersion.VERSION_1_8
 targetCompatibility = JavaVersion.VERSION_1_8
 
 run {
-    if (DS_ARGS != null) {
-        args DS_ARGS.split();
+    if (CS_ARGS != null) {
+        args CS_ARGS.split();
     } else if (System.getProperty("exec.args") != null) {
         args System.getProperty("exec.args").split()
     }
