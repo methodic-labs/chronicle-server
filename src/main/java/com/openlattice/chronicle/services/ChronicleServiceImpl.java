@@ -78,6 +78,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         studyInformation.computeIfAbsent( studyId, key -> HashMultimap.create() ).put( participantId, datasourceId );
 
         //TODO: Return entity key id for datasource instead of random uuid.
+        //TODO: Write to openlattice
         return UUID.randomUUID();
     }
 
