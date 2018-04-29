@@ -20,12 +20,10 @@
 
 package com.openlattice.chronicle.util;
 
-import com.openlattice.authorization.ForbiddenException;
-import com.openlattice.datastore.exceptions.BatchException;
-import com.openlattice.datastore.exceptions.ResourceNotFoundException;
-import com.openlattice.edm.exceptions.TypeExistsException;
 import com.openlattice.exceptions.ApiExceptions;
 import com.openlattice.exceptions.ErrorsDTO;
+import javax.ws.rs.ForbiddenException;
+import javax.ws.rs.NotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -39,7 +37,7 @@ public class ChronicleServerExceptionHandler {
     private static final Logger logger    = LoggerFactory.getLogger( ChronicleServerExceptionHandler.class );
     private static final String ERROR_MSG = "";
 
-    @ExceptionHandler( { NullPointerException.class, ResourceNotFoundException.class } )
+    @ExceptionHandler( { NullPointerException.class, NotFoundException.class } )
     public ResponseEntity<ErrorsDTO> handleNotFoundException( Exception e ) {
         logger.error( ERROR_MSG, e );
         if ( e.getMessage() != null ) {
@@ -66,26 +64,12 @@ public class ChronicleServerExceptionHandler {
                 HttpStatus.INTERNAL_SERVER_ERROR );
     }
 
-    @ExceptionHandler( TypeExistsException.class )
-    public ResponseEntity<ErrorsDTO> handleTypeExistsException( Exception e ) {
-        logger.error( ERROR_MSG, e );
-        return new ResponseEntity<ErrorsDTO>(
-                new ErrorsDTO( ApiExceptions.TYPE_EXISTS_EXCEPTION, e.getMessage() ),
-                HttpStatus.CONFLICT );
-    }
-
     @ExceptionHandler( ForbiddenException.class )
     public ResponseEntity<ErrorsDTO> handleUnauthorizedExceptions( ForbiddenException e ) {
         logger.error( ERROR_MSG, e );
         return new ResponseEntity<ErrorsDTO>(
                 new ErrorsDTO( ApiExceptions.FORBIDDEN_EXCEPTION, e.getMessage() ),
                 HttpStatus.UNAUTHORIZED );
-    }
-
-    @ExceptionHandler( BatchException.class )
-    public ResponseEntity<ErrorsDTO> handleBatchExceptions( BatchException e ) {
-        logger.error( ERROR_MSG, e );
-        return new ResponseEntity<ErrorsDTO>( e.getErrors(), e.getStatusCode() );
     }
 
     @ExceptionHandler( Exception.class )

@@ -110,12 +110,14 @@ configurations {
 }
 
 ext.odata_version = '4.2.0'
+ext.chronicle_api_version = '0.0.1-SNAPSHOT'
 dependencies {
 
     compile "com.openlattice:rhizome:${rhizome_version}"
-    compile "com.openlattice:conductor-client:${conductor_client_version}"
-    compile "com.openlattice:chronicle-api:${api_version}"
-    testCompile "com.openlattice:chronicle-api:${api_version}:tests"
+    compile "com.openlattice:api:${api_version}"
+    //compile "com.openlattice:conductor-client:${conductor_client_version}"
+    compile "com.openlattice:chronicle-api:${chronicle_api_version}"
+    testCompile "com.openlattice:chronicle-api:${chronicle_api_version}:tests"
     testCompile "com.openlattice:rhizome:${rhizome_version}:tests"
     testCompile "com.openlattice:rhizome-client:${rhizome_client_version}:tests"
 

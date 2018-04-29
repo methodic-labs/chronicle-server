@@ -1,19 +1,20 @@
 package com.openlattice.chronicle.controllers;
 
-import com.openlattice.chronicle.services.ChronicleService;
-import com.openlattice.datastore.exceptions.ResourceNotFoundException;
-import com.openlattice.chronicle.ChronicleApi;
-
 import com.google.common.collect.SetMultimap;
-
-import org.springframework.http.MediaType;
-import org.springframework.web.bind.annotation.*;
+import com.openlattice.chronicle.ChronicleApi;
+import com.openlattice.chronicle.services.ChronicleService;
+import java.util.List;
+import java.util.UUID;
+import javax.inject.Inject;
+import javax.ws.rs.ForbiddenException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.inject.Inject;
-import java.util.UUID;
-import java.util.concurrent.ExecutionException;
+import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping( ChronicleApi.CONTROLLER )
@@ -26,85 +27,30 @@ public class ChronicleController implements ChronicleApi {
 
     @Override
     @RequestMapping(
-            path = STUDY_ID_PATH + PARTICIPANT_ID_PATH + DEVICE_ID_PATH + ENTITY_SET_ID_PATH,
+            path = STUDY_ID_PATH + PARTICIPANT_ID_PATH + DATASOURCE_ID_PATH + ENTITY_SET_ID_PATH,
             method = RequestMethod.POST,
             consumes = MediaType.APPLICATION_JSON_VALUE )
-    public void logData(
+    public Integer upload(
             @PathVariable( STUDY_ID ) UUID studyId,
             @PathVariable( PARTICIPANT_ID ) UUID participantId,
-            @PathVariable( DEVICE_ID ) String deviceId,
-            @PathVariable( ENTITY_SET_ID ) UUID entitySetId,
-            @RequestBody SetMultimap<UUID, Object> data ) {
+            @PathVariable( DATASOURCE_ID ) String datasourceId,
+            @RequestBody List<SetMultimap<UUID, Object>> data ) {
         //  allow to proceed only if the participant is in the study and the device is associated as well
         //  TODO: finish exception logic
-        if ( verifyParticipant( studyId, participantId ) && verifyDevice( studyId, participantId, deviceId ) ) {
-            try {
-                chronicleService.logData( studyId, participantId, deviceId, entitySetId, data );
-            } catch ( ExecutionException e ) {
-                logger.error(
-                        "Unable to write data logs for user " + participantId
-                                + " and entity set " + entitySetId + "." );
-                throw new ResourceNotFoundException( "Unable to write data logs." );            }
+        final boolean knownParticipant = chronicleService.isKnownParticipant( studyId, participantId );
+        final boolean knownDatasource = chronicleService.isKnownDatasource( studyId, participantId, datasourceId );
+        if ( knownParticipant && knownDatasource ) {
+            return chronicleService.logData( studyId, participantId, datasourceId, data );
         } else {
-            //  TODO: handle error for when verification fails
+            logger.error(
+                    "Unable to log information for study {}, participant {}, and datasource {} due valid participant = {} or valid device = {}",
+                    studyId,
+                    participantId,
+                    datasourceId,
+                    knownParticipant,
+                    knownDatasource );
+            throw new ForbiddenException( "Unable to store uploaded data." );
         }
     }
 
-    @Override
-    @RequestMapping(
-            path = STUDY_ID_PATH + PARTICIPANT_ID_PATH + DEVICE_ID_PATH,
-            method = RequestMethod.POST,
-            consumes = MediaType.APPLICATION_JSON_VALUE )
-    public void enrollDevice(
-            @PathVariable( STUDY_ID ) UUID studyId,
-            @PathVariable( PARTICIPANT_ID ) UUID participantId,
-            @PathVariable( DEVICE_ID ) String deviceId ) {
-        //  allow to proceed only if the participant is in the study and the device has not been associated yet
-        //  TODO: finish exception logic
-        if ( verifyParticipant( studyId, participantId ) && !verifyDevice( studyId, participantId, deviceId ) ) {
-            try {
-                chronicleService.enrollDevice( studyId, participantId, deviceId );
-            } catch ( ExecutionException e ) {
-                logger.error(
-                        "Unable to enroll device " + deviceId + " for participant " + participantId +".");
-                throw new ResourceNotFoundException( "Unable to enroll device." );
-            }
-        } else {
-            //  TODO: handle error for when verification fails
-        }
-    }
-
-    @Override
-    @RequestMapping(
-            path = STUDY_ID_PATH + PARTICIPANT_ID_PATH + DEVICE_ID_PATH,
-            method = RequestMethod.GET,
-            consumes = MediaType.APPLICATION_JSON_VALUE,
-            produces = MediaType.APPLICATION_JSON_VALUE )
-    public Boolean verifyDevice(
-            @PathVariable( STUDY_ID ) UUID studyId,
-            @PathVariable( PARTICIPANT_ID ) UUID participantId,
-            @PathVariable( DEVICE_ID ) String deviceId ) {
-        //  validate that this device belongs to this participant in this study
-        //  look up in association entitySet between device and participant, and device and study to see if it exists?
-        //  DataApi.getEntity(entitySetId :UUID, entityKeyId :UUID)
-        // TODO: Waiting on data model to exist, then ready to implement
-        return true;
-
-    }
-
-    @Override
-    @RequestMapping(
-            path = STUDY_ID_PATH + PARTICIPANT_ID_PATH,
-            method = RequestMethod.GET,
-            consumes = MediaType.APPLICATION_JSON_VALUE,
-            produces = MediaType.APPLICATION_JSON_VALUE )
-    public Boolean verifyParticipant(
-            @PathVariable( STUDY_ID ) UUID studyId,
-            @PathVariable( PARTICIPANT_ID ) UUID participantId ) {
-        //  validate that this participant belongs in this study
-        //  look up in association entitySet between study and participant if the participant is present
-        //  DataApi.getEntity(entitySetId :UUID, entityKeyId :UUID)
-        // TODO: Waiting on data model to exist, then ready to implement
-        return true;
-    }
 }

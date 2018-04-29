@@ -20,17 +20,15 @@
 
 package com.openlattice.chronicle.pods;
 
-import com.openlattice.chronicle.controllers.ChronicleController;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.openlattice.chronicle.constants.CustomMediaType;
-import com.openlattice.chronicle.converters.CsvHttpMessageConverter;
+import com.openlattice.chronicle.controllers.ChronicleController;
 import com.openlattice.chronicle.converters.YamlHttpMessageConverter;
 import com.openlattice.chronicle.util.ChronicleServerExceptionHandler;
 import com.openlattice.data.DataApi;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ryantenney.metrics.spring.config.annotation.EnableMetrics;
 import java.util.List;
 import javax.inject.Inject;
-
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
@@ -72,7 +70,6 @@ public class ChronicleServerMvcPod extends WebMvcConfigurationSupport {
                 jackson2HttpMessageConverter.setObjectMapper( defaultObjectMapper );
             }
         }
-        converters.add( new CsvHttpMessageConverter() );
         converters.add( new YamlHttpMessageConverter() );
     }
 

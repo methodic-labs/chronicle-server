@@ -29,11 +29,9 @@ import com.kryptnostic.rhizome.pods.hazelcast.RegistryBasedHazelcastInstanceConf
 import com.openlattice.auth0.Auth0Pod;
 import com.openlattice.chronicle.pods.ChronicleServerSecurityPod;
 import com.openlattice.chronicle.pods.ChronicleServerServicesPod;
-import com.openlattice.conductor.codecs.pods.TypeCodecsPod;
+import com.openlattice.chronicle.pods.ChronicleServerServletsPod;
 import com.openlattice.data.serializers.FullQualifiedNameJacksonDeserializer;
 import com.openlattice.data.serializers.FullQualifiedNameJacksonSerializer;
-import com.openlattice.chronicle.pods.ChronicleServerServletsPod;
-import com.openlattice.hazelcast.pods.SharedStreamSerializersPod;
 import com.openlattice.jdbc.JdbcPod;
 import com.openlattice.postgres.PostgresPod;
 
@@ -47,8 +45,6 @@ public class ChronicleServer extends BaseRhizomeServer {
 
     public static final Class<?>[] chronicleServerPods = new Class<?>[] {
             ChronicleServerServicesPod.class,
-            TypeCodecsPod.class,
-            SharedStreamSerializersPod.class,
             JdbcPod.class,
             PostgresPod.class
     };
