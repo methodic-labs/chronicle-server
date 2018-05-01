@@ -1,7 +1,10 @@
 package com.openlattice.chronicle.services;
 
 import com.google.common.collect.SetMultimap;
+import com.openlattice.chronicle.sources.Datasource;
+
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -15,7 +18,7 @@ public interface ChronicleService {
             String datasourceId,
             List<SetMultimap<UUID, Object>> data );
 
-    UUID registerDatasource( UUID studyId, String participantId, String datasourceId );
+    UUID registerDatasource( UUID studyId, String participantId, String datasourceId, Optional<Datasource> datasource );
 
     boolean isKnownDatasource( UUID studyId, String participantId, String datasourceId );
 

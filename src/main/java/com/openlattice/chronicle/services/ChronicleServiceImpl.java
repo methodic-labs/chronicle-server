@@ -10,6 +10,8 @@ import com.google.common.eventbus.EventBus;
 import com.openlattice.ApiUtil;
 import com.openlattice.chronicle.ChronicleServerUtil;
 import com.openlattice.chronicle.configuration.ChronicleConfiguration;
+import com.openlattice.chronicle.sources.AndroidDevice;
+import com.openlattice.chronicle.sources.Datasource;
 import com.openlattice.client.ApiClient;
 import com.openlattice.client.RetrofitFactory;
 import com.openlattice.data.DataApi;
@@ -59,6 +61,8 @@ public class ChronicleServiceImpl implements ChronicleService {
     private final FullQualifiedName STRING_ID_FQN   = new FullQualifiedName( "general.stringid" );
     private final FullQualifiedName PERSON_ID_FQN   = new FullQualifiedName( "nc.SubjectIdentification" );
     private final FullQualifiedName DATE_LOGGED_FQN = new FullQualifiedName( "ol.datelogged" );
+    private final FullQualifiedName VERSION_FQN     = new FullQualifiedName( "ol.version" );
+    private final FullQualifiedName MODEL_FQN       = new FullQualifiedName( "vehicle.model" );
 
     private final UUID studyEntitySetId;
     private final UUID deviceEntitySetId;
@@ -69,6 +73,8 @@ public class ChronicleServiceImpl implements ChronicleService {
     private final UUID stringIdPropertyTypeId;
     private final UUID participantIdPropertyTypeId;
     private final UUID dateLoggedPropertyTypeId;
+    private final UUID versionPropertyTypeId;
+    private final UUID modelPropertyTypeId;
 
     private final UUID studySyncId;
     private final UUID deviceSyncId;
@@ -115,6 +121,8 @@ public class ChronicleServiceImpl implements ChronicleService {
         participantIdPropertyTypeId = edmApi.getPropertyTypeId( PERSON_ID_FQN.getNamespace(), PERSON_ID_FQN.getName() );
         dateLoggedPropertyTypeId = edmApi
                 .getPropertyTypeId( DATE_LOGGED_FQN.getNamespace(), DATE_LOGGED_FQN.getName() );
+        versionPropertyTypeId = edmApi.getPropertyTypeId( VERSION_FQN.getNamespace(), VERSION_FQN.getName() );
+        modelPropertyTypeId = edmApi.getPropertyTypeId( MODEL_FQN.getNamespace(), MODEL_FQN.getName() );
 
         dataKey = edmApi.getEntityType( edmApi.getEntitySet( dataEntitySetId ).getEntityTypeId() )
                 .getKey();
@@ -123,9 +131,14 @@ public class ChronicleServiceImpl implements ChronicleService {
 
     }
 
-    private Entity getDeviceEntity( String deviceId ) {
+    private Entity getDeviceEntity( String deviceId, Optional<Datasource> datasource ) {
         SetMultimap<UUID, Object> deviceData = HashMultimap.create();
         deviceData.put( stringIdPropertyTypeId, deviceId );
+        if ( datasource.isPresent() && AndroidDevice.class.isAssignableFrom( datasource.get().getClass() ) ) {
+            AndroidDevice device = (AndroidDevice) datasource.get();
+            deviceData.put( modelPropertyTypeId, device.getModel() );
+            deviceData.put( versionPropertyTypeId, device.getOsVersion() );
+        }
         EntityKey deviceEntityKey = new EntityKey( deviceEntitySetId,
                 ApiUtil.generateDefaultEntityId( ImmutableList.of( stringIdPropertyTypeId ), deviceData ),
                 deviceSyncId );
@@ -189,7 +202,7 @@ public class ChronicleServiceImpl implements ChronicleService {
             UUID studyId,
             String participantId,
             String deviceId,
-            List<SetMultimap<UUID, Object>> data ) { // TODO does this work?
+            List<SetMultimap<UUID, Object>> data ) {
 
         DataApi dataApi;
         try {
@@ -203,7 +216,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         Set<Entity> entities = Sets.newHashSet();
         Set<Association> associations = Sets.newHashSet();
 
-        Entity deviceEntity = getDeviceEntity( deviceId );
+        Entity deviceEntity = getDeviceEntity( deviceId, Optional.empty() );
         Entity participantEntity = getParticipantEntity( participantId, studyId );
         entities.add( deviceEntity );
         entities.add( participantEntity );
@@ -233,7 +246,12 @@ public class ChronicleServiceImpl implements ChronicleService {
         return data.size();
     }
 
-    @Override public UUID registerDatasource( UUID studyId, String participantId, String datasourceId ) {
+    @Override
+    public UUID registerDatasource(
+            UUID studyId,
+            String participantId,
+            String datasourceId,
+            Optional<Datasource> datasource ) {
 
         //  previous logic already verified the participant and that the device is not already connected.
         //  add the device and associate to the participant and to the study
@@ -255,7 +273,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         studyInformation.computeIfAbsent( studyId, key -> HashMultimap.create() )
                 .put( participantId, datasourceId );
 
-        Entity deviceEntity = getDeviceEntity( datasourceId );
+        Entity deviceEntity = getDeviceEntity( datasourceId, datasource );
         Entity participantEntity = getParticipantEntity( participantId, studyId );
 
         Set<Entity> entities = ImmutableSet.of( deviceEntity, participantEntity );

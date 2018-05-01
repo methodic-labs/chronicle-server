@@ -45,7 +45,7 @@ public class ChronicleStudyController implements ChronicleStudyApi {
         final boolean knownDatasource = chronicleService.isKnownDatasource( studyId, participantId, datasourceId );
 
         if ( knownParticipant && !knownDatasource ) {
-            return chronicleService.registerDatasource( studyId, participantId, datasourceId );
+            return chronicleService.registerDatasource( studyId, participantId, datasourceId, datasource );
         } else {
             logger.error(
                     "Unable to enroll device for study {}, participant {}, and datasource {} due valid participant = {} or valid device = {}",
