@@ -90,7 +90,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                     @Override
                     public ApiClient load( Class<?> key ) throws Exception {
                         String jwtToken = MissionControl.getIdToken( username, password );
-                        return new ApiClient( RetrofitFactory.Environment.LOCAL, () -> jwtToken );
+                        return new ApiClient( () -> jwtToken );
                     }
                 } );
 
