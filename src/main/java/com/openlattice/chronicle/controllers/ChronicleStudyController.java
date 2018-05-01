@@ -3,10 +3,12 @@ package com.openlattice.chronicle.controllers;
 import com.openlattice.chronicle.ChronicleStudyApi;
 import com.openlattice.chronicle.services.ChronicleService;
 import com.openlattice.chronicle.sources.Datasource;
+
 import java.util.Optional;
 import java.util.UUID;
 import javax.inject.Inject;
 import javax.ws.rs.ForbiddenException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
@@ -34,7 +36,7 @@ public class ChronicleStudyController implements ChronicleStudyApi {
             consumes = MediaType.APPLICATION_JSON_VALUE )
     public UUID enrollSource(
             @PathVariable( STUDY_ID ) UUID studyId,
-            @PathVariable( PARTICIPANT_ID ) UUID participantId,
+            @PathVariable( PARTICIPANT_ID ) String participantId,
             @PathVariable( DATASOURCE_ID ) String datasourceId,
             @RequestBody Optional<Datasource> datasource ) {
         //  allow to proceed only if the participant is in the study and the device has not been associated yet
@@ -62,15 +64,15 @@ public class ChronicleStudyController implements ChronicleStudyApi {
             method = RequestMethod.GET,
             consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE )
-    public Boolean verifyDevice(
+    public Boolean isKnownDatasource(
             @PathVariable( STUDY_ID ) UUID studyId,
-            @PathVariable( PARTICIPANT_ID ) UUID participantId,
+            @PathVariable( PARTICIPANT_ID ) String participantId,
             @PathVariable( DATASOURCE_ID ) String datasourceId ) {
         //  validate that this device belongs to this participant in this study
         //  look up in association entitySet between device and participant, and device and study to see if it exists?
         //  DataApi.getEntity(entitySetId :UUID, entityKeyId :UUID)
         // TODO: Waiting on data model to exist, then ready to implement
-        return chronicleService.isKnownDatasource( studyId,participantId, datasourceId );
+        return chronicleService.isKnownDatasource( studyId, participantId, datasourceId );
     }
 
     @Override
@@ -79,7 +81,9 @@ public class ChronicleStudyController implements ChronicleStudyApi {
             method = RequestMethod.GET,
             consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE )
-    public Boolean verifyParticipant( UUID studyId, UUID participantId ) {
+    public Boolean isKnownParticipant(
+            @PathVariable( STUDY_ID ) UUID studyId,
+            @PathVariable( PARTICIPANT_ID ) String participantId ) {
         //  validate that this participant belongs in this study
         //  look up in association entitySet between study and participant if the participant is present
         //  DataApi.getEntity(entitySetId :UUID, entityKeyId :UUID)

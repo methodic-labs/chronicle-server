@@ -11,13 +11,13 @@ public interface ChronicleService {
     //  TODO: add in throws exception!
     Integer logData(
             UUID studyId,
-            UUID participantId,
+            String participantId,
             String datasourceId,
             List<SetMultimap<UUID, Object>> data );
 
-    UUID registerDatasource( UUID studyId, UUID participantId, String datasourceId );
+    UUID registerDatasource( UUID studyId, String participantId, String datasourceId );
 
-    boolean isKnownDatasource( UUID studyId, UUID participantId, String datasourceId );
+    boolean isKnownDatasource( UUID studyId, String participantId, String datasourceId );
 
-    boolean isKnownParticipant( UUID studyId, UUID participantId );
+    boolean isKnownParticipant( UUID studyId, String participantId );
 }

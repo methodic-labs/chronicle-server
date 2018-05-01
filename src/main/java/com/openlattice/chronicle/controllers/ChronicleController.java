@@ -32,7 +32,7 @@ public class ChronicleController implements ChronicleApi {
             consumes = MediaType.APPLICATION_JSON_VALUE )
     public Integer upload(
             @PathVariable( STUDY_ID ) UUID studyId,
-            @PathVariable( PARTICIPANT_ID ) UUID participantId,
+            @PathVariable( PARTICIPANT_ID ) String participantId,
             @PathVariable( DATASOURCE_ID ) String datasourceId,
             @RequestBody List<SetMultimap<UUID, Object>> data ) {
         //  allow to proceed only if the participant is in the study and the device is associated as well

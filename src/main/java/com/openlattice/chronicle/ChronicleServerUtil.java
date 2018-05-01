@@ -22,6 +22,8 @@ package com.openlattice.chronicle;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
+
 import org.apache.olingo.commons.api.data.Entity;
 import org.apache.olingo.commons.api.data.EntityCollection;
 import org.apache.olingo.commons.api.edm.EdmEntitySet;
@@ -43,6 +45,12 @@ public final class ChronicleServerUtil {
     private static final Logger logger = LoggerFactory.getLogger( ChronicleServer.class );
 
     private ChronicleServerUtil() {
+    }
+
+    public static final String PARTICIPANTS_PREFIX = "chronicle_participants_";
+
+    public static String getParticipantEntitySetName( UUID studyId ) {
+        return PARTICIPANTS_PREFIX.concat( studyId.toString() );
     }
 
     public static EdmEntitySet getEdmEntitySet( UriInfoResource uriInfo ) throws ODataApplicationException {
