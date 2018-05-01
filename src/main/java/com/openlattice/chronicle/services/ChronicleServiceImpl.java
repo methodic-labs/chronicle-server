@@ -168,9 +168,9 @@ public class ChronicleServiceImpl implements ChronicleService {
     private Association getRecordedByAssociation( EntityKey src, EntityKey dst, OffsetDateTime timestamp ) {
         SetMultimap<UUID, Object> data = HashMultimap.create();
         data.put( dateLoggedPropertyTypeId, timestamp );
-        EntityKey key = new EntityKey( dataEntitySetId,
+        EntityKey key = new EntityKey( recordedByEntitySetId,
                 ApiUtil.generateDefaultEntityId( ImmutableList.of( dateLoggedPropertyTypeId ), data ),
-                dataSyncId );
+                recordedBySyncId );
         return new Association( key, src, dst, data );
     }
 

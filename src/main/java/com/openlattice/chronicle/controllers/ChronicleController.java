@@ -27,7 +27,7 @@ public class ChronicleController implements ChronicleApi {
 
     @Override
     @RequestMapping(
-            path = STUDY_ID_PATH + PARTICIPANT_ID_PATH + DATASOURCE_ID_PATH + ENTITY_SET_ID_PATH,
+            path = STUDY_ID_PATH + PARTICIPANT_ID_PATH + DATASOURCE_ID_PATH,
             method = RequestMethod.POST,
             consumes = MediaType.APPLICATION_JSON_VALUE )
     public Integer upload(
