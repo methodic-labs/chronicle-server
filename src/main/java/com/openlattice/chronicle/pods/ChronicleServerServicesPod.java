@@ -34,8 +34,6 @@ import com.openlattice.chronicle.services.ChronicleService;
 import com.openlattice.chronicle.services.ChronicleServiceImpl;
 import com.openlattice.data.serializers.FullQualifiedNameJacksonDeserializer;
 import com.openlattice.data.serializers.FullQualifiedNameJacksonSerializer;
-import com.zaxxer.hikari.HikariDataSource;
-import org.jdbi.v3.core.Jdbi;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
@@ -51,13 +49,7 @@ import java.util.concurrent.ExecutionException;
 public class ChronicleServerServicesPod {
 
     @Inject
-    private Jdbi jdbi;
-
-    @Inject
     private HazelcastInstance hazelcastInstance;
-
-    @Inject
-    private HikariDataSource hikariDataSource;
 
     @Inject
     private Auth0Configuration auth0Configuration;
