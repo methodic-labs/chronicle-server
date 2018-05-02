@@ -110,7 +110,7 @@ configurations {
 }
 
 ext.odata_version = '4.2.0'
-ext.chronicle_api_version = '0.0.1-SNAPSHOT'
+ext.chronicle_api_version = '0.0.2-SNAPSHOT'
 dependencies {
 
     compile "com.openlattice:rhizome:${rhizome_version}"
