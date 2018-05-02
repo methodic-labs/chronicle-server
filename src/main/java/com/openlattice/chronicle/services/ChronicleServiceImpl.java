@@ -156,7 +156,7 @@ public class ChronicleServiceImpl implements ChronicleService {
 
     private Entity getStudyEntity( UUID studyId ) {
         SetMultimap<UUID, Object> studyData = HashMultimap.create();
-        studyData.put( stringIdPropertyTypeId, studyId );
+        studyData.put( stringIdPropertyTypeId, studyId.toString() );
         EntityKey studyEntityKey = new EntityKey( studyEntitySetId,
                 ApiUtil.generateDefaultEntityId( ImmutableList.of( stringIdPropertyTypeId ), studyData ),
                 studySyncId );
@@ -284,14 +284,17 @@ public class ChronicleServiceImpl implements ChronicleService {
 
         Entity deviceEntity = getDeviceEntity( datasourceId, datasource );
         Entity participantEntity = getParticipantEntity( participantId, studyId );
+        Entity studyEntity = getStudyEntity( studyId );
 
-        Set<Entity> entities = ImmutableSet.of( deviceEntity, participantEntity );
+        Set<Entity> entities = ImmutableSet.of( deviceEntity, participantEntity, studyEntity );
         Set<Association> associations = ImmutableSet
-                .of( getUsedByAssociation( deviceEntity.getKey(), participantEntity.getKey() ) );
+                .of( getUsedByAssociation( deviceEntity.getKey(), participantEntity.getKey() ),
+                        getUsedByAssociation( deviceEntity.getKey(), studyEntity.getKey() ) );
 
         Set<UUID> tickets = ImmutableSet.of(
                 dataApi.acquireSyncTicket( deviceEntitySetId, deviceSyncId ),
                 dataApi.acquireSyncTicket( participantEntity.getEntitySetId(), participantEntity.getSyncId() ),
+                dataApi.acquireSyncTicket( studyEntitySetId, studySyncId ),
                 dataApi.acquireSyncTicket( usedByEntitySetId, usedBySyncId ) );
 
         dataApi.createEntityAndAssociationData( new BulkDataCreation( tickets, entities, associations ) );
