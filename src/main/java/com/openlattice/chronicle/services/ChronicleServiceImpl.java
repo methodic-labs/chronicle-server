@@ -1,11 +1,18 @@
 package com.openlattice.chronicle.services;
 
 import com.dataloom.streams.StreamUtil;
+import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
-import com.google.common.collect.*;
+import com.google.common.collect.HashMultimap;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Multimaps;
+import com.google.common.collect.SetMultimap;
+import com.google.common.collect.Sets;
 import com.google.common.eventbus.EventBus;
 import com.openlattice.ApiUtil;
 import com.openlattice.chronicle.ChronicleServerUtil;
@@ -13,7 +20,6 @@ import com.openlattice.chronicle.configuration.ChronicleConfiguration;
 import com.openlattice.chronicle.sources.AndroidDevice;
 import com.openlattice.chronicle.sources.Datasource;
 import com.openlattice.client.ApiClient;
-import com.openlattice.client.RetrofitFactory;
 import com.openlattice.data.DataApi;
 import com.openlattice.data.EntityKey;
 import com.openlattice.data.requests.Association;
@@ -26,16 +32,19 @@ import com.openlattice.search.requests.DataSearchResult;
 import com.openlattice.search.requests.SearchTerm;
 import com.openlattice.shuttle.MissionControl;
 import com.openlattice.sync.SyncApi;
+import java.time.OffsetDateTime;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
-
-import java.time.OffsetDateTime;
-import java.util.*;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 public class ChronicleServiceImpl implements ChronicleService {
     protected static final Logger logger = LoggerFactory.getLogger( ChronicleServiceImpl.class );
@@ -216,7 +225,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         Set<Entity> entities = Sets.newHashSet();
         Set<Association> associations = Sets.newHashSet();
 
-        Entity deviceEntity = getDeviceEntity( deviceId, Optional.empty() );
+        Entity deviceEntity = getDeviceEntity( deviceId, Optional.absent() );
         Entity participantEntity = getParticipantEntity( participantId, studyId );
         entities.add( deviceEntity );
         entities.add( participantEntity );
