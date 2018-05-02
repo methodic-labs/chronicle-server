@@ -25,21 +25,22 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.eventbus.EventBus;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.hazelcast.core.HazelcastInstance;
+import com.kryptnostic.rhizome.configuration.service.ConfigurationService;
 import com.openlattice.auth0.Auth0Pod;
 import com.openlattice.auth0.Auth0TokenProvider;
 import com.openlattice.authentication.Auth0Configuration;
+import com.openlattice.chronicle.configuration.ChronicleConfiguration;
 import com.openlattice.chronicle.services.ChronicleService;
 import com.openlattice.chronicle.services.ChronicleServiceImpl;
-import com.openlattice.client.RetrofitFactory;
-import com.openlattice.data.DataApi;
 import com.openlattice.data.serializers.FullQualifiedNameJacksonDeserializer;
 import com.openlattice.data.serializers.FullQualifiedNameJacksonSerializer;
-import com.zaxxer.hikari.HikariDataSource;
-import javax.inject.Inject;
-import org.jdbi.v3.core.Jdbi;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+
+import javax.inject.Inject;
+import java.io.IOException;
+import java.util.concurrent.ExecutionException;
 
 @Configuration
 @Import( {
@@ -48,13 +49,7 @@ import org.springframework.context.annotation.Import;
 public class ChronicleServerServicesPod {
 
     @Inject
-    private Jdbi jdbi;
-
-    @Inject
     private HazelcastInstance hazelcastInstance;
-
-    @Inject
-    private HikariDataSource hikariDataSource;
 
     @Inject
     private Auth0Configuration auth0Configuration;
@@ -63,11 +58,10 @@ public class ChronicleServerServicesPod {
     private ListeningExecutorService executor;
 
     @Inject
-    private EventBus eventBus;
+    private ConfigurationService configurationService;
 
-    //TODO: Properly setup data api.
     @Inject
-    private DataApi dataApi;
+    private EventBus eventBus;
 
     @Bean
     public ObjectMapper defaultObjectMapper() {
@@ -77,13 +71,19 @@ public class ChronicleServerServicesPod {
         return mapper;
     }
 
+    @Bean( name = "chronicleConfiguration" )
+    public ChronicleConfiguration getChronicleConfiguration() throws IOException {
+        ChronicleConfiguration config = configurationService.getConfiguration( ChronicleConfiguration.class );
+        return config;
+    }
+
     @Bean
     public Auth0TokenProvider auth0TokenProvider() {
         return new Auth0TokenProvider( auth0Configuration );
     }
 
     @Bean
-    public ChronicleService chronicleService() {
-        return new ChronicleServiceImpl( eventBus, dataApi );
+    public ChronicleService chronicleService() throws IOException, ExecutionException {
+        return new ChronicleServiceImpl( eventBus, getChronicleConfiguration() );
     }
 }

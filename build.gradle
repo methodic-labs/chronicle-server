@@ -113,14 +113,34 @@ ext.odata_version = '4.2.0'
 ext.chronicle_api_version = '0.0.2-SNAPSHOT'
 dependencies {
 
-    compile "com.openlattice:rhizome:${rhizome_version}"
-    compile "com.openlattice:api:${api_version}"
-    //compile "com.openlattice:conductor-client:${conductor_client_version}"
-    compile "com.openlattice:chronicle-api:${chronicle_api_version}"
-    testCompile "com.openlattice:chronicle-api:${chronicle_api_version}:tests"
-    testCompile "com.openlattice:rhizome:${rhizome_version}:tests"
-    testCompile "com.openlattice:rhizome-client:${rhizome_client_version}:tests"
+    if( project.hasProperty('developmentMode') && project.developmentMode ) {
+        logger.quiet(project.name + " using project dependencies.")
+        compile project(":rhizome")
+        compile project(":api")
+        compile project(":chronicle-api")
+        compile (project(":shuttle")) {
+            exclude module: 'apache-curator'
+            exclude module: 'slf4j-log4j12'
+            exclude module: 'hadoop-mapreduce-client-core'
+            exclude module: 'hadoop-common'
+        }
+    } else {
+        logger.quiet(project.name + " using jar dependencies.")
+        compile "com.openlattice:rhizome:${rhizome_version}"
+        compile "com.openlattice:api:${api_version}"
+        //compile "com.openlattice:conductor-client:${conductor_client_version}"
+        compile "com.openlattice:chronicle-api:${chronicle_api_version}"
+        compile ("com.openlattice:shuttle:0.0.2-SNAPSHOT") {
+            exclude module: 'apache-curator'
+            exclude module: 'slf4j-log4j12'
+            exclude module: 'hadoop-mapreduce-client-core'
+            exclude module: 'hadoop-common'
+        }
 
+        testCompile "com.openlattice:chronicle-api:${chronicle_api_version}:tests"
+        testCompile "com.openlattice:rhizome:${rhizome_version}:tests"
+        testCompile "com.openlattice:rhizome-client:${rhizome_client_version}:tests"
+    }
 
     compile "org.apache.olingo:odata-server-api:${odata_version}"
     compile "org.apache.olingo:odata-server-core:${odata_version}"

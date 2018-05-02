@@ -32,8 +32,6 @@ import com.openlattice.chronicle.pods.ChronicleServerServicesPod;
 import com.openlattice.chronicle.pods.ChronicleServerServletsPod;
 import com.openlattice.data.serializers.FullQualifiedNameJacksonDeserializer;
 import com.openlattice.data.serializers.FullQualifiedNameJacksonSerializer;
-import com.openlattice.jdbc.JdbcPod;
-import com.openlattice.postgres.PostgresPod;
 
 public class ChronicleServer extends BaseRhizomeServer {
     public static final Class<?>[] webPods     = new Class<?>[] {
@@ -44,9 +42,7 @@ public class ChronicleServer extends BaseRhizomeServer {
             Auth0Pod.class };
 
     public static final Class<?>[] chronicleServerPods = new Class<?>[] {
-            ChronicleServerServicesPod.class,
-            JdbcPod.class,
-            PostgresPod.class
+            ChronicleServerServicesPod.class
     };
 
     static {

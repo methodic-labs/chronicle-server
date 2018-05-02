@@ -27,12 +27,12 @@ public class ChronicleController implements ChronicleApi {
 
     @Override
     @RequestMapping(
-            path = STUDY_ID_PATH + PARTICIPANT_ID_PATH + DATASOURCE_ID_PATH + ENTITY_SET_ID_PATH,
+            path = STUDY_ID_PATH + PARTICIPANT_ID_PATH + DATASOURCE_ID_PATH,
             method = RequestMethod.POST,
             consumes = MediaType.APPLICATION_JSON_VALUE )
     public Integer upload(
             @PathVariable( STUDY_ID ) UUID studyId,
-            @PathVariable( PARTICIPANT_ID ) UUID participantId,
+            @PathVariable( PARTICIPANT_ID ) String participantId,
             @PathVariable( DATASOURCE_ID ) String datasourceId,
             @RequestBody List<SetMultimap<UUID, Object>> data ) {
         //  allow to proceed only if the participant is in the study and the device is associated as well
