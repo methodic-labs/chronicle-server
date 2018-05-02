@@ -80,7 +80,7 @@ if (CS_ARGS == 'null' || CS_ARGS == null || CS_ARGS == "") {
 }
 
 
-if( PARALLEL == 'null' || PARALLEL == null || PARALLEL == "" ) {
+if (PARALLEL == 'null' || PARALLEL == null || PARALLEL == "") {
     PARALLEL = "-Djava.util.concurrent.ForkJoinPool.common.parallelism=" + Runtime.runtime.availableProcessors()
 }
 
@@ -110,15 +110,18 @@ configurations {
 }
 
 ext.odata_version = '4.2.0'
-ext.chronicle_api_version = '0.0.2-SNAPSHOT'
+ext.chronicle_api_version = '0.0.4-SNAPSHOT'
 dependencies {
+    compile "com.google.guava:guava:${guava_version}"
 
-    if( project.hasProperty('developmentMode') && project.developmentMode ) {
+    if (project.hasProperty('developmentMode') && project.developmentMode) {
         logger.quiet(project.name + " using project dependencies.")
         compile project(":rhizome")
         compile project(":api")
-        compile project(":chronicle-api")
-        compile (project(":shuttle")) {
+        compile project(":chronicle-api") {
+            exclude group: 'com.google.guava', module: 'guava'
+        }
+        compile(project(":shuttle")) {
             exclude module: 'apache-curator'
             exclude module: 'slf4j-log4j12'
             exclude module: 'hadoop-mapreduce-client-core'
@@ -128,9 +131,10 @@ dependencies {
         logger.quiet(project.name + " using jar dependencies.")
         compile "com.openlattice:rhizome:${rhizome_version}"
         compile "com.openlattice:api:${api_version}"
-        //compile "com.openlattice:conductor-client:${conductor_client_version}"
-        compile "com.openlattice:chronicle-api:${chronicle_api_version}"
-        compile ("com.openlattice:shuttle:0.0.2-SNAPSHOT") {
+        compile("com.openlattice:chronicle-api:${chronicle_api_version}") {
+            exclude group: 'com.google.guava', module: 'guava'
+        }
+        compile("com.openlattice:shuttle:0.0.2-SNAPSHOT") {
             exclude module: 'apache-curator'
             exclude module: 'slf4j-log4j12'
             exclude module: 'hadoop-mapreduce-client-core'

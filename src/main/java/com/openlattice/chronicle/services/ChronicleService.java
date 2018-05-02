@@ -1,10 +1,10 @@
 package com.openlattice.chronicle.services;
 
+import com.google.common.base.Optional;
 import com.google.common.collect.SetMultimap;
 import com.openlattice.chronicle.sources.Datasource;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 /**
