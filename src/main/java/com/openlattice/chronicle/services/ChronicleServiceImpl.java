@@ -6,13 +6,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
-import com.google.common.collect.HashMultimap;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Multimaps;
-import com.google.common.collect.SetMultimap;
-import com.google.common.collect.Sets;
+import com.google.common.collect.*;
 import com.google.common.eventbus.EventBus;
 import com.openlattice.ApiUtil;
 import com.openlattice.chronicle.ChronicleServerUtil;
@@ -41,6 +35,8 @@ import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -314,6 +310,22 @@ public class ChronicleServiceImpl implements ChronicleService {
 
     @Override public boolean isKnownParticipant( UUID studyId, String participantId ) {
         return studyParticipants.get( studyId ).contains( participantId );
+    }
+
+    @Override public Map<String, UUID> getPropertyTypeIds( Set<String> propertyTypeFqns ) {
+        EdmApi edmApi;
+        try {
+            ApiClient apiClient = apiClientCache.get( ApiClient.class );
+            edmApi = apiClient.getEdmApi();
+        } catch ( ExecutionException e ) {
+            logger.error( "Unable to load EdmApi" );
+            return ImmutableMap.of();
+        }
+
+        return propertyTypeFqns.stream().map( fqn -> new FullQualifiedName( fqn ) ).map( fqn -> Pair
+                .of( fqn.getFullQualifiedNameAsString(),
+                        edmApi.getPropertyTypeId( fqn.getNamespace(), fqn.getName() ) ) )
+                .collect( Collectors.toMap( pair -> pair.getLeft(), pair -> pair.getRight() ) );
     }
 
     @Scheduled( fixedRate = 60000 )
