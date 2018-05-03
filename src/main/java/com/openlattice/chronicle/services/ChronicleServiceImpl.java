@@ -297,7 +297,7 @@ public class ChronicleServiceImpl implements ChronicleService {
 
         // HACK -- we should get entityKeyIds back from dataApi eventually
         DataSearchResult result = searchApi.executeEntitySetDataQuery( deviceEntitySetId,
-                new SearchTerm( "\"" + stringIdPropertyTypeId.toString() + "\":\"" + datasourceId + "\"", 0, 1 ) );
+                new SearchTerm( stringIdPropertyTypeId.toString() + ":\"" + datasourceId + "\"", 0, 1 ) );
         if ( result.getHits().size() == 0 )
             return null; // TODO do we want to throw an error here?
         return UUID.fromString( result.getHits().iterator().next().get( "id" ).iterator().next().toString() );
