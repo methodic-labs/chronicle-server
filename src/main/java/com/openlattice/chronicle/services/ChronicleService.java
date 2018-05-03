@@ -5,6 +5,8 @@ import com.google.common.collect.SetMultimap;
 import com.openlattice.chronicle.sources.Datasource;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -23,4 +25,6 @@ public interface ChronicleService {
     boolean isKnownDatasource( UUID studyId, String participantId, String datasourceId );
 
     boolean isKnownParticipant( UUID studyId, String participantId );
+
+    Map<String, UUID> getPropertyTypeIds( Set<String> propertyTypeFqns );
 }
