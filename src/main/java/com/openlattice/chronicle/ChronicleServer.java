@@ -27,6 +27,7 @@ import com.kryptnostic.rhizome.core.RhizomeApplicationServer;
 import com.kryptnostic.rhizome.hazelcast.serializers.RhizomeUtils.Pods;
 import com.kryptnostic.rhizome.pods.hazelcast.RegistryBasedHazelcastInstanceConfigurationPod;
 import com.openlattice.auth0.Auth0Pod;
+import com.openlattice.aws.AwsS3Pod;
 import com.openlattice.chronicle.pods.ChronicleServerSecurityPod;
 import com.openlattice.chronicle.pods.ChronicleServerServicesPod;
 import com.openlattice.chronicle.pods.ChronicleServerServletsPod;
@@ -42,6 +43,7 @@ public class ChronicleServer extends BaseRhizomeServer {
             Auth0Pod.class };
 
     public static final Class<?>[] chronicleServerPods = new Class<?>[] {
+            AwsS3Pod.class,
             ChronicleServerServicesPod.class
     };
 
