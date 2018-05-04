@@ -6,7 +6,14 @@ import com.google.common.base.Preconditions;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
-import com.google.common.collect.*;
+import com.google.common.collect.HashMultimap;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Multimaps;
+import com.google.common.collect.SetMultimap;
+import com.google.common.collect.Sets;
 import com.google.common.eventbus.EventBus;
 import com.openlattice.ApiUtil;
 import com.openlattice.chronicle.ChronicleServerUtil;
@@ -35,7 +42,6 @@ import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
 import org.slf4j.Logger;
@@ -52,40 +58,33 @@ public class ChronicleServiceImpl implements ChronicleService {
     private final String password;
 
     private final EventBus eventBus;
-
-    private transient LoadingCache<Class<?>, ApiClient> apiClientCache = null;
-
     private final String STUDY_ENTITY_SET_NAME       = "chronicle_study";
     private final String DEVICES_ENTITY_SET_NAME     = "chronicle_device";
     private final String DATA_ENTITY_SET_NAME        = "chronicle_app_data";
     private final String RECORDED_BY_ENTITY_SET_NAME = "chronicle_recorded_by";
     private final String USED_BY_ENTITY_SET_NAME     = "chronicle_used_by";
-
     private final Set<UUID> dataKey;
-
     private final FullQualifiedName STRING_ID_FQN   = new FullQualifiedName( "general.stringid" );
     private final FullQualifiedName PERSON_ID_FQN   = new FullQualifiedName( "nc.SubjectIdentification" );
     private final FullQualifiedName DATE_LOGGED_FQN = new FullQualifiedName( "ol.datelogged" );
     private final FullQualifiedName VERSION_FQN     = new FullQualifiedName( "ol.version" );
     private final FullQualifiedName MODEL_FQN       = new FullQualifiedName( "vehicle.model" );
-
     private final UUID studyEntitySetId;
     private final UUID deviceEntitySetId;
     private final UUID dataEntitySetId;
     private final UUID recordedByEntitySetId;
     private final UUID usedByEntitySetId;
-
     private final UUID stringIdPropertyTypeId;
     private final UUID participantIdPropertyTypeId;
     private final UUID dateLoggedPropertyTypeId;
     private final UUID versionPropertyTypeId;
     private final UUID modelPropertyTypeId;
-
     private final UUID studySyncId;
     private final UUID deviceSyncId;
     private final UUID dataSyncId;
     private final UUID recordedBySyncId;
     private final UUID usedBySyncId;
+    private transient LoadingCache<Class<?>, ApiClient> apiClientCache = null;
 
     public ChronicleServiceImpl(
             EventBus eventBus,
@@ -295,13 +294,32 @@ public class ChronicleServiceImpl implements ChronicleService {
 
         dataApi.createEntityAndAssociationData( new BulkDataCreation( tickets, entities, associations ) );
 
+        return getDatasourceEntityKeyId( datasourceId, searchApi, dataApi );
+    }
+
+    @Override
+    public UUID getDatasourceEntityKeyId( String datasourceId ) {
+        DataApi dataApi;
+        SearchApi searchApi;
+        try {
+            ApiClient apiClient = apiClientCache.get( ApiClient.class );
+            dataApi = apiClient.getDataApi();
+            searchApi = apiClient.getSearchApi();
+        } catch ( ExecutionException e ) {
+            logger.error( "Unable to load apis." );
+            return null;
+        }
+        return getDatasourceEntityKeyId( datasourceId, searchApi, dataApi );
+    }
+
+    private UUID getDatasourceEntityKeyId( String datasourceId, SearchApi searchApi, DataApi dataApi ) {
         // HACK -- we should get entityKeyIds back from dataApi eventually
         DataSearchResult result = searchApi.executeEntitySetDataQuery( deviceEntitySetId,
                 new SearchTerm( stringIdPropertyTypeId.toString() + ":\"" + datasourceId + "\"", 0, 1 ) );
-        if ( result.getHits().size() == 0 )
+        if ( result.getHits().size() == 0 ) {
             return null; // TODO do we want to throw an error here?
+        }
         return UUID.fromString( result.getHits().iterator().next().get( "id" ).iterator().next().toString() );
-
     }
 
     @Override public boolean isKnownDatasource( UUID studyId, String participantId, String datasourceId ) {

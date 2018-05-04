@@ -4,11 +4,9 @@ import com.google.common.base.Optional;
 import com.openlattice.chronicle.ChronicleStudyApi;
 import com.openlattice.chronicle.services.ChronicleService;
 import com.openlattice.chronicle.sources.Datasource;
-
 import java.util.UUID;
 import javax.inject.Inject;
 import javax.ws.rs.ForbiddenException;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
@@ -46,6 +44,8 @@ public class ChronicleStudyController implements ChronicleStudyApi {
 
         if ( knownParticipant && !knownDatasource ) {
             return chronicleService.registerDatasource( studyId, participantId, datasourceId, datasource );
+        } else if ( knownParticipant && knownDatasource ) {
+            return chronicleService.getDatasourceEntityKeyId( datasourceId );
         } else {
             logger.error(
                     "Unable to enroll device for study {}, participant {}, and datasource {} due valid participant = {} or valid device = {}",
