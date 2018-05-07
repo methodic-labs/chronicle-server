@@ -62,7 +62,6 @@ public class ChronicleStudyController implements ChronicleStudyApi {
     @RequestMapping(
             path = STUDY_ID_PATH + PARTICIPANT_ID_PATH + DATASOURCE_ID_PATH,
             method = RequestMethod.GET,
-            consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE )
     public Boolean isKnownDatasource(
             @PathVariable( STUDY_ID ) UUID studyId,
@@ -79,7 +78,6 @@ public class ChronicleStudyController implements ChronicleStudyApi {
     @RequestMapping(
             path = STUDY_ID_PATH + PARTICIPANT_ID_PATH,
             method = RequestMethod.GET,
-            consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE )
     public Boolean isKnownParticipant(
             @PathVariable( STUDY_ID ) UUID studyId,
