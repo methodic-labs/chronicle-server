@@ -3,17 +3,20 @@ package com.openlattice.chronicle.controllers;
 import com.google.common.collect.SetMultimap;
 import com.openlattice.chronicle.ChronicleApi;
 import com.openlattice.chronicle.services.ChronicleService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.http.MediaType;
-import org.springframework.web.bind.annotation.*;
-
-import javax.inject.Inject;
-import javax.ws.rs.ForbiddenException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import javax.inject.Inject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.MediaType;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping( ChronicleApi.CONTROLLER )
@@ -48,7 +51,7 @@ public class ChronicleController implements ChronicleApi {
                     datasourceId,
                     knownParticipant,
                     knownDatasource );
-            throw new ForbiddenException( "Unable to store uploaded data." );
+            throw new AccessDeniedException( "Unable to store uploaded data." );
         }
     }
 
