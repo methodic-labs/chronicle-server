@@ -2,19 +2,21 @@ package com.openlattice.chronicle.controllers;
 
 import com.google.common.base.Optional;
 import com.openlattice.chronicle.ChronicleStudyApi;
+import com.openlattice.chronicle.constants.CustomMediaType;
 import com.openlattice.chronicle.services.ChronicleService;
 import com.openlattice.chronicle.sources.Datasource;
-import java.util.UUID;
-import javax.inject.Inject;
+import com.openlattice.chronicle.sources.EntitySetData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import javax.inject.Inject;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.ws.rs.ForbiddenException;
+import java.util.UUID;
 
 /**
  * @author Matthew Tamayo-Rios &lt;matthew@openlattice.com&gt;
@@ -87,5 +89,34 @@ public class ChronicleStudyController implements ChronicleStudyApi {
         //  DataApi.getEntity(entitySetId :UUID, entityKeyId :UUID)
         // TODO: Waiting on data model to exist, then ready to implement
         return chronicleService.isKnownParticipant( studyId, participantId );
+    }
+
+    @Override
+    public EntitySetData getAllStudyData( UUID studyId, String token ) {
+        return chronicleService.downloadStudyData( studyId, token );
+    }
+
+    @RequestMapping(
+            path = STUDY_ID_PATH + DATA_PATH,
+            method = RequestMethod.GET )
+    public EntitySetData getAllStudyData(
+            @PathVariable( STUDY_ID ) UUID studyId,
+            HttpServletRequest request,
+            HttpServletResponse response ) {
+        String authHeader = request.getHeader( "Authorization" );
+        if ( authHeader == null ) {
+            throw new ForbiddenException( "Missing Authentication header." );
+        }
+
+        String[] tokenSplit = authHeader.split( " " );
+        if ( tokenSplit.length <= 1 ) {
+            throw new ForbiddenException( "Invalid Authentication header." );
+        }
+
+        String token = tokenSplit[ 1 ];
+        response.setHeader( "Content-Disposition",
+                "attachment; filename=" + studyId.toString() + ".csv" );
+        response.setContentType( CustomMediaType.TEXT_CSV_VALUE );
+        return getAllStudyData( studyId, token );
     }
 }
