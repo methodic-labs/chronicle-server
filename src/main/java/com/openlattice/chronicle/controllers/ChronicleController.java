@@ -3,6 +3,7 @@ package com.openlattice.chronicle.controllers;
 import com.google.common.collect.SetMultimap;
 import com.openlattice.chronicle.ChronicleApi;
 import com.openlattice.chronicle.services.ChronicleService;
+import com.openlattice.chronicle.util.ChronicleServerExceptionHandler.StudyRegistrationNotFoundException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -41,6 +42,7 @@ public class ChronicleController implements ChronicleApi {
         //  TODO: finish exception logic
         final boolean knownParticipant = chronicleService.isKnownParticipant( studyId, participantId );
         final boolean knownDatasource = chronicleService.isKnownDatasource( studyId, participantId, datasourceId );
+
         if ( knownParticipant && knownDatasource ) {
             return chronicleService.logData( studyId, participantId, datasourceId, data );
         } else {
@@ -51,7 +53,11 @@ public class ChronicleController implements ChronicleApi {
                     datasourceId,
                     knownParticipant,
                     knownDatasource );
-            throw new AccessDeniedException( "Unable to store uploaded data." );
+            if ( !knownParticipant ) {
+                throw new AccessDeniedException( "Unable to store uploaded data." );
+            }
+
+            throw new StudyRegistrationNotFoundException( "Unable to store uploaded data." );
         }
     }
 
@@ -63,6 +69,14 @@ public class ChronicleController implements ChronicleApi {
             produces = MediaType.APPLICATION_JSON_VALUE )
     public Map<String, UUID> getPropertyTypeIds( @RequestBody Set<String> propertyTypeFqns ) {
         return chronicleService.getPropertyTypeIds( propertyTypeFqns );
+    }
+
+    @RequestMapping(
+            path = STATUS_PATH,
+            method = RequestMethod.GET )
+    @Override public Boolean isRunning() {
+        //TODO: Ensure connectivity with OpenLattice backend.
+        return true;
     }
 
 }
