@@ -31,7 +31,6 @@ import com.openlattice.aws.AwsS3Pod;
 import com.openlattice.chronicle.pods.ChronicleServerSecurityPod;
 import com.openlattice.chronicle.pods.ChronicleServerServicesPod;
 import com.openlattice.chronicle.pods.ChronicleServerServletsPod;
-import com.openlattice.data.serializers.FullQualifiedNameJacksonDeserializer;
 import com.openlattice.data.serializers.FullQualifiedNameJacksonSerializer;
 
 public class ChronicleServer extends BaseRhizomeServer {
@@ -49,7 +48,6 @@ public class ChronicleServer extends BaseRhizomeServer {
 
     static {
         ObjectMappers.foreach( FullQualifiedNameJacksonSerializer::registerWithMapper );
-        ObjectMappers.foreach( FullQualifiedNameJacksonDeserializer::registerWithMapper );
         ObjectMappers.foreach( mapper -> mapper.disable( SerializationFeature.WRITE_DATES_AS_TIMESTAMPS ) );
     }
 

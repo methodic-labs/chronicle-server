@@ -32,7 +32,6 @@ import com.openlattice.authentication.Auth0Configuration;
 import com.openlattice.chronicle.configuration.ChronicleConfiguration;
 import com.openlattice.chronicle.services.ChronicleService;
 import com.openlattice.chronicle.services.ChronicleServiceImpl;
-import com.openlattice.data.serializers.FullQualifiedNameJacksonDeserializer;
 import com.openlattice.data.serializers.FullQualifiedNameJacksonSerializer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -67,7 +66,6 @@ public class ChronicleServerServicesPod {
     public ObjectMapper defaultObjectMapper() {
         ObjectMapper mapper = ObjectMappers.getJsonMapper();
         FullQualifiedNameJacksonSerializer.registerWithMapper( mapper );
-        FullQualifiedNameJacksonDeserializer.registerWithMapper( mapper );
         return mapper;
     }
 
