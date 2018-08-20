@@ -37,21 +37,21 @@ public class ChronicleServerExceptionHandler {
     private static final Logger logger    = LoggerFactory.getLogger( ChronicleServerExceptionHandler.class );
     private static final String ERROR_MSG = "";
 
-    @ExceptionHandler( { NullPointerException.class, NotFoundException.class } )
+    @ExceptionHandler( { NullPointerException.class, StudyRegistrationNotFoundException.class } )
     public ResponseEntity<ErrorsDTO> handleNotFoundException( Exception e ) {
         logger.error( ERROR_MSG, e );
         if ( e.getMessage() != null ) {
-            return new ResponseEntity<ErrorsDTO>(
+            return new ResponseEntity<>(
                     new ErrorsDTO( ApiExceptions.RESOURCE_NOT_FOUND_EXCEPTION, e.getMessage() ),
                     HttpStatus.NOT_FOUND );
         }
-        return new ResponseEntity<ErrorsDTO>( HttpStatus.NOT_FOUND );
+        return new ResponseEntity<>( HttpStatus.NOT_FOUND );
     }
 
     @ExceptionHandler( { IllegalArgumentException.class, HttpMessageNotReadableException.class } )
     public ResponseEntity<ErrorsDTO> handleIllegalArgumentException( Exception e ) {
         logger.error( ERROR_MSG, e );
-        return new ResponseEntity<ErrorsDTO>(
+        return new ResponseEntity<>(
                 new ErrorsDTO( ApiExceptions.ILLEGAL_ARGUMENT_EXCEPTION, e.getMessage() ),
                 HttpStatus.BAD_REQUEST );
     }
@@ -59,7 +59,7 @@ public class ChronicleServerExceptionHandler {
     @ExceptionHandler( IllegalStateException.class )
     public ResponseEntity<ErrorsDTO> handleIllegalStateException( Exception e ) {
         logger.error( ERROR_MSG, e );
-        return new ResponseEntity<ErrorsDTO>(
+        return new ResponseEntity<>(
                 new ErrorsDTO( ApiExceptions.ILLEGAL_STATE_EXCEPTION, e.getMessage() ),
                 HttpStatus.INTERNAL_SERVER_ERROR );
     }
@@ -67,7 +67,7 @@ public class ChronicleServerExceptionHandler {
     @ExceptionHandler( AccessDeniedException.class )
     public ResponseEntity<ErrorsDTO> handleUnauthorizedExceptions( AccessDeniedException e ) {
         logger.error( ERROR_MSG, e );
-        return new ResponseEntity<ErrorsDTO>(
+        return new ResponseEntity<>(
                 new ErrorsDTO( ApiExceptions.FORBIDDEN_EXCEPTION, e.getMessage() ),
                 HttpStatus.UNAUTHORIZED );
     }
@@ -75,8 +75,18 @@ public class ChronicleServerExceptionHandler {
     @ExceptionHandler( Exception.class )
     public ResponseEntity<ErrorsDTO> handleOtherExceptions( Exception e ) {
         logger.error( ERROR_MSG, e );
-        return new ResponseEntity<ErrorsDTO>(
+        return new ResponseEntity<>(
                 new ErrorsDTO( ApiExceptions.OTHER_EXCEPTION, e.getClass().getSimpleName() + ": " + e.getMessage() ),
                 HttpStatus.INTERNAL_SERVER_ERROR );
+    }
+
+    public static class StudyRegistrationNotFoundException extends RuntimeException {
+        public StudyRegistrationNotFoundException( String message ) {
+            super( message );
+        }
+
+        public StudyRegistrationNotFoundException( String message, Throwable cause ) {
+            super( message, cause );
+        }
     }
 }
