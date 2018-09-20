@@ -15,6 +15,8 @@ app.js.map
 app.css.map
 /generated_src/
 *.iml
+*.ipr
+*.iws
 target/
 *.csv
 out/
