@@ -15,6 +15,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * You can contact the owner of the copyright at support@openlattice.com
+ *
  */
 
 package com.openlattice.chronicle.pods;
@@ -22,11 +23,12 @@ package com.openlattice.chronicle.pods;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.openlattice.chronicle.constants.CustomMediaType;
 import com.openlattice.chronicle.controllers.ChronicleController;
-import com.openlattice.chronicle.converters.IterableCsvHttpMessageConverter;
 import com.openlattice.chronicle.converters.YamlHttpMessageConverter;
 import com.openlattice.chronicle.util.ChronicleServerExceptionHandler;
 import com.openlattice.data.DataApi;
 import com.ryantenney.metrics.spring.config.annotation.EnableMetrics;
+import java.util.List;
+import javax.inject.Inject;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
@@ -40,20 +42,14 @@ import org.springframework.web.servlet.config.annotation.ContentNegotiationConfi
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurationSupport;
 
-import javax.inject.Inject;
-import java.util.List;
-
 @Configuration
 @ComponentScan(
-        basePackageClasses = { ChronicleController.class, ChronicleServerExceptionHandler.class },
+        basePackageClasses = { ChronicleController.class,
+                ChronicleServerExceptionHandler.class},
         includeFilters = @ComponentScan.Filter(
-                value = {
-                        org.springframework.stereotype.Controller.class,
-                        org.springframework.web.bind.annotation.RestControllerAdvice.class
-                },
-                type = FilterType.ANNOTATION
-        )
-)
+                value = { org.springframework.stereotype.Controller.class,
+                        org.springframework.web.bind.annotation.RestControllerAdvice.class },
+                type = FilterType.ANNOTATION ) )
 @EnableAsync
 @EnableMetrics(
         proxyTargetClass = true )
@@ -70,11 +66,10 @@ public class ChronicleServerMvcPod extends WebMvcConfigurationSupport {
         super.addDefaultHttpMessageConverters( converters );
         for ( HttpMessageConverter<?> converter : converters ) {
             if ( converter instanceof MappingJackson2HttpMessageConverter ) {
-                MappingJackson2HttpMessageConverter jacksonConverter = (MappingJackson2HttpMessageConverter) converter;
-                jacksonConverter.setObjectMapper( defaultObjectMapper );
+                MappingJackson2HttpMessageConverter jackson2HttpMessageConverter = (MappingJackson2HttpMessageConverter) converter;
+                jackson2HttpMessageConverter.setObjectMapper( defaultObjectMapper );
             }
         }
-        converters.add( new IterableCsvHttpMessageConverter() );
         converters.add( new YamlHttpMessageConverter() );
     }
 

@@ -118,7 +118,7 @@ dependencies {
         logger.quiet(project.name + " using project dependencies.")
         compile project(":rhizome")
         compile project(":api")
-        compile(project(":chronicle-api")) {
+        compile project(":chronicle-api") {
             exclude group: 'com.google.guava', module: 'guava'
         }
         compile(project(":shuttle")) {

@@ -1,22 +1,3 @@
-/*
- * Copyright (C) 2018. OpenLattice, Inc.
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- *
- * You can contact the owner of the copyright at support@openlattice.com
- */
-
 package com.openlattice.chronicle.services;
 
 import com.dataloom.streams.StreamUtil;
@@ -53,11 +34,6 @@ import com.openlattice.search.SearchApi;
 import com.openlattice.search.requests.DataSearchResult;
 import com.openlattice.search.requests.SearchTerm;
 import com.openlattice.shuttle.MissionControl;
-import org.apache.commons.lang3.tuple.Pair;
-import org.apache.olingo.commons.api.edm.FullQualifiedName;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.scheduling.annotation.Scheduled;
 
 import java.time.OffsetDateTime;
 import java.util.HashMap;
@@ -68,6 +44,12 @@ import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+
+import org.apache.commons.lang3.tuple.Pair;
+import org.apache.olingo.commons.api.edm.FullQualifiedName;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.Scheduled;
 
 public class ChronicleServiceImpl implements ChronicleService {
     protected static final Logger            logger          = LoggerFactory.getLogger( ChronicleServiceImpl.class );
@@ -147,34 +129,27 @@ public class ChronicleServiceImpl implements ChronicleService {
     }
 
     private Entity getDeviceEntity( String deviceId, Optional<Datasource> datasource ) {
-
-        Map<UUID, Set<Object>> deviceData = new HashMap<>();
-        deviceData.put( stringIdPropertyTypeId, Sets.newHashSet( deviceId ) );
+        SetMultimap<UUID, Object> deviceData = HashMultimap.create();
+        deviceData.put( stringIdPropertyTypeId, deviceId );
         if ( datasource.isPresent() && AndroidDevice.class.isAssignableFrom( datasource.get().getClass() ) ) {
             AndroidDevice device = (AndroidDevice) datasource.get();
-            deviceData.put( modelPropertyTypeId, Sets.newHashSet( device.getModel() ) );
-            deviceData.put( versionPropertyTypeId, Sets.newHashSet( device.getOsVersion() ) );
+            deviceData.put( modelPropertyTypeId, device.getModel() );
+            deviceData.put( versionPropertyTypeId, device.getOsVersion() );
         }
-        EntityKey deviceEntityKey = new EntityKey(
-                deviceEntitySetId,
-                ApiUtil.generateDefaultEntityId( ImmutableList.of( stringIdPropertyTypeId ), deviceData )
-        );
+        EntityKey deviceEntityKey = new EntityKey( deviceEntitySetId,
+                ApiUtil.generateDefaultEntityId( ImmutableList.of( stringIdPropertyTypeId ), deviceData ) );
         return new Entity( deviceEntityKey, deviceData );
     }
 
     private Entity getStudyEntity( UUID studyId ) {
-
-        Map<UUID, Set<Object>> studyData = new HashMap<>();
-        studyData.put( stringIdPropertyTypeId, Sets.newHashSet( studyId.toString() ) );
-        EntityKey studyEntityKey = new EntityKey(
-                studyEntitySetId,
-                ApiUtil.generateDefaultEntityId( ImmutableList.of( stringIdPropertyTypeId ), studyData )
-        );
+        SetMultimap<UUID, Object> studyData = HashMultimap.create();
+        studyData.put( stringIdPropertyTypeId, studyId.toString() );
+        EntityKey studyEntityKey = new EntityKey( studyEntitySetId,
+                ApiUtil.generateDefaultEntityId( ImmutableList.of( stringIdPropertyTypeId ), studyData ) );
         return new Entity( studyEntityKey, studyData );
     }
 
     private Entity getParticipantEntity( String participantId, UUID studyId ) {
-
         EdmApi edmApi;
         try {
             ApiClient apiClient = apiClientCache.get( ApiClient.class );
@@ -184,37 +159,29 @@ public class ChronicleServiceImpl implements ChronicleService {
             return null;
         }
 
-        Map<UUID, Set<Object>> participantData = new HashMap<>();
-        participantData.put( participantIdPropertyTypeId, Sets.newHashSet( participantId ) );
-        UUID participantEntitySetId = edmApi.getEntitySetId(
-                ChronicleServerUtil.getParticipantEntitySetName( studyId )
-        );
-        EntityKey participantEntityKey = new EntityKey(
-                participantEntitySetId,
-                ApiUtil.generateDefaultEntityId( ImmutableList.of( participantIdPropertyTypeId ), participantData )
-        );
+        SetMultimap<UUID, Object> participantData = HashMultimap.create();
+
+        participantData.put( participantIdPropertyTypeId, participantId );
+        UUID participantEntitySetId = edmApi
+                .getEntitySetId( ChronicleServerUtil.getParticipantEntitySetName( studyId ) );
+        EntityKey participantEntityKey = new EntityKey( participantEntitySetId,
+                ApiUtil.generateDefaultEntityId( ImmutableList.of( participantIdPropertyTypeId ), participantData ) );
         return new Entity( participantEntityKey, participantData );
     }
 
     private Association getRecordedByAssociation( EntityKey src, EntityKey dst, OffsetDateTime timestamp ) {
-
-        Map<UUID, Set<Object>> data = new HashMap<>();
-        data.put( dateLoggedPropertyTypeId, Sets.newHashSet( timestamp ) );
-        EntityKey key = new EntityKey(
-                recordedByEntitySetId,
-                ApiUtil.generateDefaultEntityId( ImmutableList.of( dateLoggedPropertyTypeId ), data )
-        );
+        SetMultimap<UUID, Object> data = HashMultimap.create();
+        data.put( dateLoggedPropertyTypeId, timestamp );
+        EntityKey key = new EntityKey( recordedByEntitySetId,
+                ApiUtil.generateDefaultEntityId( ImmutableList.of( dateLoggedPropertyTypeId ), data ) );
         return new Association( key, src, dst, data );
     }
 
     private Association getUsedByAssociation( EntityKey src, EntityKey dst ) {
-
-        Map<UUID, Set<Object>> data = new HashMap<>();
-        data.put( stringIdPropertyTypeId, Sets.newHashSet( UUID.randomUUID() ) );
-        EntityKey key = new EntityKey(
-                usedByEntitySetId,
-                ApiUtil.generateDefaultEntityId( ImmutableList.of( stringIdPropertyTypeId ), data )
-        );
+        SetMultimap<UUID, Object> data = HashMultimap.create();
+        data.put( stringIdPropertyTypeId, UUID.randomUUID() );
+        EntityKey key = new EntityKey( usedByEntitySetId,
+                ApiUtil.generateDefaultEntityId( ImmutableList.of( stringIdPropertyTypeId ), data ) );
         return new Association( key, src, dst, data );
     }
 
@@ -243,21 +210,10 @@ public class ChronicleServiceImpl implements ChronicleService {
         entities.add( deviceEntity );
         entities.add( participantEntity );
 
-        Set<Entity> dataEntities = data
-                .stream()
-                .map( dataDetails ->
-                        new Entity(
-                                new EntityKey(
-                                        dataEntitySetId,
-                                        ApiUtil.generateDefaultEntityId(
-                                                StreamUtil.stream( dataKey ),
-                                                Multimaps.asMap( dataDetails )
-                                        )
-                                ),
-                                dataDetails
-                        )
-                )
-                .collect( Collectors.toSet() );
+        Set<Entity> dataEntities = data.stream().map( dataDetails ->
+                new Entity( new EntityKey( dataEntitySetId,
+                        ApiUtil.generateDefaultEntityId( StreamUtil.stream( dataKey ), dataDetails ) ), dataDetails )
+        ).collect( Collectors.toSet() );
         entities.addAll( dataEntities );
 
         OffsetDateTime timestamp = OffsetDateTime.now();
@@ -458,37 +414,4 @@ public class ChronicleServiceImpl implements ChronicleService {
 
     }
 
-    @Override
-    public Iterable<SetMultimap<String, Object>> getAllParticipantData( UUID studyId, UUID participantEntityId ) {
-
-        try {
-            ApiClient apiClient = apiClientCache.get( ApiClient.class );
-            EdmApi edmApi = apiClient.getEdmApi();
-            SearchApi searchApi = apiClient.getSearchApi();
-
-            String participantsEntitySetName = ChronicleServerUtil.getParticipantEntitySetName( studyId );
-            UUID participantsEntitySetId = edmApi.getEntitySetId( participantsEntitySetName );
-            List<NeighborEntityDetails> participantNeighbors = searchApi
-                    .executeEntityNeighborSearch( participantsEntitySetId, participantEntityId );
-
-            return participantNeighbors
-                    .stream()
-                    .filter( neighbor -> neighbor.getNeighborDetails().isPresent()
-                            && neighbor.getNeighborEntitySet().isPresent()
-                            && DATA_ENTITY_SET_NAME.equals( neighbor.getNeighborEntitySet().get().getName() )
-                    )
-                    .map( neighbor -> {
-                        neighbor.getNeighborDetails().get().removeAll( INTERNAL_ID_FQN );
-                        SetMultimap<String, Object> neighborDetails = HashMultimap.create();
-                        neighbor.getNeighborDetails().get()
-                                .entries()
-                                .forEach( e -> neighborDetails.put( e.getKey().toString(), e.getValue() ) );
-                        return neighborDetails;
-                    } )
-                    .collect( Collectors.toSet() );
-        } catch ( ExecutionException e ) {
-            logger.error( "Unable to load participant data.", e );
-            return ImmutableSet.of( HashMultimap.create() );
-        }
-    }
 }

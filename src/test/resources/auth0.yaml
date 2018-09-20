@@ -1,3 +1,4 @@
+domain: "openlattice.auth0.com"
 clientId: "KTzgyxs6KBcJHB872eSMe2cpTHzhxS99"
 clientSecret: "tjAwhBit0deVUor3lcd7YRlHRc_4FJwv_fcLp_ozO2-D2Lh38066IUoGPL4zx1vP"
 configurations:
@@ -16,5 +17,4 @@ configurations:
     secret: "MK4CrccqOqI6WVkOiSJX6n2h3MLgGri0"
     base64EncodedSecret: false
     signingAlgorithm: "HS256"
-domain: "openlattice.auth0.com"
-managementApiUrl: "https://openlattice.auth0.com/api/v2/"
+token: "No token for you"
