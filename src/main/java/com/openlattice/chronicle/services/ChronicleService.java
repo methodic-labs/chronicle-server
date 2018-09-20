@@ -2,6 +2,7 @@ package com.openlattice.chronicle.services;
 
 import com.google.common.base.Optional;
 import com.google.common.collect.SetMultimap;
+import com.openlattice.chronicle.sources.EntitySetData;
 import com.openlattice.chronicle.sources.Datasource;
 
 import java.util.List;
@@ -29,4 +30,6 @@ public interface ChronicleService {
     boolean isKnownParticipant( UUID studyId, String participantId );
 
     Map<String, UUID> getPropertyTypeIds( Set<String> propertyTypeFqns );
+
+    EntitySetData downloadStudyData( UUID studyId, String token );
 }

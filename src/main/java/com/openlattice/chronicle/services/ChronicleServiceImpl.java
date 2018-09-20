@@ -6,20 +6,14 @@ import com.google.common.base.Preconditions;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
-import com.google.common.collect.HashMultimap;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Multimaps;
-import com.google.common.collect.SetMultimap;
-import com.google.common.collect.Sets;
+import com.google.common.collect.*;
 import com.google.common.eventbus.EventBus;
 import com.openlattice.ApiUtil;
 import com.openlattice.chronicle.ChronicleServerUtil;
 import com.openlattice.chronicle.configuration.ChronicleConfiguration;
 import com.openlattice.chronicle.sources.AndroidDevice;
 import com.openlattice.chronicle.sources.Datasource;
+import com.openlattice.chronicle.sources.EntitySetData;
 import com.openlattice.client.ApiClient;
 import com.openlattice.client.RetrofitFactory;
 import com.openlattice.data.DataApi;
@@ -50,6 +44,13 @@ import org.apache.olingo.commons.api.edm.FullQualifiedName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
+
+import java.time.OffsetDateTime;
+import java.util.*;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class ChronicleServiceImpl implements ChronicleService {
     protected static final Logger            logger          = LoggerFactory.getLogger( ChronicleServiceImpl.class );
@@ -322,6 +323,57 @@ public class ChronicleServiceImpl implements ChronicleService {
                 .of( fqn.getFullQualifiedNameAsString(),
                         edmApi.getPropertyTypeId( fqn.getNamespace(), fqn.getName() ) ) )
                 .collect( Collectors.toMap( pair -> pair.getLeft(), pair -> pair.getRight() ) );
+    }
+
+    @Override
+    public EntitySetData downloadStudyData( UUID studyId, String token ) {
+        ApiClient apiClient = new ApiClient( RetrofitFactory.Environment.PRODUCTION, () -> token );
+        try {
+            EdmApi edmApi = apiClient.getEdmApi();
+            DataApi dataApi = apiClient.getDataApi();
+            SearchApi searchApi = apiClient.getSearchApi();
+
+            LinkedHashSet<String> headers = new LinkedHashSet();
+            headers.add( PERSON_ID_FQN.getFullQualifiedNameAsString() );
+            headers.addAll( edmApi.getEntityType( edmApi.getEntitySet( dataEntitySetId ).getEntityTypeId() )
+                    .getProperties().stream()
+                    .map( ptId -> edmApi.getPropertyType( ptId ).getType().getFullQualifiedNameAsString() )
+                    .collect( Collectors.toList() ) );
+
+            UUID participantsEntitySetId = edmApi
+                    .getEntitySetId( ChronicleServerUtil.getParticipantEntitySetName( studyId ) );
+
+            Long numParticipants = dataApi.getEntitySetSize( participantsEntitySetId );
+            List<SetMultimap<Object, Object>> participants = searchApi
+                    .executeEntitySetDataQuery( participantsEntitySetId,
+                            new SearchTerm( "*", 0, numParticipants.intValue() ) ).getHits();
+            Map<UUID, Object> participantMap = participants.stream()
+                    .filter( map -> map.containsKey( "id" ) && map
+                            .containsKey( PERSON_ID_FQN.getFullQualifiedNameAsString() ) ).collect( Collectors
+                            .toMap( map -> UUID.fromString( map.get( "id" ).iterator().next().toString() ),
+                                    map -> map.get( PERSON_ID_FQN.getFullQualifiedNameAsString() ).iterator()
+                                            .next() ) );
+
+            Map<UUID, List<NeighborEntityDetails>> allParticipantNeighbors = searchApi
+                    .executeEntityNeighborSearchBulk( participantsEntitySetId, participantMap.keySet() );
+
+            Stream<SetMultimap<FullQualifiedName, Object>> dataStream = allParticipantNeighbors.entrySet().stream()
+                    .flatMap( entry -> entry.getValue().stream()
+                            .filter( neighbor -> neighbor.getNeighborEntitySet().isPresent() && neighbor
+                                    .getNeighborEntitySet()
+                                    .get().getId().equals( dataEntitySetId ) )
+                            .map( neighbor -> {
+                                SetMultimap<FullQualifiedName, Object> data = neighbor.getNeighborDetails().get();
+                                data.put( PERSON_ID_FQN, participantMap.get( entry.getKey() ) );
+                                return data;
+                            } ) );
+
+            return new EntitySetData( headers, dataStream::iterator );
+
+        } catch ( ExecutionException e ) {
+            logger.error( "Unable to load study data.", e );
+            return new EntitySetData( new LinkedHashSet<>(), ImmutableList.of() );
+        }
     }
 
     @Scheduled( fixedRate = 60000 )

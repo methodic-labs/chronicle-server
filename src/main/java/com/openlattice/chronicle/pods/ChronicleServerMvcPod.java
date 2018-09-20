@@ -23,6 +23,7 @@ package com.openlattice.chronicle.pods;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.openlattice.chronicle.constants.CustomMediaType;
 import com.openlattice.chronicle.controllers.ChronicleController;
+import com.openlattice.chronicle.converters.CsvHttpMessageConverter;
 import com.openlattice.chronicle.converters.YamlHttpMessageConverter;
 import com.openlattice.chronicle.util.ChronicleServerExceptionHandler;
 import com.openlattice.data.DataApi;
@@ -70,6 +71,7 @@ public class ChronicleServerMvcPod extends WebMvcConfigurationSupport {
                 jackson2HttpMessageConverter.setObjectMapper( defaultObjectMapper );
             }
         }
+        converters.add( new CsvHttpMessageConverter() );
         converters.add( new YamlHttpMessageConverter() );
     }
 
