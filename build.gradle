@@ -110,7 +110,7 @@ configurations {
 }
 
 ext.odata_version = '4.2.0'
-ext.chronicle_api_version = '0.0.4-SNAPSHOT'
+ext.chronicle_api_version = '0.0.5-SNAPSHOT'
 dependencies {
     compile "com.google.guava:guava:${guava_version}"
 
