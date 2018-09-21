@@ -88,9 +88,10 @@ public class IterableCsvHttpMessageConverter
         maps.forEach( map -> columns.addAll( map.keySet() ) );
         Builder schemaBuilder = CsvSchema.builder();
         columns.forEach( column -> schemaBuilder.addColumn( column, ColumnType.ARRAY ) );
-        return schemaBuilder
-                .setUseHeader( true )
-                .build();
+        if ( columns.size() > 0 ) {
+            schemaBuilder.setUseHeader( true );
+        }
+        return schemaBuilder.build();
     }
 
 }

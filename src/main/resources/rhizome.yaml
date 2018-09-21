@@ -12,6 +12,7 @@ hazelcast:
     password: "trellis"
     seed-nodes:
         - "localhost"
+    port: 5710
 
 hikari:
     jdbcUrl: "jdbc:postgresql://localhost:5432/openlattice"
