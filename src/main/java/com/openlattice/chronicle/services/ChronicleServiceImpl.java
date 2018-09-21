@@ -29,6 +29,7 @@ import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ImmutableSetMultimap;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Multimaps;
 import com.google.common.collect.SetMultimap;
@@ -40,7 +41,6 @@ import com.openlattice.chronicle.configuration.ChronicleConfiguration;
 import com.openlattice.chronicle.sources.AndroidDevice;
 import com.openlattice.chronicle.sources.Datasource;
 import com.openlattice.client.ApiClient;
-import com.openlattice.client.RetrofitFactory;
 import com.openlattice.data.DataApi;
 import com.openlattice.data.DataIntegrationApi;
 import com.openlattice.data.EntityKey;
@@ -59,6 +59,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 
+import javax.annotation.Nonnull;
 import java.time.OffsetDateTime;
 import java.util.HashMap;
 import java.util.List;
@@ -341,18 +342,21 @@ public class ChronicleServiceImpl implements ChronicleService {
                 .fromString( result.getHits().iterator().next().get( INTERNAL_ID_FQN ).iterator().next().toString() );
     }
 
-    @Override public boolean isKnownDatasource( UUID studyId, String participantId, String datasourceId ) {
+    @Override
+    public boolean isKnownDatasource( UUID studyId, String participantId, String datasourceId ) {
         SetMultimap<String, String> participantDevices = Preconditions
                 .checkNotNull( studyInformation.get( studyId ), "Study must exist." );
 
         return participantDevices.get( participantId ).contains( datasourceId );
     }
 
-    @Override public boolean isKnownParticipant( UUID studyId, String participantId ) {
+    @Override
+    public boolean isKnownParticipant( UUID studyId, String participantId ) {
         return studyParticipants.get( studyId ).contains( participantId );
     }
 
-    @Override public Map<String, UUID> getPropertyTypeIds( Set<String> propertyTypeFqns ) {
+    @Override
+    public Map<String, UUID> getPropertyTypeIds( Set<String> propertyTypeFqns ) {
         EdmApi edmApi;
         try {
             ApiClient apiClient = apiClientCache.get( ApiClient.class );
@@ -459,22 +463,22 @@ public class ChronicleServiceImpl implements ChronicleService {
     }
 
     @Override
-    public Iterable<SetMultimap<String, Object>> getAllParticipantData( UUID studyId, UUID participantEntityId ) {
+    public Iterable<SetMultimap<String, Object>> getAllParticipantData( UUID studyId, UUID participantEntityKeyId ) {
 
         try {
             ApiClient apiClient = apiClientCache.get( ApiClient.class );
             EdmApi edmApi = apiClient.getEdmApi();
             SearchApi searchApi = apiClient.getSearchApi();
 
-            String participantsEntitySetName = ChronicleServerUtil.getParticipantEntitySetName( studyId );
-            UUID participantsEntitySetId = edmApi.getEntitySetId( participantsEntitySetName );
-            if ( participantsEntitySetId == null ) {
+            String entitySetName = ChronicleServerUtil.getParticipantEntitySetName( studyId );
+            UUID entitySetId = edmApi.getEntitySetId( entitySetName );
+            if ( entitySetId == null ) {
                 logger.error( "Unable to load participant EntitySet id." );
                 return null;
             }
 
             List<NeighborEntityDetails> participantNeighbors = searchApi
-                    .executeEntityNeighborSearch( participantsEntitySetId, participantEntityId );
+                    .executeEntityNeighborSearch( entitySetId, participantEntityKeyId );
 
             return participantNeighbors
                     .stream()
@@ -494,6 +498,34 @@ public class ChronicleServiceImpl implements ChronicleService {
         } catch ( ExecutionException e ) {
             logger.error( "Unable to load participant data.", e );
             return null;
+        }
+    }
+
+    @Override
+    @Nonnull
+    public SetMultimap<FullQualifiedName, Object> getParticipantEntity( UUID studyId, UUID participantEntityKeyId ) {
+
+        try {
+            ApiClient apiClient = apiClientCache.get( ApiClient.class );
+            DataApi dataApi = apiClient.getDataApi();
+            EdmApi edmApi = apiClient.getEdmApi();
+
+            String entitySetName = ChronicleServerUtil.getParticipantEntitySetName( studyId );
+            UUID entitySetId = edmApi.getEntitySetId( entitySetName );
+            if ( entitySetId == null ) {
+                logger.error( "Unable to load participant EntitySet id." );
+                return ImmutableSetMultimap.of();
+            }
+
+            SetMultimap<FullQualifiedName, Object> entity = dataApi.getEntity( entitySetId, participantEntityKeyId );
+            if ( entity == null ) {
+                logger.error( "Unable to get participant entity." );
+                return ImmutableSetMultimap.of();
+            }
+            return entity;
+        } catch ( ExecutionException e ) {
+            logger.error( "Unable to get participant entity.", e );
+            return ImmutableSetMultimap.of();
         }
     }
 }
