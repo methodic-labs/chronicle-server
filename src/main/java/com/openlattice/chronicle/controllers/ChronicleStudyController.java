@@ -26,6 +26,7 @@ import com.openlattice.chronicle.constants.CustomMediaType;
 import com.openlattice.chronicle.data.FileType;
 import com.openlattice.chronicle.services.ChronicleService;
 import com.openlattice.chronicle.sources.Datasource;
+import org.apache.olingo.commons.api.edm.FullQualifiedName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
@@ -39,6 +40,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import javax.inject.Inject;
 import javax.servlet.http.HttpServletResponse;
+import java.time.LocalDate;
 import java.util.UUID;
 
 /**
@@ -47,7 +49,10 @@ import java.util.UUID;
 @RestController
 @RequestMapping( ChronicleStudyApi.CONTROLLER )
 public class ChronicleStudyController implements ChronicleStudyApi {
+
     private static final Logger logger = LoggerFactory.getLogger( ChronicleStudyController.class );
+
+    private final FullQualifiedName PERSON_ID_FQN = new FullQualifiedName( "nc.SubjectIdentification" );
 
     @Inject
     private ChronicleService chronicleService;
@@ -124,7 +129,23 @@ public class ChronicleStudyController implements ChronicleStudyApi {
             @RequestParam( value = FILE_TYPE, required = false ) FileType fileType,
             HttpServletResponse response ) {
 
-        setContentDisposition( response, participantEntityId.toString(), fileType );
+        String participantId = chronicleService
+                .getParticipantEntity( studyId, participantEntityId )
+                .get( PERSON_ID_FQN )
+                .stream()
+                .findFirst()
+                .orElse( "" )
+                .toString();
+
+        StringBuilder fileNameBuilder = ( new StringBuilder() )
+                .append( "ChronicleStudy_" )
+                .append( studyId.toString() )
+                .append( "__" )
+                .append( participantId )
+                .append( "__" )
+                .append( LocalDate.now().toString() );
+
+        setContentDisposition( response, fileNameBuilder.toString(), fileType );
         setDownloadContentType( response, fileType );
 
         return getAllParticipantData( studyId, participantEntityId, fileType );
@@ -162,7 +183,7 @@ public class ChronicleStudyController implements ChronicleStudyApi {
 
     private static void setContentDisposition( HttpServletResponse response, String fileName, FileType fileType ) {
 
-        if ( fileType == FileType.yaml || fileType == FileType.json ) {
+        if ( fileType == FileType.csv || fileType == FileType.json ) {
             response.setHeader(
                     "Content-Disposition",
                     "attachment; filename=" + fileName + "." + fileType.toString()
