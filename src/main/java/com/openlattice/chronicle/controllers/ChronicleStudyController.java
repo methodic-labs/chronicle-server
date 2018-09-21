@@ -116,7 +116,7 @@ public class ChronicleStudyController implements ChronicleStudyApi {
 
     @RequestMapping(
             path = PARTICIPANT_PATH + DATA_PATH + STUDY_ID_PATH + ENTITY_ID_PATH,
-            method = RequestMethod.POST,
+            method = RequestMethod.GET,
             produces = { MediaType.APPLICATION_JSON_VALUE, CustomMediaType.TEXT_CSV_VALUE } )
     public Iterable<SetMultimap<String, Object>> getAllParticipantData(
             @PathVariable( STUDY_ID ) UUID studyId,

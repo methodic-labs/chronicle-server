@@ -468,6 +468,11 @@ public class ChronicleServiceImpl implements ChronicleService {
 
             String participantsEntitySetName = ChronicleServerUtil.getParticipantEntitySetName( studyId );
             UUID participantsEntitySetId = edmApi.getEntitySetId( participantsEntitySetName );
+            if ( participantsEntitySetId == null ) {
+                logger.error( "Unable to load participant EntitySet id." );
+                return null;
+            }
+
             List<NeighborEntityDetails> participantNeighbors = searchApi
                     .executeEntityNeighborSearch( participantsEntitySetId, participantEntityId );
 
@@ -488,7 +493,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                     .collect( Collectors.toSet() );
         } catch ( ExecutionException e ) {
             logger.error( "Unable to load participant data.", e );
-            return ImmutableSet.of( HashMultimap.create() );
+            return null;
         }
     }
 }
