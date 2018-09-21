@@ -120,17 +120,17 @@ public class ChronicleStudyController implements ChronicleStudyApi {
     }
 
     @RequestMapping(
-            path = PARTICIPANT_PATH + DATA_PATH + STUDY_ID_PATH + ENTITY_ID_PATH,
+            path = PARTICIPANT_PATH + DATA_PATH + STUDY_ID_PATH + ENTITY_KEY_ID_PATH,
             method = RequestMethod.GET,
             produces = { MediaType.APPLICATION_JSON_VALUE, CustomMediaType.TEXT_CSV_VALUE } )
     public Iterable<SetMultimap<String, Object>> getAllParticipantData(
             @PathVariable( STUDY_ID ) UUID studyId,
-            @PathVariable( ENTITY_ID ) UUID participantEntityId,
+            @PathVariable( ENTITY_KEY_ID ) UUID participantEntityKeyId,
             @RequestParam( value = FILE_TYPE, required = false ) FileType fileType,
             HttpServletResponse response ) {
 
         String participantId = chronicleService
-                .getParticipantEntity( studyId, participantEntityId )
+                .getParticipantEntity( studyId, participantEntityKeyId )
                 .get( PERSON_ID_FQN )
                 .stream()
                 .findFirst()
@@ -148,16 +148,16 @@ public class ChronicleStudyController implements ChronicleStudyApi {
         setContentDisposition( response, fileNameBuilder.toString(), fileType );
         setDownloadContentType( response, fileType );
 
-        return getAllParticipantData( studyId, participantEntityId, fileType );
+        return getAllParticipantData( studyId, participantEntityKeyId, fileType );
     }
 
     @Override
     public Iterable<SetMultimap<String, Object>> getAllParticipantData(
             UUID studyId,
-            UUID participantEntityId,
+            UUID participantEntityKeyId,
             FileType fileType ) {
 
-        return chronicleService.getAllParticipantData( studyId, participantEntityId );
+        return chronicleService.getAllParticipantData( studyId, participantEntityKeyId );
     }
 
     private static void setDownloadContentType( HttpServletResponse response, FileType fileType ) {

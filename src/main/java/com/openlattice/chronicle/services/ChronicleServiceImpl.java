@@ -463,7 +463,7 @@ public class ChronicleServiceImpl implements ChronicleService {
     }
 
     @Override
-    public Iterable<SetMultimap<String, Object>> getAllParticipantData( UUID studyId, UUID participantEntityId ) {
+    public Iterable<SetMultimap<String, Object>> getAllParticipantData( UUID studyId, UUID participantEntityKeyId ) {
 
         try {
             ApiClient apiClient = apiClientCache.get( ApiClient.class );
@@ -478,7 +478,7 @@ public class ChronicleServiceImpl implements ChronicleService {
             }
 
             List<NeighborEntityDetails> participantNeighbors = searchApi
-                    .executeEntityNeighborSearch( entitySetId, participantEntityId );
+                    .executeEntityNeighborSearch( entitySetId, participantEntityKeyId );
 
             return participantNeighbors
                     .stream()
@@ -503,7 +503,7 @@ public class ChronicleServiceImpl implements ChronicleService {
 
     @Override
     @Nonnull
-    public SetMultimap<FullQualifiedName, Object> getParticipantEntity( UUID studyId, UUID participantEntityId ) {
+    public SetMultimap<FullQualifiedName, Object> getParticipantEntity( UUID studyId, UUID participantEntityKeyId ) {
 
         try {
             ApiClient apiClient = apiClientCache.get( ApiClient.class );
@@ -517,7 +517,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                 return ImmutableSetMultimap.of();
             }
 
-            SetMultimap<FullQualifiedName, Object> entity = dataApi.getEntity( entitySetId, participantEntityId );
+            SetMultimap<FullQualifiedName, Object> entity = dataApi.getEntity( entitySetId, participantEntityKeyId );
             if ( entity == null ) {
                 logger.error( "Unable to get participant entity." );
                 return ImmutableSetMultimap.of();
