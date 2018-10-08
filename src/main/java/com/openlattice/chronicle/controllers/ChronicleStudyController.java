@@ -41,6 +41,7 @@ import org.springframework.web.bind.annotation.RestController;
 import javax.inject.Inject;
 import javax.servlet.http.HttpServletResponse;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 
 /**
@@ -138,12 +139,10 @@ public class ChronicleStudyController implements ChronicleStudyApi {
                 .toString();
 
         StringBuilder fileNameBuilder = ( new StringBuilder() )
-                .append( "ChronicleStudy_" )
-                .append( studyId.toString() )
-                .append( "__" )
-                .append( participantId )
-                .append( "__" )
-                .append( LocalDate.now().toString() );
+                .append( "ChronicleData_" )
+                .append( LocalDate.now().format( DateTimeFormatter.BASIC_ISO_DATE ) )
+                .append( "_" )
+                .append( participantId );
 
         setContentDisposition( response, fileNameBuilder.toString(), fileType );
         setDownloadContentType( response, fileType );
