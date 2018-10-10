@@ -141,7 +141,7 @@ public class ChronicleStudyController implements ChronicleStudyApi {
         StringBuilder fileNameBuilder = ( new StringBuilder() )
                 .append( "ChronicleData_" )
                 .append( LocalDate.now().format( DateTimeFormatter.BASIC_ISO_DATE ) )
-                .append( "_" )
+                .append( "-" )
                 .append( participantId );
 
         setContentDisposition( response, fileNameBuilder.toString(), fileType );
