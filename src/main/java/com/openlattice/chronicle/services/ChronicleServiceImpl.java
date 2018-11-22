@@ -51,6 +51,7 @@ import com.openlattice.data.requests.NeighborEntityDetails;
 import com.openlattice.edm.EdmApi;
 import com.openlattice.search.SearchApi;
 import com.openlattice.search.requests.DataSearchResult;
+import com.openlattice.search.requests.EntityNeighborsFilter;
 import com.openlattice.search.requests.SearchTerm;
 import com.openlattice.shuttle.MissionControl;
 import org.apache.commons.lang3.tuple.Pair;
@@ -414,7 +415,11 @@ public class ChronicleServiceImpl implements ChronicleService {
 
         participantEntityKeysByEntitySetId.asMap().entrySet().stream().parallel().forEach( entry -> participantNeighbors
                 .putAll( searchApi
-                        .executeEntityNeighborSearchBulk( entry.getKey(), Sets.newHashSet( entry.getValue() ) ) ) );
+                        .executeFilteredEntityNeighborSearch( entry.getKey(),
+                                new EntityNeighborsFilter( Sets.newHashSet( entry.getValue() ),
+                                        java.util.Optional.of( ImmutableSet.of( deviceEntitySetId ) ),
+                                                java.util.Optional.of( ImmutableSet.of() ),
+                                                java.util.Optional.empty() ) ) ) );
 
         // populate study information
 
