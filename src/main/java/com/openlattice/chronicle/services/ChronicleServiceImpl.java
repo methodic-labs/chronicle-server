@@ -345,6 +345,9 @@ public class ChronicleServiceImpl implements ChronicleService {
 
     @Override
     public boolean isKnownDatasource( UUID studyId, String participantId, String datasourceId ) {
+
+        logger.info( "Checking isKnownDatasource, stuydId = {}, participantId = {}", studyId, participantId );
+
         SetMultimap<String, String> participantDevices = Preconditions
                 .checkNotNull( studyInformation.get( studyId ), "Study must exist." );
 
@@ -385,6 +388,8 @@ public class ChronicleServiceImpl implements ChronicleService {
             logger.error( "Unable to load apis." );
             return;
         }
+
+        logger.info( "Refreshing study info..." );
 
         Map<UUID, SetMultimap<String, String>> studyInformation = Maps.newConcurrentMap();
         SetMultimap<UUID, String> studyParticipants = HashMultimap.create();
@@ -461,10 +466,11 @@ public class ChronicleServiceImpl implements ChronicleService {
 
         this.studyInformation.clear();
         this.studyInformation.putAll( studyInformation );
+        logger.info( "Updated studyInformation. Size = {}", this.studyInformation.size() );
 
         this.studyParticipants.clear();
         this.studyParticipants.putAll( studyParticipants );
-
+        logger.info( "Updated studyParticipants. Size = {}", this.studyParticipants.size() );
     }
 
     @Override
