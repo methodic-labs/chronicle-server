@@ -73,6 +73,15 @@ public class ChronicleStudyController implements ChronicleStudyApi {
         final boolean knownParticipant = chronicleService.isKnownParticipant( studyId, participantId );
         final boolean knownDatasource = chronicleService.isKnownDatasource( studyId, participantId, datasourceId );
 
+        logger.info(
+                "Attempting to enroll source... study {}, participant {}, and datasource {} ",
+                studyId,
+                participantId,
+                datasourceId
+        );
+        logger.info( "isKnownParticipant {} = {}", participantId, knownParticipant );
+        logger.info( "isKnownDatasource {} = {}", datasourceId, knownDatasource );
+
         if ( knownParticipant && !knownDatasource ) {
             return chronicleService.registerDatasource( studyId, participantId, datasourceId, datasource );
         } else if ( knownParticipant && knownDatasource ) {
