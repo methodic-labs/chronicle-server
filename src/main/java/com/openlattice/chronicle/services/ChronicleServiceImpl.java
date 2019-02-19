@@ -438,26 +438,31 @@ public class ChronicleServiceImpl implements ChronicleService {
                 studyNeighbors.get( studyEntityKeyId ).stream()
                         .filter( neighbor -> neighbor.getNeighborEntitySet().isPresent() && neighbor
                                 .getNeighborEntitySet()
-                                .get().getName().startsWith( ChronicleServerUtil.PARTICIPANTS_PREFIX ) )
+                                .get()
+                                .getName()
+                                .startsWith( ChronicleServerUtil.PARTICIPANTS_PREFIX )
+                        )
                         .forEach( participantNeighbor -> {
-                            String participantId = participantNeighbor.getNeighborDetails().get().get( PERSON_ID_FQN )
-                                    .iterator()
-                                    .next().toString();
-                            UUID participantEntityKeyId = participantNeighbor.getNeighborId().get();
 
-                            studyParticipants.put( studyId, participantId );
-                            if ( participantNeighbors.containsKey( participantEntityKeyId ) ) {
-                                Set<String> devices = participantNeighbors.get( participantEntityKeyId ).stream()
-                                        .filter( neighbor -> neighbor.getNeighborEntitySet().isPresent() && neighbor
-                                                .getNeighborEntitySet().get().getName()
-                                                .equals( DEVICES_ENTITY_SET_NAME ) )
-                                        .flatMap( neighbor -> neighbor.getNeighborDetails().get().get( STRING_ID_FQN )
-                                                .stream() )
-                                        .map( deviceId -> deviceId.toString() ).collect( Collectors.toSet() );
+                            Set<Object> participantIds = participantNeighbor.getNeighborDetails().get().get(PERSON_ID_FQN);
+                            if ( participantIds.size() > 0 ) {
 
-                                participantsToDevices.putAll( participantId, devices );
+                                String participantId = participantIds.iterator().next().toString();
+                                UUID participantEntityKeyId = participantNeighbor.getNeighborId().get();
+
+                                studyParticipants.put( studyId, participantId );
+                                if ( participantNeighbors.containsKey( participantEntityKeyId ) ) {
+                                    Set<String> devices = participantNeighbors.get( participantEntityKeyId ).stream()
+                                            .filter( neighbor -> neighbor.getNeighborEntitySet().isPresent() && neighbor
+                                                    .getNeighborEntitySet().get().getName()
+                                                    .equals( DEVICES_ENTITY_SET_NAME ) )
+                                            .flatMap( neighbor -> neighbor.getNeighborDetails().get().get( STRING_ID_FQN )
+                                                    .stream() )
+                                            .map( deviceId -> deviceId.toString() ).collect( Collectors.toSet() );
+
+                                    participantsToDevices.putAll( participantId, devices );
+                                }
                             }
-
                         } );
             }
 
