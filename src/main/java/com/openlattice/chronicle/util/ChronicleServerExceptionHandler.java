@@ -20,9 +20,8 @@
 
 package com.openlattice.chronicle.util;
 
-import com.amazonaws.services.kms.model.NotFoundException;
-import com.openlattice.exceptions.ApiExceptions;
-import com.openlattice.exceptions.ErrorsDTO;
+import com.openlattice.controllers.exceptions.wrappers.ErrorsDTO;
+import com.openlattice.controllers.util.ApiExceptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
