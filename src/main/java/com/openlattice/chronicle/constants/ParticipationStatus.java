@@ -21,5 +21,6 @@ package com.openlattice.chronicle.constants;
 
 public enum ParticipationStatus {
     ENROLLED,
-    NOT_ENROLLED
+    NOT_ENROLLED,
+    UNKNOWN
 }
