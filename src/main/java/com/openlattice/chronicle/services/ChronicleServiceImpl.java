@@ -599,10 +599,10 @@ public class ChronicleServiceImpl implements ChronicleService {
         Map<UUID, List<NeighborEntityDetails>> neighborResults = searchApi.executeFilteredEntityNeighborSearch(
                 participantsEntitySetId,
                 new EntityNeighborsFilter(
-                        Sets.newHashSet( participantEntityKeyId ),
-                        java.util.Optional.of( Sets.newHashSet( participantsEntitySetId ) ),
-                        java.util.Optional.of( Sets.newHashSet( studyEntitySetId ) ),
-                        java.util.Optional.of( Sets.newHashSet( participatedInEntitySetId ) )
+                        ImmutableSet.of( participantEntityKeyId ),
+                        java.util.Optional.of( ImmutableSet.of( participantsEntitySetId ) ),
+                        java.util.Optional.of( ImmutableSet.of( studyEntitySetId ) ),
+                        java.util.Optional.of( ImmutableSet.of( participatedInEntitySetId ) )
                 )
         );
 
