@@ -580,27 +580,27 @@ public class ChronicleServiceImpl implements ChronicleService {
             searchApi = apiClient.getSearchApi();
         } catch ( ExecutionException e ) {
             logger.error( "Unable to load apis." );
-            return ParticipationStatus.NOT_ENROLLED;
+            return ParticipationStatus.UNKNOWN;
         }
 
         String participantsEntitySetName = ChronicleServerUtil.getParticipantEntitySetName( studyId );
         UUID participantsEntitySetId = edmApi.getEntitySetId( participantsEntitySetName );
         if ( participantsEntitySetId == null ) {
             logger.error( "unable to get the participants EntitySet id for studyId = {}", studyId );
-            return ParticipationStatus.NOT_ENROLLED;
+            return ParticipationStatus.UNKNOWN;
         }
 
         UUID participantEntityKeyId = getParticipantEntityKeyId( participantId, participantsEntitySetId, searchApi );
         if ( participantEntityKeyId == null ) {
             logger.error( "unable to load participant entity key id for participantId = {}", participantId );
-            return ParticipationStatus.NOT_ENROLLED;
+            return ParticipationStatus.UNKNOWN;
         }
 
         Map<UUID, List<NeighborEntityDetails>> neighborResults = searchApi.executeFilteredEntityNeighborSearch(
                 participantsEntitySetId,
                 new EntityNeighborsFilter(
                         ImmutableSet.of( participantEntityKeyId ),
-                        java.util.Optional.of( ImmutableSet.of( participantsEntitySetId ) ),
+                        java.util.Optional.of( ImmutableSet.of() ),
                         java.util.Optional.of( ImmutableSet.of( studyEntitySetId ) ),
                         java.util.Optional.of( ImmutableSet.of( participatedInEntitySetId ) )
                 )
@@ -621,11 +621,13 @@ public class ChronicleServiceImpl implements ChronicleService {
 
         if ( targetAssociationDetails.isPresent() ) {
             String status = targetAssociationDetails.get().get( STATUS_FQN ).iterator().next().toString();
-            if ( Objects.equals( ParticipationStatus.ENROLLED.toString(), status ) ) {
-                return ParticipationStatus.ENROLLED;
+            try {
+                return ParticipationStatus.valueOf( status );
+            } catch ( IllegalArgumentException e ) {
+                logger.error( "invalid participation status", e );
             }
         }
 
-        return ParticipationStatus.NOT_ENROLLED;
+        return ParticipationStatus.UNKNOWN;
     }
 }
