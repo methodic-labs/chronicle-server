@@ -615,8 +615,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                             Set<Object> data = neighborResult.getNeighborDetails().get().get( STRING_ID_FQN );
                             UUID expectedStudyId = UUID.fromString( data.iterator().next().toString() );
                             return studyId.equals( expectedStudyId );
-                        }
-                        catch (Exception e) {
+                        } catch ( Exception e ) {
                             logger.error( "caught exception while filtering by study id", e );
                         }
                     }
@@ -633,8 +632,7 @@ public class ChronicleServiceImpl implements ChronicleService {
             } catch ( IllegalArgumentException e ) {
                 logger.error( "invalid participation status", e );
             }
-        }
-        else {
+        } else {
             logger.error( "only one edge is expected between the participant and the study, found {}", target.size() );
         }
 
