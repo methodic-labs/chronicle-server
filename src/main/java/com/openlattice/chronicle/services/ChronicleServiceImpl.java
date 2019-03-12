@@ -606,26 +606,30 @@ public class ChronicleServiceImpl implements ChronicleService {
                 )
         );
 
-        java.util.Optional<SetMultimap<FullQualifiedName, Object>> targetAssociationDetails = neighborResults
+        Set<SetMultimap<FullQualifiedName, Object>> target = neighborResults
                 .get( participantEntityKeyId )
                 .stream()
                 .filter( neighborResult -> neighborResult.getNeighborDetails().isPresent() )
                 .filter( neighborResult -> neighborResult
-                       .getNeighborDetails()
-                       .get()
-                       .get( STRING_ID_FQN )
-                       .equals( Sets.newHashSet( studyId ) )
+                        .getNeighborDetails()
+                        .get()
+                        .get( STRING_ID_FQN )
+                        .equals( Sets.newHashSet( studyId ) )
                 )
                 .map( NeighborEntityDetails::getAssociationDetails )
-                .findFirst();
+                .collect( Collectors.toSet() );
 
-        if ( targetAssociationDetails.isPresent() ) {
-            String status = targetAssociationDetails.get().get( STATUS_FQN ).iterator().next().toString();
+        if ( target.size() == 1 ) {
+            SetMultimap<FullQualifiedName, Object> data = target.iterator().next();
+            String status = data.get( STATUS_FQN ).iterator().next().toString();
             try {
                 return ParticipationStatus.valueOf( status );
             } catch ( IllegalArgumentException e ) {
                 logger.error( "invalid participation status", e );
             }
+        }
+        else {
+            logger.error( "only one edge is expected between the participant and the study, found {}", target.size() );
         }
 
         return ParticipationStatus.UNKNOWN;
