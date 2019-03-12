@@ -609,13 +609,18 @@ public class ChronicleServiceImpl implements ChronicleService {
         Set<SetMultimap<FullQualifiedName, Object>> target = neighborResults
                 .get( participantEntityKeyId )
                 .stream()
-                .filter( neighborResult -> neighborResult.getNeighborDetails().isPresent() )
-                .filter( neighborResult -> neighborResult
-                        .getNeighborDetails()
-                        .get()
-                        .get( STRING_ID_FQN )
-                        .equals( Sets.newHashSet( studyId ) )
-                )
+                .filter( neighborResult -> {
+                    if ( neighborResult.getNeighborDetails().isPresent() ) {
+                        try {
+                            Set<Object> data = neighborResult.getNeighborDetails().get().get( STRING_ID_FQN );
+                            UUID expectedStudyId = UUID.fromString( data.iterator().next().toString() );
+                            return studyId.equals( expectedStudyId );
+                        } catch ( Exception e ) {
+                            logger.error( "caught exception while filtering by study id", e );
+                        }
+                    }
+                    return false;
+                } )
                 .map( NeighborEntityDetails::getAssociationDetails )
                 .collect( Collectors.toSet() );
 
@@ -627,8 +632,7 @@ public class ChronicleServiceImpl implements ChronicleService {
             } catch ( IllegalArgumentException e ) {
                 logger.error( "invalid participation status", e );
             }
-        }
-        else {
+        } else {
             logger.error( "only one edge is expected between the participant and the study, found {}", target.size() );
         }
 
