@@ -25,19 +25,12 @@ import com.google.common.base.Preconditions;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
-import com.google.common.collect.HashMultimap;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.ImmutableSetMultimap;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Multimaps;
-import com.google.common.collect.SetMultimap;
-import com.google.common.collect.Sets;
+import com.google.common.collect.*;
 import com.google.common.eventbus.EventBus;
 import com.openlattice.ApiUtil;
 import com.openlattice.chronicle.ChronicleServerUtil;
 import com.openlattice.chronicle.configuration.ChronicleConfiguration;
+import com.openlattice.chronicle.constants.ParticipationStatus;
 import com.openlattice.chronicle.sources.AndroidDevice;
 import com.openlattice.chronicle.sources.Datasource;
 import com.openlattice.client.ApiClient;
@@ -62,11 +55,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 
 import javax.annotation.Nonnull;
 import java.time.OffsetDateTime;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -87,10 +76,12 @@ public class ChronicleServiceImpl implements ChronicleService {
     private final String            DATA_ENTITY_SET_NAME        = "chronicle_app_data";
     private final String            RECORDED_BY_ENTITY_SET_NAME = "chronicle_recorded_by";
     private final String            USED_BY_ENTITY_SET_NAME     = "chronicle_used_by";
+    private final String            PARTICIPATED_IN_AESN        = "chronicle_participated_in";
     private final Set<UUID>         dataKey;
     private final FullQualifiedName STRING_ID_FQN               = new FullQualifiedName( "general.stringid" );
     private final FullQualifiedName PERSON_ID_FQN               = new FullQualifiedName( "nc.SubjectIdentification" );
     private final FullQualifiedName DATE_LOGGED_FQN             = new FullQualifiedName( "ol.datelogged" );
+    private final FullQualifiedName STATUS_FQN                  = new FullQualifiedName( "ol.status" );
     private final FullQualifiedName VERSION_FQN                 = new FullQualifiedName( "ol.version" );
     private final FullQualifiedName MODEL_FQN                   = new FullQualifiedName( "vehicle.model" );
     private final UUID              studyEntitySetId;
@@ -98,6 +89,7 @@ public class ChronicleServiceImpl implements ChronicleService {
     private final UUID              dataEntitySetId;
     private final UUID              recordedByEntitySetId;
     private final UUID              usedByEntitySetId;
+    private final UUID              participatedInEntitySetId;
     private final UUID              stringIdPropertyTypeId;
     private final UUID              participantIdPropertyTypeId;
     private final UUID              dateLoggedPropertyTypeId;
@@ -133,16 +125,15 @@ public class ChronicleServiceImpl implements ChronicleService {
         dataEntitySetId = edmApi.getEntitySetId( DATA_ENTITY_SET_NAME );
         recordedByEntitySetId = edmApi.getEntitySetId( RECORDED_BY_ENTITY_SET_NAME );
         usedByEntitySetId = edmApi.getEntitySetId( USED_BY_ENTITY_SET_NAME );
+        participatedInEntitySetId = edmApi.getEntitySetId( PARTICIPATED_IN_AESN );
 
         stringIdPropertyTypeId = edmApi.getPropertyTypeId( STRING_ID_FQN.getNamespace(), STRING_ID_FQN.getName() );
         participantIdPropertyTypeId = edmApi.getPropertyTypeId( PERSON_ID_FQN.getNamespace(), PERSON_ID_FQN.getName() );
-        dateLoggedPropertyTypeId = edmApi
-                .getPropertyTypeId( DATE_LOGGED_FQN.getNamespace(), DATE_LOGGED_FQN.getName() );
+        dateLoggedPropertyTypeId = edmApi.getPropertyTypeId( DATE_LOGGED_FQN.getNamespace(), DATE_LOGGED_FQN.getName() );
         versionPropertyTypeId = edmApi.getPropertyTypeId( VERSION_FQN.getNamespace(), VERSION_FQN.getName() );
         modelPropertyTypeId = edmApi.getPropertyTypeId( MODEL_FQN.getNamespace(), MODEL_FQN.getName() );
 
-        dataKey = edmApi.getEntityType( edmApi.getEntitySet( dataEntitySetId ).getEntityTypeId() )
-                .getKey();
+        dataKey = edmApi.getEntityType( edmApi.getEntitySet( dataEntitySetId ).getEntityTypeId() ).getKey();
 
         refreshStudyInformation();
 
@@ -242,6 +233,13 @@ public class ChronicleServiceImpl implements ChronicleService {
 
         Entity deviceEntity = getDeviceEntity( deviceId, Optional.absent() );
         Entity participantEntity = getParticipantEntity( participantId, studyId );
+
+        ParticipationStatus status = getParticipationStatus( studyId, participantId );
+        if ( ParticipationStatus.NOT_ENROLLED.equals( status ) ) {
+            logger.warn( "participantId = {} is not enrolled, ignoring data upload", participantId );
+            return 0;
+        }
+
         entities.add( deviceEntity );
         entities.add( participantEntity );
 
@@ -552,5 +550,88 @@ public class ChronicleServiceImpl implements ChronicleService {
             logger.error( "Unable to get participant entity.", e );
             return ImmutableSetMultimap.of();
         }
+    }
+
+    @Override
+    public UUID getParticipantEntityKeyId( String participantId, UUID participantsEntitySetId, SearchApi searchApi ) {
+        DataSearchResult result = searchApi.executeEntitySetDataQuery(
+                participantsEntitySetId,
+                new SearchTerm( participantIdPropertyTypeId.toString() + ":\"" + participantId + "\"", 0, 1 )
+        );
+        if ( result.getHits().size() != 1 ) {
+            return null;
+        }
+        SetMultimap<FullQualifiedName, Object> data = result.getHits().iterator().next();
+        if ( data.containsKey( INTERNAL_ID_FQN ) ) {
+            return UUID.fromString( data.get( INTERNAL_ID_FQN ).iterator().next().toString() );
+        }
+        return null;
+    }
+
+    @Override
+    public ParticipationStatus getParticipationStatus( UUID studyId, String participantId ) {
+
+        EdmApi edmApi;
+        SearchApi searchApi;
+
+        try {
+            ApiClient apiClient = apiClientCache.get( ApiClient.class );
+            edmApi = apiClient.getEdmApi();
+            searchApi = apiClient.getSearchApi();
+        } catch ( ExecutionException e ) {
+            logger.error( "Unable to load apis." );
+            return ParticipationStatus.UNKNOWN;
+        }
+
+        String participantsEntitySetName = ChronicleServerUtil.getParticipantEntitySetName( studyId );
+        UUID participantsEntitySetId = edmApi.getEntitySetId( participantsEntitySetName );
+        if ( participantsEntitySetId == null ) {
+            logger.error( "unable to get the participants EntitySet id for studyId = {}", studyId );
+            return ParticipationStatus.UNKNOWN;
+        }
+
+        UUID participantEntityKeyId = getParticipantEntityKeyId( participantId, participantsEntitySetId, searchApi );
+        if ( participantEntityKeyId == null ) {
+            logger.error( "unable to load participant entity key id for participantId = {}", participantId );
+            return ParticipationStatus.UNKNOWN;
+        }
+
+        Map<UUID, List<NeighborEntityDetails>> neighborResults = searchApi.executeFilteredEntityNeighborSearch(
+                participantsEntitySetId,
+                new EntityNeighborsFilter(
+                        ImmutableSet.of( participantEntityKeyId ),
+                        java.util.Optional.of( ImmutableSet.of() ),
+                        java.util.Optional.of( ImmutableSet.of( studyEntitySetId ) ),
+                        java.util.Optional.of( ImmutableSet.of( participatedInEntitySetId ) )
+                )
+        );
+
+        Set<SetMultimap<FullQualifiedName, Object>> target = neighborResults
+                .get( participantEntityKeyId )
+                .stream()
+                .filter( neighborResult -> neighborResult.getNeighborDetails().isPresent() )
+                .filter( neighborResult -> neighborResult
+                        .getNeighborDetails()
+                        .get()
+                        .get( STRING_ID_FQN )
+                        .equals( Sets.newHashSet( studyId ) )
+                )
+                .map( NeighborEntityDetails::getAssociationDetails )
+                .collect( Collectors.toSet() );
+
+        if ( target.size() == 1 ) {
+            SetMultimap<FullQualifiedName, Object> data = target.iterator().next();
+            String status = data.get( STATUS_FQN ).iterator().next().toString();
+            try {
+                return ParticipationStatus.valueOf( status );
+            } catch ( IllegalArgumentException e ) {
+                logger.error( "invalid participation status", e );
+            }
+        }
+        else {
+            logger.error( "only one edge is expected between the participant and the study, found {}", target.size() );
+        }
+
+        return ParticipationStatus.UNKNOWN;
     }
 }

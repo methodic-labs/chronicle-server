@@ -2,6 +2,7 @@ package com.openlattice.chronicle.controllers;
 
 import com.google.common.collect.SetMultimap;
 import com.openlattice.chronicle.ChronicleApi;
+import com.openlattice.chronicle.constants.ParticipationStatus;
 import com.openlattice.chronicle.services.ChronicleService;
 import com.openlattice.chronicle.util.ChronicleServerExceptionHandler.StudyRegistrationNotFoundException;
 import java.util.List;
@@ -42,6 +43,12 @@ public class ChronicleController implements ChronicleApi {
         //  TODO: finish exception logic
         final boolean knownParticipant = chronicleService.isKnownParticipant( studyId, participantId );
         final boolean knownDatasource = chronicleService.isKnownDatasource( studyId, participantId, datasourceId );
+
+        final ParticipationStatus status = chronicleService.getParticipationStatus( studyId, participantId );
+        if ( ParticipationStatus.NOT_ENROLLED.equals( status ) ) {
+            logger.warn( "participantId = {} is not enrolled, ignoring data upload", participantId );
+            return 0;
+        }
 
         if ( knownParticipant && knownDatasource ) {
             return chronicleService.logData( studyId, participantId, datasourceId, data );
