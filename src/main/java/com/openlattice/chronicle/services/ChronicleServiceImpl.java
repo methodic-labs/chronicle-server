@@ -625,12 +625,17 @@ public class ChronicleServiceImpl implements ChronicleService {
                 .collect( Collectors.toSet() );
 
         if ( target.size() == 1 ) {
-            SetMultimap<FullQualifiedName, Object> data = target.iterator().next();
-            String status = data.get( STATUS_FQN ).iterator().next().toString();
             try {
-                return ParticipationStatus.valueOf( status );
-            } catch ( IllegalArgumentException e ) {
-                logger.error( "invalid participation status", e );
+                SetMultimap<FullQualifiedName, Object> data = target.iterator().next();
+                if ( data.containsKey( STATUS_FQN ) ) {
+                    Set<Object> statusValue = data.get( STATUS_FQN );
+                    if ( statusValue != null && statusValue.size() == 1 ) {
+                        String status = statusValue.iterator().next().toString();
+                        return ParticipationStatus.valueOf( status );
+                    }
+                }
+            } catch ( Exception e ) {
+                logger.error( "unable to determine participation status", e );
             }
         } else {
             logger.error( "only one edge is expected between the participant and the study, found {}", target.size() );
