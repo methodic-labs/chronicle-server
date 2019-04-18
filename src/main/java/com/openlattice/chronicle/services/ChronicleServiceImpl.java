@@ -333,7 +333,7 @@ public class ChronicleServiceImpl implements ChronicleService {
     private UUID getDatasourceEntityKeyId( String datasourceId, SearchApi searchApi, DataApi dataApi ) {
         // HACK -- we should get entityKeyIds back from dataApi eventually
         DataSearchResult result = searchApi.executeEntitySetDataQuery( deviceEntitySetId,
-                new SearchTerm( stringIdPropertyTypeId.toString() + ":\"" + datasourceId + "\"", 0, 1 ) );
+                new SearchTerm( deviceEntitySetId + "." + stringIdPropertyTypeId.toString() + ":\"" + datasourceId + "\"", 0, 1 ) );
         if ( result.getHits().size() == 0 ) {
             return null; // TODO do we want to throw an error here?
         }
@@ -556,7 +556,7 @@ public class ChronicleServiceImpl implements ChronicleService {
     public UUID getParticipantEntityKeyId( String participantId, UUID participantsEntitySetId, SearchApi searchApi ) {
         DataSearchResult result = searchApi.executeEntitySetDataQuery(
                 participantsEntitySetId,
-                new SearchTerm( participantIdPropertyTypeId.toString() + ":\"" + participantId + "\"", 0, 1 )
+                new SearchTerm( participantsEntitySetId + "." + participantIdPropertyTypeId.toString() + ":\"" + participantId + "\"", 0, 1 )
         );
         if ( result.getHits().size() != 1 ) {
             return null;
