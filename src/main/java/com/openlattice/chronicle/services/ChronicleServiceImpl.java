@@ -77,6 +77,8 @@ public class ChronicleServiceImpl implements ChronicleService {
     private final String            RECORDED_BY_ENTITY_SET_NAME = "chronicle_recorded_by";
     private final String            USED_BY_ENTITY_SET_NAME     = "chronicle_used_by";
     private final String            PARTICIPATED_IN_AESN        = "chronicle_participated_in";
+    private final String            SEARCH_PREFIX               = "entity";
+    
     private final Set<UUID>         dataKey;
     private final FullQualifiedName STRING_ID_FQN               = new FullQualifiedName( "general.stringid" );
     private final FullQualifiedName PERSON_ID_FQN               = new FullQualifiedName( "nc.SubjectIdentification" );
@@ -333,7 +335,7 @@ public class ChronicleServiceImpl implements ChronicleService {
     private UUID getDatasourceEntityKeyId( String datasourceId, SearchApi searchApi, DataApi dataApi ) {
         // HACK -- we should get entityKeyIds back from dataApi eventually
         DataSearchResult result = searchApi.executeEntitySetDataQuery( deviceEntitySetId,
-                new SearchTerm( deviceEntitySetId + "." + stringIdPropertyTypeId.toString() + ":\"" + datasourceId + "\"", 0, 1 ) );
+                new SearchTerm( SEARCH_PREFIX + "." + stringIdPropertyTypeId.toString() + ":\"" + datasourceId + "\"", 0, 1 ) );
         if ( result.getHits().size() == 0 ) {
             return null; // TODO do we want to throw an error here?
         }
@@ -556,7 +558,7 @@ public class ChronicleServiceImpl implements ChronicleService {
     public UUID getParticipantEntityKeyId( String participantId, UUID participantsEntitySetId, SearchApi searchApi ) {
         DataSearchResult result = searchApi.executeEntitySetDataQuery(
                 participantsEntitySetId,
-                new SearchTerm( participantsEntitySetId + "." + participantIdPropertyTypeId.toString() + ":\"" + participantId + "\"", 0, 1 )
+                new SearchTerm( SEARCH_PREFIX + "." + participantIdPropertyTypeId.toString() + ":\"" + participantId + "\"", 0, 1 )
         );
         if ( result.getHits().size() != 1 ) {
             return null;
