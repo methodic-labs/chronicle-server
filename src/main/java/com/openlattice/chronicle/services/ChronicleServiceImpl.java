@@ -427,9 +427,13 @@ public class ChronicleServiceImpl implements ChronicleService {
                 .stream()
                 .flatMap( list -> list.stream() )
                 .parallel()
-                .filter( neighbor -> neighbor.getNeighborEntitySet().isPresent() && neighbor.getNeighborEntitySet().get().getName().startsWith( ChronicleServerUtil.PARTICIPANTS_PREFIX ) )
-                .forEach( neighbor -> participantEntityKeysByEntitySetId
-                        .put( neighbor.getNeighborEntitySet().get().getId(), neighbor.getNeighborId().get() ) );
+                .filter( neighbor -> neighbor.getNeighborEntitySet().isPresent() && neighbor.getNeighborId().isPresent() )
+                .filter( neighbor -> neighbor.getNeighborEntitySet().get().getName().startsWith( ChronicleServerUtil.PARTICIPANTS_PREFIX ) )
+                .forEach( neighbor -> {
+                    UUID participantEntitySetId = neighbor.getNeighborEntitySet().get().getId();
+                    UUID participantEntityKeyId = neighbor.getNeighborId().get();
+                    participantEntityKeysByEntitySetId.put( participantEntitySetId, participantEntityKeyId );
+                } );
 
         Map<UUID, List<NeighborEntityDetails>> participantNeighbors = Maps.newConcurrentMap();
 
