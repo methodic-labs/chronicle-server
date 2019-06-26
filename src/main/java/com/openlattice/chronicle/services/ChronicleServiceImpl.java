@@ -425,7 +425,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         studyNeighbors
                 .values()
                 .stream()
-                .flatMap( list -> list.stream() )
+                .flatMap( Collection::stream )
                 .parallel()
                 .filter( neighbor -> neighbor.getNeighborEntitySet().isPresent() && neighbor.getNeighborId().isPresent() )
                 .filter( neighbor -> neighbor.getNeighborEntitySet().get().getName().startsWith( ChronicleServerUtil.PARTICIPANTS_PREFIX ) )
