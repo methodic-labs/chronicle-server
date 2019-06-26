@@ -62,6 +62,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import static com.openlattice.chronicle.ChronicleServerUtil.PARTICIPANTS_PREFIX;
+
 public class ChronicleServiceImpl implements ChronicleService {
     protected static final Logger            logger          = LoggerFactory.getLogger( ChronicleServiceImpl.class );
     private static final   FullQualifiedName INTERNAL_ID_FQN = new FullQualifiedName( "openlattice.@id" );
@@ -405,7 +407,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                 .collect( Collectors.toSet() );
 
         Set<UUID> participantEntitySetIds = StreamUtil.stream( edmApi.getEntitySets() )
-                .filter( entitySet -> entitySet.getName().startsWith( ChronicleServerUtil.PARTICIPANTS_PREFIX ) )
+                .filter( entitySet -> entitySet.getName().startsWith( PARTICIPANTS_PREFIX ) )
                 .map( EntitySet::getId )
                 .collect( Collectors.toSet() );
 
@@ -428,7 +430,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                 .flatMap( Collection::stream )
                 .parallel()
                 .filter( neighbor -> neighbor.getNeighborEntitySet().isPresent() && neighbor.getNeighborId().isPresent() )
-                .filter( neighbor -> neighbor.getNeighborEntitySet().get().getName().startsWith( ChronicleServerUtil.PARTICIPANTS_PREFIX ) )
+                .filter( neighbor -> neighbor.getNeighborEntitySet().get().getName().startsWith( PARTICIPANTS_PREFIX ) )
                 .forEach( neighbor -> {
                     UUID participantEntitySetId = neighbor.getNeighborEntitySet().get().getId();
                     UUID participantEntityKeyId = neighbor.getNeighborId().get();
@@ -459,7 +461,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                                 .getNeighborEntitySet()
                                 .get()
                                 .getName()
-                                .startsWith( ChronicleServerUtil.PARTICIPANTS_PREFIX )
+                                .startsWith( PARTICIPANTS_PREFIX )
                         )
                         .forEach( participantNeighbor -> {
 
