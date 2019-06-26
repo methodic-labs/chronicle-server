@@ -28,7 +28,6 @@ import com.google.common.cache.LoadingCache;
 import com.google.common.collect.*;
 import com.google.common.eventbus.EventBus;
 import com.openlattice.ApiUtil;
-import com.openlattice.authorization.securable.AbstractSecurableObject;
 import com.openlattice.chronicle.ChronicleServerUtil;
 import com.openlattice.chronicle.configuration.ChronicleConfiguration;
 import com.openlattice.chronicle.constants.ParticipationStatus;
