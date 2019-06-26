@@ -42,6 +42,7 @@ import com.openlattice.data.integration.BulkDataCreation;
 import com.openlattice.data.integration.Entity;
 import com.openlattice.data.requests.NeighborEntityDetails;
 import com.openlattice.edm.EdmApi;
+import com.openlattice.edm.EntitySet;
 import com.openlattice.search.SearchApi;
 import com.openlattice.search.requests.DataSearchResult;
 import com.openlattice.search.requests.EntityNeighborsFilter;
@@ -59,6 +60,8 @@ import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+
+import static com.openlattice.chronicle.ChronicleServerUtil.PARTICIPANTS_PREFIX;
 
 public class ChronicleServiceImpl implements ChronicleService {
     protected static final Logger            logger          = LoggerFactory.getLogger( ChronicleServiceImpl.class );
@@ -378,11 +381,11 @@ public class ChronicleServiceImpl implements ChronicleService {
 
     @Scheduled( fixedRate = 60000 )
     public void refreshStudyInformation() {
-        DataApi dataApi;
+        EdmApi edmApi;
         SearchApi searchApi;
         try {
             ApiClient apiClient = apiClientCache.get( ApiClient.class );
-            dataApi = apiClient.getDataApi();
+            edmApi = apiClient.getEdmApi();
             searchApi = apiClient.getSearchApi();
         } catch ( ExecutionException e ) {
             logger.error( "Unable to load apis." );
@@ -394,27 +397,44 @@ public class ChronicleServiceImpl implements ChronicleService {
         Map<UUID, SetMultimap<String, String>> studyInformation = Maps.newConcurrentMap();
         SetMultimap<UUID, String> studyParticipants = HashMultimap.create();
 
-        Long numStudies = dataApi.getEntitySetSize( studyEntitySetId );
         List<SetMultimap<FullQualifiedName, Object>> studySearchResult = searchApi
-                .executeEntitySetDataQuery( studyEntitySetId, new SearchTerm( "*", 0, numStudies.intValue() ) )
+                .executeEntitySetDataQuery( studyEntitySetId, new SearchTerm( "*", 0, SearchApi.MAX_SEARCH_RESULTS ) )
                 .getHits();
 
         Set<UUID> studyEntityKeyIds = studySearchResult.stream()
                 .map( study -> UUID.fromString( study.get( INTERNAL_ID_FQN ).iterator().next().toString() ) )
                 .collect( Collectors.toSet() );
 
-        Map<UUID, List<NeighborEntityDetails>> studyNeighbors = searchApi
-                .executeEntityNeighborSearchBulk( studyEntitySetId, studyEntityKeyIds );
+        Set<UUID> participantEntitySetIds = StreamUtil.stream( edmApi.getEntitySets() )
+                .filter( entitySet -> entitySet.getName().startsWith( PARTICIPANTS_PREFIX ) )
+                .map( EntitySet::getId )
+                .collect( Collectors.toSet() );
+
+        Map<UUID, List<NeighborEntityDetails>> studyNeighbors = searchApi.executeFilteredEntityNeighborSearch(
+                studyEntitySetId,
+                new EntityNeighborsFilter(
+                        studyEntityKeyIds,
+                        java.util.Optional.of( participantEntitySetIds ),
+                        java.util.Optional.of( ImmutableSet.of() ),
+                        java.util.Optional.of( ImmutableSet.of( participatedInEntitySetId ) )
+                )
+        );
 
         SetMultimap<UUID, UUID> participantEntityKeysByEntitySetId = Multimaps
                 .synchronizedSetMultimap( HashMultimap.create() );
 
-        studyNeighbors.values().stream().flatMap( list -> list.stream() )
+        studyNeighbors
+                .values()
+                .stream()
+                .flatMap( Collection::stream )
                 .parallel()
-                .filter( neighbor -> neighbor.getNeighborEntitySet().isPresent() && neighbor.getNeighborEntitySet()
-                        .get().getName().startsWith( ChronicleServerUtil.PARTICIPANTS_PREFIX ) )
-                .forEach( neighbor -> participantEntityKeysByEntitySetId
-                        .put( neighbor.getNeighborEntitySet().get().getId(), neighbor.getNeighborId().get() ) );
+                .filter( neighbor -> neighbor.getNeighborEntitySet().isPresent() && neighbor.getNeighborId().isPresent() )
+                .filter( neighbor -> neighbor.getNeighborEntitySet().get().getName().startsWith( PARTICIPANTS_PREFIX ) )
+                .forEach( neighbor -> {
+                    UUID participantEntitySetId = neighbor.getNeighborEntitySet().get().getId();
+                    UUID participantEntityKeyId = neighbor.getNeighborId().get();
+                    participantEntityKeysByEntitySetId.put( participantEntitySetId, participantEntityKeyId );
+                } );
 
         Map<UUID, List<NeighborEntityDetails>> participantNeighbors = Maps.newConcurrentMap();
 
@@ -440,7 +460,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                                 .getNeighborEntitySet()
                                 .get()
                                 .getName()
-                                .startsWith( ChronicleServerUtil.PARTICIPANTS_PREFIX )
+                                .startsWith( PARTICIPANTS_PREFIX )
                         )
                         .forEach( participantNeighbor -> {
 
