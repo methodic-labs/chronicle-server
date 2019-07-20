@@ -510,7 +510,7 @@ public class ChronicleServiceImpl implements ChronicleService {
     }
 
     @Override
-    public Iterable<SetMultimap<String, Object>> getAllParticipantData( UUID studyId, UUID participantEntityKeyId ) {
+    public Iterable<Map<String, Set<Object>>> getAllParticipantData( UUID studyId, UUID participantEntityKeyId ) {
 
         try {
             ApiClient apiClient = apiClientCache.get( ApiClient.class );
@@ -535,7 +535,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                     )
                     .map( neighbor -> {
                         neighbor.getNeighborDetails().get().remove( INTERNAL_ID_FQN );
-                        SetMultimap<String, Object> neighborDetails = HashMultimap.create();
+                        Map<String, Set<Object>> neighborDetails = ImmutableMap.of();
                         neighbor.getNeighborDetails().get()
                                 .forEach( ( key, value ) -> neighborDetails.put( key.toString(), value ) );
                         return neighborDetails;
