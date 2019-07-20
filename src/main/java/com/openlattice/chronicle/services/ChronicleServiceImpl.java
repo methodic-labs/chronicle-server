@@ -535,7 +535,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                     )
                     .map( neighbor -> {
                         neighbor.getNeighborDetails().get().remove( INTERNAL_ID_FQN );
-                        Map<String, Set<Object>> neighborDetails = ImmutableMap.of();
+                        Map<String, Set<Object>> neighborDetails = Maps.newHashMap();
                         neighbor.getNeighborDetails().get()
                                 .forEach( ( key, value ) -> neighborDetails.put( key.toString(), value ) );
                         return neighborDetails;
