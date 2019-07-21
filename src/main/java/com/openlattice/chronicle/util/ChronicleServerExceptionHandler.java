@@ -88,4 +88,13 @@ public class ChronicleServerExceptionHandler {
             super( message, cause );
         }
     }
+
+    public static class DataIntegrationException extends RuntimeException {
+        public DataIntegrationException( String message ) {
+            super( message );
+        }
+        public DataIntegrationException( String message, Throwable cause ) {
+            super( message, cause );
+        }
+    }
 }

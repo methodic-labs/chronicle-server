@@ -37,6 +37,7 @@ import com.openlattice.client.ApiClient;
 import com.openlattice.data.DataApi;
 import com.openlattice.data.DataIntegrationApi;
 import com.openlattice.data.EntityKey;
+import com.openlattice.data.IntegrationResults;
 import com.openlattice.data.integration.Association;
 import com.openlattice.data.integration.BulkDataCreation;
 import com.openlattice.data.integration.Entity;
@@ -62,6 +63,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static com.openlattice.chronicle.ChronicleServerUtil.PARTICIPANTS_PREFIX;
+import static com.openlattice.chronicle.util.ChronicleServerExceptionHandler.DataIntegrationException;
 
 public class ChronicleServiceImpl implements ChronicleService {
     protected static final Logger            logger          = LoggerFactory.getLogger( ChronicleServiceImpl.class );
@@ -271,10 +273,18 @@ public class ChronicleServiceImpl implements ChronicleService {
             associations.add( getRecordedByAssociation( dataEntity.getKey(), participantEntity.getKey(), timestamp ) );
         } );
 
-        dataIntegrationApi.integrateEntityAndAssociationData( new BulkDataCreation( entities, associations ), false );
+        BulkDataCreation bdc = new BulkDataCreation( entities, associations );
+        IntegrationResults result = dataIntegrationApi.integrateEntityAndAssociationData( bdc, false );
 
-        //  TODO:s Make sure to return any errors??? Currently void method.
-        return data.size();
+        if ( result.getEntityCount() != entities.size() ) {
+            throw new DataIntegrationException( "entity count mismatch" );
+        }
+
+        if ( result.getAssociationCount() != associations.size() ) {
+            throw new DataIntegrationException( "association count mismatch" );
+        }
+
+        return result.getEntityCount();
     }
 
     @Override
