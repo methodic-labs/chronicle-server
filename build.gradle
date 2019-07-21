@@ -42,6 +42,8 @@ plugins {
     id 'eclipse'
     id 'idea'
     id 'jacoco'
+    id "maven-publish"
+    id 'signing'
     id "org.jetbrains.kotlin.jvm" version "1.2.30"
 }
 
