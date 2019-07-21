@@ -277,10 +277,20 @@ public class ChronicleServiceImpl implements ChronicleService {
         IntegrationResults result = dataIntegrationApi.integrateEntityAndAssociationData( bdc, false );
 
         if ( result.getEntityCount() != entities.size() ) {
+            logger.error(
+                    "entity count mismatch - entities = {} ; result = {}",
+                    entities.size(),
+                    result.getEntityCount()
+            );
             throw new DataIntegrationException( "entity count mismatch" );
         }
 
         if ( result.getAssociationCount() != associations.size() ) {
+            logger.error(
+                    "association count mismatch - entities = {} ; result = {}",
+                    associations.size(),
+                    result.getAssociationCount()
+            );
             throw new DataIntegrationException( "association count mismatch" );
         }
 
