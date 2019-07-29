@@ -42,6 +42,8 @@ import javax.inject.Inject;
 import javax.servlet.http.HttpServletResponse;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -133,7 +135,7 @@ public class ChronicleStudyController implements ChronicleStudyApi {
             path = PARTICIPANT_PATH + DATA_PATH + STUDY_ID_PATH + ENTITY_KEY_ID_PATH,
             method = RequestMethod.GET,
             produces = { MediaType.APPLICATION_JSON_VALUE, CustomMediaType.TEXT_CSV_VALUE } )
-    public Iterable<SetMultimap<String, Object>> getAllParticipantData(
+    public Iterable<Map<String, Set<Object>>> getAllParticipantData(
             @PathVariable( STUDY_ID ) UUID studyId,
             @PathVariable( ENTITY_KEY_ID ) UUID participantEntityKeyId,
             @RequestParam( value = FILE_TYPE, required = false ) FileType fileType,
@@ -160,7 +162,7 @@ public class ChronicleStudyController implements ChronicleStudyApi {
     }
 
     @Override
-    public Iterable<SetMultimap<String, Object>> getAllParticipantData(
+    public Iterable<Map<String, Set<Object>>> getAllParticipantData(
             UUID studyId,
             UUID participantEntityKeyId,
             FileType fileType ) {

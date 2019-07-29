@@ -44,6 +44,7 @@ import com.openlattice.data.integration.Entity;
 import com.openlattice.data.requests.NeighborEntityDetails;
 import com.openlattice.edm.EdmApi;
 import com.openlattice.edm.EntitySet;
+import com.openlattice.entitysets.EntitySetsApi;
 import com.openlattice.search.SearchApi;
 import com.openlattice.search.requests.DataSearchResult;
 import com.openlattice.search.requests.EntityNeighborsFilter;
@@ -126,13 +127,14 @@ public class ChronicleServiceImpl implements ChronicleService {
         ApiClient apiClient = apiClientCache.get( ApiClient.class );
 
         EdmApi edmApi = apiClient.getEdmApi();
+        EntitySetsApi entitySetsApi = apiClient.getEntitySetsApi();
 
-        studyEntitySetId = edmApi.getEntitySetId( STUDY_ENTITY_SET_NAME );
-        deviceEntitySetId = edmApi.getEntitySetId( DEVICES_ENTITY_SET_NAME );
-        dataEntitySetId = edmApi.getEntitySetId( DATA_ENTITY_SET_NAME );
-        recordedByEntitySetId = edmApi.getEntitySetId( RECORDED_BY_ENTITY_SET_NAME );
-        usedByEntitySetId = edmApi.getEntitySetId( USED_BY_ENTITY_SET_NAME );
-        participatedInEntitySetId = edmApi.getEntitySetId( PARTICIPATED_IN_AESN );
+        studyEntitySetId = entitySetsApi.getEntitySetId( STUDY_ENTITY_SET_NAME );
+        deviceEntitySetId = entitySetsApi.getEntitySetId( DEVICES_ENTITY_SET_NAME );
+        dataEntitySetId = entitySetsApi.getEntitySetId( DATA_ENTITY_SET_NAME );
+        recordedByEntitySetId = entitySetsApi.getEntitySetId( RECORDED_BY_ENTITY_SET_NAME );
+        usedByEntitySetId = entitySetsApi.getEntitySetId( USED_BY_ENTITY_SET_NAME );
+        participatedInEntitySetId = entitySetsApi.getEntitySetId( PARTICIPATED_IN_AESN );
 
         stringIdPropertyTypeId = edmApi.getPropertyTypeId( STRING_ID_FQN.getNamespace(), STRING_ID_FQN.getName() );
         participantIdPropertyTypeId = edmApi.getPropertyTypeId( PERSON_ID_FQN.getNamespace(), PERSON_ID_FQN.getName() );
@@ -140,7 +142,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         versionPropertyTypeId = edmApi.getPropertyTypeId( VERSION_FQN.getNamespace(), VERSION_FQN.getName() );
         modelPropertyTypeId = edmApi.getPropertyTypeId( MODEL_FQN.getNamespace(), MODEL_FQN.getName() );
 
-        dataKey = edmApi.getEntityType( edmApi.getEntitySet( dataEntitySetId ).getEntityTypeId() ).getKey();
+        dataKey = edmApi.getEntityType( entitySetsApi.getEntitySet( dataEntitySetId ).getEntityTypeId() ).getKey();
 
         refreshStudyInformation();
 
@@ -175,10 +177,10 @@ public class ChronicleServiceImpl implements ChronicleService {
 
     private Entity getParticipantEntity( String participantId, UUID studyId ) {
 
-        EdmApi edmApi;
+        EntitySetsApi entitySetsApi;
         try {
             ApiClient apiClient = apiClientCache.get( ApiClient.class );
-            edmApi = apiClient.getEdmApi();
+            entitySetsApi = apiClient.getEntitySetsApi();
         } catch ( ExecutionException e ) {
             logger.error( "Unable to load apis." );
             return null;
@@ -186,7 +188,7 @@ public class ChronicleServiceImpl implements ChronicleService {
 
         Map<UUID, Set<Object>> participantData = new HashMap<>();
         participantData.put( participantIdPropertyTypeId, Sets.newHashSet( participantId ) );
-        UUID participantEntitySetId = edmApi.getEntitySetId(
+        UUID participantEntitySetId = entitySetsApi.getEntitySetId(
                 ChronicleServerUtil.getParticipantEntitySetName( studyId )
         );
         EntityKey participantEntityKey = new EntityKey(
@@ -401,11 +403,11 @@ public class ChronicleServiceImpl implements ChronicleService {
 
     @Scheduled( fixedRate = 60000 )
     public void refreshStudyInformation() {
-        EdmApi edmApi;
+        EntitySetsApi entitySetsApi;
         SearchApi searchApi;
         try {
             ApiClient apiClient = apiClientCache.get( ApiClient.class );
-            edmApi = apiClient.getEdmApi();
+            entitySetsApi = apiClient.getEntitySetsApi();
             searchApi = apiClient.getSearchApi();
         } catch ( ExecutionException e ) {
             logger.error( "Unable to load apis." );
@@ -417,7 +419,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         Map<UUID, SetMultimap<String, String>> studyInformation = Maps.newConcurrentMap();
         SetMultimap<UUID, String> studyParticipants = HashMultimap.create();
 
-        List<SetMultimap<FullQualifiedName, Object>> studySearchResult = searchApi
+        List<Map<FullQualifiedName, Set<Object>>> studySearchResult = searchApi
                 .executeEntitySetDataQuery( studyEntitySetId, new SearchTerm( "*", 0, SearchApi.MAX_SEARCH_RESULTS ) )
                 .getHits();
 
@@ -425,7 +427,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                 .map( study -> UUID.fromString( study.get( INTERNAL_ID_FQN ).iterator().next().toString() ) )
                 .collect( Collectors.toSet() );
 
-        Set<UUID> participantEntitySetIds = StreamUtil.stream( edmApi.getEntitySets() )
+        Set<UUID> participantEntitySetIds = StreamUtil.stream( entitySetsApi.getEntitySets() )
                 .filter( entitySet -> entitySet.getName().startsWith( PARTICIPANTS_PREFIX ) )
                 .map( EntitySet::getId )
                 .collect( Collectors.toSet() );
@@ -528,15 +530,15 @@ public class ChronicleServiceImpl implements ChronicleService {
     }
 
     @Override
-    public Iterable<SetMultimap<String, Object>> getAllParticipantData( UUID studyId, UUID participantEntityKeyId ) {
+    public Iterable<Map<String, Set<Object>>> getAllParticipantData( UUID studyId, UUID participantEntityKeyId ) {
 
         try {
             ApiClient apiClient = apiClientCache.get( ApiClient.class );
-            EdmApi edmApi = apiClient.getEdmApi();
+            EntitySetsApi entitySetsApi = apiClient.getEntitySetsApi();
             SearchApi searchApi = apiClient.getSearchApi();
 
             String entitySetName = ChronicleServerUtil.getParticipantEntitySetName( studyId );
-            UUID entitySetId = edmApi.getEntitySetId( entitySetName );
+            UUID entitySetId = entitySetsApi.getEntitySetId( entitySetName );
             if ( entitySetId == null ) {
                 logger.error( "Unable to load participant EntitySet id." );
                 return null;
@@ -552,11 +554,10 @@ public class ChronicleServiceImpl implements ChronicleService {
                             && DATA_ENTITY_SET_NAME.equals( neighbor.getNeighborEntitySet().get().getName() )
                     )
                     .map( neighbor -> {
-                        neighbor.getNeighborDetails().get().removeAll( INTERNAL_ID_FQN );
-                        SetMultimap<String, Object> neighborDetails = HashMultimap.create();
+                        neighbor.getNeighborDetails().get().remove( INTERNAL_ID_FQN );
+                        Map<String, Set<Object>> neighborDetails = Maps.newHashMap();
                         neighbor.getNeighborDetails().get()
-                                .entries()
-                                .forEach( e -> neighborDetails.put( e.getKey().toString(), e.getValue() ) );
+                                .forEach( ( key, value ) -> neighborDetails.put( key.toString(), value ) );
                         return neighborDetails;
                     } )
                     .collect( Collectors.toSet() );
@@ -568,29 +569,29 @@ public class ChronicleServiceImpl implements ChronicleService {
 
     @Override
     @Nonnull
-    public SetMultimap<FullQualifiedName, Object> getParticipantEntity( UUID studyId, UUID participantEntityKeyId ) {
+    public Map<FullQualifiedName, Set<Object>> getParticipantEntity( UUID studyId, UUID participantEntityKeyId ) {
 
         try {
             ApiClient apiClient = apiClientCache.get( ApiClient.class );
             DataApi dataApi = apiClient.getDataApi();
-            EdmApi edmApi = apiClient.getEdmApi();
+            EntitySetsApi entitySetsApi = apiClient.getEntitySetsApi();
 
             String entitySetName = ChronicleServerUtil.getParticipantEntitySetName( studyId );
-            UUID entitySetId = edmApi.getEntitySetId( entitySetName );
+            UUID entitySetId = entitySetsApi.getEntitySetId( entitySetName );
             if ( entitySetId == null ) {
                 logger.error( "Unable to load participant EntitySet id." );
-                return ImmutableSetMultimap.of();
+                return ImmutableMap.of();
             }
 
-            SetMultimap<FullQualifiedName, Object> entity = dataApi.getEntity( entitySetId, participantEntityKeyId );
+            Map<FullQualifiedName, Set<Object>> entity = dataApi.getEntity( entitySetId, participantEntityKeyId );
             if ( entity == null ) {
                 logger.error( "Unable to get participant entity." );
-                return ImmutableSetMultimap.of();
+                return ImmutableMap.of();
             }
             return entity;
         } catch ( ExecutionException e ) {
             logger.error( "Unable to get participant entity.", e );
-            return ImmutableSetMultimap.of();
+            return ImmutableMap.of();
         }
     }
 
@@ -603,7 +604,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         if ( result.getHits().size() != 1 ) {
             return null;
         }
-        SetMultimap<FullQualifiedName, Object> data = result.getHits().iterator().next();
+        Map<FullQualifiedName, Set<Object>> data = result.getHits().iterator().next();
         if ( data.containsKey( INTERNAL_ID_FQN ) ) {
             return UUID.fromString( data.get( INTERNAL_ID_FQN ).iterator().next().toString() );
         }
@@ -613,12 +614,12 @@ public class ChronicleServiceImpl implements ChronicleService {
     @Override
     public ParticipationStatus getParticipationStatus( UUID studyId, String participantId ) {
 
-        EdmApi edmApi;
+        EntitySetsApi entitySetsApi;
         SearchApi searchApi;
 
         try {
             ApiClient apiClient = apiClientCache.get( ApiClient.class );
-            edmApi = apiClient.getEdmApi();
+            entitySetsApi = apiClient.getEntitySetsApi();
             searchApi = apiClient.getSearchApi();
         } catch ( ExecutionException e ) {
             logger.error( "Unable to load apis." );
@@ -626,7 +627,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         }
 
         String participantsEntitySetName = ChronicleServerUtil.getParticipantEntitySetName( studyId );
-        UUID participantsEntitySetId = edmApi.getEntitySetId( participantsEntitySetName );
+        UUID participantsEntitySetId = entitySetsApi.getEntitySetId( participantsEntitySetName );
         if ( participantsEntitySetId == null ) {
             logger.error( "unable to get the participants EntitySet id for studyId = {}", studyId );
             return ParticipationStatus.UNKNOWN;
@@ -648,7 +649,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                 )
         );
 
-        Set<SetMultimap<FullQualifiedName, Object>> target = neighborResults
+        Set<Map<FullQualifiedName, Set<Object>>> target = neighborResults
                 .get( participantEntityKeyId )
                 .stream()
                 .filter( neighborResult -> {
@@ -668,7 +669,7 @@ public class ChronicleServiceImpl implements ChronicleService {
 
         if ( target.size() == 1 ) {
             try {
-                SetMultimap<FullQualifiedName, Object> data = target.iterator().next();
+                Map<FullQualifiedName, Set<Object>> data = target.iterator().next();
                 if ( data.containsKey( STATUS_FQN ) ) {
                     Set<Object> statusValue = data.get( STATUS_FQN );
                     if ( statusValue != null && statusValue.size() == 1 ) {

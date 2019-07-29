@@ -112,15 +112,7 @@ configurations {
 }
 
 ext.odata_version = '4.2.0'
-//ext.chronicle_api_version = '0.0.5-SNAPSHOT'
-
-// TODO: 2019-07-20 delete this after new backend is deployed
-ext.chronicle_api_version = '0.0.5-20190126.012908-11'
-configurations.all {
-    resolutionStrategy {
-        force "com.openlattice:api:0.0.12-20190627.012834-21"
-    }
-}
+ext.chronicle_api_version = '0.0.6-SNAPSHOT'
 
 dependencies {
     compile "com.google.guava:guava:${guava_version}"
