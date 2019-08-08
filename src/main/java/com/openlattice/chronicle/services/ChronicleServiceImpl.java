@@ -371,8 +371,6 @@ public class ChronicleServiceImpl implements ChronicleService {
     @Override
     public boolean isKnownDatasource( UUID studyId, String participantId, String datasourceId ) {
 
-        logger.info( "Checking isKnownDatasource, stuydId = {}, participantId = {}", studyId, participantId );
-
         SetMultimap<String, String> participantDevices = Preconditions
                 .checkNotNull( studyInformation.get( studyId ), "Study must exist." );
 
