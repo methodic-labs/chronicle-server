@@ -34,18 +34,12 @@ import com.openlattice.chronicle.constants.ParticipationStatus;
 import com.openlattice.chronicle.sources.AndroidDevice;
 import com.openlattice.chronicle.sources.Datasource;
 import com.openlattice.client.ApiClient;
-import com.openlattice.data.DataApi;
-import com.openlattice.data.DataIntegrationApi;
-import com.openlattice.data.EntityKey;
-import com.openlattice.data.integration.Association;
-import com.openlattice.data.integration.BulkDataCreation;
-import com.openlattice.data.integration.Entity;
+import com.openlattice.data.*;
 import com.openlattice.data.requests.NeighborEntityDetails;
 import com.openlattice.edm.EdmApi;
 import com.openlattice.edm.EntitySet;
 import com.openlattice.entitysets.EntitySetsApi;
 import com.openlattice.search.SearchApi;
-import com.openlattice.search.requests.DataSearchResult;
 import com.openlattice.search.requests.EntityNeighborsFilter;
 import com.openlattice.search.requests.SearchTerm;
 import com.openlattice.shuttle.MissionControl;
@@ -63,10 +57,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static com.openlattice.chronicle.ChronicleServerUtil.PARTICIPANTS_PREFIX;
+import static com.openlattice.edm.EdmConstants.ID_FQN;
 
 public class ChronicleServiceImpl implements ChronicleService {
-    protected static final Logger            logger          = LoggerFactory.getLogger( ChronicleServiceImpl.class );
-    private static final   FullQualifiedName INTERNAL_ID_FQN = new FullQualifiedName( "openlattice.@id" );
+    protected static final Logger logger = LoggerFactory.getLogger( ChronicleServiceImpl.class );
 
     private final Map<UUID, SetMultimap<String, String>> studyInformation  = new HashMap<>();
     private final SetMultimap<UUID, String>              studyParticipants = HashMultimap.create();
@@ -74,22 +68,22 @@ public class ChronicleServiceImpl implements ChronicleService {
     private final String username;
     private final String password;
 
-    private final EventBus          eventBus;
-    private final String            STUDY_ENTITY_SET_NAME       = "chronicle_study";
-    private final String            DEVICES_ENTITY_SET_NAME     = "chronicle_device";
-    private final String            DATA_ENTITY_SET_NAME        = "chronicle_app_data";
-    private final String            RECORDED_BY_ENTITY_SET_NAME = "chronicle_recorded_by";
-    private final String            USED_BY_ENTITY_SET_NAME     = "chronicle_used_by";
-    private final String            PARTICIPATED_IN_AESN        = "chronicle_participated_in";
-    private final String            SEARCH_PREFIX               = "entity";
-    
+    private final EventBus eventBus;
+    private final String   STUDY_ENTITY_SET_NAME       = "chronicle_study";
+    private final String   DEVICES_ENTITY_SET_NAME     = "chronicle_device";
+    private final String   DATA_ENTITY_SET_NAME        = "chronicle_app_data";
+    private final String   RECORDED_BY_ENTITY_SET_NAME = "chronicle_recorded_by";
+    private final String   USED_BY_ENTITY_SET_NAME     = "chronicle_used_by";
+    private final String   PARTICIPATED_IN_AESN        = "chronicle_participated_in";
+    private final String   SEARCH_PREFIX               = "entity";
+
     private final Set<UUID>         dataKey;
-    private final FullQualifiedName STRING_ID_FQN               = new FullQualifiedName( "general.stringid" );
-    private final FullQualifiedName PERSON_ID_FQN               = new FullQualifiedName( "nc.SubjectIdentification" );
-    private final FullQualifiedName DATE_LOGGED_FQN             = new FullQualifiedName( "ol.datelogged" );
-    private final FullQualifiedName STATUS_FQN                  = new FullQualifiedName( "ol.status" );
-    private final FullQualifiedName VERSION_FQN                 = new FullQualifiedName( "ol.version" );
-    private final FullQualifiedName MODEL_FQN                   = new FullQualifiedName( "vehicle.model" );
+    private final FullQualifiedName STRING_ID_FQN   = new FullQualifiedName( "general.stringid" );
+    private final FullQualifiedName PERSON_ID_FQN   = new FullQualifiedName( "nc.SubjectIdentification" );
+    private final FullQualifiedName DATE_LOGGED_FQN = new FullQualifiedName( "ol.datelogged" );
+    private final FullQualifiedName STATUS_FQN      = new FullQualifiedName( "ol.status" );
+    private final FullQualifiedName VERSION_FQN     = new FullQualifiedName( "ol.version" );
+    private final FullQualifiedName MODEL_FQN       = new FullQualifiedName( "vehicle.model" );
     private final UUID              studyEntitySetId;
     private final UUID              deviceEntitySetId;
     private final UUID              dataEntitySetId;
@@ -136,7 +130,8 @@ public class ChronicleServiceImpl implements ChronicleService {
 
         stringIdPropertyTypeId = edmApi.getPropertyTypeId( STRING_ID_FQN.getNamespace(), STRING_ID_FQN.getName() );
         participantIdPropertyTypeId = edmApi.getPropertyTypeId( PERSON_ID_FQN.getNamespace(), PERSON_ID_FQN.getName() );
-        dateLoggedPropertyTypeId = edmApi.getPropertyTypeId( DATE_LOGGED_FQN.getNamespace(), DATE_LOGGED_FQN.getName() );
+        dateLoggedPropertyTypeId = edmApi
+                .getPropertyTypeId( DATE_LOGGED_FQN.getNamespace(), DATE_LOGGED_FQN.getName() );
         versionPropertyTypeId = edmApi.getPropertyTypeId( VERSION_FQN.getNamespace(), VERSION_FQN.getName() );
         modelPropertyTypeId = edmApi.getPropertyTypeId( MODEL_FQN.getNamespace(), MODEL_FQN.getName() );
 
@@ -146,35 +141,67 @@ public class ChronicleServiceImpl implements ChronicleService {
 
     }
 
-    private Entity getDeviceEntity( String deviceId, Optional<Datasource> datasource ) {
+    private UUID getEntityKeyIdAndUpdate(
+            UUID entitySetId,
+            UUID keyPropertyTypeId,
+            Map<UUID, Set<Object>> data,
+            DataIntegrationApi dataIntegrationApi,
+            DataApi dataApi ) {
+
+        UUID entityKeyId = dataIntegrationApi.getEntityKeyIds( ImmutableSet.of( new EntityKey(
+                entitySetId,
+                ApiUtil.generateDefaultEntityId( ImmutableList.of( keyPropertyTypeId ), data )
+        ) ) ).iterator().next();
+
+        dataApi.updateEntitiesInEntitySet( entitySetId,
+                ImmutableMap.of( entityKeyId, data ),
+                UpdateType.Merge );
+
+        return entityKeyId;
+
+    }
+
+    private UUID getDeviceEntityKeyId(
+            String deviceId,
+            Optional<Datasource> datasource,
+            DataIntegrationApi dataIntegrationApi,
+            DataApi dataApi ) {
 
         Map<UUID, Set<Object>> deviceData = new HashMap<>();
+
         deviceData.put( stringIdPropertyTypeId, Sets.newHashSet( deviceId ) );
+
         if ( datasource.isPresent() && AndroidDevice.class.isAssignableFrom( datasource.get().getClass() ) ) {
             AndroidDevice device = (AndroidDevice) datasource.get();
             deviceData.put( modelPropertyTypeId, Sets.newHashSet( device.getModel() ) );
             deviceData.put( versionPropertyTypeId, Sets.newHashSet( device.getOsVersion() ) );
         }
-        EntityKey deviceEntityKey = new EntityKey(
+
+        return getEntityKeyIdAndUpdate(
                 deviceEntitySetId,
-                ApiUtil.generateDefaultEntityId( ImmutableList.of( stringIdPropertyTypeId ), deviceData )
+                stringIdPropertyTypeId,
+                deviceData,
+                dataIntegrationApi,
+                dataApi
         );
-        return new Entity( deviceEntityKey, deviceData );
+
     }
 
-    private Entity getStudyEntity( UUID studyId ) {
+    private UUID getStudyEntityKeyId( UUID studyId, DataIntegrationApi dataIntegrationApi, DataApi dataApi ) {
 
         Map<UUID, Set<Object>> studyData = new HashMap<>();
         studyData.put( stringIdPropertyTypeId, Sets.newHashSet( studyId.toString() ) );
-        EntityKey studyEntityKey = new EntityKey(
+
+        return getEntityKeyIdAndUpdate(
                 studyEntitySetId,
-                ApiUtil.generateDefaultEntityId( ImmutableList.of( stringIdPropertyTypeId ), studyData )
+                stringIdPropertyTypeId,
+                studyData,
+                dataIntegrationApi,
+                dataApi
         );
-        return new Entity( studyEntityKey, studyData );
     }
 
-    private Entity getParticipantEntity( String participantId, UUID studyId ) {
-
+    private UUID getParticipantEntitySetId( UUID studyId ) {
         EntitySetsApi entitySetsApi;
         try {
             ApiClient apiClient = apiClientCache.get( ApiClient.class );
@@ -184,38 +211,28 @@ public class ChronicleServiceImpl implements ChronicleService {
             return null;
         }
 
-        Map<UUID, Set<Object>> participantData = new HashMap<>();
-        participantData.put( participantIdPropertyTypeId, Sets.newHashSet( participantId ) );
-        UUID participantEntitySetId = entitySetsApi.getEntitySetId(
+        return entitySetsApi.getEntitySetId(
                 ChronicleServerUtil.getParticipantEntitySetName( studyId )
         );
-        EntityKey participantEntityKey = new EntityKey(
+
+    }
+
+    private UUID getParticipantEntityKeyId(
+            String participantId,
+            UUID participantEntitySetId,
+            DataIntegrationApi dataIntegrationApi,
+            DataApi dataApi ) {
+
+        Map<UUID, Set<Object>> participantData = new HashMap<>();
+        participantData.put( participantIdPropertyTypeId, Sets.newHashSet( participantId ) );
+
+        return getEntityKeyIdAndUpdate(
                 participantEntitySetId,
-                ApiUtil.generateDefaultEntityId( ImmutableList.of( participantIdPropertyTypeId ), participantData )
+                participantIdPropertyTypeId,
+                participantData,
+                dataIntegrationApi,
+                dataApi
         );
-        return new Entity( participantEntityKey, participantData );
-    }
-
-    private Association getRecordedByAssociation( EntityKey src, EntityKey dst, OffsetDateTime timestamp ) {
-
-        Map<UUID, Set<Object>> data = new HashMap<>();
-        data.put( dateLoggedPropertyTypeId, Sets.newHashSet( timestamp ) );
-        EntityKey key = new EntityKey(
-                recordedByEntitySetId,
-                ApiUtil.generateDefaultEntityId( ImmutableList.of( dateLoggedPropertyTypeId ), data )
-        );
-        return new Association( key, src, dst, data );
-    }
-
-    private Association getUsedByAssociation( EntityKey src, EntityKey dst ) {
-
-        Map<UUID, Set<Object>> data = new HashMap<>();
-        data.put( stringIdPropertyTypeId, Sets.newHashSet( UUID.randomUUID() ) );
-        EntityKey key = new EntityKey(
-                usedByEntitySetId,
-                ApiUtil.generateDefaultEntityId( ImmutableList.of( stringIdPropertyTypeId ), data )
-        );
-        return new Association( key, src, dst, data );
     }
 
     //  TODO: add in throws exception!
@@ -227,19 +244,26 @@ public class ChronicleServiceImpl implements ChronicleService {
             List<SetMultimap<UUID, Object>> data ) {
 
         DataIntegrationApi dataIntegrationApi;
+        DataApi dataApi;
         try {
             ApiClient apiClient = apiClientCache.get( ApiClient.class );
             dataIntegrationApi = apiClient.getDataIntegrationApi();
+            dataApi = apiClient.getDataApi();
         } catch ( ExecutionException e ) {
             logger.error( "Unable to load apis." );
             return 0;
         }
 
-        Set<Entity> entities = Sets.newHashSet();
-        Set<Association> associations = Sets.newHashSet();
+        ListMultimap<UUID, Map<UUID, Set<Object>>> entities = ArrayListMultimap.create();
+        ListMultimap<UUID, DataAssociation> associations = ArrayListMultimap.create();
 
-        Entity deviceEntity = getDeviceEntity( deviceId, Optional.absent() );
-        Entity participantEntity = getParticipantEntity( participantId, studyId );
+        UUID participantEntitySetId = getParticipantEntitySetId( studyId );
+
+        UUID deviceEntityKeyId = getDeviceEntityKeyId( deviceId, Optional.absent(), dataIntegrationApi, dataApi );
+        UUID participantEntityKeyId = getParticipantEntityKeyId( participantId,
+                participantEntitySetId,
+                dataIntegrationApi,
+                dataApi );
 
         ParticipationStatus status = getParticipationStatus( studyId, participantId );
         if ( ParticipationStatus.NOT_ENROLLED.equals( status ) ) {
@@ -247,33 +271,36 @@ public class ChronicleServiceImpl implements ChronicleService {
             return 0;
         }
 
-        entities.add( deviceEntity );
-        entities.add( participantEntity );
-
-        Set<Entity> dataEntities = data
-                .stream()
-                .map( dataDetails ->
-                        new Entity(
-                                new EntityKey(
-                                        dataEntitySetId,
-                                        ApiUtil.generateDefaultEntityId(
-                                                StreamUtil.stream( dataKey ),
-                                                Multimaps.asMap( dataDetails )
-                                        )
-                                ),
-                                dataDetails
-                        )
-                )
-                .collect( Collectors.toSet() );
-        entities.addAll( dataEntities );
-
         OffsetDateTime timestamp = OffsetDateTime.now();
-        dataEntities.stream().forEach( dataEntity -> {
-            associations.add( getRecordedByAssociation( dataEntity.getKey(), deviceEntity.getKey(), timestamp ) );
-            associations.add( getRecordedByAssociation( dataEntity.getKey(), participantEntity.getKey(), timestamp ) );
-        } );
 
-        dataIntegrationApi.integrateEntityAndAssociationData( new BulkDataCreation( entities, associations ), false );
+        for ( int i = 0; i < data.size(); i++ ) {
+            entities.put( dataEntitySetId, Multimaps.asMap( data.get( i ) ) );
+
+            Map<UUID, Set<Object>> recordedByEntity = ImmutableMap
+                    .of( dateLoggedPropertyTypeId, Sets.newHashSet( timestamp ) );
+
+            associations.put( recordedByEntitySetId, new DataAssociation(
+                    dataEntitySetId,
+                    java.util.Optional.of( i ),
+                    java.util.Optional.empty(),
+                    deviceEntitySetId,
+                    java.util.Optional.empty(),
+                    java.util.Optional.of( deviceEntityKeyId ),
+                    recordedByEntity
+            ) );
+
+            associations.put( recordedByEntitySetId, new DataAssociation(
+                    dataEntitySetId,
+                    java.util.Optional.of( i ),
+                    java.util.Optional.empty(),
+                    participantEntitySetId,
+                    java.util.Optional.empty(),
+                    java.util.Optional.of( participantEntityKeyId ),
+                    recordedByEntity
+            ) );
+        }
+
+        dataApi.createEntityAndAssociationData( new DataGraph( entities, associations ) );
 
         //  TODO:s Make sure to return any errors??? Currently void method.
         return data.size();
@@ -294,12 +321,10 @@ public class ChronicleServiceImpl implements ChronicleService {
 
         DataApi dataApi;
         DataIntegrationApi dataIntegrationApi;
-        SearchApi searchApi;
         try {
             ApiClient apiClient = apiClientCache.get( ApiClient.class );
             dataApi = apiClient.getDataApi();
             dataIntegrationApi = apiClient.getDataIntegrationApi();
-            searchApi = apiClient.getSearchApi();
         } catch ( ExecutionException e ) {
             logger.error( "Unable to load apis." );
             return null;
@@ -308,44 +333,46 @@ public class ChronicleServiceImpl implements ChronicleService {
         studyInformation.computeIfAbsent( studyId, key -> HashMultimap.create() )
                 .put( participantId, datasourceId );
 
-        Entity deviceEntity = getDeviceEntity( datasourceId, datasource );
-        Entity participantEntity = getParticipantEntity( participantId, studyId );
-        Entity studyEntity = getStudyEntity( studyId );
+        UUID deviceEntityKeyId = getDeviceEntityKeyId( datasourceId, datasource, dataIntegrationApi, dataApi );
+        EntityDataKey deviceEDK = new EntityDataKey( deviceEntitySetId, deviceEntityKeyId );
 
-        Set<Entity> entities = ImmutableSet.of( deviceEntity, participantEntity, studyEntity );
-        Set<Association> associations = ImmutableSet
-                .of( getUsedByAssociation( deviceEntity.getKey(), participantEntity.getKey() ),
-                        getUsedByAssociation( deviceEntity.getKey(), studyEntity.getKey() ) );
+        UUID participantEntitySetId = getParticipantEntitySetId( studyId );
+        UUID participantEntityKeyId = getParticipantEntityKeyId( participantId,
+                participantEntitySetId,
+                dataIntegrationApi,
+                dataApi );
+        EntityDataKey participantEDK = new EntityDataKey( participantEntitySetId, participantEntityKeyId );
 
-        dataIntegrationApi.integrateEntityAndAssociationData( new BulkDataCreation( entities, associations ), false );
+        UUID studyEntityKeyId = getStudyEntityKeyId( studyId, dataIntegrationApi, dataApi );
+        EntityDataKey studyEDK = new EntityDataKey( studyEntitySetId, studyEntityKeyId );
 
-        return getDatasourceEntityKeyId( datasourceId, searchApi, dataApi );
+        ListMultimap<UUID, DataEdge> associations = ArrayListMultimap.create();
+
+        Map<UUID, Set<Object>> usedByEntity = ImmutableMap
+                .of( stringIdPropertyTypeId, Sets.newHashSet( UUID.randomUUID() ) );
+
+        associations.put( usedByEntitySetId, new DataEdge( deviceEDK, participantEDK, usedByEntity ) );
+        associations.put( usedByEntitySetId, new DataEdge( deviceEDK, studyEDK, usedByEntity ) );
+
+        dataApi.createAssociations( associations );
+
+        return deviceEntityKeyId;
     }
 
     @Override
     public UUID getDatasourceEntityKeyId( String datasourceId ) {
         DataApi dataApi;
-        SearchApi searchApi;
+        DataIntegrationApi dataIntegrationApi;
         try {
             ApiClient apiClient = apiClientCache.get( ApiClient.class );
             dataApi = apiClient.getDataApi();
-            searchApi = apiClient.getSearchApi();
+            dataIntegrationApi = apiClient.getDataIntegrationApi();
         } catch ( ExecutionException e ) {
             logger.error( "Unable to load apis." );
             return null;
         }
-        return getDatasourceEntityKeyId( datasourceId, searchApi, dataApi );
-    }
 
-    private UUID getDatasourceEntityKeyId( String datasourceId, SearchApi searchApi, DataApi dataApi ) {
-        // HACK -- we should get entityKeyIds back from dataApi eventually
-        DataSearchResult result = searchApi.executeEntitySetDataQuery( deviceEntitySetId,
-                new SearchTerm( SEARCH_PREFIX + "." + stringIdPropertyTypeId.toString() + ":\"" + datasourceId + "\"", 0, 1 ) );
-        if ( result.getHits().size() == 0 ) {
-            return null; // TODO do we want to throw an error here?
-        }
-        return UUID
-                .fromString( result.getHits().iterator().next().get( INTERNAL_ID_FQN ).iterator().next().toString() );
+        return getDeviceEntityKeyId( datasourceId, Optional.absent(), dataIntegrationApi, dataApi );
     }
 
     @Override
@@ -404,7 +431,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                 .getHits();
 
         Set<UUID> studyEntityKeyIds = studySearchResult.stream()
-                .map( study -> UUID.fromString( study.get( INTERNAL_ID_FQN ).iterator().next().toString() ) )
+                .map( study -> UUID.fromString( study.get( ID_FQN ).iterator().next().toString() ) )
                 .collect( Collectors.toSet() );
 
         Set<UUID> participantEntitySetIds = StreamUtil.stream( entitySetsApi.getEntitySets() )
@@ -430,7 +457,8 @@ public class ChronicleServiceImpl implements ChronicleService {
                 .stream()
                 .flatMap( Collection::stream )
                 .parallel()
-                .filter( neighbor -> neighbor.getNeighborEntitySet().isPresent() && neighbor.getNeighborId().isPresent() )
+                .filter( neighbor -> neighbor.getNeighborEntitySet().isPresent() && neighbor.getNeighborId()
+                        .isPresent() )
                 .filter( neighbor -> neighbor.getNeighborEntitySet().get().getName().startsWith( PARTICIPANTS_PREFIX ) )
                 .forEach( neighbor -> {
                     UUID participantEntitySetId = neighbor.getNeighborEntitySet().get().getId();
@@ -445,8 +473,8 @@ public class ChronicleServiceImpl implements ChronicleService {
                         .executeFilteredEntityNeighborSearch( entry.getKey(),
                                 new EntityNeighborsFilter( Sets.newHashSet( entry.getValue() ),
                                         java.util.Optional.of( ImmutableSet.of( deviceEntitySetId ) ),
-                                                java.util.Optional.of( ImmutableSet.of() ),
-                                                java.util.Optional.empty() ) ) ) );
+                                        java.util.Optional.of( ImmutableSet.of() ),
+                                        java.util.Optional.empty() ) ) ) );
 
         // populate study information
 
@@ -454,7 +482,7 @@ public class ChronicleServiceImpl implements ChronicleService {
             SetMultimap<String, String> participantsToDevices = HashMultimap.create();
 
             UUID studyId = UUID.fromString( studyObj.get( STRING_ID_FQN ).iterator().next().toString() );
-            UUID studyEntityKeyId = UUID.fromString( studyObj.get( INTERNAL_ID_FQN ).iterator().next().toString() );
+            UUID studyEntityKeyId = UUID.fromString( studyObj.get( ID_FQN ).iterator().next().toString() );
 
             if ( studyNeighbors.containsKey( studyEntityKeyId ) ) {
                 studyNeighbors.get( studyEntityKeyId ).stream()
@@ -466,7 +494,8 @@ public class ChronicleServiceImpl implements ChronicleService {
                         )
                         .forEach( participantNeighbor -> {
 
-                            Set<Object> participantIds = participantNeighbor.getNeighborDetails().get().get(PERSON_ID_FQN);
+                            Set<Object> participantIds = participantNeighbor.getNeighborDetails().get()
+                                    .get( PERSON_ID_FQN );
                             if ( participantIds.size() > 0 ) {
 
                                 String participantId = participantIds.iterator().next().toString();
@@ -534,7 +563,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                             && DATA_ENTITY_SET_NAME.equals( neighbor.getNeighborEntitySet().get().getName() )
                     )
                     .map( neighbor -> {
-                        neighbor.getNeighborDetails().get().remove( INTERNAL_ID_FQN );
+                        neighbor.getNeighborDetails().get().remove( ID_FQN );
                         Map<String, Set<Object>> neighborDetails = Maps.newHashMap();
                         neighbor.getNeighborDetails().get()
                                 .forEach( ( key, value ) -> neighborDetails.put( key.toString(), value ) );
@@ -576,31 +605,19 @@ public class ChronicleServiceImpl implements ChronicleService {
     }
 
     @Override
-    public UUID getParticipantEntityKeyId( String participantId, UUID participantsEntitySetId, SearchApi searchApi ) {
-        DataSearchResult result = searchApi.executeEntitySetDataQuery(
-                participantsEntitySetId,
-                new SearchTerm( SEARCH_PREFIX + "." + participantIdPropertyTypeId.toString() + ":\"" + participantId + "\"", 0, 1 )
-        );
-        if ( result.getHits().size() != 1 ) {
-            return null;
-        }
-        Map<FullQualifiedName, Set<Object>> data = result.getHits().iterator().next();
-        if ( data.containsKey( INTERNAL_ID_FQN ) ) {
-            return UUID.fromString( data.get( INTERNAL_ID_FQN ).iterator().next().toString() );
-        }
-        return null;
-    }
-
-    @Override
     public ParticipationStatus getParticipationStatus( UUID studyId, String participantId ) {
 
         EntitySetsApi entitySetsApi;
         SearchApi searchApi;
+        DataApi dataApi;
+        DataIntegrationApi dataIntegrationApi;
 
         try {
             ApiClient apiClient = apiClientCache.get( ApiClient.class );
             entitySetsApi = apiClient.getEntitySetsApi();
             searchApi = apiClient.getSearchApi();
+            dataApi = apiClient.getDataApi();
+            dataIntegrationApi = apiClient.getDataIntegrationApi();
         } catch ( ExecutionException e ) {
             logger.error( "Unable to load apis." );
             return ParticipationStatus.UNKNOWN;
@@ -613,7 +630,10 @@ public class ChronicleServiceImpl implements ChronicleService {
             return ParticipationStatus.UNKNOWN;
         }
 
-        UUID participantEntityKeyId = getParticipantEntityKeyId( participantId, participantsEntitySetId, searchApi );
+        UUID participantEntityKeyId = getParticipantEntityKeyId( participantId,
+                participantsEntitySetId,
+                dataIntegrationApi,
+                dataApi );
         if ( participantEntityKeyId == null ) {
             logger.error( "unable to load participant entity key id for participantId = {}", participantId );
             return ParticipationStatus.UNKNOWN;

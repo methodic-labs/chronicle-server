@@ -23,7 +23,6 @@ import com.google.common.base.Optional;
 import com.google.common.collect.SetMultimap;
 import com.openlattice.chronicle.constants.ParticipationStatus;
 import com.openlattice.chronicle.sources.Datasource;
-import com.openlattice.search.SearchApi;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
 
 import java.util.List;
@@ -55,8 +54,6 @@ public interface ChronicleService {
     Iterable<Map<String, Set<Object>>> getAllParticipantData( UUID studyId, UUID participantEntityId );
 
     Map<FullQualifiedName, Set<Object>> getParticipantEntity( UUID studyId, UUID participantEntityId );
-
-    UUID getParticipantEntityKeyId( String participantId, UUID participantsEntitySetId, SearchApi searchApi );
 
     ParticipationStatus getParticipationStatus( UUID studyId, String participantId );
 }
