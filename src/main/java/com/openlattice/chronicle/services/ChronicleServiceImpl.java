@@ -72,6 +72,7 @@ public class ChronicleServiceImpl implements ChronicleService {
     private final String   STUDY_ENTITY_SET_NAME       = "chronicle_study";
     private final String   DEVICES_ENTITY_SET_NAME     = "chronicle_device";
     private final String   DATA_ENTITY_SET_NAME        = "chronicle_app_data";
+    private final String   PREPROCESSED_DATA_ENTITY_SET_NAME = "chronicle_preprocessed_app_data";
     private final String   RECORDED_BY_ENTITY_SET_NAME = "chronicle_recorded_by";
     private final String   USED_BY_ENTITY_SET_NAME     = "chronicle_used_by";
     private final String   PARTICIPATED_IN_AESN        = "chronicle_participated_in";
@@ -87,6 +88,7 @@ public class ChronicleServiceImpl implements ChronicleService {
     private final UUID              studyEntitySetId;
     private final UUID              deviceEntitySetId;
     private final UUID              dataEntitySetId;
+    private final UUID              preProcessedEntitySetId;
     private final UUID              recordedByEntitySetId;
     private final UUID              usedByEntitySetId;
     private final UUID              participatedInEntitySetId;
@@ -124,6 +126,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         studyEntitySetId = entitySetsApi.getEntitySetId( STUDY_ENTITY_SET_NAME );
         deviceEntitySetId = entitySetsApi.getEntitySetId( DEVICES_ENTITY_SET_NAME );
         dataEntitySetId = entitySetsApi.getEntitySetId( DATA_ENTITY_SET_NAME );
+        preProcessedEntitySetId = entitySetsApi.getEntitySetId(PREPROCESSED_DATA_ENTITY_SET_NAME);
         recordedByEntitySetId = entitySetsApi.getEntitySetId( RECORDED_BY_ENTITY_SET_NAME );
         usedByEntitySetId = entitySetsApi.getEntitySetId( USED_BY_ENTITY_SET_NAME );
         participatedInEntitySetId = entitySetsApi.getEntitySetId( PARTICIPATED_IN_AESN );
@@ -538,16 +541,14 @@ public class ChronicleServiceImpl implements ChronicleService {
         logger.info( "Updated studyParticipants. Size = {}", this.studyParticipants.size() );
     }
 
-    @Override
-    public Iterable<Map<String, Set<Object>>> getAllParticipantData( UUID studyId, UUID participantEntityKeyId ) {
-
+    private Iterable<Map<String, Set<Object>>> getParticipantDataHelper(UUID studyId, UUID participantEntityKeyId, String entitySetName) {
         try {
             ApiClient apiClient = apiClientCache.get( ApiClient.class );
             EntitySetsApi entitySetsApi = apiClient.getEntitySetsApi();
             SearchApi searchApi = apiClient.getSearchApi();
 
-            String entitySetName = ChronicleServerUtil.getParticipantEntitySetName( studyId );
-            UUID entitySetId = entitySetsApi.getEntitySetId( entitySetName );
+            String participantEntitySetName = ChronicleServerUtil.getParticipantEntitySetName( studyId );
+            UUID entitySetId = entitySetsApi.getEntitySetId( participantEntitySetName );
             if ( entitySetId == null ) {
                 logger.error( "Unable to load participant EntitySet id." );
                 return null;
@@ -560,7 +561,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                     .stream()
                     .filter( neighbor -> neighbor.getNeighborDetails().isPresent()
                             && neighbor.getNeighborEntitySet().isPresent()
-                            && DATA_ENTITY_SET_NAME.equals( neighbor.getNeighborEntitySet().get().getName() )
+                            && entitySetName.equals( neighbor.getNeighborEntitySet().get().getName() )
                     )
                     .map( neighbor -> {
                         neighbor.getNeighborDetails().get().remove( ID_FQN );
@@ -574,6 +575,15 @@ public class ChronicleServiceImpl implements ChronicleService {
             logger.error( "Unable to load participant data.", e );
             return null;
         }
+    }
+
+    public Iterable<Map<String, Set<Object>>> getAllPreprocessedParticipantData (UUID studyId, UUID participatedInEntityKeyId ) {
+        return getParticipantDataHelper(studyId, participatedInEntityKeyId, PREPROCESSED_DATA_ENTITY_SET_NAME);
+    }
+
+    @Override
+    public Iterable<Map<String, Set<Object>>> getAllParticipantData( UUID studyId, UUID participantEntityKeyId ) {
+        return getParticipantDataHelper(studyId, participantEntityKeyId, DATA_ENTITY_SET_NAME);
     }
 
     @Override
