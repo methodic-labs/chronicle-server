@@ -33,7 +33,9 @@ import com.openlattice.chronicle.configuration.ChronicleConfiguration;
 import com.openlattice.chronicle.constants.ParticipationStatus;
 import com.openlattice.chronicle.sources.AndroidDevice;
 import com.openlattice.chronicle.sources.Datasource;
+import com.openlattice.chronicle.util.ParticipantEntityData;
 import com.openlattice.client.ApiClient;
+import com.openlattice.client.RetrofitFactory;
 import com.openlattice.data.*;
 import com.openlattice.data.requests.NeighborEntityDetails;
 import com.openlattice.edm.EdmApi;
@@ -63,7 +65,7 @@ public class ChronicleServiceImpl implements ChronicleService {
     protected static final Logger logger = LoggerFactory.getLogger( ChronicleServiceImpl.class );
 
     private final Map<UUID, SetMultimap<String, String>> studyInformation  = new HashMap<>();
-    private final SetMultimap<UUID, String>              studyParticipants = HashMultimap.create();
+    private final SetMultimap<UUID, ParticipantEntityData> studyParticipants = HashMultimap.create();
 
     private final String username;
     private final String password;
@@ -217,22 +219,13 @@ public class ChronicleServiceImpl implements ChronicleService {
 
     }
 
-    private UUID getParticipantEntityKeyId(
-            String participantId,
-            UUID participantEntitySetId,
-            DataIntegrationApi dataIntegrationApi,
-            DataApi dataApi ) {
-
-        Map<UUID, Set<Object>> participantData = new HashMap<>();
-        participantData.put( participantIdPropertyTypeId, Sets.newHashSet( participantId ) );
-
-        return getEntityKeyIdAndUpdate(
-                participantEntitySetId,
-                participantIdPropertyTypeId,
-                participantData,
-                dataIntegrationApi,
-                dataApi
-        );
+    private UUID getParticipantEntityKeyId( String participantId, UUID studyId ) {
+           for (ParticipantEntityData participant : studyParticipants.get(studyId)) {
+               if (participant.getParticipantId().equals(participantId)) {
+                   return participant.getParticipantEntityKeyId();
+               }
+           }
+           return null;
     }
 
     //  TODO: add in throws exception!
@@ -260,10 +253,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         UUID participantEntitySetId = getParticipantEntitySetId( studyId );
 
         UUID deviceEntityKeyId = getDeviceEntityKeyId( deviceId, Optional.absent(), dataIntegrationApi, dataApi );
-        UUID participantEntityKeyId = getParticipantEntityKeyId( participantId,
-                participantEntitySetId,
-                dataIntegrationApi,
-                dataApi );
+        UUID participantEntityKeyId = getParticipantEntityKeyId( participantId, studyId );
 
         ParticipationStatus status = getParticipationStatus( studyId, participantId );
         if ( ParticipationStatus.NOT_ENROLLED.equals( status ) ) {
@@ -337,10 +327,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         EntityDataKey deviceEDK = new EntityDataKey( deviceEntitySetId, deviceEntityKeyId );
 
         UUID participantEntitySetId = getParticipantEntitySetId( studyId );
-        UUID participantEntityKeyId = getParticipantEntityKeyId( participantId,
-                participantEntitySetId,
-                dataIntegrationApi,
-                dataApi );
+        UUID participantEntityKeyId = getParticipantEntityKeyId( participantId, studyId );
         EntityDataKey participantEDK = new EntityDataKey( participantEntitySetId, participantEntityKeyId );
 
         UUID studyEntityKeyId = getStudyEntityKeyId( studyId, dataIntegrationApi, dataApi );
@@ -388,7 +375,10 @@ public class ChronicleServiceImpl implements ChronicleService {
 
     @Override
     public boolean isKnownParticipant( UUID studyId, String participantId ) {
-        return studyParticipants.get( studyId ).contains( participantId );
+        for (ParticipantEntityData data: studyParticipants.get(studyId)) {
+            return data.getParticipantId().equals(participantId);
+        }
+        return false;
     }
 
     @Override
@@ -424,7 +414,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         logger.info( "Refreshing study info..." );
 
         Map<UUID, SetMultimap<String, String>> studyInformation = Maps.newConcurrentMap();
-        SetMultimap<UUID, String> studyParticipants = HashMultimap.create();
+        SetMultimap<UUID, ParticipantEntityData> studyParticipants = HashMultimap.create();
 
         List<Map<FullQualifiedName, Set<Object>>> studySearchResult = searchApi
                 .executeEntitySetDataQuery( studyEntitySetId, new SearchTerm( "*", 0, SearchApi.MAX_SEARCH_RESULTS ) )
@@ -501,7 +491,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                                 String participantId = participantIds.iterator().next().toString();
                                 UUID participantEntityKeyId = participantNeighbor.getNeighborId().get();
 
-                                studyParticipants.put( studyId, participantId );
+                                studyParticipants.put( studyId, new ParticipantEntityData(participantId, participantEntityKeyId));
                                 if ( participantNeighbors.containsKey( participantEntityKeyId ) ) {
                                     Set<String> devices = participantNeighbors
                                             .get( participantEntityKeyId )
@@ -609,15 +599,11 @@ public class ChronicleServiceImpl implements ChronicleService {
 
         EntitySetsApi entitySetsApi;
         SearchApi searchApi;
-        DataApi dataApi;
-        DataIntegrationApi dataIntegrationApi;
 
         try {
             ApiClient apiClient = apiClientCache.get( ApiClient.class );
             entitySetsApi = apiClient.getEntitySetsApi();
             searchApi = apiClient.getSearchApi();
-            dataApi = apiClient.getDataApi();
-            dataIntegrationApi = apiClient.getDataIntegrationApi();
         } catch ( ExecutionException e ) {
             logger.error( "Unable to load apis." );
             return ParticipationStatus.UNKNOWN;
@@ -630,10 +616,7 @@ public class ChronicleServiceImpl implements ChronicleService {
             return ParticipationStatus.UNKNOWN;
         }
 
-        UUID participantEntityKeyId = getParticipantEntityKeyId( participantId,
-                participantsEntitySetId,
-                dataIntegrationApi,
-                dataApi );
+        UUID participantEntityKeyId = getParticipantEntityKeyId( participantId, studyId );
         if ( participantEntityKeyId == null ) {
             logger.error( "unable to load participant entity key id for participantId = {}", participantId );
             return ParticipationStatus.UNKNOWN;
@@ -650,7 +633,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         );
 
         Set<Map<FullQualifiedName, Set<Object>>> target = neighborResults
-                .get( participantEntityKeyId )
+                .getOrDefault(participantEntityKeyId, ImmutableList.of())
                 .stream()
                 .filter( neighborResult -> {
                     if ( neighborResult.getNeighborDetails().isPresent() ) {
