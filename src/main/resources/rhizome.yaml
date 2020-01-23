@@ -13,9 +13,13 @@ hazelcast:
     seed-nodes:
         - "localhost"
     port: 5710
+    cp-member-count: 0
 
-hikari:
-    jdbcUrl: "jdbc:postgresql://localhost:5432/openlattice"
-    username: "oltest"
-    password: "test"
-    maximumPoolSize: 3
+postgres:
+    initialize-indices: false
+    hikari:
+        jdbcUrl: "jdbc:postgresql://localhost:5432/openlattice"
+        username: "oltest"
+        password: "test"
+        maximumPoolSize: 10
+        connectionTimeout: 30000

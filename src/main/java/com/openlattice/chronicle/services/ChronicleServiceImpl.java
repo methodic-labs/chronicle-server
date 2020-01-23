@@ -107,14 +107,16 @@ public class ChronicleServiceImpl implements ChronicleService {
         this.username = chronicleConfiguration.getUser();
         this.password = chronicleConfiguration.getPassword();
 
+        String token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFsZm9uY2VAb3BlbmxhdHRpY2UuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsInVzZXJfaWQiOiJnb29nbGUtb2F1dGgyfDEwODQ4MDI2NTc3ODY0NDk2MTU1NCIsImFwcF9tZXRhZGF0YSI6eyJyb2xlcyI6WyJBdXRoZW50aWNhdGVkVXNlciJdLCJhY3RpdmF0ZWQiOiJhY3RpdmF0ZWQifSwibmlja25hbWUiOiJhbGZvbmNlIiwicm9sZXMiOlsiQXV0aGVudGljYXRlZFVzZXIiXSwiaXNzIjoiaHR0cHM6Ly9vcGVubGF0dGljZS5hdXRoMC5jb20vIiwic3ViIjoiZ29vZ2xlLW9hdXRoMnwxMDg0ODAyNjU3Nzg2NDQ5NjE1NTQiLCJhdWQiOiJLVHpneXhzNktCY0pIQjg3MmVTTWUyY3BUSHpoeFM5OSIsImlhdCI6MTU3OTgxMjQ2NiwiZXhwIjoxNTc5ODk4ODY2fQ.761k03deuO7b0lo8-B8sp_90cqrM0zEz4QI4V4-ORlg";
         apiClientCache = CacheBuilder
                 .newBuilder()
                 .expireAfterWrite( 10, TimeUnit.HOURS )
                 .build( new CacheLoader<Class<?>, ApiClient>() {
                     @Override
                     public ApiClient load( Class<?> key ) throws Exception {
-                        String jwtToken = MissionControl.getIdToken( username, password );
-                        return new ApiClient( () -> jwtToken );
+//                        String jwtToken = MissionControl.getIdToken( username, password );
+//                        return new ApiClient( () -> jwtToken );
+                        return new ApiClient( RetrofitFactory.Environment.LOCAL, () -> token);
                     }
                 } );
 
@@ -219,7 +221,7 @@ public class ChronicleServiceImpl implements ChronicleService {
 
     }
 
-    private UUID getParticipantEntityKeyId( String participantId, UUID studyId ) {
+    private UUID getParticipantEntityKeyId (String participantId, UUID studyId) {
            for (ParticipantEntityData participant : studyParticipants.get(studyId)) {
                if (participant.getParticipantId().equals(participantId)) {
                    return participant.getParticipantEntityKeyId();
