@@ -505,6 +505,24 @@ public class ChronicleServiceImpl implements ChronicleService {
                                     studyParticipants.put(studyId, Map.of(participantId, participantEntityKeyId));
                                     if ( participantNeighbors.containsKey( participantEntityKeyId ) ) {
                                         Map<String, UUID> devices = new HashMap<>();
+                                        participantNeighbors
+                                                .get(participantEntityKeyId)
+                                                .stream()
+                                                .filter(neighbor -> neighbor.getNeighborEntitySet().isPresent() && neighbor
+                                                    .getNeighborEntitySet()
+                                                    .get()
+                                                    .getName()
+                                                    .equals(DEVICES_ENTITY_SET_NAME)
+                                                ).forEach (neighbor -> {
+                                                    if (neighbor.getNeighborDetails().isPresent()) {
+                                                        String deviceId = neighbor.getNeighborDetails().get().get(STRING_ID_FQN).iterator().next().toString();
+                                                        UUID deviceEntityKeyId = UUID.fromString(neighbor.getNeighborDetails().get().get(ID_FQN).iterator().next().toString());
+                                                        devices.put(deviceId, deviceEntityKeyId);
+                                                    }
+
+                                                 });
+
+
                                         participantsToDevices.put( participantId, devices );
                                     }
                                 }
