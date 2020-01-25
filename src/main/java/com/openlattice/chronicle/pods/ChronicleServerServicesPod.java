@@ -77,8 +77,7 @@ public class ChronicleServerServicesPod {
 
     @Bean
     public Auth0TokenProvider auth0TokenProvider() {
-        // return new Auth0TokenProvider( auth0Configuration );
-        return null;
+        return new Auth0TokenProvider( auth0Configuration );
     }
 
     @Bean
