@@ -62,9 +62,14 @@ import static com.openlattice.edm.EdmConstants.ID_FQN;
 public class ChronicleServiceImpl implements ChronicleService {
     protected static final Logger logger = LoggerFactory.getLogger( ChronicleServiceImpl.class );
 
-    private final Map<UUID, Map<String, Map<String, UUID>>> studyDevices  = new HashMap<>(); // studyId -> participantId -> deviceID -> device EKID
-    private final Map<UUID, Map<String, UUID>> studyParticipants = new HashMap<>(); // studyId -> participantId -> participant EKID
-    private final Map<UUID, UUID> studies = new HashMap<>(); // studyId -> study EKID
+    // studyId -> participantId -> deviceID -> device EKID
+    private final Map<UUID, Map<String, Map<String, UUID>>> studyDevices  = new HashMap<>();
+
+    // studyId -> participantId -> participant EKID
+    private final Map<UUID, Map<String, UUID>> studyParticipants = new HashMap<>();
+
+    // studyId -> study EKID
+    private final Map<UUID, UUID> studies = new HashMap<>();
 
     private final String username;
     private final String password;
@@ -117,7 +122,6 @@ public class ChronicleServiceImpl implements ChronicleService {
                     }
                 } );
 
-
         ApiClient apiClient = apiClientCache.get( ApiClient.class );
 
         EdmApi edmApi = apiClient.getEdmApi();
@@ -163,7 +167,7 @@ public class ChronicleServiceImpl implements ChronicleService {
 
     }
 
-    private UUID getDeviceEntityKeyId(
+    private UUID reserveDeviceEntityKeyId(
             String deviceId,
             Optional<Datasource> datasource,
             DataIntegrationApi dataIntegrationApi,
@@ -194,6 +198,8 @@ public class ChronicleServiceImpl implements ChronicleService {
         if (studies.containsKey(studyId)) {
             return studies.get(studyId);
         }
+
+        logger.error("Failed to retrieve studyEntityKeyId, studyId = {}", studyId);
         return null;
     }
 
@@ -215,10 +221,17 @@ public class ChronicleServiceImpl implements ChronicleService {
 
     private UUID getParticipantEntityKeyId (String participantId, UUID studyId) {
         if (studyParticipants.containsKey(studyId)) {
-            return studyParticipants
-                    .get(studyId)
-                    .get(participantId);
+            Map<String, UUID> participantIdToEKMap = studyParticipants.get(studyId);
+
+            if (participantIdToEKMap.containsKey(participantId)) {
+                return participantIdToEKMap.get(participantId);
+            } else {
+                logger.error("Unable to get participantEntityKeyId. participant {} not associated with studId {} ", participantId, studyId);
+            }
+        } else {
+            logger.error("Unable to get participantEntityKeyId of participantId {}. StudyId {}  not found ", participantId, studyId);
         }
+
         return null;
     }
 
@@ -243,7 +256,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         ListMultimap<UUID, DataAssociation> associations = ArrayListMultimap.create();
 
         UUID participantEntitySetId = getParticipantEntitySetId( studyId );
-        UUID deviceEntityKeyId = getDatasourceEntityKeyId(studyId, participantId, deviceId);
+        UUID deviceEntityKeyId = getDeviceEntityKeyId(studyId, participantId, deviceId);
 
         UUID participantEntityKeyId = getParticipantEntityKeyId( participantId, studyId );
         if (participantEntityKeyId == null) {
@@ -316,9 +329,9 @@ public class ChronicleServiceImpl implements ChronicleService {
             return null;
         }
 
-        UUID deviceEntityKeyId = getDeviceEntityKeyId( datasourceId, datasource, dataIntegrationApi, dataApi );
+        UUID deviceEntityKeyId = reserveDeviceEntityKeyId( datasourceId, datasource, dataIntegrationApi, dataApi );
         if (deviceEntityKeyId == null) {
-            logger.error("Unable to retrieve deviceEntityKeyId, dataSourceId = {}, studyId = {}, participantId = {}", datasourceId, studyId, participantId);
+            logger.error("Unable to reserve deviceEntityKeyId, dataSourceId = {}, studyId = {}, participantId = {}", datasourceId, studyId, participantId);
             return null;
         }
         EntityDataKey deviceEDK = new EntityDataKey( deviceEntitySetId, deviceEntityKeyId );
@@ -354,7 +367,7 @@ public class ChronicleServiceImpl implements ChronicleService {
     }
 
     @Override
-    public UUID getDatasourceEntityKeyId( UUID studyId, String participantId, String datasourceId ) {
+    public UUID getDeviceEntityKeyId( UUID studyId, String participantId, String datasourceId ) {
         logger.info("Getting device entity key id, studyId = {}, participantId = {}, datasourceId = {}", studyId, participantId, datasourceId);
 
         if (isKnownDatasource(studyId, participantId, datasourceId)) {
@@ -378,8 +391,7 @@ public class ChronicleServiceImpl implements ChronicleService {
 
     @Override
     public boolean isKnownParticipant( UUID studyId, String participantId ) {
-        return studyParticipants.containsKey(studyId)
-                && studyParticipants.get(studyId).containsKey(participantId);
+        return studyParticipants.getOrDefault(studyId, new HashMap<>()).containsKey(participantId);
     }
 
     @Override
@@ -421,6 +433,11 @@ public class ChronicleServiceImpl implements ChronicleService {
         List<Map<FullQualifiedName, Set<Object>>> studySearchResult = searchApi
                 .executeEntitySetDataQuery( studyEntitySetId, new SearchTerm( "*", 0, SearchApi.MAX_SEARCH_RESULTS ) )
                 .getHits();
+
+        if (studySearchResult.isEmpty()) {
+            logger.info("No studies found.");
+            return;
+        }
 
         Set<UUID> studyEntityKeyIds = studySearchResult.stream()
                 .map( study -> UUID.fromString( study.get( ID_FQN ).iterator().next().toString() ) )
@@ -470,11 +487,17 @@ public class ChronicleServiceImpl implements ChronicleService {
 
         // populate study information
 
-        studySearchResult.forEach( studyObj -> {
+        studySearchResult.forEach(studyObj -> {
             Map<String, Map<String, UUID>> participantsToDevices = new HashMap<>();
+            UUID studyId, studyEntityKeyId;
 
-            UUID studyId = UUID.fromString( studyObj.get( STRING_ID_FQN ).iterator().next().toString() );
-            UUID studyEntityKeyId = UUID.fromString( studyObj.get( ID_FQN ).iterator().next().toString() );
+            try {
+                studyId = UUID.fromString( studyObj.get( STRING_ID_FQN ).iterator().next().toString() );
+                studyEntityKeyId = UUID.fromString( studyObj.get( ID_FQN ).iterator().next().toString() );
+            } catch ( IllegalArgumentException error) {
+                logger.error("invalid studyId : {}", studyObj.get( STRING_ID_FQN ).iterator().next().toString());
+                return; // skip the current study object
+            }
 
             if (studies.containsKey(studyId)) {
                 logger.error("encountered duplicate studyId = {}", studyId);
