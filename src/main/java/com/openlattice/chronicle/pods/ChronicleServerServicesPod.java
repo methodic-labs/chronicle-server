@@ -28,6 +28,7 @@ import com.hazelcast.core.HazelcastInstance;
 import com.kryptnostic.rhizome.configuration.service.ConfigurationService;
 import com.openlattice.auth0.Auth0Pod;
 import com.openlattice.auth0.Auth0TokenProvider;
+import com.openlattice.auth0.AwsAuth0TokenProvider;
 import com.openlattice.authentication.Auth0Configuration;
 import com.openlattice.chronicle.configuration.ChronicleConfiguration;
 import com.openlattice.chronicle.services.ChronicleService;
@@ -77,7 +78,7 @@ public class ChronicleServerServicesPod {
 
     @Bean
     public Auth0TokenProvider auth0TokenProvider() {
-        return new Auth0TokenProvider( auth0Configuration );
+        return new AwsAuth0TokenProvider( auth0Configuration );
     }
 
     @Bean
