@@ -59,6 +59,12 @@ distTar {
 apply from: "https://raw.githubusercontent.com/openlattice/gradles/master/openlattice.gradle"
 apply plugin: 'kotlin'
 
+apply plugin: 'jacoco'
+
+jacoco {
+    toolVersion = "0.8.2"
+}
+
 mainClassName = "com.openlattice.chronicle.ChronicleServer"
 
 def CS_XMS = "$System.env.CHRONICLE_SERVER_XMS"
