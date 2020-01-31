@@ -58,8 +58,8 @@ distTar {
 
 apply from: "https://raw.githubusercontent.com/openlattice/gradles/master/openlattice.gradle"
 apply plugin: 'kotlin'
-
 apply plugin: 'jacoco'
+apply plugin: 'maven-publish'
 
 jacoco {
     toolVersion = "0.8.2"
