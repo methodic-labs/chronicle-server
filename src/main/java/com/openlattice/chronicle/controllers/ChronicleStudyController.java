@@ -20,7 +20,6 @@
 package com.openlattice.chronicle.controllers;
 
 import com.google.common.base.Optional;
-import com.google.common.collect.SetMultimap;
 import com.openlattice.chronicle.ChronicleStudyApi;
 import com.openlattice.chronicle.constants.CustomMediaType;
 import com.openlattice.chronicle.data.FileType;
@@ -31,12 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import javax.inject.Inject;
 import javax.servlet.http.HttpServletResponse;
@@ -87,7 +81,7 @@ public class ChronicleStudyController implements ChronicleStudyApi {
         if ( knownParticipant && !knownDatasource ) {
             return chronicleService.registerDatasource( studyId, participantId, datasourceId, datasource );
         } else if ( knownParticipant && knownDatasource ) {
-            return chronicleService.getDatasourceEntityKeyId( datasourceId );
+            return chronicleService.getDeviceEntityKeyId( studyId, participantId, datasourceId );
         } else {
             logger.error(
                     "Unable to enroll device for study {}, participant {}, and datasource {} due valid participant = {} or valid device = {}",

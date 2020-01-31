@@ -43,7 +43,7 @@ public interface ChronicleService {
 
     UUID registerDatasource( UUID studyId, String participantId, String datasourceId, Optional<Datasource> datasource );
 
-    UUID getDatasourceEntityKeyId( String datasourceId );
+    UUID getDeviceEntityKeyId( UUID studyId, String participantId, String datasourceId );
 
     boolean isKnownDatasource( UUID studyId, String participantId, String datasourceId );
 
