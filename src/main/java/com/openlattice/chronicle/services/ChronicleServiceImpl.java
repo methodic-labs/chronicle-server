@@ -125,7 +125,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         this.username = chronicleConfiguration.getUser();
         this.password = chronicleConfiguration.getPassword();
 
-        String token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFsZm9uY2VAb3BlbmxhdHRpY2UuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsInVzZXJfaWQiOiJnb29nbGUtb2F1dGgyfDEwODQ4MDI2NTc3ODY0NDk2MTU1NCIsImFwcF9tZXRhZGF0YSI6eyJyb2xlcyI6WyJBdXRoZW50aWNhdGVkVXNlciJdLCJhY3RpdmF0ZWQiOiJhY3RpdmF0ZWQifSwibmlja25hbWUiOiJhbGZvbmNlIiwicm9sZXMiOlsiQXV0aGVudGljYXRlZFVzZXIiXSwiaXNzIjoiaHR0cHM6Ly9vcGVubGF0dGljZS5hdXRoMC5jb20vIiwic3ViIjoiZ29vZ2xlLW9hdXRoMnwxMDg0ODAyNjU3Nzg2NDQ5NjE1NTQiLCJhdWQiOiJLVHpneXhzNktCY0pIQjg3MmVTTWUyY3BUSHpoeFM5OSIsImlhdCI6MTU4MDQ5MzM0MywiZXhwIjoxNTgwNTc5NzQzfQ.e-ZmkKPqsNspa8FWMRMsgcX7bnvB1I6qSLHEjrTaNLU";
+        String token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFsZm9uY2VAb3BlbmxhdHRpY2UuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsInVzZXJfaWQiOiJnb29nbGUtb2F1dGgyfDEwODQ4MDI2NTc3ODY0NDk2MTU1NCIsImFwcF9tZXRhZGF0YSI6eyJyb2xlcyI6WyJBdXRoZW50aWNhdGVkVXNlciJdLCJhY3RpdmF0ZWQiOiJhY3RpdmF0ZWQifSwibmlja25hbWUiOiJhbGZvbmNlIiwicm9sZXMiOlsiQXV0aGVudGljYXRlZFVzZXIiXSwiaXNzIjoiaHR0cHM6Ly9vcGVubGF0dGljZS5hdXRoMC5jb20vIiwic3ViIjoiZ29vZ2xlLW9hdXRoMnwxMDg0ODAyNjU3Nzg2NDQ5NjE1NTQiLCJhdWQiOiJLVHpneXhzNktCY0pIQjg3MmVTTWUyY3BUSHpoeFM5OSIsImlhdCI6MTU4MDc1MTgwNiwiZXhwIjoxNTgwODM4MjA2fQ.nr07X1hi6Gx0jdYLEmAdAaYkIliuUjrdt0VbKIjUdCU";
 
         apiClientCache = CacheBuilder
                 .newBuilder()
@@ -235,13 +235,14 @@ public class ChronicleServiceImpl implements ChronicleService {
     }
 
     // return an OffsetDateTime with time 00:00
-    private OffsetDateTime parseDateTime(String dateTime) {
+    private String parseDateTime(String dateTime) {
         return OffsetDateTime
                 .parse(dateTime)
                 .withHour(0)
                 .withMinute(0)
                 .withSecond(0)
-                .withNano(0);
+                .withNano(0)
+                .toString();
     }
 
     // unique for user + app + date
@@ -252,7 +253,7 @@ public class ChronicleServiceImpl implements ChronicleService {
             DataIntegrationApi dataIntegrationApi ) {
 
         Map<UUID, Set<Object>> data = new HashMap<>(entityData);
-        data.put(appPackageNamePropertyTypeId, Sets.newHashSet(appPackageName));
+        data.put(appPackageNamePropertyTypeId, ImmutableSet.of(appPackageName));
         data.put(participantIdPropertyTypeId, Sets.newHashSet(participantId));
 
         return reserveEntityKeyId(
@@ -267,16 +268,14 @@ public class ChronicleServiceImpl implements ChronicleService {
     private UUID reserveRecordedByEntityKeyId(
             Map<UUID, Set<Object>> recordedByEntity,
             String appPackageName,
-            String deviceId,
             DataIntegrationApi dataIntegrationApi ) {
 
         Map<UUID, Set<Object>> data = new HashMap<>(recordedByEntity);
         data.put(appPackageNamePropertyTypeId, Sets.newHashSet(appPackageName));
-        data.put(stringIdPropertyTypeId, Sets.newHashSet(deviceId));
 
         return reserveEntityKeyId(
                 recordedByEntitySetId,
-                ImmutableList.of(appPackageNamePropertyTypeId, dateLoggedPropertyTypeId, stringIdPropertyTypeId),
+                ImmutableList.of(dateLoggedPropertyTypeId, stringIdPropertyTypeId, appPackageNamePropertyTypeId),
                 data,
                 dataIntegrationApi
         );
@@ -313,10 +312,10 @@ public class ChronicleServiceImpl implements ChronicleService {
                 .collect(Collectors.toList());
 
         for (int i = 0; i < userAppsData.size(); ++i) {
-            ListMultimap<UUID, DataEdge> associations = ArrayListMultimap.create();
 
+            Set<DataEdgeKey> dataEdgeKeys = new HashSet<>();
             String appPackageName = userAppsData.get(i).get(appPackageNamePropertyTypeId).iterator().next().toString();
-            OffsetDateTime dateLogged = parseDateTime(userAppsData.get(i).get(dateLoggedPropertyTypeId).iterator().next().toString());
+            String dateLogged = parseDateTime(userAppsData.get(i).get(dateLoggedPropertyTypeId).iterator().next().toString());
 
             // create entity in chronicle_user_apps
             Map<UUID, Set<Object>> userAppEntityData = new HashMap<>();
@@ -326,35 +325,41 @@ public class ChronicleServiceImpl implements ChronicleService {
             UUID userAppEntityKeyId = reserveUserAppEntityKeyId(userAppEntityData, dataIntegrationApi);
             dataApi.updateEntitiesInEntitySet(userAppsEntitySetId, ImmutableMap.of(userAppEntityKeyId, userAppEntityData), UpdateType.Merge);
 
-            // create/update entity in chronicle_recorded_by association
-            Map<UUID, Set<Object>> recordedByEntityData = new HashMap<>();
-            recordedByEntityData.put( dateLoggedPropertyTypeId  , Sets.newHashSet( dateLogged ) );
 
-            UUID recordedByEntityKeyId =  reserveRecordedByEntityKeyId(recordedByEntityData, appPackageName,  deviceId, dataIntegrationApi );
+            // association: chronicle_user_apps => chronicle_device
+            Map<UUID, Set<Object>> recordedByEntityData = new HashMap<>();
+            recordedByEntityData.put( dateLoggedPropertyTypeId  , ImmutableSet.of(dateLogged) );
+            recordedByEntityData.put(stringIdPropertyTypeId, ImmutableSet.of(deviceId));
+
+            UUID recordedByEntityKeyId = reserveRecordedByEntityKeyId(recordedByEntityData, appPackageName, dataIntegrationApi );
             dataApi.updateEntitiesInEntitySet( recordedByEntitySetId, ImmutableMap.of( recordedByEntityKeyId, recordedByEntityData ),
                     UpdateType.Merge );
 
-            // create/update entity in association chronicle_used_by association
+            EntityDataKey src = new EntityDataKey(userAppsEntitySetId, userAppEntityKeyId);
+            EntityDataKey dst = new EntityDataKey(deviceEntitySetId, deviceEntityKeyId);
+            EntityDataKey edge = new EntityDataKey(recordedByEntitySetId, recordedByEntityKeyId);
+
+            dataEdgeKeys.add(new DataEdgeKey(src, dst, edge));
+
+
+            // association : chronicle_user_apps => chronicle_used_by
             Map<UUID, Set<Object>> usedByEntityData = new HashMap<>();
-            usedByEntityData.put(dateUsedPropertyTypeId, Sets.newHashSet(dateLogged));
+            usedByEntityData.put(dateUsedPropertyTypeId, ImmutableSet.of(dateLogged));
 
-            UUID usedByEntityKeyId =  reserveUsedByEntityKeyId(usedByEntityData, appPackageName, participantId, dataIntegrationApi );
-            dataApi.updateEntitiesInEntitySet(usedByEntitySetId, ImmutableMap.of(usedByEntityKeyId, usedByEntityData), UpdateType.Merge);
+            UUID usedByEntityKeyId = reserveUsedByEntityKeyId(usedByEntityData, appPackageName, participantId, dataIntegrationApi);
+            dataApi.updateEntitiesInEntitySet(usedByEntitySetId, ImmutableMap.of( usedByEntityKeyId, usedByEntityData), UpdateType.Merge);
 
-            // chronicle_used_by: user apps -> participant
-            // chronicle_recorded_by: user apps -> device
-            EntityDataKey participantEDK = new EntityDataKey(participantEntitySetId, participantEntityKeyId);
-            EntityDataKey userAppsEDK = new EntityDataKey(userAppsEntitySetId, userAppEntityKeyId );
-            EntityDataKey deviceEDK = new EntityDataKey(deviceEntitySetId, deviceEntityKeyId);
+            dst = new EntityDataKey(participantEntitySetId, participantEntityKeyId);
+            edge = new EntityDataKey(usedByEntitySetId, usedByEntityKeyId);
 
-            associations.put(recordedByEntitySetId, new DataEdge(userAppsEDK, deviceEDK, recordedByEntityData));
-            associations.put(usedByEntitySetId, new DataEdge(userAppsEDK, participantEDK, usedByEntityData));
+            dataEdgeKeys.add(new DataEdgeKey(src, dst, edge));
 
-            dataApi.createAssociations(associations);
+            dataApi.createEdges(dataEdgeKeys);
         }
 
-        logger.info("Uploaded {} user apps entries: participantId = {}, participant EK = {}, deviceEK = {}",
-                userAppsData.size(), participantId, participantEntityKeyId, deviceEntityKeyId);
+
+        logger.info("Uploaded user apps entries: size = {}, participantId = {}",
+                userAppsData.size(), participantId);
     }
 
     private void createAppDataEntitiesAndAssociations(
@@ -400,8 +405,62 @@ public class ChronicleServiceImpl implements ChronicleService {
         DataGraph dataGraph = new DataGraph(entities, associations);
         dataApi.createEntityAndAssociationData(dataGraph);
 
-        logger.info("Uploaded {} entries to chronicle_app_data: participantId = {}, participant EK = {}, deviceEK = {}",
-                participantId, participantEntityKeyId, deviceEntityKeyId, data.size());
+        logger.info("Uploaded data to chronicle_app_data: size: {},  participantId = {}",
+                data.size(), participantId);
+    }
+
+    // return a list of all the apps used by a participant filtered by the current date
+
+    public List<NeighborEntityDetails> getUserApps(
+            UUID studyId,
+            String participantId ) {
+
+        logger.info("Retrieving user apps: participantId = {}, studyId = {}", participantId, studyId);
+
+        SearchApi searchApi;
+        try {
+            ApiClient apiClient = apiClientCache.get(ApiClient.class);
+            searchApi = apiClient.getSearchApi();
+        } catch ( ExecutionException e ) {
+            logger.error("Unable to load apis");
+            return ImmutableList.of();
+        }
+
+        UUID participantEntityKeyId = getParticipantEntityKeyId(participantId, studyId);
+        if (participantEntityKeyId == null) {
+            logger.error("getUserApps: unable to locate participant. participant = {}, studyId = {}", participantId, studyId);
+            return ImmutableList.of();
+        }
+
+        UUID participantEntitySetId = getParticipantEntitySetId(studyId);
+        if (participantEntitySetId == null) {
+            logger.error("getUserApps: error getting entitySetID: participant = {}, studyId = {}", participantId, studyId);
+            return ImmutableList.of();
+        }
+
+        // search participant neighbors
+        Map<UUID, List<NeighborEntityDetails>> participantNeighbors = searchApi
+                .executeFilteredEntityNeighborSearch(
+                       participantEntitySetId,
+                       new EntityNeighborsFilter(
+                               ImmutableSet.of(participantEntityKeyId),
+                               java.util.Optional.of(ImmutableSet.of(userAppsEntitySetId)),
+                               java.util.Optional.of(ImmutableSet.of(participantEntitySetId)),
+                               java.util.Optional.of(ImmutableSet.of(usedByEntitySetId))
+                       )
+                );
+
+        // filter by current date
+        String currentDate = OffsetDateTime.now().toLocalDate().toString();
+        if (participantNeighbors.containsKey(participantEntityKeyId)) {
+            return participantNeighbors.get(participantEntityKeyId)
+                    .stream()
+                    .filter( neighbor -> neighbor.getNeighborEntitySet().isPresent() && neighbor.getNeighborId().isPresent())
+                    .filter( neighbor -> neighbor.getAssociationDetails().get(DATE_USED_FQN).iterator().next().toString().startsWith(currentDate))
+                    .collect(Collectors.toList());
+        }
+
+        return null;
     }
 
     //  TODO: add in throws exception!
@@ -411,6 +470,8 @@ public class ChronicleServiceImpl implements ChronicleService {
             String participantId,
             String deviceId,
             List<SetMultimap<UUID, Object>> data ) {
+
+        // List<NeighborEntityDetails> temp = getUserApps(studyId, participantId);
 
         DataApi dataApi;
         DataIntegrationApi dataIntegrationApi;
