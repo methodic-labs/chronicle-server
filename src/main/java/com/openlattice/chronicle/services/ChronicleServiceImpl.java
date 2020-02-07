@@ -43,12 +43,13 @@ import com.openlattice.entitysets.EntitySetsApi;
 import com.openlattice.search.SearchApi;
 import com.openlattice.search.requests.EntityNeighborsFilter;
 import com.openlattice.search.requests.SearchTerm;
-import com.openlattice.shuttle.MissionControl;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.web.server.ResponseStatusException;
 
 import javax.annotation.Nonnull;
 import java.time.OffsetDateTime;
@@ -105,7 +106,7 @@ public class ChronicleServiceImpl implements ChronicleService {
     private final UUID              usedByEntitySetId;
     private final UUID              participatedInEntitySetId;
     private final UUID              stringIdPropertyTypeId;
-    private final UUID              participantIdPropertyTypeId;
+    private final UUID              personPropertyTypeId;
     private final UUID              dateLoggedPropertyTypeId;
     private final UUID              dateUsedPropertyTypeId;
     private final UUID              versionPropertyTypeId;
@@ -125,7 +126,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         this.username = chronicleConfiguration.getUser();
         this.password = chronicleConfiguration.getPassword();
 
-        String token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFsZm9uY2VAb3BlbmxhdHRpY2UuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsInVzZXJfaWQiOiJnb29nbGUtb2F1dGgyfDEwODQ4MDI2NTc3ODY0NDk2MTU1NCIsImFwcF9tZXRhZGF0YSI6eyJyb2xlcyI6WyJBdXRoZW50aWNhdGVkVXNlciJdLCJhY3RpdmF0ZWQiOiJhY3RpdmF0ZWQifSwibmlja25hbWUiOiJhbGZvbmNlIiwicm9sZXMiOlsiQXV0aGVudGljYXRlZFVzZXIiXSwiaXNzIjoiaHR0cHM6Ly9vcGVubGF0dGljZS5hdXRoMC5jb20vIiwic3ViIjoiZ29vZ2xlLW9hdXRoMnwxMDg0ODAyNjU3Nzg2NDQ5NjE1NTQiLCJhdWQiOiJLVHpneXhzNktCY0pIQjg3MmVTTWUyY3BUSHpoeFM5OSIsImlhdCI6MTU4MDc1MTgwNiwiZXhwIjoxNTgwODM4MjA2fQ.nr07X1hi6Gx0jdYLEmAdAaYkIliuUjrdt0VbKIjUdCU";
+        String token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFsZm9uY2VAb3BlbmxhdHRpY2UuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsInVzZXJfaWQiOiJnb29nbGUtb2F1dGgyfDEwODQ4MDI2NTc3ODY0NDk2MTU1NCIsImFwcF9tZXRhZGF0YSI6eyJyb2xlcyI6WyJBdXRoZW50aWNhdGVkVXNlciJdLCJhY3RpdmF0ZWQiOiJhY3RpdmF0ZWQifSwibmlja25hbWUiOiJhbGZvbmNlIiwicm9sZXMiOlsiQXV0aGVudGljYXRlZFVzZXIiXSwiaXNzIjoiaHR0cHM6Ly9vcGVubGF0dGljZS5hdXRoMC5jb20vIiwic3ViIjoiZ29vZ2xlLW9hdXRoMnwxMDg0ODAyNjU3Nzg2NDQ5NjE1NTQiLCJhdWQiOiJLVHpneXhzNktCY0pIQjg3MmVTTWUyY3BUSHpoeFM5OSIsImlhdCI6MTU4MTA5NzQxNSwiZXhwIjoxNTgxMTgzODE1fQ.cBG3-i1_0S5xnb2DOMVt16IPGD0oa4phz3N6O7AJhDs";
 
         apiClientCache = CacheBuilder
                 .newBuilder()
@@ -133,7 +134,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                 .build( new CacheLoader<Class<?>, ApiClient>() {
                     @Override
                     public ApiClient load( Class<?> key ) throws Exception {
-                        String jwtToken = MissionControl.getIdToken( username, password );
+                        // String jwtToken = MissionControl.getIdToken( username, password );
                         return new ApiClient( RetrofitFactory.Environment.LOCAL, () -> token );
                     }
                 } );
@@ -152,7 +153,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         userAppsEntitySetId = entitySetsApi.getEntitySetId(CHRONICLE_USER_APPS);
 
         stringIdPropertyTypeId = edmApi.getPropertyTypeId( STRING_ID_FQN.getNamespace(), STRING_ID_FQN.getName() );
-        participantIdPropertyTypeId = edmApi.getPropertyTypeId( PERSON_ID_FQN.getNamespace(), PERSON_ID_FQN.getName() );
+        personPropertyTypeId = edmApi.getPropertyTypeId( PERSON_ID_FQN.getNamespace(), PERSON_ID_FQN.getName() );
         dateLoggedPropertyTypeId = edmApi
                 .getPropertyTypeId( DATE_LOGGED_FQN.getNamespace(), DATE_LOGGED_FQN.getName() );
         versionPropertyTypeId = edmApi.getPropertyTypeId( VERSION_FQN.getNamespace(), VERSION_FQN.getName() );
@@ -254,11 +255,11 @@ public class ChronicleServiceImpl implements ChronicleService {
 
         Map<UUID, Set<Object>> data = new HashMap<>(entityData);
         data.put(appPackageNamePropertyTypeId, ImmutableSet.of(appPackageName));
-        data.put(participantIdPropertyTypeId, Sets.newHashSet(participantId));
+        data.put(personPropertyTypeId, Sets.newHashSet(participantId));
 
         return reserveEntityKeyId(
                 usedByEntitySetId,
-                ImmutableList.of(appPackageNamePropertyTypeId, dateUsedPropertyTypeId, participantIdPropertyTypeId ),
+                ImmutableList.of(appPackageNamePropertyTypeId, dateUsedPropertyTypeId, personPropertyTypeId ),
                 data,
                 dataIntegrationApi
         );
@@ -409,9 +410,50 @@ public class ChronicleServiceImpl implements ChronicleService {
                 data.size(), participantId);
     }
 
-    // return a list of all the apps used by a participant filtered by the current date
+    // update chronicle_used_by associations when apps usage survey is submitted
+    public Integer updateAppsUsageAssociationData(UUID studyId, String participantId, Set<NeighborEntityDetails> neighborEntityDetails) {
 
-    public List<NeighborEntityDetails> getUserApps(
+        logger.info("Updating apps usage associations: participantId = {}, studyId = {}", participantId, studyId);
+
+        DataApi dataApi;
+        try {
+            ApiClient apiClient = apiClientCache.get(ApiClient.class);
+            dataApi = apiClient.getDataApi();
+        } catch (ExecutionException e) {
+            logger.error("unable to load apis");
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "unable to load apis");
+        }
+
+        boolean knownParticipant = isKnownParticipant(studyId, participantId);
+        if (!knownParticipant) {
+            logger.error("unable to update apps usage association data because unknown participant = {}", participantId);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "participant not found");
+        }
+
+        // update associations
+        Map<UUID, Map<UUID, Set<Object>>> associationData = new HashMap<>();
+        neighborEntityDetails
+                .stream()
+                .filter(neighbor -> neighbor.getAssociationDetails().containsKey(PERSON_ID_FQN) && !neighbor.getAssociationDetails().get(PERSON_ID_FQN).isEmpty())
+                .forEach(neighbor -> {
+                    UUID associationEntityKeyId = UUID.fromString(neighbor.getAssociationDetails().get(ID_FQN).iterator().next().toString());
+                    Map<UUID, Set<Object>> entityData = ImmutableMap.of(personPropertyTypeId, neighbor.getAssociationDetails().get(PERSON_ID_FQN));
+                    associationData.put(associationEntityKeyId, entityData);
+                });
+        try {
+            dataApi.updateEntitiesInEntitySet(usedByEntitySetId, associationData, UpdateType.Replace);
+        } catch (Exception exception) {
+            logger.error("error updating apps usage associations");
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "error updating apps usage associations");
+        }
+        logger.info("updated {} apps usage associations", associationData.size());
+        return associationData.size();
+    }
+
+
+    // return a list of all the apps used by a participant filtered by the current date
+    @Override
+    public List<NeighborEntityDetails> getParticipantAppsUsageData(
             UUID studyId,
             String participantId ) {
 
@@ -428,13 +470,13 @@ public class ChronicleServiceImpl implements ChronicleService {
 
         UUID participantEntityKeyId = getParticipantEntityKeyId(participantId, studyId);
         if (participantEntityKeyId == null) {
-            logger.error("getUserApps: unable to locate participant. participant = {}, studyId = {}", participantId, studyId);
+            logger.error("getUserApps: error retrieving participant. participant = {}, studyId = {}", participantId, studyId);
             return ImmutableList.of();
         }
 
         UUID participantEntitySetId = getParticipantEntitySetId(studyId);
         if (participantEntitySetId == null) {
-            logger.error("getUserApps: error getting entitySetID: participant = {}, studyId = {}", participantId, studyId);
+            logger.error("getUserApps: error getting participant entity set id: participant = {}, studyId = {}", participantId, studyId);
             return ImmutableList.of();
         }
 
@@ -454,11 +496,12 @@ public class ChronicleServiceImpl implements ChronicleService {
         String currentDate = OffsetDateTime.now().toLocalDate().toString();
         if (participantNeighbors.containsKey(participantEntityKeyId)) {
             return participantNeighbors.get(participantEntityKeyId)
-                    .stream()
-                    .filter( neighbor -> neighbor.getNeighborEntitySet().isPresent() && neighbor.getNeighborId().isPresent())
-                    .filter( neighbor -> neighbor.getAssociationDetails().get(DATE_USED_FQN).iterator().next().toString().startsWith(currentDate))
-                    .collect(Collectors.toList());
+                            .stream()
+                            .filter( neighbor -> neighbor.getNeighborEntitySet().isPresent() && neighbor.getNeighborId().isPresent())
+                            .filter( neighbor -> neighbor.getAssociationDetails().get(DATE_USED_FQN).iterator().next().toString().startsWith(currentDate))
+                            .collect(Collectors.toList()) ;
         }
+        logger.error("Error retrieving user apps");
 
         return null;
     }
@@ -470,8 +513,6 @@ public class ChronicleServiceImpl implements ChronicleService {
             String participantId,
             String deviceId,
             List<SetMultimap<UUID, Object>> data ) {
-
-        // List<NeighborEntityDetails> temp = getUserApps(studyId, participantId);
 
         DataApi dataApi;
         DataIntegrationApi dataIntegrationApi;

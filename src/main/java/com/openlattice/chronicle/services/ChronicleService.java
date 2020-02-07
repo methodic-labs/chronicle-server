@@ -23,6 +23,7 @@ import com.google.common.base.Optional;
 import com.google.common.collect.SetMultimap;
 import com.openlattice.chronicle.constants.ParticipationStatus;
 import com.openlattice.chronicle.sources.Datasource;
+import com.openlattice.data.requests.NeighborEntityDetails;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
 
 import java.util.List;
@@ -56,4 +57,8 @@ public interface ChronicleService {
     Map<FullQualifiedName, Set<Object>> getParticipantEntity( UUID studyId, UUID participantEntityId );
 
     ParticipationStatus getParticipationStatus( UUID studyId, String participantId );
+
+    List<NeighborEntityDetails>  getParticipantAppsUsageData (UUID studyId, String participantId);
+
+    Integer updateAppsUsageAssociationData(UUID studyId, String participantId, Set<NeighborEntityDetails> neighborEntityDetails);
 }

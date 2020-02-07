@@ -25,6 +25,7 @@ import com.openlattice.chronicle.constants.CustomMediaType;
 import com.openlattice.chronicle.data.FileType;
 import com.openlattice.chronicle.services.ChronicleService;
 import com.openlattice.chronicle.sources.Datasource;
+import com.openlattice.data.requests.NeighborEntityDetails;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,6 +37,7 @@ import javax.inject.Inject;
 import javax.servlet.http.HttpServletResponse;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -126,6 +128,30 @@ public class ChronicleStudyController implements ChronicleStudyApi {
     }
 
     @RequestMapping(
+            path=PARTICIPANT_PATH + DATA_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH + "/apps",
+            method = RequestMethod.GET
+    )
+    public List<NeighborEntityDetails> getParticipantAppsUsageData(
+            @PathVariable (STUDY_ID) UUID studyId,
+            @PathVariable (PARTICIPANT_ID) String participantId ) {
+        return chronicleService.getParticipantAppsUsageData(studyId, participantId);
+    }
+
+    @RequestMapping(
+            path = PARTICIPANT_PATH + DATA_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH + "/apps",
+            method = RequestMethod.POST
+    )
+    public Integer updateAppsUsageAssociationData(
+            @PathVariable (STUDY_ID) UUID studyId,
+            @PathVariable (PARTICIPANT_ID) String participantId,
+            @RequestBody  Set<NeighborEntityDetails> neighborEntityDetails
+
+    ) {
+        return chronicleService.updateAppsUsageAssociationData(studyId, participantId, neighborEntityDetails);
+    }
+
+
+    @RequestMapping(
             path = PARTICIPANT_PATH + DATA_PATH + STUDY_ID_PATH + ENTITY_KEY_ID_PATH,
             method = RequestMethod.GET,
             produces = { MediaType.APPLICATION_JSON_VALUE, CustomMediaType.TEXT_CSV_VALUE } )
@@ -164,6 +190,8 @@ public class ChronicleStudyController implements ChronicleStudyApi {
         return chronicleService.getAllParticipantData( studyId, participantEntityKeyId );
     }
 
+    // need to get all entities associated with the user
+
     private static void setDownloadContentType( HttpServletResponse response, FileType fileType ) {
 
         if ( fileType == null ) {
@@ -194,4 +222,6 @@ public class ChronicleStudyController implements ChronicleStudyApi {
             );
         }
     }
+
+
 }
