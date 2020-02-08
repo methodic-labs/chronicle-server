@@ -150,6 +150,28 @@ public class ChronicleStudyController implements ChronicleStudyApi {
         return chronicleService.updateAppsUsageAssociationData(studyId, participantId, neighborEntityDetails);
     }
 
+            path = PARTICIPANT_PATH + DATA_PATH + STUDY_ID_PATH + ENTITY_KEY_ID_PATH + PREPROCESSED_PATH,
+            method = RequestMethod.GET,
+            produces = { MediaType.APPLICATION_JSON_VALUE, CustomMediaType.TEXT_CSV_VALUE} )
+    public Iterable<Map<String, Set<Object>>> getAllPreprocessedParticipantData(
+            @PathVariable( STUDY_ID ) UUID studyId,
+            @PathVariable (ENTITY_KEY_ID ) UUID participantEntityKeyId,
+            @RequestParam ( value = FILE_TYPE, required = false ) FileType fileType,
+            HttpServletResponse response ) {
+
+        String fileName = getParticipantDataFileName("ChroniclePreprocessedData_", studyId, participantEntityKeyId);
+        setContentDisposition(response, fileName, fileType);
+        setDownloadContentType(response, fileType);
+
+        return getAllPreprocessedParticipantData(studyId, participantEntityKeyId, fileType );
+    }
+
+    public Iterable<Map<String, Set<Object>>> getAllPreprocessedParticipantData(
+            UUID studyId,
+            UUID participantEntityKeyId,
+            FileType fileType) {
+        return chronicleService.getAllPreprocessedParticipantData(studyId, participantEntityKeyId);
+    }
 
     @RequestMapping(
             path = PARTICIPANT_PATH + DATA_PATH + STUDY_ID_PATH + ENTITY_KEY_ID_PATH,
@@ -161,21 +183,8 @@ public class ChronicleStudyController implements ChronicleStudyApi {
             @RequestParam( value = FILE_TYPE, required = false ) FileType fileType,
             HttpServletResponse response ) {
 
-        String participantId = chronicleService
-                .getParticipantEntity( studyId, participantEntityKeyId )
-                .get( PERSON_ID_FQN )
-                .stream()
-                .findFirst()
-                .orElse( "" )
-                .toString();
-
-        StringBuilder fileNameBuilder = ( new StringBuilder() )
-                .append( "ChronicleData_" )
-                .append( LocalDate.now().format( DateTimeFormatter.BASIC_ISO_DATE ) )
-                .append( "-" )
-                .append( participantId );
-
-        setContentDisposition( response, fileNameBuilder.toString(), fileType );
+        String fileName = getParticipantDataFileName("ChronicleData_", studyId, participantEntityKeyId);
+        setContentDisposition( response, fileName, fileType );
         setDownloadContentType( response, fileType );
 
         return getAllParticipantData( studyId, participantEntityKeyId, fileType );
@@ -190,7 +199,26 @@ public class ChronicleStudyController implements ChronicleStudyApi {
         return chronicleService.getAllParticipantData( studyId, participantEntityKeyId );
     }
 
+<<<<<<< HEAD
     // need to get all entities associated with the user
+=======
+
+    private String getParticipantDataFileName(String fileNamePrefix, UUID studyId, UUID participantEntityKeyId) {
+        String participantId = chronicleService
+                .getParticipantEntity(studyId, participantEntityKeyId)
+                .get(PERSON_ID_FQN)
+                .stream()
+                .findFirst()
+                .orElse("")
+                .toString();
+        StringBuilder fileNameBuilder = new StringBuilder()
+                .append(fileNamePrefix)
+                .append(LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE))
+                .append( "-" )
+                .append(participantId);
+        return fileNameBuilder.toString();
+    }
+>>>>>>> develop
 
     private static void setDownloadContentType( HttpServletResponse response, FileType fileType ) {
 
