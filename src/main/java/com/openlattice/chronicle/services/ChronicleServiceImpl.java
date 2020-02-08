@@ -784,10 +784,6 @@ public class ChronicleServiceImpl implements ChronicleService {
                                     logger.error("Encountered duplicate participantId = {} in studyId = {}", participantId, studyId);
                                 } else{
                                     studyParticipants.get(studyId).put(participantId, participantEntityKeyId);
-<<<<<<< HEAD
-
-=======
->>>>>>> develop
                                     if ( participantNeighbors.containsKey( participantEntityKeyId ) ) {
                                         Map<String, UUID> devices = new HashMap<>();
                                         participantNeighbors
