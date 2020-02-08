@@ -22,8 +22,8 @@ package com.openlattice.chronicle.services;
 import com.google.common.base.Optional;
 import com.google.common.collect.SetMultimap;
 import com.openlattice.chronicle.constants.ParticipationStatus;
+import com.openlattice.chronicle.data.ChronicleAppsUsageDetails;
 import com.openlattice.chronicle.sources.Datasource;
-import com.openlattice.data.requests.NeighborEntityDetails;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
 
 import java.util.List;
@@ -60,7 +60,9 @@ public interface ChronicleService {
 
     ParticipationStatus getParticipationStatus( UUID studyId, String participantId );
 
-    List<NeighborEntityDetails>  getParticipantAppsUsageData (UUID studyId, String participantId);
+    List<ChronicleAppsUsageDetails> getParticipantAppsUsageData (UUID studyId, String participantId);
 
-    Integer updateAppsUsageAssociationData(UUID studyId, String participantId, Set<NeighborEntityDetails> neighborEntityDetails);
+    Integer updateAppsUsageAssociationData(UUID studyId, String participantId,  Map<UUID, Map<FullQualifiedName, Set<Object>>> associationDetails);
+
+    boolean isNotificationsEnabled( UUID studyId);
 }
