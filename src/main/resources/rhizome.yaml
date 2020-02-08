@@ -2,32 +2,20 @@
 # Rhizome Bootstrap Configuration
 ##
 
-# Set to false to disable persistence 
+# Set to false to disable persistence
 enable-persistence:  false
 session-clustering-enabled: false
 
-cassandra:
-    embedded: false
-    random-ports: false
-    ssl-enabled: false
-    keyspace: "sparks"
-    replication-factor: 1
-    seed-nodes:
-        - "localhost"
-
 hazelcast:
-    server: false
+    server: true
     group: "local"
     password: "trellis"
-    seed-nodes: 
+    seed-nodes:
         - "localhost"
+    port: 5710
 
 hikari:
     jdbcUrl: "jdbc:postgresql://localhost:5432/openlattice"
     username: "oltest"
     password: "test"
     maximumPoolSize: 3
-
-#graphite:
-#    host: "jarvis"
-#    global-prefix: "chronicle"

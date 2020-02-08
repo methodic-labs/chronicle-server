@@ -1,3 +1,22 @@
+/*
+ * Copyright (C) 2018. OpenLattice, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * You can contact the owner of the copyright at support@openlattice.com
+ */
+
 package com.openlattice.chronicle.services;
 
 import com.dataloom.streams.StreamUtil;
@@ -6,84 +25,85 @@ import com.google.common.base.Preconditions;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
-import com.google.common.collect.HashMultimap;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Multimaps;
-import com.google.common.collect.SetMultimap;
-import com.google.common.collect.Sets;
+import com.google.common.collect.*;
 import com.google.common.eventbus.EventBus;
 import com.openlattice.ApiUtil;
 import com.openlattice.chronicle.ChronicleServerUtil;
 import com.openlattice.chronicle.configuration.ChronicleConfiguration;
+import com.openlattice.chronicle.constants.ParticipationStatus;
 import com.openlattice.chronicle.sources.AndroidDevice;
 import com.openlattice.chronicle.sources.Datasource;
 import com.openlattice.client.ApiClient;
-import com.openlattice.data.DataApi;
-import com.openlattice.data.EntityKey;
-import com.openlattice.data.requests.Association;
-import com.openlattice.data.requests.BulkDataCreation;
-import com.openlattice.data.requests.Entity;
+import com.openlattice.data.*;
 import com.openlattice.data.requests.NeighborEntityDetails;
 import com.openlattice.edm.EdmApi;
+import com.openlattice.edm.EntitySet;
+import com.openlattice.entitysets.EntitySetsApi;
 import com.openlattice.search.SearchApi;
-import com.openlattice.search.requests.DataSearchResult;
+import com.openlattice.search.requests.EntityNeighborsFilter;
 import com.openlattice.search.requests.SearchTerm;
 import com.openlattice.shuttle.MissionControl;
-import com.openlattice.sync.SyncApi;
-import java.time.OffsetDateTime;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 
+import javax.annotation.Nonnull;
+import java.time.OffsetDateTime;
+import java.util.*;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+
+import static com.openlattice.chronicle.ChronicleServerUtil.PARTICIPANTS_PREFIX;
+import static com.openlattice.edm.EdmConstants.ID_FQN;
+
 public class ChronicleServiceImpl implements ChronicleService {
     protected static final Logger logger = LoggerFactory.getLogger( ChronicleServiceImpl.class );
 
-    private final Map<UUID, SetMultimap<String, String>> studyInformation  = new HashMap<>();
-    private final SetMultimap<UUID, String>              studyParticipants = HashMultimap.create();
+    // studyId -> participantId -> deviceID -> device EKID
+    private final Map<UUID, Map<String, Map<String, UUID>>> studyDevices  = new HashMap<>();
+
+    // studyId -> participantId -> participant EKID
+    private final Map<UUID, Map<String, UUID>> studyParticipants = new HashMap<>();
+
+    // studyId -> study EKID
+    private final Map<UUID, UUID> studies = new HashMap<>();
 
     private final String username;
     private final String password;
 
     private final EventBus eventBus;
-    private final String STUDY_ENTITY_SET_NAME       = "chronicle_study";
-    private final String DEVICES_ENTITY_SET_NAME     = "chronicle_device";
-    private final String DATA_ENTITY_SET_NAME        = "chronicle_app_data";
-    private final String RECORDED_BY_ENTITY_SET_NAME = "chronicle_recorded_by";
-    private final String USED_BY_ENTITY_SET_NAME     = "chronicle_used_by";
-    private final Set<UUID> dataKey;
+    private final String   STUDY_ENTITY_SET_NAME       = "chronicle_study";
+    private final String   DEVICES_ENTITY_SET_NAME     = "chronicle_device";
+    private final String   DATA_ENTITY_SET_NAME        = "chronicle_app_data";
+    private final String   PREPROCESSED_DATA_ENTITY_SET_NAME = "chronicle_preprocessed_app_data";
+    private final String   RECORDED_BY_ENTITY_SET_NAME = "chronicle_recorded_by";
+    private final String   USED_BY_ENTITY_SET_NAME     = "chronicle_used_by";
+    private final String   PARTICIPATED_IN_AESN        = "chronicle_participated_in";
+    private final String   SEARCH_PREFIX               = "entity";
+
+    private final Set<UUID>         dataKey;
     private final FullQualifiedName STRING_ID_FQN   = new FullQualifiedName( "general.stringid" );
     private final FullQualifiedName PERSON_ID_FQN   = new FullQualifiedName( "nc.SubjectIdentification" );
     private final FullQualifiedName DATE_LOGGED_FQN = new FullQualifiedName( "ol.datelogged" );
+    private final FullQualifiedName STATUS_FQN      = new FullQualifiedName( "ol.status" );
     private final FullQualifiedName VERSION_FQN     = new FullQualifiedName( "ol.version" );
     private final FullQualifiedName MODEL_FQN       = new FullQualifiedName( "vehicle.model" );
-    private final UUID studyEntitySetId;
-    private final UUID deviceEntitySetId;
-    private final UUID dataEntitySetId;
-    private final UUID recordedByEntitySetId;
-    private final UUID usedByEntitySetId;
-    private final UUID stringIdPropertyTypeId;
-    private final UUID participantIdPropertyTypeId;
-    private final UUID dateLoggedPropertyTypeId;
-    private final UUID versionPropertyTypeId;
-    private final UUID modelPropertyTypeId;
-    private final UUID studySyncId;
-    private final UUID deviceSyncId;
-    private final UUID dataSyncId;
-    private final UUID recordedBySyncId;
-    private final UUID usedBySyncId;
+    private final UUID              studyEntitySetId;
+    private final UUID              deviceEntitySetId;
+    private final UUID              dataEntitySetId;
+    private final UUID              preProcessedEntitySetId;
+    private final UUID              recordedByEntitySetId;
+    private final UUID              usedByEntitySetId;
+    private final UUID              participatedInEntitySetId;
+    private final UUID              stringIdPropertyTypeId;
+    private final UUID              participantIdPropertyTypeId;
+    private final UUID              dateLoggedPropertyTypeId;
+    private final UUID              versionPropertyTypeId;
+    private final UUID              modelPropertyTypeId;
+
     private transient LoadingCache<Class<?>, ApiClient> apiClientCache = null;
 
     public ChronicleServiceImpl(
@@ -107,19 +127,15 @@ public class ChronicleServiceImpl implements ChronicleService {
         ApiClient apiClient = apiClientCache.get( ApiClient.class );
 
         EdmApi edmApi = apiClient.getEdmApi();
-        SyncApi syncApi = apiClient.getSyncApi();
+        EntitySetsApi entitySetsApi = apiClient.getEntitySetsApi();
 
-        studyEntitySetId = edmApi.getEntitySetId( STUDY_ENTITY_SET_NAME );
-        deviceEntitySetId = edmApi.getEntitySetId( DEVICES_ENTITY_SET_NAME );
-        dataEntitySetId = edmApi.getEntitySetId( DATA_ENTITY_SET_NAME );
-        recordedByEntitySetId = edmApi.getEntitySetId( RECORDED_BY_ENTITY_SET_NAME );
-        usedByEntitySetId = edmApi.getEntitySetId( USED_BY_ENTITY_SET_NAME );
-
-        studySyncId = syncApi.getCurrentSyncId( studyEntitySetId );
-        deviceSyncId = syncApi.getCurrentSyncId( deviceEntitySetId );
-        dataSyncId = syncApi.getCurrentSyncId( dataEntitySetId );
-        recordedBySyncId = syncApi.getCurrentSyncId( recordedByEntitySetId );
-        usedBySyncId = syncApi.getCurrentSyncId( usedByEntitySetId );
+        studyEntitySetId = entitySetsApi.getEntitySetId( STUDY_ENTITY_SET_NAME );
+        deviceEntitySetId = entitySetsApi.getEntitySetId( DEVICES_ENTITY_SET_NAME );
+        dataEntitySetId = entitySetsApi.getEntitySetId( DATA_ENTITY_SET_NAME );
+        preProcessedEntitySetId = entitySetsApi.getEntitySetId(PREPROCESSED_DATA_ENTITY_SET_NAME);
+        recordedByEntitySetId = entitySetsApi.getEntitySetId( RECORDED_BY_ENTITY_SET_NAME );
+        usedByEntitySetId = entitySetsApi.getEntitySetId( USED_BY_ENTITY_SET_NAME );
+        participatedInEntitySetId = entitySetsApi.getEntitySetId( PARTICIPATED_IN_AESN );
 
         stringIdPropertyTypeId = edmApi.getPropertyTypeId( STRING_ID_FQN.getNamespace(), STRING_ID_FQN.getName() );
         participantIdPropertyTypeId = edmApi.getPropertyTypeId( PERSON_ID_FQN.getNamespace(), PERSON_ID_FQN.getName() );
@@ -128,76 +144,98 @@ public class ChronicleServiceImpl implements ChronicleService {
         versionPropertyTypeId = edmApi.getPropertyTypeId( VERSION_FQN.getNamespace(), VERSION_FQN.getName() );
         modelPropertyTypeId = edmApi.getPropertyTypeId( MODEL_FQN.getNamespace(), MODEL_FQN.getName() );
 
-        dataKey = edmApi.getEntityType( edmApi.getEntitySet( dataEntitySetId ).getEntityTypeId() )
-                .getKey();
+        dataKey = edmApi.getEntityType( entitySetsApi.getEntitySet( dataEntitySetId ).getEntityTypeId() ).getKey();
 
         refreshStudyInformation();
 
     }
 
-    private Entity getDeviceEntity( String deviceId, Optional<Datasource> datasource ) {
-        SetMultimap<UUID, Object> deviceData = HashMultimap.create();
-        deviceData.put( stringIdPropertyTypeId, deviceId );
+    private UUID getEntityKeyIdAndUpdate(
+            UUID entitySetId,
+            UUID keyPropertyTypeId,
+            Map<UUID, Set<Object>> data,
+            DataIntegrationApi dataIntegrationApi,
+            DataApi dataApi ) {
+
+        UUID entityKeyId = dataIntegrationApi.getEntityKeyIds( ImmutableSet.of( new EntityKey(
+                entitySetId,
+                ApiUtil.generateDefaultEntityId( ImmutableList.of( keyPropertyTypeId ), data )
+        ) ) ).iterator().next();
+
+        dataApi.updateEntitiesInEntitySet( entitySetId,
+                ImmutableMap.of( entityKeyId, data ),
+                UpdateType.Merge );
+
+        return entityKeyId;
+
+    }
+
+    private UUID reserveDeviceEntityKeyId(
+            String deviceId,
+            Optional<Datasource> datasource,
+            DataIntegrationApi dataIntegrationApi,
+            DataApi dataApi ) {
+
+        Map<UUID, Set<Object>> deviceData = new HashMap<>();
+
+        deviceData.put( stringIdPropertyTypeId, Sets.newHashSet( deviceId ) );
+
         if ( datasource.isPresent() && AndroidDevice.class.isAssignableFrom( datasource.get().getClass() ) ) {
             AndroidDevice device = (AndroidDevice) datasource.get();
-            deviceData.put( modelPropertyTypeId, device.getModel() );
-            deviceData.put( versionPropertyTypeId, device.getOsVersion() );
+            deviceData.put( modelPropertyTypeId, Sets.newHashSet( device.getModel() ) );
+            deviceData.put( versionPropertyTypeId, Sets.newHashSet( device.getOsVersion() ) );
         }
-        EntityKey deviceEntityKey = new EntityKey( deviceEntitySetId,
-                ApiUtil.generateDefaultEntityId( ImmutableList.of( stringIdPropertyTypeId ), deviceData ),
-                deviceSyncId );
-        return new Entity( deviceEntityKey, deviceData );
+
+        return getEntityKeyIdAndUpdate(
+                deviceEntitySetId,
+                stringIdPropertyTypeId,
+                deviceData,
+                dataIntegrationApi,
+                dataApi
+        );
+
     }
 
-    private Entity getStudyEntity( UUID studyId ) {
-        SetMultimap<UUID, Object> studyData = HashMultimap.create();
-        studyData.put( stringIdPropertyTypeId, studyId.toString() );
-        EntityKey studyEntityKey = new EntityKey( studyEntitySetId,
-                ApiUtil.generateDefaultEntityId( ImmutableList.of( stringIdPropertyTypeId ), studyData ),
-                studySyncId );
-        return new Entity( studyEntityKey, studyData );
+    private UUID getStudyEntityKeyId( UUID studyId ) {
+        logger.info("Retrieving studyEntityKeyId, studyId = {}", studyId);
+        if (studies.containsKey(studyId)) {
+            return studies.get(studyId);
+        }
+
+        logger.error("Failed to retrieve studyEntityKeyId, studyId = {}", studyId);
+        return null;
     }
 
-    private Entity getParticipantEntity( String participantId, UUID studyId ) {
-        EdmApi edmApi;
-        SyncApi syncApi;
+    private UUID getParticipantEntitySetId( UUID studyId ) {
+        EntitySetsApi entitySetsApi;
         try {
             ApiClient apiClient = apiClientCache.get( ApiClient.class );
-            edmApi = apiClient.getEdmApi();
-            syncApi = apiClient.getSyncApi();
+            entitySetsApi = apiClient.getEntitySetsApi();
         } catch ( ExecutionException e ) {
             logger.error( "Unable to load apis." );
             return null;
         }
 
-        SetMultimap<UUID, Object> participantData = HashMultimap.create();
+        return entitySetsApi.getEntitySetId(
+                ChronicleServerUtil.getParticipantEntitySetName( studyId )
+        );
 
-        participantData.put( participantIdPropertyTypeId, participantId );
-        UUID participantEntitySetId = edmApi
-                .getEntitySetId( ChronicleServerUtil.getParticipantEntitySetName( studyId ) );
-        UUID participantSyncId = syncApi.getCurrentSyncId( participantEntitySetId );
-        EntityKey participantEntityKey = new EntityKey( participantEntitySetId,
-                ApiUtil.generateDefaultEntityId( ImmutableList.of( participantIdPropertyTypeId ), participantData ),
-                participantSyncId );
-        return new Entity( participantEntityKey, participantData );
     }
 
-    private Association getRecordedByAssociation( EntityKey src, EntityKey dst, OffsetDateTime timestamp ) {
-        SetMultimap<UUID, Object> data = HashMultimap.create();
-        data.put( dateLoggedPropertyTypeId, timestamp );
-        EntityKey key = new EntityKey( recordedByEntitySetId,
-                ApiUtil.generateDefaultEntityId( ImmutableList.of( dateLoggedPropertyTypeId ), data ),
-                recordedBySyncId );
-        return new Association( key, src, dst, data );
-    }
+    private UUID getParticipantEntityKeyId (String participantId, UUID studyId) {
+        if (studyParticipants.containsKey(studyId)) {
+            Map<String, UUID> participantIdToEKMap = studyParticipants.get(studyId);
 
-    private Association getUsedByAssociation( EntityKey src, EntityKey dst ) {
-        SetMultimap<UUID, Object> data = HashMultimap.create();
-        data.put( stringIdPropertyTypeId, UUID.randomUUID() );
-        EntityKey key = new EntityKey( usedByEntitySetId,
-                ApiUtil.generateDefaultEntityId( ImmutableList.of( stringIdPropertyTypeId ), data ),
-                usedBySyncId );
-        return new Association( key, src, dst, data );
+            if (participantIdToEKMap.containsKey(participantId)) {
+                return participantIdToEKMap.get(participantId);
+            } else {
+                logger.error("Unable to get participantEntityKeyId. participant {} not associated with studId {} ", participantId, studyId);
+            }
+        } else {
+            logger.error("Unable to get participantEntityKeyId of participantId {}. StudyId {}  not found ", participantId, studyId);
+        }
+
+        return null;
     }
 
     //  TODO: add in throws exception!
@@ -217,34 +255,54 @@ public class ChronicleServiceImpl implements ChronicleService {
             return 0;
         }
 
-        Set<Entity> entities = Sets.newHashSet();
-        Set<Association> associations = Sets.newHashSet();
+        ListMultimap<UUID, Map<UUID, Set<Object>>> entities = ArrayListMultimap.create();
+        ListMultimap<UUID, DataAssociation> associations = ArrayListMultimap.create();
 
-        Entity deviceEntity = getDeviceEntity( deviceId, Optional.absent() );
-        Entity participantEntity = getParticipantEntity( participantId, studyId );
-        entities.add( deviceEntity );
-        entities.add( participantEntity );
+        UUID participantEntitySetId = getParticipantEntitySetId( studyId );
+        UUID deviceEntityKeyId = getDeviceEntityKeyId(studyId, participantId, deviceId);
 
-        Set<Entity> dataEntities = data.stream().map( dataDetails ->
-                new Entity( new EntityKey( dataEntitySetId,
-                        ApiUtil.generateDefaultEntityId( StreamUtil.stream( dataKey ), dataDetails ),
-                        dataSyncId ), dataDetails )
-        ).collect( Collectors.toSet() );
-        entities.addAll( dataEntities );
+        UUID participantEntityKeyId = getParticipantEntityKeyId( participantId, studyId );
+        if (participantEntityKeyId == null) {
+            logger.error("Unable to retrieve participantEntityKeyId, studyId = {}, participantId = {}", studyId, participantId);
+            return 0;
+        }
+
+        ParticipationStatus status = getParticipationStatus( studyId, participantId );
+        if ( ParticipationStatus.NOT_ENROLLED.equals( status ) ) {
+            logger.warn( "participantId = {} is not enrolled, ignoring data upload", participantId );
+            return 0;
+        }
 
         OffsetDateTime timestamp = OffsetDateTime.now();
-        dataEntities.stream().forEach( dataEntity -> {
-            associations.add( getRecordedByAssociation( dataEntity.getKey(), deviceEntity.getKey(), timestamp ) );
-            associations.add( getRecordedByAssociation( dataEntity.getKey(), participantEntity.getKey(), timestamp ) );
-        } );
 
-        Set<UUID> tickets = ImmutableSet.of(
-                dataApi.acquireSyncTicket( deviceEntitySetId, deviceSyncId ),
-                dataApi.acquireSyncTicket( participantEntity.getEntitySetId(), participantEntity.getSyncId() ),
-                dataApi.acquireSyncTicket( dataEntitySetId, dataSyncId ),
-                dataApi.acquireSyncTicket( recordedByEntitySetId, recordedBySyncId ) );
+        for ( int i = 0; i < data.size(); i++ ) {
+            entities.put( dataEntitySetId, Multimaps.asMap( data.get( i ) ) );
 
-        dataApi.createEntityAndAssociationData( new BulkDataCreation( tickets, entities, associations ) );
+            Map<UUID, Set<Object>> recordedByEntity = ImmutableMap
+                    .of( dateLoggedPropertyTypeId, Sets.newHashSet( timestamp ) );
+
+            associations.put( recordedByEntitySetId, new DataAssociation(
+                    dataEntitySetId,
+                    java.util.Optional.of( i ),
+                    java.util.Optional.empty(),
+                    deviceEntitySetId,
+                    java.util.Optional.empty(),
+                    java.util.Optional.of( deviceEntityKeyId ),
+                    recordedByEntity
+            ) );
+
+            associations.put( recordedByEntitySetId, new DataAssociation(
+                    dataEntitySetId,
+                    java.util.Optional.of( i ),
+                    java.util.Optional.empty(),
+                    participantEntitySetId,
+                    java.util.Optional.empty(),
+                    java.util.Optional.of( participantEntityKeyId ),
+                    recordedByEntity
+            ) );
+        }
+
+        dataApi.createEntityAndAssociationData( new DataGraph( entities, associations ) );
 
         //  TODO:s Make sure to return any errors??? Currently void method.
         return data.size();
@@ -264,76 +322,83 @@ public class ChronicleServiceImpl implements ChronicleService {
         //  DataApi.createEntityAndAssociationData() see example above for template
 
         DataApi dataApi;
-        SearchApi searchApi;
+        DataIntegrationApi dataIntegrationApi;
         try {
             ApiClient apiClient = apiClientCache.get( ApiClient.class );
             dataApi = apiClient.getDataApi();
-            searchApi = apiClient.getSearchApi();
+            dataIntegrationApi = apiClient.getDataIntegrationApi();
         } catch ( ExecutionException e ) {
             logger.error( "Unable to load apis." );
             return null;
         }
 
-        studyInformation.computeIfAbsent( studyId, key -> HashMultimap.create() )
-                .put( participantId, datasourceId );
+        UUID deviceEntityKeyId = reserveDeviceEntityKeyId( datasourceId, datasource, dataIntegrationApi, dataApi );
+        if (deviceEntityKeyId == null) {
+            logger.error("Unable to reserve deviceEntityKeyId, dataSourceId = {}, studyId = {}, participantId = {}", datasourceId, studyId, participantId);
+            return null;
+        }
+        EntityDataKey deviceEDK = new EntityDataKey( deviceEntitySetId, deviceEntityKeyId );
+        studyDevices.computeIfAbsent( studyId, key -> new HashMap<>() )
+                .put( participantId, Map.of(datasourceId, deviceEntityKeyId) );
 
-        Entity deviceEntity = getDeviceEntity( datasourceId, datasource );
-        Entity participantEntity = getParticipantEntity( participantId, studyId );
-        Entity studyEntity = getStudyEntity( studyId );
+        UUID participantEntitySetId = getParticipantEntitySetId( studyId );
+        UUID participantEntityKeyId = getParticipantEntityKeyId( participantId, studyId );
+        if (participantEntityKeyId == null) {
+            logger.error("Unable to retrieve participantEntityKeyId, studyId = {}, participantId = {}", studyId, participantId);
+            return null;
+        }
+        EntityDataKey participantEDK = new EntityDataKey( participantEntitySetId, participantEntityKeyId );
 
-        Set<Entity> entities = ImmutableSet.of( deviceEntity, participantEntity, studyEntity );
-        Set<Association> associations = ImmutableSet
-                .of( getUsedByAssociation( deviceEntity.getKey(), participantEntity.getKey() ),
-                        getUsedByAssociation( deviceEntity.getKey(), studyEntity.getKey() ) );
+        UUID studyEntityKeyId = getStudyEntityKeyId( studyId );
+        if (studyEntityKeyId == null) {
+            logger.error("Unable to retrieve studyEntityKeyId, studyId = {}", studyId);
+            return null;
+        }
+        EntityDataKey studyEDK = new EntityDataKey( studyEntitySetId, studyEntityKeyId );
 
-        Set<UUID> tickets = ImmutableSet.of(
-                dataApi.acquireSyncTicket( deviceEntitySetId, deviceSyncId ),
-                dataApi.acquireSyncTicket( participantEntity.getEntitySetId(), participantEntity.getSyncId() ),
-                dataApi.acquireSyncTicket( studyEntitySetId, studySyncId ),
-                dataApi.acquireSyncTicket( usedByEntitySetId, usedBySyncId ) );
+        ListMultimap<UUID, DataEdge> associations = ArrayListMultimap.create();
 
-        dataApi.createEntityAndAssociationData( new BulkDataCreation( tickets, entities, associations ) );
+        Map<UUID, Set<Object>> usedByEntity = ImmutableMap
+                .of( stringIdPropertyTypeId, Sets.newHashSet( UUID.randomUUID() ) );
 
-        return getDatasourceEntityKeyId( datasourceId, searchApi, dataApi );
+        associations.put( usedByEntitySetId, new DataEdge( deviceEDK, participantEDK, usedByEntity ) );
+        associations.put( usedByEntitySetId, new DataEdge( deviceEDK, studyEDK, usedByEntity ) );
+
+        dataApi.createAssociations( associations );
+
+        return deviceEntityKeyId;
     }
 
     @Override
-    public UUID getDatasourceEntityKeyId( String datasourceId ) {
-        DataApi dataApi;
-        SearchApi searchApi;
-        try {
-            ApiClient apiClient = apiClientCache.get( ApiClient.class );
-            dataApi = apiClient.getDataApi();
-            searchApi = apiClient.getSearchApi();
-        } catch ( ExecutionException e ) {
-            logger.error( "Unable to load apis." );
-            return null;
+    public UUID getDeviceEntityKeyId( UUID studyId, String participantId, String datasourceId ) {
+        logger.info("Getting device entity key id, studyId = {}, participantId = {}, datasourceId = {}", studyId, participantId, datasourceId);
+
+        if (isKnownDatasource(studyId, participantId, datasourceId)) {
+            return studyDevices.get(studyId).get(participantId).get(datasourceId);
         }
-        return getDatasourceEntityKeyId( datasourceId, searchApi, dataApi );
+        return null;
     }
 
-    private UUID getDatasourceEntityKeyId( String datasourceId, SearchApi searchApi, DataApi dataApi ) {
-        // HACK -- we should get entityKeyIds back from dataApi eventually
-        DataSearchResult result = searchApi.executeEntitySetDataQuery( deviceEntitySetId,
-                new SearchTerm( stringIdPropertyTypeId.toString() + ":\"" + datasourceId + "\"", 0, 1 ) );
-        if ( result.getHits().size() == 0 ) {
-            return null; // TODO do we want to throw an error here?
-        }
-        return UUID.fromString( result.getHits().iterator().next().get( "id" ).iterator().next().toString() );
+    @Override
+    public boolean isKnownDatasource( UUID studyId, String participantId, String datasourceId ) {
+
+        logger.info( "Checking isKnownDatasource, studyId = {}, participantId = {}", studyId, participantId );
+
+        Map<String, Map<String, UUID>> participantDevices = Preconditions
+                    .checkNotNull(studyDevices.get(studyId), "Study must exist");
+
+        return participantDevices.containsKey(participantId)
+                    && participantDevices.get(participantId).containsKey(datasourceId);
+
     }
 
-    @Override public boolean isKnownDatasource( UUID studyId, String participantId, String datasourceId ) {
-        SetMultimap<String, String> participantDevices = Preconditions
-                .checkNotNull( studyInformation.get( studyId ), "Study must exist." );
-
-        return participantDevices.get( participantId ).contains( datasourceId );
+    @Override
+    public boolean isKnownParticipant( UUID studyId, String participantId ) {
+        return studyParticipants.getOrDefault(studyId, new HashMap<>()).containsKey(participantId);
     }
 
-    @Override public boolean isKnownParticipant( UUID studyId, String participantId ) {
-        return studyParticipants.get( studyId ).contains( participantId );
-    }
-
-    @Override public Map<String, UUID> getPropertyTypeIds( Set<String> propertyTypeFqns ) {
+    @Override
+    public Map<String, UUID> getPropertyTypeIds( Set<String> propertyTypeFqns ) {
         EdmApi edmApi;
         try {
             ApiClient apiClient = apiClientCache.get( ApiClient.class );
@@ -351,92 +416,307 @@ public class ChronicleServiceImpl implements ChronicleService {
 
     @Scheduled( fixedRate = 60000 )
     public void refreshStudyInformation() {
-        DataApi dataApi;
+        EntitySetsApi entitySetsApi;
         SearchApi searchApi;
         try {
             ApiClient apiClient = apiClientCache.get( ApiClient.class );
-            dataApi = apiClient.getDataApi();
+            entitySetsApi = apiClient.getEntitySetsApi();
             searchApi = apiClient.getSearchApi();
         } catch ( ExecutionException e ) {
             logger.error( "Unable to load apis." );
             return;
         }
 
-        Map<UUID, SetMultimap<String, String>> studyInformation = Maps.newConcurrentMap();
-        SetMultimap<UUID, String> studyParticipants = HashMultimap.create();
+        logger.info( "Refreshing study info..." );
 
-        Long numStudies = dataApi.getEntitySetSize( studyEntitySetId );
-        List<SetMultimap<Object, Object>> studySearchResult = searchApi
-                .executeEntitySetDataQuery( studyEntitySetId, new SearchTerm( "*", 0, numStudies.intValue() ) )
+        Map<UUID, Map<String, UUID>> studyParticipants = new HashMap<>();
+        Map<UUID, Map<String, Map<String, UUID>>> studyDevices = new HashMap<>();
+        Map<UUID, UUID> studies = new HashMap<>();
+
+        List<Map<FullQualifiedName, Set<Object>>> studySearchResult = searchApi
+                .executeEntitySetDataQuery( studyEntitySetId, new SearchTerm( "*", 0, SearchApi.MAX_SEARCH_RESULTS ) )
                 .getHits();
 
+        if (studySearchResult.isEmpty()) {
+            logger.info("No studies found.");
+            return;
+        }
+
         Set<UUID> studyEntityKeyIds = studySearchResult.stream()
-                .map( study -> UUID.fromString( study.get( "id" ).iterator().next().toString() ) )
+                .map( study -> UUID.fromString( study.get( ID_FQN ).iterator().next().toString() ) )
                 .collect( Collectors.toSet() );
 
-        Map<UUID, List<NeighborEntityDetails>> studyNeighbors = searchApi
-                .executeEntityNeighborSearchBulk( studyEntitySetId, studyEntityKeyIds );
+        Set<UUID> participantEntitySetIds = StreamUtil.stream( entitySetsApi.getEntitySets() )
+                .filter( entitySet -> entitySet.getName().startsWith( PARTICIPANTS_PREFIX ) )
+                .map( EntitySet::getId )
+                .collect( Collectors.toSet() );
+
+        Map<UUID, List<NeighborEntityDetails>> studyNeighbors = searchApi.executeFilteredEntityNeighborSearch(
+                studyEntitySetId,
+                new EntityNeighborsFilter(
+                        studyEntityKeyIds,
+                        java.util.Optional.of( participantEntitySetIds ),
+                        java.util.Optional.of( ImmutableSet.of() ),
+                        java.util.Optional.of( ImmutableSet.of( participatedInEntitySetId ) )
+                )
+        );
 
         SetMultimap<UUID, UUID> participantEntityKeysByEntitySetId = Multimaps
                 .synchronizedSetMultimap( HashMultimap.create() );
 
-        studyNeighbors.values().stream().flatMap( list -> list.stream() )
+        studyNeighbors
+                .values()
+                .stream()
+                .flatMap( Collection::stream )
                 .parallel()
-                .filter( neighbor -> neighbor.getNeighborEntitySet().isPresent() && neighbor.getNeighborEntitySet()
-                        .get().getName().startsWith( ChronicleServerUtil.PARTICIPANTS_PREFIX ) )
-                .forEach( neighbor -> participantEntityKeysByEntitySetId
-                        .put( neighbor.getNeighborEntitySet().get().getId(), neighbor.getNeighborId().get() ) );
+                .filter( neighbor -> neighbor.getNeighborEntitySet().isPresent() && neighbor.getNeighborId()
+                        .isPresent() )
+                .filter( neighbor -> neighbor.getNeighborEntitySet().get().getName().startsWith( PARTICIPANTS_PREFIX ) )
+                .forEach( neighbor -> {
+                    UUID participantEntitySetId = neighbor.getNeighborEntitySet().get().getId();
+                    UUID participantEntityKeyId = neighbor.getNeighborId().get();
+                    participantEntityKeysByEntitySetId.put( participantEntitySetId, participantEntityKeyId );
+                } );
 
         Map<UUID, List<NeighborEntityDetails>> participantNeighbors = Maps.newConcurrentMap();
 
         participantEntityKeysByEntitySetId.asMap().entrySet().stream().parallel().forEach( entry -> participantNeighbors
                 .putAll( searchApi
-                        .executeEntityNeighborSearchBulk( entry.getKey(), Sets.newHashSet( entry.getValue() ) ) ) );
+                        .executeFilteredEntityNeighborSearch( entry.getKey(),
+                                new EntityNeighborsFilter( Sets.newHashSet( entry.getValue() ),
+                                        java.util.Optional.of( ImmutableSet.of( deviceEntitySetId ) ),
+                                        java.util.Optional.of( ImmutableSet.of() ),
+                                        java.util.Optional.empty() ) ) ) );
 
         // populate study information
 
-        studySearchResult.forEach( studyObj -> {
-            SetMultimap<String, String> participantsToDevices = HashMultimap.create();
+        studySearchResult.forEach(studyObj -> {
+            Map<String, Map<String, UUID>> participantsToDevices = new HashMap<>();
+            UUID studyId, studyEntityKeyId;
 
-            UUID studyId = UUID.fromString( studyObj.get( STRING_ID_FQN.toString() ).iterator().next().toString() );
-            UUID studyEntityKeyId = UUID.fromString( studyObj.get( "id" ).iterator().next().toString() );
+            try {
+                studyId = UUID.fromString( studyObj.get( STRING_ID_FQN ).iterator().next().toString() );
+                studyEntityKeyId = UUID.fromString( studyObj.get( ID_FQN ).iterator().next().toString() );
+            } catch ( IllegalArgumentException error) {
+                logger.error("invalid studyId : {}", studyObj.get( STRING_ID_FQN ).iterator().next().toString());
+                return; // skip the current study object
+            }
+
+            if (studies.containsKey(studyId)) {
+                logger.error("encountered duplicate studyId = {}", studyId);
+            } else {
+                studies.put(studyId, studyEntityKeyId);
+            }
 
             if ( studyNeighbors.containsKey( studyEntityKeyId ) ) {
                 studyNeighbors.get( studyEntityKeyId ).stream()
                         .filter( neighbor -> neighbor.getNeighborEntitySet().isPresent() && neighbor
                                 .getNeighborEntitySet()
-                                .get().getName().startsWith( ChronicleServerUtil.PARTICIPANTS_PREFIX ) )
+                                .get()
+                                .getName()
+                                .startsWith( PARTICIPANTS_PREFIX )
+                        )
                         .forEach( participantNeighbor -> {
-                            String participantId = participantNeighbor.getNeighborDetails().get().get( PERSON_ID_FQN )
-                                    .iterator()
-                                    .next().toString();
-                            UUID participantEntityKeyId = participantNeighbor.getNeighborId().get();
 
-                            studyParticipants.put( studyId, participantId );
-                            if ( participantNeighbors.containsKey( participantEntityKeyId ) ) {
-                                Set<String> devices = participantNeighbors.get( participantEntityKeyId ).stream()
-                                        .filter( neighbor -> neighbor.getNeighborEntitySet().isPresent() && neighbor
-                                                .getNeighborEntitySet().get().getName()
-                                                .equals( DEVICES_ENTITY_SET_NAME ) )
-                                        .flatMap( neighbor -> neighbor.getNeighborDetails().get().get( STRING_ID_FQN )
-                                                .stream() )
-                                        .map( deviceId -> deviceId.toString() ).collect( Collectors.toSet() );
+                            Set<Object> participantIds = participantNeighbor.getNeighborDetails().get()
+                                    .get( PERSON_ID_FQN );
+                            if ( participantIds.size() > 0 ) {
 
-                                participantsToDevices.putAll( participantId, devices );
+                                String participantId = participantIds.iterator().next().toString();
+                                UUID participantEntityKeyId = participantNeighbor.getNeighborId().get();
+
+                                if (studyParticipants.containsKey(studyId) && studyParticipants.get(studyId).containsKey(participantId)) {
+                                    logger.error("Encountered duplicate participantId = {} in studyId = {}", participantId, studyId);
+                                } else{
+                                    studyParticipants.put(studyId, Map.of(participantId, participantEntityKeyId));
+                                    if ( participantNeighbors.containsKey( participantEntityKeyId ) ) {
+                                        Map<String, UUID> devices = new HashMap<>();
+                                        participantNeighbors
+                                                .get(participantEntityKeyId)
+                                                .stream()
+                                                .filter(neighbor -> neighbor.getNeighborEntitySet().isPresent() && neighbor
+                                                    .getNeighborEntitySet()
+                                                    .get()
+                                                    .getName()
+                                                    .equals(DEVICES_ENTITY_SET_NAME)
+                                                ).forEach (neighbor -> {
+                                                    if (neighbor.getNeighborDetails().isPresent()) {
+                                                        String deviceId = neighbor.getNeighborDetails().get().get(STRING_ID_FQN).iterator().next().toString();
+                                                        UUID deviceEntityKeyId = UUID.fromString(neighbor.getNeighborDetails().get().get(ID_FQN).iterator().next().toString());
+                                                        devices.put(deviceId, deviceEntityKeyId);
+                                                    }
+
+                                                 });
+
+
+                                        participantsToDevices.put( participantId, devices );
+                                    }
+                                }
                             }
-
                         } );
             }
 
-            studyInformation.put( studyId, participantsToDevices );
+            studyDevices.put( studyId, participantsToDevices );
         } );
 
-        this.studyInformation.clear();
-        this.studyInformation.putAll( studyInformation );
+        this.studies.clear();
+        this.studies.putAll( studies );
+        logger.info( "Updated studyInformation. Size = {}", this.studies.size() );
 
         this.studyParticipants.clear();
         this.studyParticipants.putAll( studyParticipants );
+        logger.info( "Updated studyParticipants. Size = {}", this.studyParticipants.size() );
 
+        this.studyDevices.clear();
+        this.studyDevices.putAll(studyDevices);
     }
 
+    private Iterable<Map<String, Set<Object>>> getParticipantDataHelper(UUID studyId, UUID participantEntityKeyId, String entitySetName) {
+        try {
+            ApiClient apiClient = apiClientCache.get( ApiClient.class );
+            EntitySetsApi entitySetsApi = apiClient.getEntitySetsApi();
+            SearchApi searchApi = apiClient.getSearchApi();
+
+            String participantEntitySetName = ChronicleServerUtil.getParticipantEntitySetName( studyId );
+            UUID entitySetId = entitySetsApi.getEntitySetId( participantEntitySetName );
+            if ( entitySetId == null ) {
+                logger.error( "Unable to load participant EntitySet id." );
+                return null;
+            }
+
+            List<NeighborEntityDetails> participantNeighbors = searchApi
+                    .executeEntityNeighborSearch( entitySetId, participantEntityKeyId );
+
+            return participantNeighbors
+                    .stream()
+                    .filter( neighbor -> neighbor.getNeighborDetails().isPresent()
+                            && neighbor.getNeighborEntitySet().isPresent()
+                            && entitySetName.equals( neighbor.getNeighborEntitySet().get().getName() )
+                    )
+                    .map( neighbor -> {
+                        neighbor.getNeighborDetails().get().remove( ID_FQN );
+                        Map<String, Set<Object>> neighborDetails = Maps.newHashMap();
+                        neighbor.getNeighborDetails().get()
+                                .forEach( ( key, value ) -> neighborDetails.put( key.toString(), value ) );
+                        return neighborDetails;
+                    } )
+                    .collect( Collectors.toSet() );
+        } catch ( ExecutionException e ) {
+            logger.error( "Unable to load participant data.", e );
+            return null;
+        }
+    }
+
+    public Iterable<Map<String, Set<Object>>> getAllPreprocessedParticipantData (UUID studyId, UUID participatedInEntityKeyId ) {
+        return getParticipantDataHelper(studyId, participatedInEntityKeyId, PREPROCESSED_DATA_ENTITY_SET_NAME);
+    }
+
+    @Override
+    public Iterable<Map<String, Set<Object>>> getAllParticipantData( UUID studyId, UUID participantEntityKeyId ) {
+        return getParticipantDataHelper(studyId, participantEntityKeyId, DATA_ENTITY_SET_NAME);
+    }
+
+    @Override
+    @Nonnull
+    public Map<FullQualifiedName, Set<Object>> getParticipantEntity( UUID studyId, UUID participantEntityKeyId ) {
+
+        try {
+            ApiClient apiClient = apiClientCache.get( ApiClient.class );
+            DataApi dataApi = apiClient.getDataApi();
+            EntitySetsApi entitySetsApi = apiClient.getEntitySetsApi();
+
+            String entitySetName = ChronicleServerUtil.getParticipantEntitySetName( studyId );
+            UUID entitySetId = entitySetsApi.getEntitySetId( entitySetName );
+            if ( entitySetId == null ) {
+                logger.error( "Unable to load participant EntitySet id." );
+                return ImmutableMap.of();
+            }
+
+            Map<FullQualifiedName, Set<Object>> entity = dataApi.getEntity( entitySetId, participantEntityKeyId );
+            if ( entity == null ) {
+                logger.error( "Unable to get participant entity." );
+                return ImmutableMap.of();
+            }
+            return entity;
+        } catch ( ExecutionException e ) {
+            logger.error( "Unable to get participant entity.", e );
+            return ImmutableMap.of();
+        }
+    }
+
+    @Override
+    public ParticipationStatus getParticipationStatus( UUID studyId, String participantId ) {
+
+        EntitySetsApi entitySetsApi;
+        SearchApi searchApi;
+
+        try {
+            ApiClient apiClient = apiClientCache.get( ApiClient.class );
+            entitySetsApi = apiClient.getEntitySetsApi();
+            searchApi = apiClient.getSearchApi();
+        } catch ( ExecutionException e ) {
+            logger.error( "Unable to load apis." );
+            return ParticipationStatus.UNKNOWN;
+        }
+
+        String participantsEntitySetName = ChronicleServerUtil.getParticipantEntitySetName( studyId );
+        UUID participantsEntitySetId = entitySetsApi.getEntitySetId( participantsEntitySetName );
+        if ( participantsEntitySetId == null ) {
+            logger.error( "unable to get the participants EntitySet id for studyId = {}", studyId );
+            return ParticipationStatus.UNKNOWN;
+        }
+
+        UUID participantEntityKeyId = getParticipantEntityKeyId( participantId, studyId );
+        if ( participantEntityKeyId == null ) {
+            logger.error( "unable to load participant entity key id for participantId = {}", participantId );
+            return ParticipationStatus.UNKNOWN;
+        }
+
+        Map<UUID, List<NeighborEntityDetails>> neighborResults = searchApi.executeFilteredEntityNeighborSearch(
+                participantsEntitySetId,
+                new EntityNeighborsFilter(
+                        ImmutableSet.of( participantEntityKeyId ),
+                        java.util.Optional.of( ImmutableSet.of() ),
+                        java.util.Optional.of( ImmutableSet.of( studyEntitySetId ) ),
+                        java.util.Optional.of( ImmutableSet.of( participatedInEntitySetId ) )
+                )
+        );
+
+        Set<Map<FullQualifiedName, Set<Object>>> target = neighborResults
+                .getOrDefault(participantEntityKeyId, ImmutableList.of())
+                .stream()
+                .filter( neighborResult -> {
+                    if ( neighborResult.getNeighborDetails().isPresent() ) {
+                        try {
+                            Set<Object> data = neighborResult.getNeighborDetails().get().get( STRING_ID_FQN );
+                            UUID expectedStudyId = UUID.fromString( data.iterator().next().toString() );
+                            return studyId.equals( expectedStudyId );
+                        } catch ( Exception e ) {
+                            logger.error( "caught exception while filtering by study id", e );
+                        }
+                    }
+                    return false;
+                } )
+                .map( NeighborEntityDetails::getAssociationDetails )
+                .collect( Collectors.toSet() );
+
+        if ( target.size() == 1 ) {
+            try {
+                Map<FullQualifiedName, Set<Object>> data = target.iterator().next();
+                if ( data.containsKey( STATUS_FQN ) ) {
+                    Set<Object> statusValue = data.get( STATUS_FQN );
+                    if ( statusValue != null && statusValue.size() == 1 ) {
+                        String status = statusValue.iterator().next().toString();
+                        return ParticipationStatus.valueOf( status );
+                    }
+                }
+            } catch ( Exception e ) {
+                logger.error( "unable to determine participation status", e );
+            }
+        } else {
+            logger.error( "only one edge is expected between the participant and the study, found {}", target.size() );
+        }
+
+        return ParticipationStatus.UNKNOWN;
+    }
 }

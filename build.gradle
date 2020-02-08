@@ -42,6 +42,7 @@ plugins {
     id 'eclipse'
     id 'idea'
     id 'jacoco'
+    id 'signing'
     id "org.jetbrains.kotlin.jvm" version "1.2.30"
 }
 
@@ -58,6 +59,12 @@ distTar {
 
 apply from: "https://raw.githubusercontent.com/openlattice/gradles/master/openlattice.gradle"
 apply plugin: 'kotlin'
+apply plugin: 'jacoco'
+apply plugin: 'maven-publish'
+
+jacoco {
+    toolVersion = "0.8.2"
+}
 
 mainClassName = "com.openlattice.chronicle.ChronicleServer"
 
@@ -110,7 +117,7 @@ configurations {
 }
 
 ext.odata_version = '4.2.0'
-ext.chronicle_api_version = '0.0.4-SNAPSHOT'
+ext.chronicle_api_version = '0.0.7-SNAPSHOT'
 dependencies {
     compile "com.google.guava:guava:${guava_version}"
 
@@ -118,7 +125,7 @@ dependencies {
         logger.quiet(project.name + " using project dependencies.")
         compile project(":rhizome")
         compile project(":api")
-        compile project(":chronicle-api") {
+        compile(project(":chronicle-api")) {
             exclude group: 'com.google.guava', module: 'guava'
         }
         compile(project(":shuttle")) {
