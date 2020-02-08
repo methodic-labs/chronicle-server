@@ -506,6 +506,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                 logger.error("encountered duplicate studyId = {}", studyId);
             } else {
                 studies.put(studyId, studyEntityKeyId);
+                studyParticipants.put(studyId, new HashMap<>());
             }
 
             if ( studyNeighbors.containsKey( studyEntityKeyId ) ) {
@@ -528,7 +529,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                                 if (studyParticipants.containsKey(studyId) && studyParticipants.get(studyId).containsKey(participantId)) {
                                     logger.error("Encountered duplicate participantId = {} in studyId = {}", participantId, studyId);
                                 } else{
-                                    studyParticipants.put(studyId, Map.of(participantId, participantEntityKeyId));
+                                    studyParticipants.get(studyId).put(participantId, participantEntityKeyId);
                                     if ( participantNeighbors.containsKey( participantEntityKeyId ) ) {
                                         Map<String, UUID> devices = new HashMap<>();
                                         participantNeighbors
@@ -565,7 +566,7 @@ public class ChronicleServiceImpl implements ChronicleService {
 
         this.studyParticipants.clear();
         this.studyParticipants.putAll( studyParticipants );
-        logger.info( "Updated studyParticipants. Size = {}", this.studyParticipants.size() );
+        logger.info( "Updated studyParticipants. Size = {}", this.studyParticipants.values().stream().flatMap(map -> map.values().stream()).count());
 
         this.studyDevices.clear();
         this.studyDevices.putAll(studyDevices);
