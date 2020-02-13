@@ -19,7 +19,6 @@
 
 package com.openlattice.chronicle.services;
 
-import com.dataloom.streams.StreamUtil;
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.cache.CacheBuilder;
@@ -34,6 +33,7 @@ import com.openlattice.chronicle.constants.ParticipationStatus;
 import com.openlattice.chronicle.sources.AndroidDevice;
 import com.openlattice.chronicle.sources.Datasource;
 import com.openlattice.client.ApiClient;
+import com.openlattice.client.RetrofitFactory;
 import com.openlattice.data.*;
 import com.openlattice.data.requests.NeighborEntityDetails;
 import com.openlattice.edm.EdmApi;
@@ -113,6 +113,8 @@ public class ChronicleServiceImpl implements ChronicleService {
         this.username = chronicleConfiguration.getUser();
         this.password = chronicleConfiguration.getPassword();
 
+        String token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFsZm9uY2VAb3BlbmxhdHRpY2UuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsInVzZXJfaWQiOiJnb29nbGUtb2F1dGgyfDEwODQ4MDI2NTc3ODY0NDk2MTU1NCIsImFwcF9tZXRhZGF0YSI6eyJyb2xlcyI6WyJBdXRoZW50aWNhdGVkVXNlciJdLCJhY3RpdmF0ZWQiOiJhY3RpdmF0ZWQifSwibmlja25hbWUiOiJhbGZvbmNlIiwicm9sZXMiOlsiQXV0aGVudGljYXRlZFVzZXIiXSwiaXNzIjoiaHR0cHM6Ly9vcGVubGF0dGljZS5hdXRoMC5jb20vIiwic3ViIjoiZ29vZ2xlLW9hdXRoMnwxMDg0ODAyNjU3Nzg2NDQ5NjE1NTQiLCJhdWQiOiJLVHpneXhzNktCY0pIQjg3MmVTTWUyY3BUSHpoeFM5OSIsImlhdCI6MTU4MTUzMzk4MiwiZXhwIjoxNTgxNjIwMzgyfQ.cw5ki42qzmHejJfuQes69YknEglXz4fSueRkw7Pi7nA";
+
         apiClientCache = CacheBuilder
                 .newBuilder()
                 .expireAfterWrite( 10, TimeUnit.HOURS )
@@ -120,7 +122,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                     @Override
                     public ApiClient load( Class<?> key ) throws Exception {
                         String jwtToken = MissionControl.getIdToken( username, password );
-                        return new ApiClient( () -> jwtToken );
+                        return new ApiClient( RetrofitFactory.Environment.LOCAL, () -> token );
                     }
                 } );
 
@@ -446,7 +448,8 @@ public class ChronicleServiceImpl implements ChronicleService {
                 .map( study -> UUID.fromString( study.get( ID_FQN ).iterator().next().toString() ) )
                 .collect( Collectors.toSet() );
 
-        Set<UUID> participantEntitySetIds = StreamUtil.stream( entitySetsApi.getEntitySets() )
+        Set<UUID> participantEntitySetIds =  entitySetsApi.getEntitySets()
+                .stream()
                 .filter( entitySet -> entitySet.getName().startsWith( PARTICIPANTS_PREFIX ) )
                 .map( EntitySet::getId )
                 .collect( Collectors.toSet() );
