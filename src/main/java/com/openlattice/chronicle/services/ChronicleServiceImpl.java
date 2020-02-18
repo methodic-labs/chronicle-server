@@ -36,6 +36,7 @@ import com.openlattice.chronicle.sources.Datasource;
 import com.openlattice.client.ApiClient;
 import com.openlattice.data.*;
 import com.openlattice.data.requests.NeighborEntityDetails;
+import com.openlattice.directory.PrincipalApi;
 import com.openlattice.edm.EdmApi;
 import com.openlattice.edm.EntitySet;
 import com.openlattice.entitysets.EntitySetsApi;
@@ -418,14 +419,19 @@ public class ChronicleServiceImpl implements ChronicleService {
     public void refreshStudyInformation() {
         EntitySetsApi entitySetsApi;
         SearchApi searchApi;
+        PrincipalApi principalApi;
         try {
             ApiClient apiClient = apiClientCache.get( ApiClient.class );
             entitySetsApi = apiClient.getEntitySetsApi();
             searchApi = apiClient.getSearchApi();
+            principalApi = apiClient.getPrincipalApi();
         } catch ( ExecutionException e ) {
             logger.error( "Unable to load apis." );
             return;
         }
+
+        //refresh permissions
+        principalApi.syncCallingUser();
 
         logger.info( "Refreshing study info..." );
 
