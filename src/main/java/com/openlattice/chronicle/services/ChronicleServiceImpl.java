@@ -430,11 +430,11 @@ public class ChronicleServiceImpl implements ChronicleService {
             return;
         }
 
-        //refresh Auth0
         try {
+            logger.info( "attempting to sync user..." );
             principalApi.syncCallingUser();
         } catch ( Exception e ) {
-            logger.error( "unable to refresh Auth0" );
+            logger.error( "failed to sync user" );
         }
 
         logger.info( "Refreshing study info..." );
