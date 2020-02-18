@@ -22,6 +22,7 @@ package com.openlattice.chronicle.controllers;
 import com.google.common.base.Optional;
 import com.openlattice.chronicle.ChronicleStudyApi;
 import com.openlattice.chronicle.constants.CustomMediaType;
+import com.openlattice.chronicle.data.ChronicleAppsUsageDetails;
 import com.openlattice.chronicle.data.FileType;
 import com.openlattice.chronicle.services.ChronicleService;
 import com.openlattice.chronicle.sources.Datasource;
@@ -36,6 +37,7 @@ import javax.inject.Inject;
 import javax.servlet.http.HttpServletResponse;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -147,6 +149,20 @@ public class ChronicleStudyController implements ChronicleStudyApi {
             UUID participantEntityKeyId,
             FileType fileType) {
         return chronicleService.getAllPreprocessedParticipantData(studyId, participantEntityKeyId);
+    }
+
+    @Override public Integer updateAppsUsageAssociationData(
+            UUID studyId, String participantId, Map<UUID, Map<FullQualifiedName, Set<Object>>> associationDetails ) {
+        return null;
+    }
+
+    @Override public List<ChronicleAppsUsageDetails> getParticipantAppsUsageData(
+            UUID studyId, String participantId ) {
+        return null;
+    }
+
+    @Override public Boolean isNotificationsEnabled( UUID studyId ) {
+        return null;
     }
 
     @RequestMapping(
