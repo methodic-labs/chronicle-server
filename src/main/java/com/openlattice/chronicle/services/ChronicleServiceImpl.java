@@ -430,8 +430,12 @@ public class ChronicleServiceImpl implements ChronicleService {
             return;
         }
 
-        //refresh permissions
-        principalApi.syncCallingUser();
+        //refresh Auth0
+        try {
+            principalApi.syncCallingUser();
+        } catch ( Exception e ) {
+            logger.error( "unable to refresh Auth0" );
+        }
 
         logger.info( "Refreshing study info..." );
 

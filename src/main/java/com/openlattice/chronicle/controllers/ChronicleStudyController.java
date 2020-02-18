@@ -130,38 +130,41 @@ public class ChronicleStudyController implements ChronicleStudyApi {
     @RequestMapping(
             path = PARTICIPANT_PATH + DATA_PATH + STUDY_ID_PATH + ENTITY_KEY_ID_PATH + PREPROCESSED_PATH,
             method = RequestMethod.GET,
-            produces = { MediaType.APPLICATION_JSON_VALUE, CustomMediaType.TEXT_CSV_VALUE} )
+            produces = { MediaType.APPLICATION_JSON_VALUE, CustomMediaType.TEXT_CSV_VALUE } )
     public Iterable<Map<String, Set<Object>>> getAllPreprocessedParticipantData(
             @PathVariable( STUDY_ID ) UUID studyId,
-            @PathVariable (ENTITY_KEY_ID ) UUID participantEntityKeyId,
-            @RequestParam ( value = FILE_TYPE, required = false ) FileType fileType,
+            @PathVariable( ENTITY_KEY_ID ) UUID participantEntityKeyId,
+            @RequestParam( value = FILE_TYPE, required = false ) FileType fileType,
             HttpServletResponse response ) {
 
-        String fileName = getParticipantDataFileName("ChroniclePreprocessedData_", studyId, participantEntityKeyId);
-        setContentDisposition(response, fileName, fileType);
-        setDownloadContentType(response, fileType);
+        String fileName = getParticipantDataFileName( "ChroniclePreprocessedData_", studyId, participantEntityKeyId );
+        setContentDisposition( response, fileName, fileType );
+        setDownloadContentType( response, fileType );
 
-        return getAllPreprocessedParticipantData(studyId, participantEntityKeyId, fileType );
+        return getAllPreprocessedParticipantData( studyId, participantEntityKeyId, fileType );
     }
 
     public Iterable<Map<String, Set<Object>>> getAllPreprocessedParticipantData(
             UUID studyId,
             UUID participantEntityKeyId,
-            FileType fileType) {
-        return chronicleService.getAllPreprocessedParticipantData(studyId, participantEntityKeyId);
+            FileType fileType ) {
+        return chronicleService.getAllPreprocessedParticipantData( studyId, participantEntityKeyId );
     }
 
-    @Override public Integer updateAppsUsageAssociationData(
+    @Override
+    public Integer updateAppsUsageAssociationData(
             UUID studyId, String participantId, Map<UUID, Map<FullQualifiedName, Set<Object>>> associationDetails ) {
         return null;
     }
 
-    @Override public List<ChronicleAppsUsageDetails> getParticipantAppsUsageData(
+    @Override
+    public List<ChronicleAppsUsageDetails> getParticipantAppsUsageData(
             UUID studyId, String participantId ) {
         return null;
     }
 
-    @Override public Boolean isNotificationsEnabled( UUID studyId ) {
+    @Override
+    public Boolean isNotificationsEnabled( UUID studyId ) {
         return null;
     }
 
@@ -175,7 +178,7 @@ public class ChronicleStudyController implements ChronicleStudyApi {
             @RequestParam( value = FILE_TYPE, required = false ) FileType fileType,
             HttpServletResponse response ) {
 
-        String fileName = getParticipantDataFileName("ChronicleData_", studyId, participantEntityKeyId);
+        String fileName = getParticipantDataFileName( "ChronicleData_", studyId, participantEntityKeyId );
         setContentDisposition( response, fileName, fileType );
         setDownloadContentType( response, fileType );
 
@@ -191,20 +194,19 @@ public class ChronicleStudyController implements ChronicleStudyApi {
         return chronicleService.getAllParticipantData( studyId, participantEntityKeyId );
     }
 
-
-    private String getParticipantDataFileName(String fileNamePrefix, UUID studyId, UUID participantEntityKeyId) {
+    private String getParticipantDataFileName( String fileNamePrefix, UUID studyId, UUID participantEntityKeyId ) {
         String participantId = chronicleService
-                .getParticipantEntity(studyId, participantEntityKeyId)
-                .get(PERSON_ID_FQN)
+                .getParticipantEntity( studyId, participantEntityKeyId )
+                .get( PERSON_ID_FQN )
                 .stream()
                 .findFirst()
-                .orElse("")
+                .orElse( "" )
                 .toString();
         StringBuilder fileNameBuilder = new StringBuilder()
-                .append(fileNamePrefix)
-                .append(LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE))
+                .append( fileNamePrefix )
+                .append( LocalDate.now().format( DateTimeFormatter.BASIC_ISO_DATE ) )
                 .append( "-" )
-                .append(participantId);
+                .append( participantId );
         return fileNameBuilder.toString();
     }
 
