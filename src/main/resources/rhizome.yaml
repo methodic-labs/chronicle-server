@@ -14,8 +14,10 @@ hazelcast:
         - "localhost"
     port: 5710
 
-hikari:
-    jdbcUrl: "jdbc:postgresql://localhost:5432/openlattice"
-    username: "oltest"
-    password: "test"
-    maximumPoolSize: 3
+postgres:
+    citus: false
+    hikari:
+        jdbcUrl: "jdbc:postgresql://localhost:5432/openlattice"
+        username: "oltest"
+        password: "test"
+        maximumPoolSize: 3
