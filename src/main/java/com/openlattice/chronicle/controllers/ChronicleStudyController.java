@@ -27,12 +27,12 @@ import com.openlattice.chronicle.data.ChronicleAppsUsageDetails;
 import com.openlattice.chronicle.data.FileType;
 import com.openlattice.chronicle.services.ChronicleService;
 import com.openlattice.chronicle.sources.Datasource;
-import com.openlattice.controllers.exceptions.ForbiddenException;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.InsufficientAuthenticationException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -160,7 +160,7 @@ public class ChronicleStudyController implements ChronicleStudyApi {
             return chronicleService.getAllPreprocessedParticipantData( studyId, participantEntityKeyId, token );
         }
 
-        throw new ForbiddenException( "request is not authenticated" );
+        throw new InsufficientAuthenticationException( "request is not authenticated" );
     }
 
     @Override
@@ -210,7 +210,7 @@ public class ChronicleStudyController implements ChronicleStudyApi {
             return chronicleService.getAllParticipantData( studyId, participantEntityKeyId, token );
         }
 
-        throw new ForbiddenException( "request is not authenticated" );
+        throw new InsufficientAuthenticationException( "request is not authenticated" );
     }
 
     private String getParticipantDataFileName( String fileNamePrefix, UUID studyId, UUID participantEntityKeyId ) {
