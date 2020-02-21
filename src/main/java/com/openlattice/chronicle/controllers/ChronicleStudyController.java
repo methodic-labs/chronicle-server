@@ -19,6 +19,7 @@
 
 package com.openlattice.chronicle.controllers;
 
+import com.auth0.spring.security.api.authentication.JwtAuthentication;
 import com.google.common.base.Optional;
 import com.openlattice.chronicle.ChronicleStudyApi;
 import com.openlattice.chronicle.constants.CustomMediaType;
@@ -26,11 +27,14 @@ import com.openlattice.chronicle.data.ChronicleAppsUsageDetails;
 import com.openlattice.chronicle.data.FileType;
 import com.openlattice.chronicle.services.ChronicleService;
 import com.openlattice.chronicle.sources.Datasource;
+import com.openlattice.controllers.exceptions.ForbiddenException;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import javax.inject.Inject;
@@ -130,7 +134,8 @@ public class ChronicleStudyController implements ChronicleStudyApi {
     @RequestMapping(
             path = PARTICIPANT_PATH + DATA_PATH + STUDY_ID_PATH + ENTITY_KEY_ID_PATH + PREPROCESSED_PATH,
             method = RequestMethod.GET,
-            produces = { MediaType.APPLICATION_JSON_VALUE, CustomMediaType.TEXT_CSV_VALUE } )
+            produces = { MediaType.APPLICATION_JSON_VALUE, CustomMediaType.TEXT_CSV_VALUE }
+    )
     public Iterable<Map<String, Set<Object>>> getAllPreprocessedParticipantData(
             @PathVariable( STUDY_ID ) UUID studyId,
             @PathVariable( ENTITY_KEY_ID ) UUID participantEntityKeyId,
@@ -148,7 +153,14 @@ public class ChronicleStudyController implements ChronicleStudyApi {
             UUID studyId,
             UUID participantEntityKeyId,
             FileType fileType ) {
-        return chronicleService.getAllPreprocessedParticipantData( studyId, participantEntityKeyId );
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if ( authentication instanceof JwtAuthentication ) {
+            String token = ( (JwtAuthentication) authentication ).getToken();
+            return chronicleService.getAllPreprocessedParticipantData( studyId, participantEntityKeyId, token );
+        }
+
+        throw new ForbiddenException( "request is not authenticated" );
     }
 
     @Override
@@ -171,7 +183,8 @@ public class ChronicleStudyController implements ChronicleStudyApi {
     @RequestMapping(
             path = PARTICIPANT_PATH + DATA_PATH + STUDY_ID_PATH + ENTITY_KEY_ID_PATH,
             method = RequestMethod.GET,
-            produces = { MediaType.APPLICATION_JSON_VALUE, CustomMediaType.TEXT_CSV_VALUE } )
+            produces = { MediaType.APPLICATION_JSON_VALUE, CustomMediaType.TEXT_CSV_VALUE }
+    )
     public Iterable<Map<String, Set<Object>>> getAllParticipantData(
             @PathVariable( STUDY_ID ) UUID studyId,
             @PathVariable( ENTITY_KEY_ID ) UUID participantEntityKeyId,
@@ -191,7 +204,13 @@ public class ChronicleStudyController implements ChronicleStudyApi {
             UUID participantEntityKeyId,
             FileType fileType ) {
 
-        return chronicleService.getAllParticipantData( studyId, participantEntityKeyId );
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if ( authentication instanceof JwtAuthentication ) {
+            String token = ( (JwtAuthentication) authentication ).getToken();
+            return chronicleService.getAllParticipantData( studyId, participantEntityKeyId, token );
+        }
+
+        throw new ForbiddenException( "request is not authenticated" );
     }
 
     private String getParticipantDataFileName( String fileNamePrefix, UUID studyId, UUID participantEntityKeyId ) {

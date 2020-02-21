@@ -582,9 +582,14 @@ public class ChronicleServiceImpl implements ChronicleService {
         this.studyDevices.putAll(studyDevices);
     }
 
-    private Iterable<Map<String, Set<Object>>> getParticipantDataHelper(UUID studyId, UUID participantEntityKeyId, String entitySetName) {
+    private Iterable<Map<String, Set<Object>>> getParticipantDataHelper(
+            UUID studyId,
+            UUID participantEntityKeyId,
+            String entitySetName,
+            String token ) {
         try {
-            ApiClient apiClient = apiClientCache.get( ApiClient.class );
+
+            ApiClient apiClient = new ApiClient( () -> token );
             EntitySetsApi entitySetsApi = apiClient.getEntitySetsApi();
             SearchApi searchApi = apiClient.getSearchApi();
 
@@ -618,13 +623,19 @@ public class ChronicleServiceImpl implements ChronicleService {
         }
     }
 
-    public Iterable<Map<String, Set<Object>>> getAllPreprocessedParticipantData (UUID studyId, UUID participatedInEntityKeyId ) {
-        return getParticipantDataHelper(studyId, participatedInEntityKeyId, PREPROCESSED_DATA_ENTITY_SET_NAME);
+    public Iterable<Map<String, Set<Object>>> getAllPreprocessedParticipantData(
+            UUID studyId,
+            UUID participatedInEntityKeyId,
+            String token ) {
+        return getParticipantDataHelper( studyId, participatedInEntityKeyId, PREPROCESSED_DATA_ENTITY_SET_NAME, token );
     }
 
     @Override
-    public Iterable<Map<String, Set<Object>>> getAllParticipantData( UUID studyId, UUID participantEntityKeyId ) {
-        return getParticipantDataHelper(studyId, participantEntityKeyId, DATA_ENTITY_SET_NAME);
+    public Iterable<Map<String, Set<Object>>> getAllParticipantData(
+            UUID studyId,
+            UUID participantEntityKeyId,
+            String token ) {
+        return getParticipantDataHelper( studyId, participantEntityKeyId, DATA_ENTITY_SET_NAME, token );
     }
 
     @Override
