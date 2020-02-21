@@ -617,9 +617,15 @@ public class ChronicleServiceImpl implements ChronicleService {
                         return neighborDetails;
                     } )
                     .collect( Collectors.toSet() );
-        } catch ( ExecutionException e ) {
-            logger.error( "Unable to load participant data.", e );
-            return null;
+        } catch ( Exception e ) {
+            // since the response is meant to be a file download, returning "null" will respond with 200 and return
+            // an empty file, which is not what we want. the request should not "succeed" when something goes wrong
+            // internally. additionally, it doesn't seem right for the request to return a stacktrace. instead,
+            // catching all exceptions and throwing a general exception here will result in a failed request with
+            // a simple error message to indicate something went wrong during the file download.
+            String errorMsg = "failed to download participant data";
+            logger.error( errorMsg, e );
+            throw new RuntimeException( errorMsg );
         }
     }
 
