@@ -383,19 +383,16 @@ public class ChronicleServiceImpl implements ChronicleService {
     @Override
     public boolean isKnownDatasource( UUID studyId, String participantId, String datasourceId ) {
 
-        logger.info( "Checking isKnownDatasource, studyId = {}, participantId = {}", studyId, participantId );
-
         Map<String, Map<String, UUID>> participantDevices = Preconditions
-                    .checkNotNull(studyDevices.get(studyId), "Study must exist");
+                .checkNotNull( studyDevices.get( studyId ), "Study must exist" );
 
-        return participantDevices.containsKey(participantId)
-                    && participantDevices.get(participantId).containsKey(datasourceId);
-
+        return participantDevices.containsKey( participantId )
+                && participantDevices.get( participantId ).containsKey( datasourceId );
     }
 
     @Override
     public boolean isKnownParticipant( UUID studyId, String participantId ) {
-        return studyParticipants.getOrDefault(studyId, new HashMap<>()).containsKey(participantId);
+        return studyParticipants.getOrDefault( studyId, new HashMap<>() ).containsKey( participantId );
     }
 
     @Override
@@ -582,9 +579,14 @@ public class ChronicleServiceImpl implements ChronicleService {
         this.studyDevices.putAll(studyDevices);
     }
 
-    private Iterable<Map<String, Set<Object>>> getParticipantDataHelper(UUID studyId, UUID participantEntityKeyId, String entitySetName) {
+    private Iterable<Map<String, Set<Object>>> getParticipantDataHelper(
+            UUID studyId,
+            UUID participantEntityKeyId,
+            String entitySetName,
+            String token ) {
         try {
-            ApiClient apiClient = apiClientCache.get( ApiClient.class );
+
+            ApiClient apiClient = new ApiClient( () -> token );
             EntitySetsApi entitySetsApi = apiClient.getEntitySetsApi();
             SearchApi searchApi = apiClient.getSearchApi();
 
@@ -612,19 +614,31 @@ public class ChronicleServiceImpl implements ChronicleService {
                         return neighborDetails;
                     } )
                     .collect( Collectors.toSet() );
-        } catch ( ExecutionException e ) {
-            logger.error( "Unable to load participant data.", e );
-            return null;
+        } catch ( Exception e ) {
+            // since the response is meant to be a file download, returning "null" will respond with 200 and return
+            // an empty file, which is not what we want. the request should not "succeed" when something goes wrong
+            // internally. additionally, it doesn't seem right for the request to return a stacktrace. instead,
+            // catching all exceptions and throwing a general exception here will result in a failed request with
+            // a simple error message to indicate something went wrong during the file download.
+            String errorMsg = "failed to download participant data";
+            logger.error( errorMsg, e );
+            throw new RuntimeException( errorMsg );
         }
     }
 
-    public Iterable<Map<String, Set<Object>>> getAllPreprocessedParticipantData (UUID studyId, UUID participatedInEntityKeyId ) {
-        return getParticipantDataHelper(studyId, participatedInEntityKeyId, PREPROCESSED_DATA_ENTITY_SET_NAME);
+    public Iterable<Map<String, Set<Object>>> getAllPreprocessedParticipantData(
+            UUID studyId,
+            UUID participatedInEntityKeyId,
+            String token ) {
+        return getParticipantDataHelper( studyId, participatedInEntityKeyId, PREPROCESSED_DATA_ENTITY_SET_NAME, token );
     }
 
     @Override
-    public Iterable<Map<String, Set<Object>>> getAllParticipantData( UUID studyId, UUID participantEntityKeyId ) {
-        return getParticipantDataHelper(studyId, participantEntityKeyId, DATA_ENTITY_SET_NAME);
+    public Iterable<Map<String, Set<Object>>> getAllParticipantData(
+            UUID studyId,
+            UUID participantEntityKeyId,
+            String token ) {
+        return getParticipantDataHelper( studyId, participantEntityKeyId, DATA_ENTITY_SET_NAME, token );
     }
 
     @Override
