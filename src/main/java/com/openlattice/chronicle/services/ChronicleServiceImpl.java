@@ -383,19 +383,16 @@ public class ChronicleServiceImpl implements ChronicleService {
     @Override
     public boolean isKnownDatasource( UUID studyId, String participantId, String datasourceId ) {
 
-        logger.info( "Checking isKnownDatasource, studyId = {}, participantId = {}", studyId, participantId );
-
         Map<String, Map<String, UUID>> participantDevices = Preconditions
-                    .checkNotNull(studyDevices.get(studyId), "Study must exist");
+                .checkNotNull( studyDevices.get( studyId ), "Study must exist" );
 
-        return participantDevices.containsKey(participantId)
-                    && participantDevices.get(participantId).containsKey(datasourceId);
-
+        return participantDevices.containsKey( participantId )
+                && participantDevices.get( participantId ).containsKey( datasourceId );
     }
 
     @Override
     public boolean isKnownParticipant( UUID studyId, String participantId ) {
-        return studyParticipants.getOrDefault(studyId, new HashMap<>()).containsKey(participantId);
+        return studyParticipants.getOrDefault( studyId, new HashMap<>() ).containsKey( participantId );
     }
 
     @Override
