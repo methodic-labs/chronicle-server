@@ -52,9 +52,15 @@ public interface ChronicleService {
 
     Map<String, UUID> getPropertyTypeIds( Set<String> propertyTypeFqns );
 
-    Iterable<Map<String, Set<Object>>> getAllParticipantData( UUID studyId, UUID participantEntityId );
+    Iterable<Map<String, Set<Object>>> getAllParticipantData(
+            UUID studyId,
+            UUID participantEntityId,
+            String token );
 
-    Iterable<Map<String, Set<Object>>> getAllPreprocessedParticipantData ( UUID studyId, UUID participantEntityId );
+    Iterable<Map<String, Set<Object>>> getAllPreprocessedParticipantData(
+            UUID studyId,
+            UUID participantEntityId,
+            String token );
 
     Map<FullQualifiedName, Set<Object>> getParticipantEntity( UUID studyId, UUID participantEntityId );
 

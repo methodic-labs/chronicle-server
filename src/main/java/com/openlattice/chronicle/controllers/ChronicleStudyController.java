@@ -19,6 +19,7 @@
 
 package com.openlattice.chronicle.controllers;
 
+import com.auth0.spring.security.api.authentication.JwtAuthentication;
 import com.google.common.base.Optional;
 import com.openlattice.chronicle.ChronicleStudyApi;
 import com.openlattice.chronicle.constants.CustomMediaType;
@@ -31,6 +32,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.InsufficientAuthenticationException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import javax.inject.Inject;
@@ -161,42 +165,55 @@ public class ChronicleStudyController implements ChronicleStudyApi {
     @RequestMapping(
             path = PARTICIPANT_PATH + DATA_PATH + STUDY_ID_PATH + ENTITY_KEY_ID_PATH + PREPROCESSED_PATH,
             method = RequestMethod.GET,
-            produces = { MediaType.APPLICATION_JSON_VALUE, CustomMediaType.TEXT_CSV_VALUE } )
+            produces = { MediaType.APPLICATION_JSON_VALUE, CustomMediaType.TEXT_CSV_VALUE }
+    )
     public Iterable<Map<String, Set<Object>>> getAllPreprocessedParticipantData(
             @PathVariable( STUDY_ID ) UUID studyId,
             @PathVariable( ENTITY_KEY_ID ) UUID participantEntityKeyId,
             @RequestParam( value = FILE_TYPE, required = false ) FileType fileType,
             HttpServletResponse response ) {
 
+        Iterable<Map<String, Set<Object>>> data = getAllPreprocessedParticipantData( studyId,
+                participantEntityKeyId,
+                fileType );
+
         String fileName = getParticipantDataFileName( "ChroniclePreprocessedData_", studyId, participantEntityKeyId );
         setContentDisposition( response, fileName, fileType );
         setDownloadContentType( response, fileType );
-
-        return getAllPreprocessedParticipantData( studyId, participantEntityKeyId, fileType );
+        return data;
     }
 
     public Iterable<Map<String, Set<Object>>> getAllPreprocessedParticipantData(
             UUID studyId,
             UUID participantEntityKeyId,
             FileType fileType ) {
-        return chronicleService.getAllPreprocessedParticipantData( studyId, participantEntityKeyId );
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if ( authentication instanceof JwtAuthentication ) {
+            String token = ( (JwtAuthentication) authentication ).getToken();
+            return chronicleService.getAllPreprocessedParticipantData( studyId, participantEntityKeyId, token );
+        }
+
+        throw new InsufficientAuthenticationException( "request is not authenticated" );
     }
 
     @RequestMapping(
             path = PARTICIPANT_PATH + DATA_PATH + STUDY_ID_PATH + ENTITY_KEY_ID_PATH,
             method = RequestMethod.GET,
-            produces = { MediaType.APPLICATION_JSON_VALUE, CustomMediaType.TEXT_CSV_VALUE } )
+            produces = { MediaType.APPLICATION_JSON_VALUE, CustomMediaType.TEXT_CSV_VALUE }
+    )
     public Iterable<Map<String, Set<Object>>> getAllParticipantData(
             @PathVariable( STUDY_ID ) UUID studyId,
             @PathVariable( ENTITY_KEY_ID ) UUID participantEntityKeyId,
             @RequestParam( value = FILE_TYPE, required = false ) FileType fileType,
             HttpServletResponse response ) {
 
+        Iterable<Map<String, Set<Object>>> data = getAllParticipantData( studyId, participantEntityKeyId, fileType );
+
         String fileName = getParticipantDataFileName( "ChronicleData_", studyId, participantEntityKeyId );
         setContentDisposition( response, fileName, fileType );
         setDownloadContentType( response, fileType );
-
-        return getAllParticipantData( studyId, participantEntityKeyId, fileType );
+        return data;
     }
 
     @Override
@@ -205,7 +222,13 @@ public class ChronicleStudyController implements ChronicleStudyApi {
             UUID participantEntityKeyId,
             FileType fileType ) {
 
-        return chronicleService.getAllParticipantData( studyId, participantEntityKeyId );
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if ( authentication instanceof JwtAuthentication ) {
+            String token = ( (JwtAuthentication) authentication ).getToken();
+            return chronicleService.getAllParticipantData( studyId, participantEntityKeyId, token );
+        }
+
+        throw new InsufficientAuthenticationException( "request is not authenticated" );
     }
 
     private String getParticipantDataFileName( String fileNamePrefix, UUID studyId, UUID participantEntityKeyId ) {
