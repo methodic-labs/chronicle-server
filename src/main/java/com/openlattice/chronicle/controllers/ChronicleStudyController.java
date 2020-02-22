@@ -142,11 +142,14 @@ public class ChronicleStudyController implements ChronicleStudyApi {
             @RequestParam( value = FILE_TYPE, required = false ) FileType fileType,
             HttpServletResponse response ) {
 
+        Iterable<Map<String, Set<Object>>> data = getAllPreprocessedParticipantData( studyId,
+                participantEntityKeyId,
+                fileType );
+
         String fileName = getParticipantDataFileName( "ChroniclePreprocessedData_", studyId, participantEntityKeyId );
         setContentDisposition( response, fileName, fileType );
         setDownloadContentType( response, fileType );
-
-        return getAllPreprocessedParticipantData( studyId, participantEntityKeyId, fileType );
+        return data;
     }
 
     public Iterable<Map<String, Set<Object>>> getAllPreprocessedParticipantData(
@@ -191,11 +194,12 @@ public class ChronicleStudyController implements ChronicleStudyApi {
             @RequestParam( value = FILE_TYPE, required = false ) FileType fileType,
             HttpServletResponse response ) {
 
+        Iterable<Map<String, Set<Object>>> data = getAllParticipantData( studyId, participantEntityKeyId, fileType );
+
         String fileName = getParticipantDataFileName( "ChronicleData_", studyId, participantEntityKeyId );
         setContentDisposition( response, fileName, fileType );
         setDownloadContentType( response, fileType );
-
-        return getAllParticipantData( studyId, participantEntityKeyId, fileType );
+        return data;
     }
 
     @Override
