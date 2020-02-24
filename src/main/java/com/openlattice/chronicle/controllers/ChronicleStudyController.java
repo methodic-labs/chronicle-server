@@ -147,7 +147,6 @@ public class ChronicleStudyController implements ChronicleStudyApi {
     )
     public Boolean isNotificationsEnabled(
             @PathVariable( STUDY_ID ) UUID studyId ) {
-        // todo : implement this method
         return chronicleService.isNotificationsEnabled(studyId);
     }
 

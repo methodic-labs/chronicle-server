@@ -76,7 +76,7 @@ public class ChronicleServiceImpl implements ChronicleService {
     // studyId -> study EKID
     private final Map<UUID, UUID> studies = new HashMap<>();
 
-    private final Set<UUID> studiesWithNotifications = new HashSet<>();
+    private final Set<UUID> notificationEnabledStudyEKIDs = new HashSet<>();
 
     private final String username;
     private final String password;
@@ -91,6 +91,7 @@ public class ChronicleServiceImpl implements ChronicleService {
     private final String   USED_BY_ENTITY_SET_NAME           = "chronicle_used_by";
     private final String   PARTICIPATED_IN_AESN              = "chronicle_participated_in";
     private final String   SEARCH_PREFIX                     = "entity";
+    private final String   NOTIFICATION_ENTITY_SET_PREFIX    = "chronicle_notifications_";
 
     private final Set<UUID>         dataKey;
     private final FullQualifiedName STRING_ID_FQN    = new FullQualifiedName( "general.stringid" );
@@ -105,6 +106,7 @@ public class ChronicleServiceImpl implements ChronicleService {
     private final FullQualifiedName APP_NAME         = new FullQualifiedName( "ol.title" );
     private final FullQualifiedName RECORD_TYPE_FQN  = new FullQualifiedName( "ol.recordtype" );
     private final FullQualifiedName DURATION         = new FullQualifiedName( "general.Duration" );
+    private final FullQualifiedName OL_ID_FQN        = new FullQualifiedName( "ol.id" );
 
     private final UUID studyEntitySetId;
     private final UUID deviceEntitySetId;
@@ -135,7 +137,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         this.username = chronicleConfiguration.getUser();
         this.password = chronicleConfiguration.getPassword();
 
-        String token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFsZm9uY2VAb3BlbmxhdHRpY2UuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsInVzZXJfaWQiOiJnb29nbGUtb2F1dGgyfDEwODQ4MDI2NTc3ODY0NDk2MTU1NCIsImFwcF9tZXRhZGF0YSI6eyJyb2xlcyI6WyJBdXRoZW50aWNhdGVkVXNlciJdLCJhY3RpdmF0ZWQiOiJhY3RpdmF0ZWQifSwibmlja25hbWUiOiJhbGZvbmNlIiwicm9sZXMiOlsiQXV0aGVudGljYXRlZFVzZXIiXSwiaXNzIjoiaHR0cHM6Ly9vcGVubGF0dGljZS5hdXRoMC5jb20vIiwic3ViIjoiZ29vZ2xlLW9hdXRoMnwxMDg0ODAyNjU3Nzg2NDQ5NjE1NTQiLCJhdWQiOiJLVHpneXhzNktCY0pIQjg3MmVTTWUyY3BUSHpoeFM5OSIsImlhdCI6MTU4MjMwNDE0NywiZXhwIjoxNTgyMzkwNTQ3fQ.qU64cB09tamAPpg6Hj-A7UlnCw9Gk_PrluM8-mcM-gI";
+        String token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFsZm9uY2VAb3BlbmxhdHRpY2UuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsInVzZXJfaWQiOiJnb29nbGUtb2F1dGgyfDEwODQ4MDI2NTc3ODY0NDk2MTU1NCIsImFwcF9tZXRhZGF0YSI6eyJyb2xlcyI6WyJBdXRoZW50aWNhdGVkVXNlciJdLCJhY3RpdmF0ZWQiOiJhY3RpdmF0ZWQifSwibmlja25hbWUiOiJhbGZvbmNlIiwicm9sZXMiOlsiQXV0aGVudGljYXRlZFVzZXIiXSwiaXNzIjoiaHR0cHM6Ly9vcGVubGF0dGljZS5hdXRoMC5jb20vIiwic3ViIjoiZ29vZ2xlLW9hdXRoMnwxMDg0ODAyNjU3Nzg2NDQ5NjE1NTQiLCJhdWQiOiJLVHpneXhzNktCY0pIQjg3MmVTTWUyY3BUSHpoeFM5OSIsImlhdCI6MTU4MjU2ODgyMCwiZXhwIjoxNTgyNjU1MjIwfQ.XMvW-d_baj0b5UpFNSyQfTIDPqiw5EGfvZ8AniyYfAg";
 
         apiClientCache = CacheBuilder
                 .newBuilder()
@@ -358,7 +360,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                     ImmutableMap.of( userAppEntityKeyId, userAppEntityData ),
                     UpdateType.Merge );
 
-            // association: chronicle_user_apps => chronicle_device
+            // association: chronicle_user_apps => chronicle_recorded_by => chronicle_device
             Map<UUID, Set<Object>> recordedByEntityData = new HashMap<>();
             recordedByEntityData.put( dateLoggedPropertyTypeId, ImmutableSet.of( dateLogged ) );
             recordedByEntityData.put( stringIdPropertyTypeId, ImmutableSet.of( deviceId ) );
@@ -376,7 +378,7 @@ public class ChronicleServiceImpl implements ChronicleService {
 
             dataEdgeKeys.add( new DataEdgeKey( src, dst, edge ) );
 
-            // association : chronicle_user_apps => chronicle_used_by
+            // association: chronicle_user_apps => chronicle_used_by => chronicle_participants_{studyId}
             Map<UUID, Set<Object>> usedByEntityData = new HashMap<>();
             usedByEntityData.put( dateUsedPropertyTypeId, ImmutableSet.of( dateLogged ) );
 
@@ -448,7 +450,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                 data.size(), participantId );
     }
 
-    // update chronicle_used_by associations when apps usage survey is submitted
+    // update chronicle_user_apps -> chronicle_used_by -> chronicle_participants_{studyID} associations when apps usage survey is submitted
     @Override
     public Integer updateAppsUsageAssociationData(
             UUID studyId,
@@ -693,6 +695,24 @@ public class ChronicleServiceImpl implements ChronicleService {
 
     @Override
     public boolean isNotificationsEnabled( UUID studyId ) {
+        logger.info( "Checking notifications enabled on studyId = {}", studyId );
+
+        UUID studyEntityKeyId = getStudyEntityKeyId( studyId );
+
+        if ( studyEntityKeyId != null ) {
+            boolean enabled = notificationEnabledStudyEKIDs.contains( studyEntityKeyId );
+            if ( enabled ) {
+                logger.info( "Notifications enabled on study: studyId = {}, entityKeyId={}",
+                        studyId,
+                        studyEntityKeyId );
+            } else {
+                logger.info( "Notifications not enabled on study: studyId={}, entityKeyId={}",
+                        studyId,
+                        studyEntityKeyId );
+            }
+
+            return enabled;
+        }
         return false;
     }
 
@@ -739,6 +759,45 @@ public class ChronicleServiceImpl implements ChronicleService {
                 .of( fqn.getFullQualifiedNameAsString(),
                         edmApi.getPropertyTypeId( fqn.getNamespace(), fqn.getName() ) ) )
                 .collect( Collectors.toMap( pair -> pair.getLeft(), pair -> pair.getRight() ) );
+    }
+
+    // retrieve study entity key ids with daily notifications enabled
+    private Set<UUID> getNotificationEnabledStudies(
+            List<Map<FullQualifiedName, Set<Object>>> studies,
+            SearchApi searchApi ) {
+        Set<UUID> studyEntityKeyIds = studies
+                .stream()
+                .map( study -> UUID.fromString( study.get( ID_FQN ).iterator().next().toString() ) )
+                .collect( Collectors.toSet() );
+
+        Set<UUID> studyIds = studies
+                .stream()
+                .map( study -> UUID.fromString( study.get( STRING_ID_FQN ).iterator().next().toString() ) )
+                .collect( Collectors.toSet() );
+
+        Map<UUID, List<NeighborEntityDetails>> studyNeighbors = searchApi
+                .executeEntityNeighborSearchBulk(
+                        studyEntitySetId,
+                        studyEntityKeyIds
+                );
+
+        // studies with notifications enabled have 'ol.id' property in the corresponding associationDetails set to
+        // the value of the studyId
+        return studyNeighbors
+                .entrySet()
+                .stream()
+                .filter( entry -> entry
+                        .getValue()
+                        .stream()
+                        .anyMatch( neighbor -> neighbor
+                                .getNeighborEntitySet().isPresent() && neighbor
+                                .getNeighborEntitySet().get().getName().startsWith( NOTIFICATION_ENTITY_SET_PREFIX )
+                                && neighbor.getAssociationDetails()
+                                .containsKey( OL_ID_FQN ) && studyIds.contains( UUID
+                                .fromString( neighbor.getAssociationDetails().get( OL_ID_FQN ).iterator().next()
+                                        .toString() ) ) ) )
+                .map( Map.Entry::getKey )
+                .collect( Collectors.toSet() );
     }
 
     @Scheduled( fixedRate = 60000 )
@@ -823,6 +882,9 @@ public class ChronicleServiceImpl implements ChronicleService {
                                         java.util.Optional.of( ImmutableSet.of( deviceEntitySetId ) ),
                                         java.util.Optional.of( ImmutableSet.of() ),
                                         java.util.Optional.empty() ) ) ) );
+
+        // get studies with notifications enabled
+        Set<UUID> notificationEnabledStudyEKIDs = getNotificationEnabledStudies( studySearchResult, searchApi );
 
         // populate study information
 
@@ -914,6 +976,11 @@ public class ChronicleServiceImpl implements ChronicleService {
 
         this.studyDevices.clear();
         this.studyDevices.putAll( studyDevices );
+
+        this.notificationEnabledStudyEKIDs.clear();
+        this.notificationEnabledStudyEKIDs.addAll( notificationEnabledStudyEKIDs );
+        logger.info( "Updated studies with notifications enabled. Size = {}",
+                this.notificationEnabledStudyEKIDs.size() );
     }
 
     private Iterable<Map<String, Set<Object>>> getParticipantDataHelper(
