@@ -335,9 +335,10 @@ public class ChronicleServiceImpl implements ChronicleService {
          */
         List<SetMultimap<UUID, Object>> userAppsData = data
                 .stream()
-                .filter( entry -> entry.containsKey( durationPropertyTypeId ) && entry
-                        .containsKey( startDateTimePropertyId )
-                        && Long.parseLong( entry.get( durationPropertyTypeId ).iterator().next().toString() ) > 0 )
+                .filter( entry -> entry.containsKey( durationPropertyTypeId ) &&
+                        entry.containsKey( startDateTimePropertyId ) &&
+                        entry.containsKey( appNamePropertyTypeId ) &&
+                        Long.parseLong( entry.get( durationPropertyTypeId ).iterator().next().toString() ) > 0 )
                 .collect( Collectors.toList() );
 
         for ( int i = 0; i < userAppsData.size(); ++i ) {
