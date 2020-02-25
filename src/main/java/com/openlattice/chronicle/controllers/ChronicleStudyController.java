@@ -133,7 +133,8 @@ public class ChronicleStudyController implements ChronicleStudyApi {
 
     @RequestMapping(
             path = PARTICIPANT_PATH + DATA_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH + APPS,
-            method = RequestMethod.GET
+            method = RequestMethod.GET,
+            produces = MediaType.APPLICATION_JSON_VALUE
     )
     public List<ChronicleAppsUsageDetails> getParticipantAppsUsageData(
             @PathVariable( STUDY_ID ) UUID studyId,
@@ -152,7 +153,8 @@ public class ChronicleStudyController implements ChronicleStudyApi {
 
     @RequestMapping(
             path = PARTICIPANT_PATH + DATA_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH + APPS,
-            method = RequestMethod.POST
+            method = RequestMethod.POST,
+            consumes = MediaType.APPLICATION_JSON_VALUE
     )
     public Integer updateAppsUsageAssociationData(
             @PathVariable( STUDY_ID ) UUID studyId,
