@@ -34,7 +34,6 @@ import com.openlattice.chronicle.constants.ParticipationStatus;
 import com.openlattice.chronicle.data.ChronicleAppsUsageDetails;
 import com.openlattice.chronicle.sources.AndroidDevice;
 import com.openlattice.chronicle.sources.Datasource;
-import com.openlattice.chronicle.util.ChronicleServerExceptionHandler;
 import com.openlattice.client.ApiClient;
 import com.openlattice.data.*;
 import com.openlattice.data.requests.NeighborEntityDetails;
@@ -506,7 +505,6 @@ public class ChronicleServiceImpl implements ChronicleService {
             String participantId ) {
 
         logger.info( "Retrieving user apps: participantId = {}, studyId = {}", participantId, studyId );
-        ChronicleServerExceptionHandler exceptionHandler = new ChronicleServerExceptionHandler();
 
         SearchApi searchApi;
         try {
