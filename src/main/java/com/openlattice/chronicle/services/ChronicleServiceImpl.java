@@ -626,6 +626,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         }
     }
 
+    @Override
     public Iterable<Map<String, Set<Object>>> getAllPreprocessedParticipantData(
             UUID studyId,
             UUID participatedInEntityKeyId,
