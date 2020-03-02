@@ -341,7 +341,7 @@ public class ChronicleServiceImpl implements ChronicleService {
             Set<DataEdgeKey> dataEdgeKeys = new HashSet<>();
             String appPackageName = userAppsData.get( i ).get( appPackageNamePTID ).iterator().next()
                     .toString();
-            String dateLogged = getMidnightDateTime( userAppsData.get( i ).get( startDateTimePTID ).iterator().next()
+            String dateLogged = getMidnightDateTime( userAppsData.get( i ).get( dateLoggedPTID ).iterator().next()
                     .toString() );
 
             // create entity in chronicle_user_apps
