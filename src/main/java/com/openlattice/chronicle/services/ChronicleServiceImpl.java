@@ -984,21 +984,25 @@ public class ChronicleServiceImpl implements ChronicleService {
             SearchApi searchApi = apiClient.getSearchApi();
 
             String participantEntitySetName = ChronicleServerUtil.getParticipantEntitySetName( studyId );
-            UUID entitySetId = entitySetsApi.getEntitySetId( participantEntitySetName );
-            if ( entitySetId == null ) {
-                logger.error( "Unable to load participant EntitySet id." );
-                return null;
-            }
+            UUID participantEntitySetId = entitySetsApi.getEntitySetId( participantEntitySetName );
 
-            List<NeighborEntityDetails> participantNeighbors = searchApi
-                    .executeEntityNeighborSearch( entitySetId, participantEntityKeyId );
+            UUID srcEntitySetId = entitySetsApi.getEntitySetId( entitySetName );
+
+            Map<UUID, List<NeighborEntityDetails>> participantNeighbors = searchApi.executeFilteredEntityNeighborSearch(
+                    participantEntitySetId,
+                    new EntityNeighborsFilter(
+                            Set.of( participantEntityKeyId ),
+                            java.util.Optional.of( ImmutableSet.of( srcEntitySetId ) ),
+                            java.util.Optional.of( ImmutableSet.of() ),
+                            java.util.Optional.of( ImmutableSet.of() )
+                    )
+
+            );
 
             return participantNeighbors
+                    .get( participantEntityKeyId )
                     .stream()
-                    .filter( neighbor -> neighbor.getNeighborDetails().isPresent()
-                            && neighbor.getNeighborEntitySet().isPresent()
-                            && entitySetName.equals( neighbor.getNeighborEntitySet().get().getName() )
-                    )
+                    .filter( neighbor -> neighbor.getNeighborDetails().isPresent() )
                     .map( neighbor -> {
                         neighbor.getNeighborDetails().get().remove( ID_FQN );
                         Map<String, Set<Object>> neighborDetails = Maps.newHashMap();
