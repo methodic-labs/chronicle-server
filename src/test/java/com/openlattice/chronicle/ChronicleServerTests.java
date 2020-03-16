@@ -50,6 +50,7 @@ public class ChronicleServerTests {
     private static final FullQualifiedName TITLE_FQN       = new FullQualifiedName( "ol.title" );
     private static final FullQualifiedName DATETIME_FQN    = new FullQualifiedName( "ol.datetime" );
     private static final FullQualifiedName USER_FQN        = new FullQualifiedName( "ol.user" );
+    private static final FullQualifiedName RECORD_TYPE_FQN  = new FullQualifiedName( "ol.recordtype" );
 
     private static final String                       STUDY_ES_NAME             = "chronicle_study";
     private static final String                       DEVICES_ES_NAME           = "chronicle_device";
@@ -64,6 +65,7 @@ public class ChronicleServerTests {
     private static final UUID STUDY_ID = UUID.fromString( "36ba6fab-76fa-4fe4-ad65-df4eae1f307a" );
     private static final String PARTICIPANT1 = "participant1";
     private static final String UN_ENROLLED_PARTICIPANT = "participant2";
+    private static final String PARTICIPANT3 = "participant3";
 
     private static final UUID participant1EntityKeyId   = UUID.fromString( "00c60000-0000-0000-8000-000000000004" );
     private static final UUID participant3EntityKeyId   = UUID.fromString( "3a870000-0000-0000-8000-000000000011" );
@@ -91,6 +93,7 @@ public class ChronicleServerTests {
     private static       UUID                         titlePTID;
     private static       UUID                         startDateTimePTID;
     private static       UUID                         dateLoggedPTID;
+    private static UUID recordTypePTID;
 
     private static DataApi       dataApi;
     private static EdmApi        edmApi;
@@ -109,6 +112,7 @@ public class ChronicleServerTests {
     @BeforeClass
     public static void chronicleServerTest() throws Exception {
 
+        // replace this with an actual auth0_id token
         String token = "";
 
         LoadingCache<Class<?>, ApiClient> apiClientCache = CacheBuilder
@@ -155,7 +159,7 @@ public class ChronicleServerTests {
                 .executeFilteredEntityNeighborSearch(
                         participantEntitySetId,
                         new EntityNeighborsFilter(
-                                ImmutableSet.of( participant1EntityKeyId ),
+                                ImmutableSet.of( participantEKID ),
                                 java.util.Optional.of( ImmutableSet.of( userAppsESID ) ),
                                 java.util.Optional.of( ImmutableSet.of( participantEntitySetId ) ),
                                 java.util.Optional.of( ImmutableSet.of( usedByESID ) )
@@ -177,6 +181,7 @@ public class ChronicleServerTests {
         titlePTID = edmApi.getPropertyTypeId( TITLE_FQN.getNamespace(), TITLE_FQN.getName() );
         startDateTimePTID = edmApi.getPropertyTypeId( START_DATE_TIME.getNamespace(), START_DATE_TIME.getName() );
         dateLoggedPTID = edmApi.getPropertyTypeId( DATE_LOGGED_FQN.getNamespace(), DATE_LOGGED_FQN.getName() );
+        recordTypePTID = edmApi.getPropertyTypeId( RECORD_TYPE_FQN.getNamespace(), RECORD_TYPE_FQN.getName() );
 
         entitySetNameIdMap = entitySetsApi.getEntitySetIds( Set.of(
                 CHRONICLE_USER_APPS,
@@ -191,6 +196,52 @@ public class ChronicleServerTests {
     @AfterClass
     public static void resetTestingEnvironment() {
 
+    }
+
+    @Test
+    public void testInCompleteData() {
+        deleteEntities();
+        // incomplete items (items missing required properties like 'general.fullname') shouldn't be written to chronicle_user_apps
+        // result: only complete items will be logged.
+
+        List<SetMultimap<UUID, Object>> data = new ArrayList<>();
+        SetMultimap<UUID, Object> item = createTestDataItem( YOUTUBE, OffsetDateTime.now(), OffsetDateTime.now(),Integer.toUnsignedLong( 1000 ) );
+        data.add( item );
+
+        // incomplete
+        SetMultimap<UUID, Object> partialEntry = HashMultimap.create( item );
+        partialEntry.removeAll( titlePTID );
+        partialEntry.removeAll( fullNamePTID );
+        data.add( partialEntry );
+
+        chronicleService.logData( STUDY_ID, PARTICIPANT3, DEVICE3, data );
+
+        // only 1 entry will be written to chronicle_user_apps and related associations
+        Assert.assertEquals(1, getParticipantNeighbors( participant3EntityKeyId, STUDY_ID ).size() );
+        Assert.assertEquals( 1, getDeviceNeighbors( device3EntityKeyId ).size() );
+    }
+
+    @Test
+    public void testDataRecordType() {
+        // data written in chronicle_user_apps and related associations should only be of type 'Usage Stat';
+        // experiment: log data with 1 record type set to 'Usage Stat' and another record type set to any other value.
+
+        // result: only the value set to 'Usage Stat should be written in user_apps entity set
+        deleteEntities();
+
+        List<SetMultimap<UUID, Object>> data = new ArrayList<>();
+        SetMultimap<UUID, Object> item = createTestDataItem( YOUTUBE, OffsetDateTime.now(), OffsetDateTime.now(),Integer.toUnsignedLong( 1000 ) );
+        data.add( item );
+
+        SetMultimap<UUID, Object> partialEntry = HashMultimap.create(item);
+        partialEntry.removeAll( recordTypePTID );
+        partialEntry.put( recordTypePTID, "Move to background" );
+        data.add( partialEntry );
+
+        chronicleService.logData( STUDY_ID, PARTICIPANT3, DEVICE3, data );
+
+        Assert.assertEquals( 1, getParticipantNeighbors( participant3EntityKeyId, STUDY_ID ).size() );
+        Assert.assertEquals( 1, getDeviceNeighbors( device3EntityKeyId ).size() );
     }
 
     @Test
@@ -215,9 +266,10 @@ public class ChronicleServerTests {
             data.add( item );
         }
 
-        item.removeAll( fullNamePTID );
-        item.put( fullNamePTID, YOUTUBE.getLeft() );
-        data.add( item );
+        SetMultimap<UUID, Object> anotherItem = HashMultimap.create(item);
+        anotherItem.removeAll( fullNamePTID );
+        anotherItem.put( fullNamePTID, YOUTUBE.getLeft() );
+        data.add( anotherItem );
 
         chronicleService.logData( STUDY_ID, PARTICIPANT1, DEVICE1, data );
 
@@ -265,7 +317,7 @@ public class ChronicleServerTests {
         );
         data.add( item );
 
-        assert chronicleService.logData( STUDY_ID, UN_ENROLLED_PARTICIPANT, DEVICE1, data ) == 0;
+        Assert.assertEquals( 0, chronicleService.logData( STUDY_ID, UN_ENROLLED_PARTICIPANT, DEVICE1, data ).intValue());
     }
 
     @Test
@@ -289,19 +341,18 @@ public class ChronicleServerTests {
             data.add( item );
         }
 
-        item.removeAll( dateLoggedPTID );
-        item.put( dateLoggedPTID, createDateTime( 13, 5, 2, 1 ).toString() );
-        data.add( item );
+        SetMultimap<UUID, Object> anotherItem = HashMultimap.create(item);
+        anotherItem.removeAll( dateLoggedPTID );
+        anotherItem.put( dateLoggedPTID, createDateTime( 13, 5, 2, 1 ).toString() );
+        data.add( anotherItem );
 
         chronicleService.logData( STUDY_ID, PARTICIPANT1, DEVICE1, data );
-        List<NeighborEntityDetails> neighborEntityDetails = getParticipantNeighbors( participant1EntityKeyId,
-                STUDY_ID );
 
-        Assert.assertEquals( 2,  neighborEntityDetails.size() );
+        Assert.assertEquals( 2,  getParticipantNeighbors( participant1EntityKeyId, STUDY_ID ).size() );
     }
 
 
-    private List<NeighborEntityDetails> getDeviceNeighbors(UUID device1EntityKeydId) {
+    private List<NeighborEntityDetails> getDeviceNeighbors(UUID deviceEntityKeyId) {
         UUID recordedByESID = entitySetNameIdMap.get( RECORDED_BY_ES_NAME );
         UUID userAppsESID = entitySetNameIdMap.get( CHRONICLE_USER_APPS );
         UUID deviceESID = entitySetNameIdMap.get( DEVICES_ES_NAME );
@@ -310,7 +361,7 @@ public class ChronicleServerTests {
                 .executeFilteredEntityNeighborSearch(
                         entitySetNameIdMap.get( DEVICES_ES_NAME ),
                         new EntityNeighborsFilter(
-                                Set.of( device1EntityKeydId ),
+                                Set.of( deviceEntityKeyId ),
                                 Optional.of( Set.of( userAppsESID ) ),
                                 Optional.of( Set.of( deviceESID ) ),
                                 Optional.of( Set.of( recordedByESID ) )
@@ -318,7 +369,7 @@ public class ChronicleServerTests {
                 );
 
 
-        return neighbors.getOrDefault( device1EntityKeydId, List.of(  ) );
+        return neighbors.getOrDefault( deviceEntityKeyId, List.of(  ) );
     }
 
     @Test
@@ -438,6 +489,7 @@ public class ChronicleServerTests {
         data.put( startDateTimePTID, startTime.toString() );
         data.put( dateLoggedPTID, dateLogged.toString() );
         data.put( durationPTID, duration );
+        data.put( recordTypePTID, "Usage Stat" );
 
         return data;
     }
