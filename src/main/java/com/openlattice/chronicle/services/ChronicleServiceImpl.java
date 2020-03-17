@@ -35,7 +35,6 @@ import com.openlattice.chronicle.data.ChronicleAppsUsageDetails;
 import com.openlattice.chronicle.sources.AndroidDevice;
 import com.openlattice.chronicle.sources.Datasource;
 import com.openlattice.client.ApiClient;
-import com.openlattice.client.RetrofitFactory;
 import com.openlattice.data.*;
 import com.openlattice.data.requests.NeighborEntityDetails;
 import com.openlattice.directory.PrincipalApi;
@@ -985,7 +984,7 @@ public class ChronicleServiceImpl implements ChronicleService {
             String token ) {
         try {
 
-            ApiClient apiClient = new ApiClient(() -> token );
+            ApiClient apiClient = new ApiClient( () -> token );
             EntitySetsApi entitySetsApi = apiClient.getEntitySetsApi();
             SearchApi searchApi = apiClient.getSearchApi();
 
