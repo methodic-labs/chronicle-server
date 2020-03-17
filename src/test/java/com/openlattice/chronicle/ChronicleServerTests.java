@@ -26,7 +26,7 @@ import java.util.concurrent.ExecutionException;
 public class ChronicleServerTests {
 
     private final String DATA_ENTITY_SET_NAME = "chronicle_app_data";
-    private static final String AUTH_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFsZm9uY2VAb3BlbmxhdHRpY2UuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsInVzZXJfaWQiOiJnb29nbGUtb2F1dGgyfDEwODQ4MDI2NTc3ODY0NDk2MTU1NCIsImFwcF9tZXRhZGF0YSI6eyJyb2xlcyI6WyJBdXRoZW50aWNhdGVkVXNlciJdLCJhY3RpdmF0ZWQiOiJhY3RpdmF0ZWQifSwibmlja25hbWUiOiJhbGZvbmNlIiwicm9sZXMiOlsiQXV0aGVudGljYXRlZFVzZXIiXSwiaXNzIjoiaHR0cHM6Ly9vcGVubGF0dGljZS5hdXRoMC5jb20vIiwic3ViIjoiZ29vZ2xlLW9hdXRoMnwxMDg0ODAyNjU3Nzg2NDQ5NjE1NTQiLCJhdWQiOiJLVHpneXhzNktCY0pIQjg3MmVTTWUyY3BUSHpoeFM5OSIsImlhdCI6MTU4NDM3NzY2NSwiZXhwIjoxNTg0NDY0MDY1fQ.VqgGArT8h3FllfA-V0eYEMr7BQy1Tq8Kcf0W0C65s0o";
+    private static final String AUTH_TOKEN = ""; //replace this with a valid auth0_token
 
 
     private final String PARTICIPANT_ID       = "participant1";
@@ -47,17 +47,19 @@ public class ChronicleServerTests {
     private static UUID endTimePTID;
     private static UUID recordTypePTID;
 
-    private static ChronicleService chronicleService;
-
     private static ApiClient apiClient;
 
     @Inject
     private static EventBus eventBus;
 
+    private ChronicleConfiguration configuration = new ChronicleConfiguration( "user", "password" );
+    private ChronicleService chronicleService = new ChronicleServiceImpl( eventBus, configuration );
+
+    public ChronicleServerTests() throws ExecutionException {
+    }
+
     @BeforeClass
     public static void initialize() throws ExecutionException {
-        ChronicleConfiguration configuration = new ChronicleConfiguration( "user", "password" );
-        chronicleService = new ChronicleServiceImpl( eventBus, configuration );
 
         apiClient = new ApiClient( RetrofitFactory.Environment.LOCAL, () -> AUTH_TOKEN );
         EdmApi edmApi = apiClient.getEdmApi();
@@ -73,20 +75,38 @@ public class ChronicleServerTests {
     @Test
     public void testGetParticipantData() throws ExecutionException {
 
-
         DataApi dataApi = apiClient.getDataApi();
         EntitySetsApi entitySetsApi = apiClient.getEntitySetsApi();
 
         dataEntitySetId = entitySetsApi.getEntitySetId( DATA_ENTITY_SET_NAME );
         dataApi.deleteAllEntitiesFromEntitySet(  dataEntitySetId, DeleteType.Hard);
 
+        // try fetching empty participant data.
+        // expected: an empty collection
+        Iterable<Map<String, Set<Object>>> participantData = chronicleService.getAllParticipantData( STUDY_ID, PARTICIPANT_EK_ID, AUTH_TOKEN );
+        Assert.assertEquals( 0, Iterators.size( participantData.iterator() ) );
+
         // upload data
         List<SetMultimap<UUID, Object>> data = createMockData(10);
         chronicleService.logData( STUDY_ID, PARTICIPANT_ID, DEVICE_ID, data );
 
-        Iterable<Map<String, Set<Object>>> participantData = chronicleService.getAllParticipantData( STUDY_ID, PARTICIPANT_EK_ID, AUTH_TOKEN );
+        participantData = chronicleService.getAllParticipantData( STUDY_ID, PARTICIPANT_EK_ID, AUTH_TOKEN );
+        Assert.assertEquals(data.size(), Iterators.size(participantData.iterator()));
 
-        Assert.assertEquals(10, Iterators.size(participantData.iterator()));
+        // load more data
+        List<SetMultimap<UUID, Object>> additionalData = createMockData( 30 );
+        chronicleService.logData( STUDY_ID, PARTICIPANT_ID, DEVICE_ID, additionalData );
+
+        participantData = chronicleService.getAllParticipantData( STUDY_ID, PARTICIPANT_EK_ID, AUTH_TOKEN );
+        Assert.assertEquals( data.size() + additionalData.size(), Iterators.size( participantData.iterator() ) );
+
+
+        // test with invalid auth token
+        try {
+            participantData = chronicleService.getAllParticipantData( STUDY_ID, PARTICIPANT_EK_ID, "token" );
+            Assert.fail();
+        } catch ( Exception ignored ) {}
+
     }
 
     private List<SetMultimap<UUID, Object>> createMockData(int size) {
