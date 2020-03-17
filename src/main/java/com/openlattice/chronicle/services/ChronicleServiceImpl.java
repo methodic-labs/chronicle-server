@@ -34,7 +34,6 @@ import com.openlattice.chronicle.constants.ParticipationStatus;
 import com.openlattice.chronicle.sources.AndroidDevice;
 import com.openlattice.chronicle.sources.Datasource;
 import com.openlattice.client.ApiClient;
-import com.openlattice.client.RetrofitFactory;
 import com.openlattice.data.*;
 import com.openlattice.data.requests.NeighborEntityDetails;
 import com.openlattice.directory.PrincipalApi;
@@ -508,7 +507,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                                 new EntityNeighborsFilter( Sets.newHashSet( entry.getValue() ),
                                         java.util.Optional.of( ImmutableSet.of( deviceEntitySetId ) ),
                                         java.util.Optional.of( ImmutableSet.of() ),
-                                        java.util.Optional.of(ImmutableSet.of(usedByEntitySetId)) ) ) ) );
+                                        java.util.Optional.of( ImmutableSet.of( usedByEntitySetId ) ) ) ) ) );
 
         // populate study information
 
@@ -608,7 +607,7 @@ public class ChronicleServiceImpl implements ChronicleService {
             String token ) {
         try {
 
-            ApiClient apiClient = new ApiClient(() -> token );
+            ApiClient apiClient = new ApiClient( () -> token );
             EntitySetsApi entitySetsApi = apiClient.getEntitySetsApi();
             SearchApi searchApi = apiClient.getSearchApi();
 
@@ -622,15 +621,15 @@ public class ChronicleServiceImpl implements ChronicleService {
                     new EntityNeighborsFilter(
                             Set.of( participantEntityKeyId ),
                             java.util.Optional.of( ImmutableSet.of( srcEntitySetId ) ),
-                            java.util.Optional.of( ImmutableSet.of(participantEntitySetId) ),
-                            java.util.Optional.of( ImmutableSet.of(recordedByEntitySetId) )
+                            java.util.Optional.of( ImmutableSet.of( participantEntitySetId ) ),
+                            java.util.Optional.of( ImmutableSet.of( recordedByEntitySetId ) )
                     )
 
             );
 
             // If filtered search yields an empty result, we should exit early by returning an empty collection.
-            if (participantNeighbors.isEmpty()) {
-                return ImmutableSet.of(  );
+            if ( participantNeighbors.isEmpty() ) {
+                return ImmutableSet.of();
             }
 
             return participantNeighbors
