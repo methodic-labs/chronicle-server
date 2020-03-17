@@ -14,9 +14,10 @@ hazelcast:
     seed-nodes:
         - "localhost"
     port: 5710
+    cp-member-count: 0
 
 postgres:
-    citus: false
+    initialize-indices: false
     hikari:
         jdbcUrl: "jdbc:postgresql://localhost:5432/openlattice"
         username: "oltest"
