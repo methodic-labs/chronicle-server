@@ -1,16 +1,12 @@
 package com.openlattice.chronicle;
 
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.SetMultimap;
-import com.google.common.eventbus.EventBus;
-import com.openlattice.chronicle.configuration.ChronicleConfiguration;
+import com.openlattice.authentication.AuthenticationTest;
+import com.openlattice.authentication.AuthenticationTestRequestOptions;
 import com.openlattice.chronicle.data.ChronicleAppsUsageDetails;
 import com.openlattice.chronicle.services.ChronicleService;
-import com.openlattice.chronicle.services.ChronicleServiceImpl;
 import com.openlattice.client.ApiClient;
 import com.openlattice.client.RetrofitFactory;
 import com.openlattice.data.DataApi;
@@ -18,8 +14,10 @@ import com.openlattice.data.DeleteType;
 import com.openlattice.data.requests.NeighborEntityDetails;
 import com.openlattice.edm.EdmApi;
 import com.openlattice.entitysets.EntitySetsApi;
+import com.openlattice.organization.OrganizationsApi;
 import com.openlattice.search.SearchApi;
 import com.openlattice.search.requests.EntityNeighborsFilter;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
 import org.junit.AfterClass;
@@ -28,44 +26,33 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.core.Authentication;
 
-import javax.inject.Inject;
-import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
+import static com.openlattice.chronicle.constants.EdmConstants.*;
 import static com.openlattice.edm.EdmConstants.ID_FQN;
 
 public class ChronicleServerTests {
 
     protected static final Logger logger                  = LoggerFactory.getLogger( ChronicleServerTests.class );
 
-    // property type FQNS
-    private static final FullQualifiedName FULL_NAME_FQN   = new FullQualifiedName( "general.fullname" );
-    private static final FullQualifiedName DURATION        = new FullQualifiedName( "general.Duration" );
-    private static final FullQualifiedName DATE_LOGGED_FQN = new FullQualifiedName( "ol.datelogged" );
-    private static final FullQualifiedName START_DATE_TIME = new FullQualifiedName( "ol.datetimestart" );
-    private static final FullQualifiedName TITLE_FQN       = new FullQualifiedName( "ol.title" );
-    private static final FullQualifiedName DATETIME_FQN    = new FullQualifiedName( "ol.datetime" );
-    private static final FullQualifiedName USER_FQN        = new FullQualifiedName( "ol.user" );
-    private static final FullQualifiedName RECORD_TYPE_FQN  = new FullQualifiedName( "ol.recordtype" );
+    protected static final AuthenticationTestRequestOptions authOptions   = new AuthenticationTestRequestOptions()
+            .setUsernameOrEmail( "tests@openlattice.com" )
+            .setPassword( "openlattice" );
 
-    private static final String                       STUDY_ES_NAME             = "chronicle_study";
-    private static final String                       DEVICES_ES_NAME           = "chronicle_device";
-    private static final String                       APP_DATA_ES_NAME          = "chronicle_app_data";
-    private static final String                       RECORDED_BY_ES_NAME       = "chronicle_recorded_by";
-    private static final String                       CHRONICLE_USER_APPS       = "chronicle_user_apps";
-    private static final String                       USED_BY_ES_NAME           = "chronicle_used_by";
 
     private static final String DEVICE1 = "30d34cef1b0052e8";
-    private static final String DEVICE3 = "b368482c2607fe37";
+    private static final String DEVICE2 = "b368482c2607fe37";
 
-    private static final UUID STUDY_ID = UUID.fromString( "36ba6fab-76fa-4fe4-ad65-df4eae1f307a" );
-    private static final String PARTICIPANT1 = "participant1";
-    private static final String UN_ENROLLED_PARTICIPANT = "participant2";
-    private static final String PARTICIPANT3 = "participant3";
+
+    private static final UUID STUDY_ID = UUID.randomUUID();
+    private static final String PARTICIPANT1 = RandomStringUtils.randomAlphanumeric( 10 );
+    private static final String PARTICIPANT2 = RandomStringUtils.randomAlphanumeric( 10 );
+    private static final String PARTICIPANT3 = RandomStringUtils.randomAlphanumeric( 10 );
 
     private static final UUID participant1EntityKeyId   = UUID.fromString( "00c60000-0000-0000-8000-000000000004" );
     private static final UUID participant3EntityKeyId   = UUID.fromString( "3a870000-0000-0000-8000-000000000011" );
@@ -87,7 +74,7 @@ public class ChronicleServerTests {
     private static final Pair<String, String>         PHONE                     = Pair
             .of( "com.android.dialer", "Phone" );
 
-    private static       Map<String, UUID>            entitySetNameIdMap        = new HashMap<>();
+    private static       Map<String, UUID> entitySetNameIdMap        = new HashMap<>();
     private static       UUID                         fullNamePTID;
     private static       UUID                         durationPTID;
     private static       UUID                         titlePTID;
@@ -99,11 +86,14 @@ public class ChronicleServerTests {
     private static EdmApi        edmApi;
     private static SearchApi     searchApi;
     private static EntitySetsApi entitySetsApi;
+    private static OrganizationsApi organizationsApi;
 
-    ChronicleConfiguration configuration = new ChronicleConfiguration( "user", "password" );
-    @Inject
-    private EventBus eventBus;
-    ChronicleService chronicleService = new ChronicleServiceImpl( eventBus, configuration );
+    private static final String TEST_USER = "tests@openlattice.com";
+    private static final String TEST_PASSWORD = "openlattice";
+    private static ApiClient apiClient;
+
+    ChronicleService chronicleService;
+
 
     public ChronicleServerTests() throws ExecutionException {
 
@@ -112,34 +102,40 @@ public class ChronicleServerTests {
     @BeforeClass
     public static void chronicleServerTest() throws Exception {
 
-        // replace this with an actual auth0_id token
-        String token = "";
+        Authentication jwtAdmin = AuthenticationTest.authenticate();
+        String token = (String) jwtAdmin.getCredentials();
 
-        LoadingCache<Class<?>, ApiClient> apiClientCache = CacheBuilder
-                .newBuilder()
-                .expireAfterWrite( Duration.ofHours( 10 ) )
-                .build( new CacheLoader<Class<?>, ApiClient>() {
-                    @Override
-                    public ApiClient load( Class<?> key ) throws Exception {
-                        // String token = MissionControl.getIdToken( TEST_USER, TEST_PASSWORD );
-                        return new ApiClient( RetrofitFactory.Environment.TESTING, () -> token );
-                    }
-                } );
-        ApiClient apiClient = apiClientCache.get( ApiClient.class );
-
+        apiClient = new ApiClient( RetrofitFactory.Environment.TESTING, () -> token );
         dataApi = apiClient.getDataApi();
         edmApi = apiClient.getEdmApi();
         entitySetsApi = apiClient.getEntitySetsApi();
         searchApi = apiClient.getSearchApi();
 
-        setUpTestingEnvironment();
+        ChronicleServerTestUtils.createOrganization(apiClient.getOrganizationsApi());
+        entitySetNameIdMap = ChronicleServerTestUtils.createEntitySets(entitySetsApi, edmApi);
+        getPropertyTypeIds();
+        createTestEntities();
     }
 
-    private static void deleteEntities() {
+    @AfterClass
+    public static void resetTestingEnvironment() {
+        // delete entity sets
+        Set<UUID> entitySetIds = new HashSet<>( entitySetNameIdMap.values() );
+        for (UUID id : entitySetIds) {
+            entitySetsApi.deleteEntitySet( id );
+        }
+    }
+
+    private static void createTestEntities() {
+        // create a test study and participants
+
+    }
+
+    private static void deleteParticipantData() {
 
         Set<UUID> entitySetsIds = new HashSet<>();
         entitySetsIds.add( entitySetNameIdMap.get( CHRONICLE_USER_APPS ) );
-        entitySetsIds.add( entitySetNameIdMap.get( APP_DATA_ES_NAME ) );
+        entitySetsIds.add( entitySetNameIdMap.get( DATA_ENTITY_SET_NAME ) );
         // entitySetsIds.add( entitySetNameIdMap.get( RECORDED_BY_ES_NAME ) );
         // entitySetsIds.add( entitySetNameIdMap.get( USED_BY_ES_NAME ) );
 
@@ -153,7 +149,7 @@ public class ChronicleServerTests {
         String participantES = ChronicleServerUtil.getParticipantEntitySetName( studyID );
         UUID participantEntitySetId = entitySetsApi.getEntitySetId( participantES );
         UUID userAppsESID = entitySetNameIdMap.get( CHRONICLE_USER_APPS );
-        UUID usedByESID = entitySetNameIdMap.get( USED_BY_ES_NAME );
+        UUID usedByESID = entitySetNameIdMap.get( USED_BY_ENTITY_SET_NAME );
 
         Map<UUID, List<NeighborEntityDetails>> participantNeighbors = searchApi
                 .executeFilteredEntityNeighborSearch(
@@ -170,11 +166,11 @@ public class ChronicleServerTests {
     }
 
     private static void setUpTestingEnvironment() {
-        getPropertyTypeIdsAndEntitySets();
-        deleteEntities();
+        getPropertyTypeIds();
+        deleteParticipantData();
     }
 
-    private static void getPropertyTypeIdsAndEntitySets() {
+    private static void getPropertyTypeIds() {
 
         fullNamePTID = edmApi.getPropertyTypeId( FULL_NAME_FQN.getNamespace(), FULL_NAME_FQN.getName() );
         durationPTID = edmApi.getPropertyTypeId( DURATION.getNamespace(), DURATION.getName() );
@@ -183,24 +179,20 @@ public class ChronicleServerTests {
         dateLoggedPTID = edmApi.getPropertyTypeId( DATE_LOGGED_FQN.getNamespace(), DATE_LOGGED_FQN.getName() );
         recordTypePTID = edmApi.getPropertyTypeId( RECORD_TYPE_FQN.getNamespace(), RECORD_TYPE_FQN.getName() );
 
-        entitySetNameIdMap = entitySetsApi.getEntitySetIds( Set.of(
-                CHRONICLE_USER_APPS,
-                STUDY_ES_NAME,
-                APP_DATA_ES_NAME,
-                RECORDED_BY_ES_NAME,
-                USED_BY_ES_NAME,
-                DEVICES_ES_NAME
-        ) );
+        // entitySetNameIdMap = entitySetsApi.getEntitySetIds( Set.of(
+        //         CHRONICLE_USER_APPS,
+        //         STUDY_ENTITY_SET_NAME,
+        //         DATA_ENTITY_SET_NAME,
+        //         RECORDED_BY_ENTITY_SET_NAME,
+        //         USED_BY_ENTITY_SET_NAME,
+        //         DEVICES_ENTITY_SET_NAME
+        // ) );
     }
 
-    @AfterClass
-    public static void resetTestingEnvironment() {
-
-    }
 
     @Test
     public void testInCompleteData() {
-        deleteEntities();
+        deleteParticipantData();
         // incomplete items (items missing required properties like 'general.fullname') shouldn't be written to chronicle_user_apps
         // result: only complete items will be logged.
 
@@ -214,7 +206,7 @@ public class ChronicleServerTests {
         partialEntry.removeAll( fullNamePTID );
         data.add( partialEntry );
 
-        chronicleService.logData( STUDY_ID, PARTICIPANT3, DEVICE3, data );
+        chronicleService.logData( STUDY_ID, PARTICIPANT3, DEVICE2, data );
 
         // only 1 entry will be written to chronicle_user_apps and related associations
         Assert.assertEquals(1, getParticipantNeighbors( participant3EntityKeyId, STUDY_ID ).size() );
@@ -227,7 +219,7 @@ public class ChronicleServerTests {
         // experiment: log data with 1 record type set to 'Usage Stat' and another record type set to any other value.
 
         // result: only the value set to 'Usage Stat should be written in user_apps entity set
-        deleteEntities();
+        deleteParticipantData();
 
         List<SetMultimap<UUID, Object>> data = new ArrayList<>();
         SetMultimap<UUID, Object> item = createTestDataItem( YOUTUBE, OffsetDateTime.now(), OffsetDateTime.now(),Integer.toUnsignedLong( 1000 ) );
@@ -238,7 +230,7 @@ public class ChronicleServerTests {
         partialEntry.put( recordTypePTID, "Move to background" );
         data.add( partialEntry );
 
-        chronicleService.logData( STUDY_ID, PARTICIPANT3, DEVICE3, data );
+        chronicleService.logData( STUDY_ID, PARTICIPANT3, DEVICE2, data );
 
         Assert.assertEquals( 1, getParticipantNeighbors( participant3EntityKeyId, STUDY_ID ).size() );
         Assert.assertEquals( 1, getDeviceNeighbors( device3EntityKeyId ).size() );
@@ -246,7 +238,7 @@ public class ChronicleServerTests {
 
     @Test
     public void testUniquenessWrtToAppName() {
-        deleteEntities();
+        deleteParticipantData();
 
         // chronicle_user_apps entities are unique for each app
         // log 4 items with matching app name, and 1 item with a different app name:
@@ -282,7 +274,7 @@ public class ChronicleServerTests {
 
     @Test
     public void testZeroDurationProperty() {
-        deleteEntities();
+        deleteParticipantData();
 
         // entities created in chronicle_user_apps should have general.duration property > 0
         List<SetMultimap<UUID, Object>> data = new ArrayList<>();
@@ -317,13 +309,13 @@ public class ChronicleServerTests {
         );
         data.add( item );
 
-        Assert.assertEquals( 0, chronicleService.logData( STUDY_ID, UN_ENROLLED_PARTICIPANT, DEVICE1, data ).intValue());
+        Assert.assertEquals( 0, chronicleService.logData( STUDY_ID, PARTICIPANT2, DEVICE1, data ).intValue());
     }
 
     @Test
     public void usedByAssociationUniquenessWrtDateLogged() {
 
-        deleteEntities();
+        deleteParticipantData();
 
         // chronicle_used_by associations are unique for app + user + date logged
         // experiment: 2 matching items (w.r.t app + user + date), an additional item that only differs in the date logged
@@ -353,13 +345,13 @@ public class ChronicleServerTests {
 
 
     private List<NeighborEntityDetails> getDeviceNeighbors(UUID deviceEntityKeyId) {
-        UUID recordedByESID = entitySetNameIdMap.get( RECORDED_BY_ES_NAME );
+        UUID recordedByESID = entitySetNameIdMap.get( RECORDED_BY_ENTITY_SET_NAME );
         UUID userAppsESID = entitySetNameIdMap.get( CHRONICLE_USER_APPS );
-        UUID deviceESID = entitySetNameIdMap.get( DEVICES_ES_NAME );
+        UUID deviceESID = entitySetNameIdMap.get( DEVICES_ENTITY_SET_NAME );
 
         Map<UUID, List<NeighborEntityDetails>> neighbors = searchApi
                 .executeFilteredEntityNeighborSearch(
-                        entitySetNameIdMap.get( DEVICES_ES_NAME ),
+                        deviceESID,
                         new EntityNeighborsFilter(
                                 Set.of( deviceEntityKeyId ),
                                 Optional.of( Set.of( userAppsESID ) ),
@@ -375,7 +367,7 @@ public class ChronicleServerTests {
     @Test
     public void testGetUserAppsData() {
 
-        deleteEntities();
+        deleteParticipantData();
 
         // log date with date logged set to today
         Set<Pair<String, String>> testApps = Set.of( GMAIL, YOUTUBE, CAMERA, CHROME, MAPS, PHONE );
@@ -413,7 +405,7 @@ public class ChronicleServerTests {
 
     @Test
     public void testUpdateUserAppsAssociations() {
-        deleteEntities();
+        deleteParticipantData();
 
         Set<Pair<String, String>> testApps = Set.of( GMAIL, YOUTUBE, CAMERA, CHROME, MAPS, PHONE );
         List<SetMultimap<UUID, Object>> data = new ArrayList<>();
@@ -448,8 +440,8 @@ public class ChronicleServerTests {
         updateResult.forEach( ( associationId, entityData ) -> {
             Assert.assertEquals( entityData.getOrDefault( USER_FQN, Set.of() ),
                     associations.get( associationId ).getOrDefault( USER_FQN, Set.of() ) );
-            Assert.assertEquals( entityData.get( DATETIME_FQN ).toString(),
-                    associations.get( associationId ).get( DATETIME_FQN ).toString() );
+            Assert.assertEquals( entityData.get( DATE_TIME_FQN ).toString(),
+                    associations.get( associationId ).get( DATE_TIME_FQN ).toString() );
         } );
     }
 

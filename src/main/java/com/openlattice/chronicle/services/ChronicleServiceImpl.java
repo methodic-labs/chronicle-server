@@ -59,6 +59,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static com.openlattice.chronicle.ChronicleServerUtil.PARTICIPANTS_PREFIX;
+import static com.openlattice.chronicle.constants.EdmConstants.*;
 import static com.openlattice.edm.EdmConstants.ID_FQN;
 
 public class ChronicleServiceImpl implements ChronicleService {
@@ -79,31 +80,8 @@ public class ChronicleServiceImpl implements ChronicleService {
     private final String password;
 
     private final EventBus eventBus;
-    private final String   STUDY_ENTITY_SET_NAME             = "chronicle_study";
-    private final String   DEVICES_ENTITY_SET_NAME           = "chronicle_device";
-    private final String   DATA_ENTITY_SET_NAME              = "chronicle_app_data";
-    private final String   PREPROCESSED_DATA_ENTITY_SET_NAME = "chronicle_preprocessed_app_data";
-    private final String   RECORDED_BY_ENTITY_SET_NAME       = "chronicle_recorded_by";
-    private final String   CHRONICLE_USER_APPS               = "chronicle_user_apps";
-    private final String   USED_BY_ENTITY_SET_NAME           = "chronicle_used_by";
-    private final String   PARTICIPATED_IN_AESN              = "chronicle_participated_in";
     private final String   SEARCH_PREFIX                     = "entity";
-    private final String   NOTIFICATION_ENTITY_SET_PREFIX    = "chronicle_notifications_";
-
     private final Set<UUID>         dataKey;
-    private final FullQualifiedName STRING_ID_FQN    = new FullQualifiedName( "general.stringid" );
-    private final FullQualifiedName PERSON_ID_FQN    = new FullQualifiedName( "nc.SubjectIdentification" );
-    private final FullQualifiedName DATE_LOGGED_FQN  = new FullQualifiedName( "ol.datelogged" );
-    private final FullQualifiedName STATUS_FQN       = new FullQualifiedName( "ol.status" );
-    private final FullQualifiedName VERSION_FQN      = new FullQualifiedName( "ol.version" );
-    private final FullQualifiedName MODEL_FQN        = new FullQualifiedName( "vehicle.model" );
-    private final FullQualifiedName DATE_USED_FQN    = new FullQualifiedName( "ol.datetime" );
-    private final FullQualifiedName START_DATE_TIME  = new FullQualifiedName( "ol.datetimestart" );
-    private final FullQualifiedName APP_PACKAGE_NAME = new FullQualifiedName( "general.fullname" );
-    private final FullQualifiedName APP_NAME         = new FullQualifiedName( "ol.title" );
-    private final FullQualifiedName RECORD_TYPE_FQN  = new FullQualifiedName( "ol.recordtype" );
-    private final FullQualifiedName DURATION         = new FullQualifiedName( "general.Duration" );
-    private final FullQualifiedName OL_ID_FQN        = new FullQualifiedName( "ol.id" );
 
     private final UUID studyESID;
     private final UUID deviceESID;
@@ -115,12 +93,12 @@ public class ChronicleServiceImpl implements ChronicleService {
     private final UUID stringIdPTID;
     private final UUID personIdPSID;
     private final UUID dateLoggedPTID;
-    private final UUID dateUsedPTID;
+    private final UUID dateTimePTID;
     private final UUID versionPTID;
     private final UUID modelPTID;
     private final UUID userAppsESID;
-    private final UUID appNamePTID;
-    private final UUID appPackageNamePTID;
+    private final UUID titlePTID;
+    private final UUID fullNamePTID;
     private final UUID recordTypePTID;
     private final UUID startDateTimePTID;
     private final UUID durationPTID;
@@ -166,10 +144,10 @@ public class ChronicleServiceImpl implements ChronicleService {
                 .getPropertyTypeId( DATE_LOGGED_FQN.getNamespace(), DATE_LOGGED_FQN.getName() );
         versionPTID = edmApi.getPropertyTypeId( VERSION_FQN.getNamespace(), VERSION_FQN.getName() );
         modelPTID = edmApi.getPropertyTypeId( MODEL_FQN.getNamespace(), MODEL_FQN.getName() );
-        dateUsedPTID = edmApi.getPropertyTypeId( DATE_USED_FQN.getNamespace(), DATE_USED_FQN.getName() );
-        appNamePTID = edmApi.getPropertyTypeId( APP_NAME.getNamespace(), APP_NAME.getName() );
-        appPackageNamePTID = edmApi
-                .getPropertyTypeId( APP_PACKAGE_NAME.getNamespace(), APP_PACKAGE_NAME.getName() );
+        dateTimePTID = edmApi.getPropertyTypeId( DATE_TIME_FQN.getNamespace(), DATE_TIME_FQN.getName() );
+        titlePTID = edmApi.getPropertyTypeId( TITLE_FQN.getNamespace(), TITLE_FQN.getName() );
+        fullNamePTID = edmApi
+                .getPropertyTypeId( FULL_NAME_FQN.getNamespace(), FULL_NAME_FQN.getName() );
         recordTypePTID = edmApi
                 .getPropertyTypeId( RECORD_TYPE_FQN.getNamespace(), RECORD_TYPE_FQN.getName() );
         startDateTimePTID = edmApi.getPropertyTypeId( START_DATE_TIME.getNamespace(), START_DATE_TIME.getName() );
@@ -268,12 +246,12 @@ public class ChronicleServiceImpl implements ChronicleService {
             DataIntegrationApi dataIntegrationApi ) {
 
         Map<UUID, Set<Object>> data = new HashMap<>( entityData );
-        data.put( appPackageNamePTID, ImmutableSet.of( appPackageName ) );
+        data.put( fullNamePTID, ImmutableSet.of( appPackageName ) );
         data.put( personIdPSID, Sets.newHashSet( participantId ) );
 
         return reserveEntityKeyId(
                 usedByESID,
-                ImmutableList.of( appPackageNamePTID, dateUsedPTID, personIdPSID ),
+                ImmutableList.of( fullNamePTID, dateTimePTID, personIdPSID ),
                 data,
                 dataIntegrationApi
         );
@@ -286,11 +264,11 @@ public class ChronicleServiceImpl implements ChronicleService {
             DataIntegrationApi dataIntegrationApi ) {
 
         Map<UUID, Set<Object>> data = new HashMap<>( recordedByEntity );
-        data.put( appPackageNamePTID, Sets.newHashSet( appPackageName ) );
+        data.put( fullNamePTID, Sets.newHashSet( appPackageName ) );
 
         return reserveEntityKeyId(
                 recordedByESID,
-                ImmutableList.of( dateLoggedPTID, stringIdPTID, appPackageNamePTID ),
+                ImmutableList.of( dateLoggedPTID, stringIdPTID, fullNamePTID ),
                 data,
                 dataIntegrationApi
         );
@@ -302,7 +280,7 @@ public class ChronicleServiceImpl implements ChronicleService {
 
         return reserveEntityKeyId(
                 userAppsESID,
-                ImmutableList.of( appPackageNamePTID ),
+                ImmutableList.of( fullNamePTID ),
                 entityData,
                 dataIntegrationApi
         );
@@ -330,68 +308,71 @@ public class ChronicleServiceImpl implements ChronicleService {
          */
         List<SetMultimap<UUID, Object>> userAppsData = data
                 .stream()
-                .filter( entry -> entry.containsKey( durationPTID ) &&
-                        entry.containsKey( startDateTimePTID ) &&
-                        entry.containsKey( appNamePTID ) &&
+                .filter( entry ->  entry.get( recordTypePTID ).iterator().next().toString().equals( "Usage Stat" ) &&
+                        entry.containsKey( durationPTID ) &&
                         Long.parseLong( entry.get( durationPTID ).iterator().next().toString() ) > 0 )
                 .collect( Collectors.toList() );
 
         for ( int i = 0; i < userAppsData.size(); ++i ) {
 
-            Set<DataEdgeKey> dataEdgeKeys = new HashSet<>();
-            String appPackageName = userAppsData.get( i ).get( appPackageNamePTID ).iterator().next()
-                    .toString();
-            String dateLogged = getMidnightDateTime( userAppsData.get( i ).get( dateLoggedPTID ).iterator().next()
-                    .toString() );
+            try {
+                Set<DataEdgeKey> dataEdgeKeys = new HashSet<>();
+                String appPackageName = userAppsData.get( i ).get( fullNamePTID ).iterator().next()
+                        .toString();
+                String dateLogged = getMidnightDateTime( userAppsData.get( i ).get( dateLoggedPTID ).iterator().next()
+                        .toString() );
 
-            // create entity in chronicle_user_apps
-            Map<UUID, Set<Object>> userAppEntityData = new HashMap<>();
-            userAppEntityData.put( appPackageNamePTID, Sets.newHashSet( appPackageName ) );
-            userAppEntityData.put( appNamePTID,
-                    Sets.newHashSet( userAppsData.get( i ).get( appNamePTID ).iterator().next()
-                            .toString() ) );
+                // create entity in chronicle_user_apps
+                Map<UUID, Set<Object>> userAppEntityData = new HashMap<>();
+                userAppEntityData.put( fullNamePTID, Sets.newHashSet( appPackageName ) );
+                userAppEntityData.put( titlePTID,
+                        Sets.newHashSet( userAppsData.get( i ).get( titlePTID ).iterator().next()
+                                .toString() ) );
 
-            UUID userAppEntityKeyId = reserveUserAppEntityKeyId( userAppEntityData, dataIntegrationApi );
-            dataApi.updateEntitiesInEntitySet( userAppsESID,
-                    ImmutableMap.of( userAppEntityKeyId, userAppEntityData ),
-                    UpdateType.Merge );
+                UUID userAppEntityKeyId = reserveUserAppEntityKeyId( userAppEntityData, dataIntegrationApi );
+                dataApi.updateEntitiesInEntitySet( userAppsESID,
+                        ImmutableMap.of( userAppEntityKeyId, userAppEntityData ),
+                        UpdateType.Merge );
 
-            // association: chronicle_user_apps => chronicle_recorded_by => chronicle_device
-            Map<UUID, Set<Object>> recordedByEntityData = new HashMap<>();
-            recordedByEntityData.put( dateLoggedPTID, ImmutableSet.of( dateLogged ) );
-            recordedByEntityData.put( stringIdPTID, ImmutableSet.of( deviceId ) );
+                // association: chronicle_user_apps => chronicle_recorded_by => chronicle_device
+                Map<UUID, Set<Object>> recordedByEntityData = new HashMap<>();
+                recordedByEntityData.put( dateLoggedPTID, ImmutableSet.of( dateLogged ) );
+                recordedByEntityData.put( stringIdPTID, ImmutableSet.of( deviceId ) );
 
-            UUID recordedByEntityKeyId = reserveRecordedByEntityKeyId( recordedByEntityData,
-                    appPackageName,
-                    dataIntegrationApi );
-            dataApi.updateEntitiesInEntitySet( recordedByESID,
-                    ImmutableMap.of( recordedByEntityKeyId, recordedByEntityData ),
-                    UpdateType.Merge );
+                UUID recordedByEntityKeyId = reserveRecordedByEntityKeyId( recordedByEntityData,
+                        appPackageName,
+                        dataIntegrationApi );
+                dataApi.updateEntitiesInEntitySet( recordedByESID,
+                        ImmutableMap.of( recordedByEntityKeyId, recordedByEntityData ),
+                        UpdateType.Merge );
 
-            EntityDataKey src = new EntityDataKey( userAppsESID, userAppEntityKeyId );
-            EntityDataKey dst = new EntityDataKey( deviceESID, deviceEntityKeyId );
-            EntityDataKey edge = new EntityDataKey( recordedByESID, recordedByEntityKeyId );
+                EntityDataKey src = new EntityDataKey( userAppsESID, userAppEntityKeyId );
+                EntityDataKey dst = new EntityDataKey( deviceESID, deviceEntityKeyId );
+                EntityDataKey edge = new EntityDataKey( recordedByESID, recordedByEntityKeyId );
 
-            dataEdgeKeys.add( new DataEdgeKey( src, dst, edge ) );
+                dataEdgeKeys.add( new DataEdgeKey( src, dst, edge ) );
 
-            // association: chronicle_user_apps => chronicle_used_by => chronicle_participants_{studyId}
-            Map<UUID, Set<Object>> usedByEntityData = new HashMap<>();
-            usedByEntityData.put( dateUsedPTID, ImmutableSet.of( dateLogged ) );
+                // association: chronicle_user_apps => chronicle_used_by => chronicle_participants_{studyId}
+                Map<UUID, Set<Object>> usedByEntityData = new HashMap<>();
+                usedByEntityData.put( dateTimePTID, ImmutableSet.of( dateLogged ) );
 
-            UUID usedByEntityKeyId = reserveUsedByEntityKeyId( usedByEntityData,
-                    appPackageName,
-                    participantId,
-                    dataIntegrationApi );
-            dataApi.updateEntitiesInEntitySet( usedByESID,
-                    ImmutableMap.of( usedByEntityKeyId, usedByEntityData ),
-                    UpdateType.Merge );
+                UUID usedByEntityKeyId = reserveUsedByEntityKeyId( usedByEntityData,
+                        appPackageName,
+                        participantId,
+                        dataIntegrationApi );
+                dataApi.updateEntitiesInEntitySet( usedByESID,
+                        ImmutableMap.of( usedByEntityKeyId, usedByEntityData ),
+                        UpdateType.Merge );
 
-            dst = new EntityDataKey( participantEntitySetId, participantEntityKeyId );
-            edge = new EntityDataKey( usedByESID, usedByEntityKeyId );
+                dst = new EntityDataKey( participantEntitySetId, participantEntityKeyId );
+                edge = new EntityDataKey( usedByESID, usedByEntityKeyId );
 
-            dataEdgeKeys.add( new DataEdgeKey( src, dst, edge ) );
+                dataEdgeKeys.add( new DataEdgeKey( src, dst, edge ) );
 
-            dataApi.createEdges( dataEdgeKeys );
+                dataApi.createEdges( dataEdgeKeys );
+            } catch ( Exception exception ) {
+                logger.error( "Error logging entry {}", userAppsData.get( i ), exception );
+            }
         }
 
         logger.info( "Uploaded user apps entries: size = {}, participantId = {}",
@@ -549,7 +530,7 @@ public class ChronicleServiceImpl implements ChronicleService {
             return participantNeighbors.get( participantEntityKeyId )
                     .stream()
                     .filter( neighbor -> neighbor.getNeighborDetails().isPresent() )
-                    .filter( neighbor -> neighbor.getAssociationDetails().get( DATE_USED_FQN ).iterator().next()
+                    .filter( neighbor -> neighbor.getAssociationDetails().get( DATE_TIME_FQN ).iterator().next()
                             .toString().startsWith( currentDate ) )
                     .map( neighbor -> new ChronicleAppsUsageDetails( neighbor.getNeighborDetails().get(),
                             neighbor.getAssociationDetails() ) )
