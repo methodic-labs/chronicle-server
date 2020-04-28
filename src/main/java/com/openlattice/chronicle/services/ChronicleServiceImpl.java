@@ -162,16 +162,13 @@ public class ChronicleServiceImpl implements ChronicleService {
         durationPTID = edmApi.getPropertyTypeId( DURATION.getNamespace(), DURATION.getName() );
         stringIdPTID = edmApi.getPropertyTypeId( STRING_ID_FQN.getNamespace(), STRING_ID_FQN.getName() );
         personIdPSID = edmApi.getPropertyTypeId( PERSON_ID_FQN.getNamespace(), PERSON_ID_FQN.getName() );
-        dateLoggedPTID = edmApi
-                .getPropertyTypeId( DATE_LOGGED_FQN.getNamespace(), DATE_LOGGED_FQN.getName() );
+        dateLoggedPTID = edmApi.getPropertyTypeId( DATE_LOGGED_FQN.getNamespace(), DATE_LOGGED_FQN.getName() );
         versionPTID = edmApi.getPropertyTypeId( VERSION_FQN.getNamespace(), VERSION_FQN.getName() );
         modelPTID = edmApi.getPropertyTypeId( MODEL_FQN.getNamespace(), MODEL_FQN.getName() );
         dateUsedPTID = edmApi.getPropertyTypeId( DATE_USED_FQN.getNamespace(), DATE_USED_FQN.getName() );
         appNamePTID = edmApi.getPropertyTypeId( APP_NAME.getNamespace(), APP_NAME.getName() );
-        appPackageNamePTID = edmApi
-                .getPropertyTypeId( APP_PACKAGE_NAME.getNamespace(), APP_PACKAGE_NAME.getName() );
-        recordTypePTID = edmApi
-                .getPropertyTypeId( RECORD_TYPE_FQN.getNamespace(), RECORD_TYPE_FQN.getName() );
+        appPackageNamePTID = edmApi.getPropertyTypeId( APP_PACKAGE_NAME.getNamespace(), APP_PACKAGE_NAME.getName() );
+        recordTypePTID = edmApi.getPropertyTypeId( RECORD_TYPE_FQN.getNamespace(), RECORD_TYPE_FQN.getName() );
         startDateTimePTID = edmApi.getPropertyTypeId( START_DATE_TIME.getNamespace(), START_DATE_TIME.getName() );
         dataKey = edmApi.getEntityType( entitySetsApi.getEntitySet( dataESID ).getEntityTypeId() ).getKey();
 
