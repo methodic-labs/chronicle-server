@@ -38,7 +38,6 @@
 
 plugins {
     id 'application'
-    id 'checkstyle'
     id 'eclipse'
     id 'idea'
     id 'jacoco'
@@ -97,6 +96,10 @@ println "Using java args for running ${projectName}: Xms=" + CS_XMS + ",Xmx=" + 
 applicationDefaultJvmArgs = [CS_XMS, CS_XMX, "-server", GC, PARALLEL]
 sourceCompatibility = JavaVersion.VERSION_11
 targetCompatibility = JavaVersion.VERSION_11
+
+jacoco {
+    toolVersion = "${jacoco_tool_version}"
+}
 
 run {
     if (CS_ARGS != null) {
@@ -172,8 +175,8 @@ eclipse {
     ext.downloadSources = true
     ext.downloadJavadoc = true
 
-    ext.sourceCompatibility = JavaVersion.VERSION_1_8
-    ext.targetCompatibility = JavaVersion.VERSION_1_8
+    ext.sourceCompatibility = JavaVersion.VERSION_11
+    ext.targetCompatibility = JavaVersion.VERSION_11
 }
 
 compileKotlin {
