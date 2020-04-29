@@ -499,7 +499,8 @@ public class ChronicleServiceImpl implements ChronicleService {
     @Override
     public List<ChronicleAppsUsageDetails> getParticipantAppsUsageData(
             UUID studyId,
-            String participantId ) {
+            String participantId
+    ) {
 
         logger.info( "Retrieving user apps: participantId = {}, studyId = {}", participantId, studyId );
 
@@ -514,47 +515,57 @@ public class ChronicleServiceImpl implements ChronicleService {
 
         UUID participantEntityKeyId = getParticipantEntityKeyId( participantId, studyId );
         if ( participantEntityKeyId == null ) {
-            logger.error( "getUserApps: error retrieving participant. participant = {}, studyId = {}",
+            logger.error(
+                    "getUserApps: error retrieving participant. participant = {}, studyId = {}",
                     participantId,
-                    studyId );
+                    studyId
+            );
             throw new IllegalArgumentException( "invalid participantId" );
         }
 
         UUID participantEntitySetId = getParticipantEntitySetId( studyId );
         if ( participantEntitySetId == null ) {
-            logger.error( "getUserApps: error getting participant entity set id: participant = {}, studyId = {}",
+            logger.error(
+                    "getUserApps: error getting participant entity set id: participant = {}, studyId = {}",
                     participantId,
-                    studyId );
+                    studyId
+            );
             throw new IllegalArgumentException( "invalid participantEntitySet" );
         }
 
         // search participant neighbors
-        Map<UUID, List<NeighborEntityDetails>> participantNeighbors = searchApi
-                .executeFilteredEntityNeighborSearch(
-                        participantEntitySetId,
-                        new EntityNeighborsFilter(
-                                ImmutableSet.of( participantEntityKeyId ),
-                                java.util.Optional.of( ImmutableSet.of( userAppsESID ) ),
-                                java.util.Optional.of( ImmutableSet.of( participantEntitySetId ) ),
-                                java.util.Optional.of( ImmutableSet.of( usedByESID ) )
-                        )
-                );
+        Map<UUID, List<NeighborEntityDetails>> participantNeighbors = searchApi.executeFilteredEntityNeighborSearch(
+                participantEntitySetId,
+                new EntityNeighborsFilter(
+                        ImmutableSet.of( participantEntityKeyId ),
+                        java.util.Optional.of( ImmutableSet.of( userAppsESID ) ),
+                        java.util.Optional.of( ImmutableSet.of( participantEntitySetId ) ),
+                        java.util.Optional.of( ImmutableSet.of( usedByESID ) )
+                )
+        );
 
-        // filter by current date
-        String currentDate = OffsetDateTime.now().toLocalDate().toString();
         if ( participantNeighbors.containsKey( participantEntityKeyId ) ) {
+            String currentDate = OffsetDateTime.now().toLocalDate().toString();
             return participantNeighbors.get( participantEntityKeyId )
                     .stream()
                     .filter( neighbor -> neighbor.getNeighborDetails().isPresent() )
-                    .filter( neighbor -> neighbor.getAssociationDetails().get( DATE_USED_FQN ).iterator().next()
-                            .toString().startsWith( currentDate ) )
-                    .map( neighbor -> new ChronicleAppsUsageDetails( neighbor.getNeighborDetails().get(),
-                            neighbor.getAssociationDetails() ) )
+                    .filter( neighbor -> neighbor
+                            .getAssociationDetails()
+                            .get( DATE_USED_FQN )
+                            .iterator()
+                            .next()
+                            .toString()
+                            .startsWith( currentDate )
+                    )
+                    .map( neighbor -> new ChronicleAppsUsageDetails(
+                            neighbor.getNeighborDetails().get(),
+                            neighbor.getAssociationDetails()
+                    ) )
                     .collect( Collectors.toList() );
         }
-        logger.error( "Error retrieving user apps" );
 
-        return null;
+        logger.warn( "no user apps found" );
+        return ImmutableList.of();
     }
 
     //  TODO: add in throws exception!
