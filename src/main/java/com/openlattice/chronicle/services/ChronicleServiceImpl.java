@@ -333,20 +333,17 @@ public class ChronicleServiceImpl implements ChronicleService {
                         Long.parseLong( entry.get( durationPTID ).iterator().next().toString() ) > 0 )
                 .collect( Collectors.toList() );
 
-        for ( int i = 0; i < userAppsData.size(); ++i ) {
+        for ( SetMultimap<UUID, Object> appEntity : userAppsData ) {
 
             Set<DataEdgeKey> dataEdgeKeys = new HashSet<>();
-            String appPackageName = userAppsData.get( i ).get( appPackageNamePTID ).iterator().next()
-                    .toString();
-            String dateLogged = getMidnightDateTime( userAppsData.get( i ).get( dateLoggedPTID ).iterator().next()
-                    .toString() );
+            String appPackageName = appEntity.get( appPackageNamePTID ).iterator().next().toString();
+            String dateLogged = getMidnightDateTime( appEntity.get( dateLoggedPTID ).iterator().next().toString() );
 
             // create entity in chronicle_user_apps
             Map<UUID, Set<Object>> userAppEntityData = new HashMap<>();
             userAppEntityData.put( appPackageNamePTID, Sets.newHashSet( appPackageName ) );
             userAppEntityData.put( appNamePTID,
-                    Sets.newHashSet( userAppsData.get( i ).get( appNamePTID ).iterator().next()
-                            .toString() ) );
+                    Sets.newHashSet( appEntity.get( appNamePTID ).iterator().next().toString() ) );
 
             UUID userAppEntityKeyId = reserveUserAppEntityKeyId( userAppEntityData, dataIntegrationApi );
             dataApi.updateEntitiesInEntitySet( userAppsESID,
@@ -391,8 +388,7 @@ public class ChronicleServiceImpl implements ChronicleService {
             dataApi.createEdges( dataEdgeKeys );
         }
 
-        logger.info( "Uploaded user apps entries: size = {}, participantId = {}",
-                userAppsData.size(), participantId );
+        logger.info( "Uploaded user apps entries: size = {}, participantId = {}", userAppsData.size(), participantId );
     }
 
     private void createAppDataEntitiesAndAssociations(
