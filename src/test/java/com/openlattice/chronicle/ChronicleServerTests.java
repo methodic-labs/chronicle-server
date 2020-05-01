@@ -1,6 +1,7 @@
 package com.openlattice.chronicle;
 
-public class ChronicleServerTests { }
+public class ChronicleServerTests {
+}
 
 // public class ChronicleServerTests {
 //

@@ -79,9 +79,9 @@ public class ChronicleServiceImpl implements ChronicleService {
     private final String username;
     private final String password;
 
-    private final EventBus eventBus;
-    private final String   SEARCH_PREFIX                     = "entity";
-    private final Set<UUID>         dataKey;
+    private final EventBus  eventBus;
+    private final String    SEARCH_PREFIX = "entity";
+    private final Set<UUID> dataKey;
 
     private final UUID studyESID;
     private final UUID deviceESID;
@@ -305,7 +305,7 @@ public class ChronicleServiceImpl implements ChronicleService {
          */
         List<SetMultimap<UUID, Object>> userAppsData = data
                 .stream()
-                .filter( entry ->  entry.get( recordTypePTID ).iterator().next().toString().equals( "Usage Stat" ) &&
+                .filter( entry -> entry.get( recordTypePTID ).iterator().next().toString().equals( "Usage Stat" ) &&
                         entry.containsKey( durationPTID ) &&
                         Long.parseLong( entry.get( durationPTID ).iterator().next().toString() ) > 0 )
                 .collect( Collectors.toList() );
@@ -322,7 +322,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                 Map<UUID, Set<Object>> userAppEntityData = new HashMap<>();
                 userAppEntityData.put( fullNamePTID, Sets.newHashSet( appPackageName ) );
                 userAppEntityData.put( titlePTID,
-                        Sets.newHashSet(appEntity.get( titlePTID ).iterator().next().toString() ) );
+                        Sets.newHashSet( appEntity.get( titlePTID ).iterator().next().toString() ) );
 
                 UUID userAppEntityKeyId = reserveUserAppEntityKeyId( userAppEntityData, dataIntegrationApi );
                 dataApi.updateEntitiesInEntitySet( userAppsESID,
