@@ -508,7 +508,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                     participantId,
                     studyId
             );
-            throw new IllegalArgumentException( "invalid participantEntitySet" );
+            throw new IllegalStateException( "unable to get the participant entity set id for the given study id" );
         }
 
         // search participant neighbors
@@ -636,6 +636,13 @@ public class ChronicleServiceImpl implements ChronicleService {
         }
 
         UUID deviceEntityKeyId = reserveDeviceEntityKeyId( deviceData, dataIntegrationApi );
+        if ( deviceEntityKeyId == null ) {
+            logger.error( "Unable to reserve deviceEntityKeyId, dataSourceId = {}, studyId = {}, participantId = {}",
+                    datasourceId,
+                    studyId,
+                    participantId );
+            return null;
+        }
         dataApi.updateEntitiesInEntitySet( deviceESID,
                 ImmutableMap.of( deviceEntityKeyId, deviceData ),
                 UpdateType.Merge );
