@@ -875,7 +875,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                                 new EntityNeighborsFilter( Sets.newHashSet( entry.getValue() ),
                                         java.util.Optional.of( ImmutableSet.of( deviceESID ) ),
                                         java.util.Optional.of( ImmutableSet.of() ),
-                                        java.util.Optional.of( ImmutableSet.of( usedByEntitySetId ) ) ) ) ) );
+                                        java.util.Optional.of( ImmutableSet.of(  ) ) ) ) ) );
 
         // get studies with notifications enabled
         Set<UUID> notificationEnabledStudyEKIDs = getNotificationEnabledStudies( studySearchResult, searchApi );
@@ -999,7 +999,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                             Set.of( participantEntityKeyId ),
                             java.util.Optional.of( ImmutableSet.of( srcEntitySetId ) ),
                             java.util.Optional.of( ImmutableSet.of( participantEntitySetId ) ),
-                            java.util.Optional.of( ImmutableSet.of( recordedByEntitySetId ) )
+                            java.util.Optional.of( ImmutableSet.of( recordedByESID ) )
                     )
 
             );
