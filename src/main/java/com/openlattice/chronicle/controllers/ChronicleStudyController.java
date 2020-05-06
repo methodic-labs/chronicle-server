@@ -132,6 +132,38 @@ public class ChronicleStudyController implements ChronicleStudyApi {
     }
 
     @RequestMapping(
+            path = PARTICIPANT_PATH + DATA_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH + APPS,
+            method = RequestMethod.GET,
+            produces = MediaType.APPLICATION_JSON_VALUE
+    )
+    public List<ChronicleAppsUsageDetails> getParticipantAppsUsageData(
+            @PathVariable( STUDY_ID ) UUID studyId,
+            @PathVariable( PARTICIPANT_ID ) String participantId ) {
+        return chronicleService.getParticipantAppsUsageData( studyId, participantId );
+    }
+
+    @RequestMapping(
+            path = STUDY_ID_PATH + NOTIFICATIONS,
+            method = RequestMethod.GET
+    )
+    public Boolean isNotificationsEnabled(
+            @PathVariable( STUDY_ID ) UUID studyId ) {
+        return chronicleService.isNotificationsEnabled(studyId);
+    }
+
+    @RequestMapping(
+            path = PARTICIPANT_PATH + DATA_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH + APPS,
+            method = RequestMethod.POST,
+            consumes = MediaType.APPLICATION_JSON_VALUE
+    )
+    public Integer updateAppsUsageAssociationData(
+            @PathVariable( STUDY_ID ) UUID studyId,
+            @PathVariable( PARTICIPANT_ID ) String participantId,
+            @RequestBody Map<UUID, Map<FullQualifiedName, Set<Object>>> associationDetails ) {
+        return chronicleService.updateAppsUsageAssociationData( studyId, participantId, associationDetails );
+    }
+
+    @RequestMapping(
             path = PARTICIPANT_PATH + DATA_PATH + STUDY_ID_PATH + ENTITY_KEY_ID_PATH + PREPROCESSED_PATH,
             method = RequestMethod.GET,
             produces = { MediaType.APPLICATION_JSON_VALUE, CustomMediaType.TEXT_CSV_VALUE }
@@ -164,23 +196,6 @@ public class ChronicleStudyController implements ChronicleStudyApi {
         }
 
         throw new InsufficientAuthenticationException( "request is not authenticated" );
-    }
-
-    @Override
-    public Integer updateAppsUsageAssociationData(
-            UUID studyId, String participantId, Map<UUID, Map<FullQualifiedName, Set<Object>>> associationDetails ) {
-        return null;
-    }
-
-    @Override
-    public List<ChronicleAppsUsageDetails> getParticipantAppsUsageData(
-            UUID studyId, String participantId ) {
-        return null;
-    }
-
-    @Override
-    public Boolean isNotificationsEnabled( UUID studyId ) {
-        return null;
     }
 
     @RequestMapping(
@@ -263,4 +278,5 @@ public class ChronicleStudyController implements ChronicleStudyApi {
             );
         }
     }
+
 }
