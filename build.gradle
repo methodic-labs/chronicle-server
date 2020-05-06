@@ -120,6 +120,7 @@ ext.odata_version = '4.2.0'
 ext.chronicle_api_version = '0.0.8-SNAPSHOT'
 dependencies {
     compile "com.google.guava:guava:${guava_version}"
+    compile 'com.squareup.retrofit2:converter-gson:2.5.0'
 
     if (project.hasProperty('developmentMode') && project.developmentMode) {
         logger.quiet(project.name + " using project dependencies.")
