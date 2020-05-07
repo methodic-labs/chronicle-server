@@ -306,7 +306,9 @@ public class ChronicleServiceImpl implements ChronicleService {
         List<SetMultimap<UUID, Object>> userAppsData = data
                 .stream()
                 .filter( entry -> entry.get( recordTypePTID ).iterator().next().toString().equals( "Usage Stat" ) &&
-                        entry.containsKey( durationPTID ) &&
+                        !entry.get( fullNamePTID ).isEmpty() &&
+                        !entry.get( dateLoggedPTID ).isEmpty() &&
+                        !entry.get( durationPTID ).isEmpty() &&
                         Long.parseLong( entry.get( durationPTID ).iterator().next().toString() ) > 0 )
                 .collect( Collectors.toList() );
 
@@ -314,15 +316,18 @@ public class ChronicleServiceImpl implements ChronicleService {
 
             try {
                 Set<DataEdgeKey> dataEdgeKeys = new HashSet<>();
+
                 String appPackageName = appEntity.get( fullNamePTID ).iterator().next().toString();
+                String appName = appEntity.get( titlePTID ).isEmpty() ?
+                        appPackageName :
+                        appEntity.get( titlePTID ).iterator().next().toString();
                 String dateLogged = getMidnightDateTime( appEntity.get( dateLoggedPTID ).iterator().next()
                         .toString() );
 
                 // create entity in chronicle_user_apps
                 Map<UUID, Set<Object>> userAppEntityData = new HashMap<>();
                 userAppEntityData.put( fullNamePTID, Sets.newHashSet( appPackageName ) );
-                userAppEntityData.put( titlePTID,
-                        Sets.newHashSet( appEntity.get( titlePTID ).iterator().next().toString() ) );
+                userAppEntityData.put( titlePTID, Sets.newHashSet( appName ) );
 
                 UUID userAppEntityKeyId = reserveUserAppEntityKeyId( userAppEntityData, dataIntegrationApi );
                 dataApi.updateEntitiesInEntitySet( userAppsESID,
