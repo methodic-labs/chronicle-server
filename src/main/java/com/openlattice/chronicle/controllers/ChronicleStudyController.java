@@ -152,6 +152,10 @@ public class ChronicleStudyController implements ChronicleStudyApi {
         return chronicleService.isNotificationsEnabled( studyId );
     }
 
+    @RequestMapping(
+            path = STUDY_ID_PATH + PARTICIPANT_ID_PATH + ENROLLMENT_STATUS,
+            method = RequestMethod.GET
+    )
     @Override
     public ParticipationStatus getParticipationStatus(
             @PathVariable( STUDY_ID ) UUID studyId,
