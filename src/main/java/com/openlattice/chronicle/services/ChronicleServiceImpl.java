@@ -30,7 +30,7 @@ import com.google.common.eventbus.EventBus;
 import com.openlattice.ApiUtil;
 import com.openlattice.chronicle.ChronicleServerUtil;
 import com.openlattice.chronicle.configuration.ChronicleConfiguration;
-import com.openlattice.chronicle.constants.ParticipationStatus;
+import com.openlattice.chronicle.data.ParticipationStatus;
 import com.openlattice.chronicle.data.ChronicleAppsUsageDetails;
 import com.openlattice.chronicle.sources.AndroidDevice;
 import com.openlattice.chronicle.sources.Datasource;
