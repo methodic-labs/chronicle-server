@@ -25,6 +25,7 @@ import com.openlattice.chronicle.ChronicleStudyApi;
 import com.openlattice.chronicle.constants.CustomMediaType;
 import com.openlattice.chronicle.data.ChronicleAppsUsageDetails;
 import com.openlattice.chronicle.data.FileType;
+import com.openlattice.chronicle.data.ParticipationStatus;
 import com.openlattice.chronicle.services.ChronicleService;
 import com.openlattice.chronicle.sources.Datasource;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
@@ -148,7 +149,18 @@ public class ChronicleStudyController implements ChronicleStudyApi {
     )
     public Boolean isNotificationsEnabled(
             @PathVariable( STUDY_ID ) UUID studyId ) {
-        return chronicleService.isNotificationsEnabled(studyId);
+        return chronicleService.isNotificationsEnabled( studyId );
+    }
+
+    @RequestMapping(
+            path = STUDY_ID_PATH + PARTICIPANT_ID_PATH + ENROLLMENT_STATUS,
+            method = RequestMethod.GET
+    )
+    @Override
+    public ParticipationStatus getParticipationStatus(
+            @PathVariable( STUDY_ID ) UUID studyId,
+            @PathVariable( PARTICIPANT_ID ) String participantId ) {
+        return chronicleService.getParticipationStatus( studyId, participantId );
     }
 
     @RequestMapping(
