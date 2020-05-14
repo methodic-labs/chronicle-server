@@ -52,7 +52,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 
 import javax.annotation.Nonnull;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -482,8 +484,8 @@ public class ChronicleServiceImpl implements ChronicleService {
     @Override
     public List<ChronicleAppsUsageDetails> getParticipantAppsUsageData(
             UUID studyId,
-            String participantId
-    ) {
+            String participantId,
+            String date ) {
 
         logger.info( "Retrieving user apps: participantId = {}, studyId = {}", participantId, studyId );
 
@@ -494,6 +496,12 @@ public class ChronicleServiceImpl implements ChronicleService {
         } catch ( ExecutionException e ) {
             logger.error( "Unable to load apis" );
             throw new IllegalStateException( e );
+        }
+
+        try {
+            LocalDate.parse( date );
+        } catch ( DateTimeParseException e ) {
+            throw new IllegalArgumentException( "invalid date: " + date );
         }
 
         UUID participantEntityKeyId = getParticipantEntityKeyId( participantId, studyId );
@@ -528,7 +536,6 @@ public class ChronicleServiceImpl implements ChronicleService {
         );
 
         if ( participantNeighbors.containsKey( participantEntityKeyId ) ) {
-            String currentDate = OffsetDateTime.now().toLocalDate().toString();
             return participantNeighbors.get( participantEntityKeyId )
                     .stream()
                     .filter( neighbor -> neighbor.getNeighborDetails().isPresent() )
@@ -538,7 +545,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                             .iterator()
                             .next()
                             .toString()
-                            .startsWith( currentDate )
+                            .startsWith( date )
                     )
                     .map( neighbor -> new ChronicleAppsUsageDetails(
                             neighbor.getNeighborDetails().get(),
