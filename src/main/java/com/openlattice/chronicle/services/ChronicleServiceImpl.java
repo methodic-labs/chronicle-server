@@ -19,6 +19,7 @@
 
 package com.openlattice.chronicle.services;
 
+import com.auth0.exception.Auth0Exception;
 import com.dataloom.streams.StreamUtil;
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
@@ -37,6 +38,7 @@ import com.openlattice.chronicle.sources.AndroidDevice;
 import com.openlattice.chronicle.sources.Datasource;
 import com.openlattice.client.ApiClient;
 import com.openlattice.data.*;
+import com.openlattice.data.requests.FileType;
 import com.openlattice.data.requests.NeighborEntityDetails;
 import com.openlattice.directory.PrincipalApi;
 import com.openlattice.edm.EdmApi;
@@ -794,30 +796,32 @@ public class ChronicleServiceImpl implements ChronicleService {
 
     @Scheduled( fixedRate = 60000 )
     public void refreshUserAppsDictionary() {
-        SearchApi searchApi;
+        DataApi dataApi;
+        String jwtToken;
         try {
             ApiClient apiClient = apiClientCache.get( ApiClient.class );
-            searchApi = apiClient.getSearchApi();
-        } catch ( ExecutionException e ) {
-            logger.error( "Unable to load api" );
+            dataApi = apiClient.getDataApi();
+            jwtToken = MissionControl.getIdToken( username, password );
+        } catch ( ExecutionException | Auth0Exception e ) {
+            logger.error( "Caught an exception", e );
             return;
         }
 
         logger.info( "Refreshing chronicle user apps dictionary" );
 
-        List<Map<FullQualifiedName, Set<Object>>> searchResult = searchApi
-                .executeEntitySetDataQuery( userAppsDictESID, new SearchTerm( "*", 0, SearchApi.MAX_SEARCH_RESULTS ) )
-                .getHits();
-        logger.info( "fetched {} items from user apps dictionary entity set", searchResult.size() );
+        Iterable<SetMultimap<FullQualifiedName, Object>> entitySetData = dataApi.loadEntitySetData( userAppsDictESID, FileType.json, jwtToken  );
+        logger.info( "Fetched {} items from user apps dictionary entity set", Iterators.size( entitySetData.iterator() ) );
 
         Map<String, String> appsDict = new HashMap<>();
-        searchResult
+        entitySetData
                 .forEach( entity -> {
                     String packageName = entity.get( FULL_NAME_FQN ).iterator().next().toString();
                     String appName = entity.get( TITLE_FQN ).iterator().next().toString();
-                    String recordType = entity.getOrDefault( RECORD_TYPE_FQN, Set.of( "" ) ).iterator().next()
-                            .toString();
-                    if ( !recordType.equals( RecordType.SYSTEM.name() ) ) {
+                    String recordType = "";
+                    if (entity.containsKey( RECORD_TYPE_FQN )) {
+                        recordType = entity.get( RECORD_TYPE_FQN ).iterator().next().toString();
+                    }
+                    if ( !RecordType.SYSTEM.name().equals( recordType ) )  {
                         appsDict.put( packageName, appName );
                     }
                 } );
@@ -825,7 +829,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         this.userAppsDict.clear();
         this.userAppsDict.putAll( appsDict );
 
-        logger.info( "loaded {} items into user apps dictionary", appsDict.size() );
+        logger.info( "Loaded {} items into user apps dictionary", appsDict.size() );
     }
 
     @Scheduled( fixedRate = 60000 )
