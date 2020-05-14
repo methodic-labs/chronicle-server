@@ -30,6 +30,7 @@ import com.google.common.eventbus.EventBus;
 import com.openlattice.ApiUtil;
 import com.openlattice.chronicle.ChronicleServerUtil;
 import com.openlattice.chronicle.configuration.ChronicleConfiguration;
+import com.openlattice.chronicle.constants.RecordType;
 import com.openlattice.chronicle.data.ChronicleAppsUsageDetails;
 import com.openlattice.chronicle.data.ParticipationStatus;
 import com.openlattice.chronicle.sources.AndroidDevice;
@@ -76,7 +77,9 @@ public class ChronicleServiceImpl implements ChronicleService {
     // studyId -> study EKID
     private final Map<UUID, UUID> studies = new HashMap<>();
 
-    private final Set<UUID> notificationEnabledStudyEKIDs = new HashSet<>();
+    private final Map<String, String> userAppsDict                  = Collections.synchronizedMap( new HashMap<>() );
+    private final Set<UUID>           notificationEnabledStudyEKIDs = new HashSet<>();
+    private final UUID                userAppsDictESID              = UUID.fromString( "628ad697-7ec8-4954-81d4-d5eab40001d9" );
 
     private final String username;
     private final String password;
@@ -153,6 +156,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         dataKey = edmApi.getEntityType( entitySetsApi.getEntitySet( dataESID ).getEntityTypeId() ).getKey();
 
         refreshStudyInformation();
+        refreshUserAppsDictionary();
 
     }
 
@@ -297,32 +301,19 @@ public class ChronicleServiceImpl implements ChronicleService {
 
         /*
          * Most of the data pushed by devices does not correspond to apps that were visible in the UI.
-         * Ideally we should only record UsageStats for apps that the user actually used
-         * Method getTotalTimeVisible() available in API level 29 would be the ideal filter since it gives the
-         * total time a package's activity was visible in the UI. However, our android app currently supports minimum API
-         * level 21. so the next best option would be getTotalTimeInForeground() which gives the total time spent in the
-         * foreground, measured in milliseconds
+         * Here we will only record the apps that exist in the chronicle user apps dictionary
          *
-         * https://developer.android.com/reference/android/app/usage/UsageStats
          */
-        List<SetMultimap<UUID, Object>> userAppsData = data
-                .stream()
-                .filter( entry -> entry.get( recordTypePTID ).iterator().next().toString().equals( "Usage Stat" ) &&
-                        !entry.get( fullNamePTID ).isEmpty() &&
-                        !entry.get( dateLoggedPTID ).isEmpty() &&
-                        !entry.get( durationPTID ).isEmpty() &&
-                        Long.parseLong( entry.get( durationPTID ).iterator().next().toString() ) > 0 )
-                .collect( Collectors.toList() );
 
-        for ( SetMultimap<UUID, Object> appEntity : userAppsData ) {
-
+        int numAppsUploaded = 0;
+        for ( SetMultimap<UUID, Object> appEntity : data ) {
             try {
                 Set<DataEdgeKey> dataEdgeKeys = new HashSet<>();
 
                 String appPackageName = appEntity.get( fullNamePTID ).iterator().next().toString();
-                String appName = appEntity.get( titlePTID ).isEmpty() ?
-                        appPackageName :
-                        appEntity.get( titlePTID ).iterator().next().toString();
+                String appName = userAppsDict.get( appPackageName );
+                if ( appName == null )
+                    continue;
                 String dateLogged = getMidnightDateTime( appEntity.get( dateLoggedPTID ).iterator().next()
                         .toString() );
 
@@ -368,16 +359,16 @@ public class ChronicleServiceImpl implements ChronicleService {
 
                 dst = new EntityDataKey( participantEntitySetId, participantEntityKeyId );
                 edge = new EntityDataKey( usedByESID, usedByEntityKeyId );
-
                 dataEdgeKeys.add( new DataEdgeKey( src, dst, edge ) );
-
                 dataApi.createEdges( dataEdgeKeys );
+
+                numAppsUploaded++;
             } catch ( Exception exception ) {
                 logger.error( "Error logging entry {}", appEntity, exception );
             }
         }
 
-        logger.info( "Uploaded user apps entries: size = {}, participantId = {}", userAppsData.size(), participantId );
+        logger.info( "Uploaded user apps entries: size = {}, participantId = {}", numAppsUploaded, participantId );
     }
 
     private void createAppDataEntitiesAndAssociations(
@@ -799,6 +790,42 @@ public class ChronicleServiceImpl implements ChronicleService {
                         .count() != 0 )
                 .map( Map.Entry::getKey )
                 .collect( Collectors.toSet() );
+    }
+
+    @Scheduled( fixedRate = 60000 )
+    public void refreshUserAppsDictionary() {
+        SearchApi searchApi;
+        try {
+            ApiClient apiClient = apiClientCache.get( ApiClient.class );
+            searchApi = apiClient.getSearchApi();
+        } catch ( ExecutionException e ) {
+            logger.error( "Unable to load api" );
+            return;
+        }
+
+        logger.info( "Refreshing chronicle user apps dictionary" );
+
+        List<Map<FullQualifiedName, Set<Object>>> searchResult = searchApi
+                .executeEntitySetDataQuery( userAppsDictESID, new SearchTerm( "*", 0, SearchApi.MAX_SEARCH_RESULTS ) )
+                .getHits();
+        logger.info( "fetched {} items from user apps dictionary entity set", searchResult.size() );
+
+        Map<String, String> appsDict = new HashMap<>();
+        searchResult
+                .forEach( entity -> {
+                    String packageName = entity.get( FULL_NAME_FQN ).iterator().next().toString();
+                    String appName = entity.get( TITLE_FQN ).iterator().next().toString();
+                    String recordType = entity.getOrDefault( RECORD_TYPE_FQN, Set.of( "" ) ).iterator().next()
+                            .toString();
+                    if ( !recordType.equals( RecordType.SYSTEM.name() ) ) {
+                        appsDict.put( packageName, appName );
+                    }
+                } );
+
+        this.userAppsDict.clear();
+        this.userAppsDict.putAll( appsDict );
+
+        logger.info( "loaded {} items into user apps dictionary", appsDict.size() );
     }
 
     @Scheduled( fixedRate = 60000 )
