@@ -52,8 +52,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 
 import javax.annotation.Nonnull;
-import java.time.DateTimeException;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -498,8 +499,8 @@ public class ChronicleServiceImpl implements ChronicleService {
         }
 
         try {
-            OffsetDateTime.parse( date );
-        } catch ( DateTimeException e ) {
+            LocalDate.parse( date );
+        } catch ( DateTimeParseException e ) {
             throw new IllegalArgumentException( "invalid date: " + date );
         }
 
