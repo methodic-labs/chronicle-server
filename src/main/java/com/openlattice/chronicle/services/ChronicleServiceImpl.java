@@ -52,6 +52,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 
 import javax.annotation.Nonnull;
+import java.time.DateTimeException;
 import java.time.OffsetDateTime;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
@@ -494,6 +495,12 @@ public class ChronicleServiceImpl implements ChronicleService {
         } catch ( ExecutionException e ) {
             logger.error( "Unable to load apis" );
             throw new IllegalStateException( e );
+        }
+
+        try {
+            OffsetDateTime.parse( date );
+        } catch ( DateTimeException e ) {
+            throw new IllegalArgumentException( "invalid date: " + date );
         }
 
         UUID participantEntityKeyId = getParticipantEntityKeyId( participantId, studyId );
