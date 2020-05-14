@@ -66,7 +66,10 @@ public interface ChronicleService {
 
     ParticipationStatus getParticipationStatus( UUID studyId, String participantId );
 
-    List<ChronicleAppsUsageDetails> getParticipantAppsUsageData (UUID studyId, String participantId);
+    List<ChronicleAppsUsageDetails> getParticipantAppsUsageData(
+            UUID studyId,
+            String participantId,
+            String date );
 
     Integer updateAppsUsageAssociationData(UUID studyId, String participantId,  Map<UUID, Map<FullQualifiedName, Set<Object>>> associationDetails);
 
