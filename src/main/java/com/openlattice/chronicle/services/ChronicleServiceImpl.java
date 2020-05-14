@@ -482,8 +482,8 @@ public class ChronicleServiceImpl implements ChronicleService {
     @Override
     public List<ChronicleAppsUsageDetails> getParticipantAppsUsageData(
             UUID studyId,
-            String participantId
-    ) {
+            String participantId,
+            String date ) {
 
         logger.info( "Retrieving user apps: participantId = {}, studyId = {}", participantId, studyId );
 
@@ -528,7 +528,6 @@ public class ChronicleServiceImpl implements ChronicleService {
         );
 
         if ( participantNeighbors.containsKey( participantEntityKeyId ) ) {
-            String currentDate = OffsetDateTime.now().toLocalDate().toString();
             return participantNeighbors.get( participantEntityKeyId )
                     .stream()
                     .filter( neighbor -> neighbor.getNeighborDetails().isPresent() )
@@ -538,7 +537,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                             .iterator()
                             .next()
                             .toString()
-                            .startsWith( currentDate )
+                            .startsWith( date )
                     )
                     .map( neighbor -> new ChronicleAppsUsageDetails(
                             neighbor.getNeighborDetails().get(),
