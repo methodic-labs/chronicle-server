@@ -65,6 +65,7 @@ import java.util.stream.Collectors;
 
 import static com.openlattice.chronicle.ChronicleServerUtil.PARTICIPANTS_PREFIX;
 import static com.openlattice.chronicle.constants.EdmConstants.*;
+import static com.openlattice.chronicle.constants.OutputConstants.*;
 import static com.openlattice.edm.EdmConstants.ID_FQN;
 
 public class ChronicleServiceImpl implements ChronicleService {
@@ -158,7 +159,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         dataKey = edmApi.getEntityType( entitySetsApi.getEntitySet( dataESID ).getEntityTypeId() ).getKey();
 
         refreshStudyInformation();
-        refreshUserAppsDictionary();
+//        refreshUserAppsDictionary();
 
     }
 
@@ -1021,7 +1022,6 @@ public class ChronicleServiceImpl implements ChronicleService {
             String entitySetName,
             String token ) {
         try {
-
             ApiClient apiClient = new ApiClient( () -> token );
             EntitySetsApi entitySetsApi = apiClient.getEntitySetsApi();
             SearchApi searchApi = apiClient.getSearchApi();
@@ -1048,9 +1048,13 @@ public class ChronicleServiceImpl implements ChronicleService {
                     .filter( neighbor -> neighbor.getNeighborDetails().isPresent() )
                     .map( neighbor -> {
                         neighbor.getNeighborDetails().get().remove( ID_FQN );
+
                         Map<String, Set<Object>> neighborDetails = Maps.newHashMap();
                         neighbor.getNeighborDetails().get()
-                                .forEach( ( key, value ) -> neighborDetails.put( key.toString(), value ) );
+                                .forEach( ( key, value ) -> neighborDetails.put( ENTITY_PREFIX + key.toString(), value ) );
+                        neighbor.getAssociationDetails()
+                                .forEach( ( key, value ) -> neighborDetails.put( ASSOCIATION_PREFIX + key.toString(), value ) );
+
                         return neighborDetails;
                     } )
                     .collect( Collectors.toSet() );
