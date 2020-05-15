@@ -1088,7 +1088,7 @@ public class ChronicleServiceImpl implements ChronicleService {
             UUID studyId,
             UUID participantEntityKeyId,
             String token ) {
-        return getParticipantDataHelper( studyId, participantEntityKeyId, recordedByESID,CHRONICLE_USER_APPS, token );
+        return getParticipantDataHelper( studyId, participantEntityKeyId, usedByESID, CHRONICLE_USER_APPS, token );
     }
 
 
