@@ -43,9 +43,6 @@ import com.openlattice.data.requests.NeighborEntityDetails;
 import com.openlattice.directory.PrincipalApi;
 import com.openlattice.edm.EdmApi;
 import com.openlattice.edm.EntitySet;
-import com.openlattice.edm.set.EntitySetPropertyMetadata;
-import com.openlattice.edm.type.EntityType;
-import com.openlattice.edm.type.PropertyType;
 import com.openlattice.entitysets.EntitySetsApi;
 import com.openlattice.search.SearchApi;
 import com.openlattice.search.requests.EntityNeighborsFilter;
@@ -85,7 +82,8 @@ public class ChronicleServiceImpl implements ChronicleService {
 
     private final Map<String, String> userAppsDict                  = Collections.synchronizedMap( new HashMap<>() );
     private final Set<UUID>           notificationEnabledStudyEKIDs = new HashSet<>();
-    private final UUID                userAppsDictESID              = UUID.fromString( "628ad697-7ec8-4954-81d4-d5eab40001d9" );
+
+    private final UUID userAppsDictESID = UUID.fromString( "628ad697-7ec8-4954-81d4-d5eab40001d9" );
 
     private final String username;
     private final String password;
@@ -800,8 +798,10 @@ public class ChronicleServiceImpl implements ChronicleService {
 
     @Scheduled( fixedRate = 60000 )
     public void refreshUserAppsDictionary() {
+
         DataApi dataApi;
         String jwtToken;
+
         try {
             ApiClient apiClient = apiClientCache.get( ApiClient.class );
             dataApi = apiClient.getDataApi();
@@ -813,22 +813,41 @@ public class ChronicleServiceImpl implements ChronicleService {
 
         logger.info( "Refreshing chronicle user apps dictionary" );
 
-        Iterable<SetMultimap<FullQualifiedName, Object>> entitySetData = dataApi.loadEntitySetData( userAppsDictESID, FileType.json, jwtToken  );
-        logger.info( "Fetched {} items from user apps dictionary entity set", Iterators.size( entitySetData.iterator() ) );
+        Iterable<SetMultimap<FullQualifiedName, Object>> entitySetData = dataApi.loadEntitySetData(
+                userAppsDictESID,
+                FileType.json,
+                jwtToken
+        );
+        logger.info(
+                "Fetched {} items from user apps dictionary entity set",
+                Iterators.size( entitySetData.iterator() )
+        );
 
         Map<String, String> appsDict = new HashMap<>();
-        entitySetData
-                .forEach( entity -> {
-                    String packageName = entity.get( FULL_NAME_FQN ).iterator().next().toString();
-                    String appName = entity.get( TITLE_FQN ).iterator().next().toString();
-                    String recordType = "";
-                    if (entity.containsKey( RECORD_TYPE_FQN )) {
-                        recordType = entity.get( RECORD_TYPE_FQN ).iterator().next().toString();
-                    }
-                    if ( !RecordType.SYSTEM.name().equals( recordType ) )  {
-                        appsDict.put( packageName, appName );
-                    }
-                } );
+        entitySetData.forEach( entity -> {
+            try {
+                String packageName = null;
+                if ( entity.containsKey( FULL_NAME_FQN ) && !entity.get( FULL_NAME_FQN ).isEmpty() ) {
+                    packageName = entity.get( FULL_NAME_FQN ).iterator().next().toString();
+                }
+
+                String appName = null;
+                if ( entity.containsKey( TITLE_FQN ) && !entity.get( TITLE_FQN ).isEmpty() ) {
+                    appName = entity.get( TITLE_FQN ).iterator().next().toString();
+                }
+
+                String recordType = null;
+                if ( entity.containsKey( RECORD_TYPE_FQN ) && !entity.get( RECORD_TYPE_FQN ).isEmpty() ) {
+                    recordType = entity.get( RECORD_TYPE_FQN ).iterator().next().toString();
+                }
+
+                if ( !RecordType.SYSTEM.name().equals( recordType ) && packageName != null && appName != null ) {
+                    appsDict.put( packageName, appName );
+                }
+            } catch ( Exception e ) {
+                logger.error( "caught exception while processing entities from user apps dictionary", e );
+            }
+        } );
 
         this.userAppsDict.clear();
         this.userAppsDict.putAll( appsDict );
@@ -1038,13 +1057,13 @@ public class ChronicleServiceImpl implements ChronicleService {
             // create a dictionary from property type fqn to title of
             Map<UUID, String> propertyDictionary = Maps.newHashMap();
             edmApi.getPropertyTypes().forEach(
-                    k -> propertyDictionary.put(k.getId(), k.getType().getFullQualifiedNameAsString()) );
+                    k -> propertyDictionary.put( k.getId(), k.getType().getFullQualifiedNameAsString() ) );
             Map<String, String> columnNameDictionary = Maps.newHashMap();
             entitySetsApi.getAllEntitySetPropertyMetadata( srcEntitySetId )
-                    .forEach( (propertyTypeId, propertyMetadata) -> columnNameDictionary.put(
-                            propertyDictionary.get(propertyTypeId),
+                    .forEach( ( propertyTypeId, propertyMetadata ) -> columnNameDictionary.put(
+                            propertyDictionary.get( propertyTypeId ),
                             propertyMetadata.getTitle()
-                    ));
+                    ) );
 
             Map<UUID, List<NeighborEntityDetails>> participantNeighbors = searchApi.executeFilteredEntityNeighborSearch(
                     participantEntitySetId,
@@ -1066,10 +1085,10 @@ public class ChronicleServiceImpl implements ChronicleService {
                         Map<String, Set<Object>> neighborDetails = Maps.newHashMap();
                         neighbor.getNeighborDetails().get()
                                 .forEach( ( key, value ) -> neighborDetails.put(
-                                        APP_PREFIX + columnNameDictionary.get( key.toString()), value ) );
+                                        APP_PREFIX + columnNameDictionary.get( key.toString() ), value ) );
                         neighbor.getAssociationDetails()
                                 .forEach( ( key, value ) -> neighborDetails.put(
-                                        USER_PREFIX + columnNameDictionary.get(key.toString()), value ) );
+                                        USER_PREFIX + columnNameDictionary.get( key.toString() ), value ) );
 
                         return neighborDetails;
                     } )
@@ -1091,7 +1110,11 @@ public class ChronicleServiceImpl implements ChronicleService {
             UUID studyId,
             UUID participatedInEntityKeyId,
             String token ) {
-        return getParticipantDataHelper( studyId, participatedInEntityKeyId, recordedByESID, PREPROCESSED_DATA_ENTITY_SET_NAME, token );
+        return getParticipantDataHelper( studyId,
+                participatedInEntityKeyId,
+                recordedByESID,
+                PREPROCESSED_DATA_ENTITY_SET_NAME,
+                token );
     }
 
     @Override
@@ -1109,7 +1132,6 @@ public class ChronicleServiceImpl implements ChronicleService {
             String token ) {
         return getParticipantDataHelper( studyId, participantEntityKeyId, usedByESID, CHRONICLE_USER_APPS, token );
     }
-
 
     @Override
     @Nonnull
