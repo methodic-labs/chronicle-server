@@ -40,7 +40,9 @@ import com.openlattice.data.requests.NeighborEntityDetails;
 import com.openlattice.directory.PrincipalApi;
 import com.openlattice.edm.EdmApi;
 import com.openlattice.edm.EntitySet;
+import com.openlattice.edm.set.EntitySetPropertyMetadata;
 import com.openlattice.edm.type.EntityType;
+import com.openlattice.edm.type.PropertyType;
 import com.openlattice.entitysets.EntitySetsApi;
 import com.openlattice.search.SearchApi;
 import com.openlattice.search.requests.EntityNeighborsFilter;
@@ -993,16 +995,16 @@ public class ChronicleServiceImpl implements ChronicleService {
             UUID participantEntitySetId = entitySetsApi.getEntitySetId( participantEntitySetName );
             UUID srcEntitySetId = entitySetsApi.getEntitySetId( entitySetName );
 
-            // create a dictionary from property fqn to title of
-            EntityType appDataET = edmApi.getEntityType( entitySetsApi.getEntitySet( srcEntitySetId ).getEntityTypeId() );
-            Map<String, String> columnNameDictionary = appDataET.getProperties()
-                    .stream()
-                    .collect(
-                            Collectors.toMap(
-                                    k -> edmApi.getPropertyType( k ).getType().getFullQualifiedNameAsString(),
-                                    k -> entitySetsApi.getEntitySetPropertyMetadata( srcEntitySetId, k ).getTitle()
-                            )
-                    );
+            // create a dictionary from property type fqn to title of
+            Map<UUID, String> propertyDictionary = Maps.newHashMap();
+            edmApi.getPropertyTypes().forEach(
+                    k -> propertyDictionary.put(k.getId(), k.getType().getFullQualifiedNameAsString()) );
+            Map<String, String> columnNameDictionary = Maps.newHashMap();
+            entitySetsApi.getAllEntitySetPropertyMetadata( srcEntitySetId )
+                    .forEach( (propertyTypeId, propertyMetadata) -> columnNameDictionary.put(
+                            propertyDictionary.get(propertyTypeId),
+                            propertyMetadata.getTitle()
+                    ));
 
             Map<UUID, List<NeighborEntityDetails>> participantNeighbors = searchApi.executeFilteredEntityNeighborSearch(
                     participantEntitySetId,
