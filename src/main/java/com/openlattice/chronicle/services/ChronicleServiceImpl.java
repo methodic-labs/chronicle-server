@@ -1065,10 +1065,10 @@ public class ChronicleServiceImpl implements ChronicleService {
                         Map<String, Set<Object>> neighborDetails = Maps.newHashMap();
                         neighbor.getNeighborDetails().get()
                                 .forEach( ( key, value ) -> neighborDetails.put(
-                                        ENTITY_PREFIX + columnNameDictionary.get( key.toString()), value ) );
+                                        APP_PREFIX + columnNameDictionary.get( key.toString()), value ) );
                         neighbor.getAssociationDetails()
                                 .forEach( ( key, value ) -> neighborDetails.put(
-                                        ASSOCIATION_PREFIX + columnNameDictionary.get(key.toString()), value ) );
+                                        USER_PREFIX + columnNameDictionary.get(key.toString()), value ) );
 
                         return neighborDetails;
                     } )
