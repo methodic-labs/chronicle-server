@@ -19,6 +19,7 @@
 
 package com.openlattice.chronicle.services;
 
+import com.auth0.exception.Auth0Exception;
 import com.dataloom.streams.StreamUtil;
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
@@ -30,12 +31,14 @@ import com.google.common.eventbus.EventBus;
 import com.openlattice.ApiUtil;
 import com.openlattice.chronicle.ChronicleServerUtil;
 import com.openlattice.chronicle.configuration.ChronicleConfiguration;
+import com.openlattice.chronicle.constants.RecordType;
 import com.openlattice.chronicle.data.ChronicleAppsUsageDetails;
 import com.openlattice.chronicle.data.ParticipationStatus;
 import com.openlattice.chronicle.sources.AndroidDevice;
 import com.openlattice.chronicle.sources.Datasource;
 import com.openlattice.client.ApiClient;
 import com.openlattice.data.*;
+import com.openlattice.data.requests.FileType;
 import com.openlattice.data.requests.NeighborEntityDetails;
 import com.openlattice.directory.PrincipalApi;
 import com.openlattice.edm.EdmApi;
@@ -55,7 +58,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 
 import javax.annotation.Nonnull;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -63,6 +68,7 @@ import java.util.stream.Collectors;
 
 import static com.openlattice.chronicle.ChronicleServerUtil.PARTICIPANTS_PREFIX;
 import static com.openlattice.chronicle.constants.EdmConstants.*;
+import static com.openlattice.chronicle.constants.OutputConstants.*;
 import static com.openlattice.edm.EdmConstants.ID_FQN;
 
 public class ChronicleServiceImpl implements ChronicleService {
@@ -77,7 +83,9 @@ public class ChronicleServiceImpl implements ChronicleService {
     // studyId -> study EKID
     private final Map<UUID, UUID> studies = new HashMap<>();
 
-    private final Set<UUID> notificationEnabledStudyEKIDs = new HashSet<>();
+    private final Map<String, String> userAppsDict                  = Collections.synchronizedMap( new HashMap<>() );
+    private final Set<UUID>           notificationEnabledStudyEKIDs = new HashSet<>();
+    private final UUID                userAppsDictESID              = UUID.fromString( "628ad697-7ec8-4954-81d4-d5eab40001d9" );
 
     private final String username;
     private final String password;
@@ -154,6 +162,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         dataKey = edmApi.getEntityType( entitySetsApi.getEntitySet( dataESID ).getEntityTypeId() ).getKey();
 
         refreshStudyInformation();
+        refreshUserAppsDictionary();
 
     }
 
@@ -298,32 +307,19 @@ public class ChronicleServiceImpl implements ChronicleService {
 
         /*
          * Most of the data pushed by devices does not correspond to apps that were visible in the UI.
-         * Ideally we should only record UsageStats for apps that the user actually used
-         * Method getTotalTimeVisible() available in API level 29 would be the ideal filter since it gives the
-         * total time a package's activity was visible in the UI. However, our android app currently supports minimum API
-         * level 21. so the next best option would be getTotalTimeInForeground() which gives the total time spent in the
-         * foreground, measured in milliseconds
+         * Here we will only record the apps that exist in the chronicle user apps dictionary
          *
-         * https://developer.android.com/reference/android/app/usage/UsageStats
          */
-        List<SetMultimap<UUID, Object>> userAppsData = data
-                .stream()
-                .filter( entry -> entry.get( recordTypePTID ).iterator().next().toString().equals( "Usage Stat" ) &&
-                        !entry.get( fullNamePTID ).isEmpty() &&
-                        !entry.get( dateLoggedPTID ).isEmpty() &&
-                        !entry.get( durationPTID ).isEmpty() &&
-                        Long.parseLong( entry.get( durationPTID ).iterator().next().toString() ) > 0 )
-                .collect( Collectors.toList() );
 
-        for ( SetMultimap<UUID, Object> appEntity : userAppsData ) {
-
+        int numAppsUploaded = 0;
+        for ( SetMultimap<UUID, Object> appEntity : data ) {
             try {
                 Set<DataEdgeKey> dataEdgeKeys = new HashSet<>();
 
                 String appPackageName = appEntity.get( fullNamePTID ).iterator().next().toString();
-                String appName = appEntity.get( titlePTID ).isEmpty() ?
-                        appPackageName :
-                        appEntity.get( titlePTID ).iterator().next().toString();
+                String appName = userAppsDict.get( appPackageName );
+                if ( appName == null )
+                    continue;
                 String dateLogged = getMidnightDateTime( appEntity.get( dateLoggedPTID ).iterator().next()
                         .toString() );
 
@@ -369,16 +365,16 @@ public class ChronicleServiceImpl implements ChronicleService {
 
                 dst = new EntityDataKey( participantEntitySetId, participantEntityKeyId );
                 edge = new EntityDataKey( usedByESID, usedByEntityKeyId );
-
                 dataEdgeKeys.add( new DataEdgeKey( src, dst, edge ) );
-
                 dataApi.createEdges( dataEdgeKeys );
+
+                numAppsUploaded++;
             } catch ( Exception exception ) {
                 logger.error( "Error logging entry {}", appEntity, exception );
             }
         }
 
-        logger.info( "Uploaded user apps entries: size = {}, participantId = {}", userAppsData.size(), participantId );
+        logger.info( "Uploaded user apps entries: size = {}, participantId = {}", numAppsUploaded, participantId );
     }
 
     private void createAppDataEntitiesAndAssociations(
@@ -485,8 +481,8 @@ public class ChronicleServiceImpl implements ChronicleService {
     @Override
     public List<ChronicleAppsUsageDetails> getParticipantAppsUsageData(
             UUID studyId,
-            String participantId
-    ) {
+            String participantId,
+            String date ) {
 
         logger.info( "Retrieving user apps: participantId = {}, studyId = {}", participantId, studyId );
 
@@ -497,6 +493,12 @@ public class ChronicleServiceImpl implements ChronicleService {
         } catch ( ExecutionException e ) {
             logger.error( "Unable to load apis" );
             throw new IllegalStateException( e );
+        }
+
+        try {
+            LocalDate.parse( date );
+        } catch ( DateTimeParseException e ) {
+            throw new IllegalArgumentException( "invalid date: " + date );
         }
 
         UUID participantEntityKeyId = getParticipantEntityKeyId( participantId, studyId );
@@ -531,7 +533,6 @@ public class ChronicleServiceImpl implements ChronicleService {
         );
 
         if ( participantNeighbors.containsKey( participantEntityKeyId ) ) {
-            String currentDate = OffsetDateTime.now().toLocalDate().toString();
             return participantNeighbors.get( participantEntityKeyId )
                     .stream()
                     .filter( neighbor -> neighbor.getNeighborDetails().isPresent() )
@@ -541,7 +542,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                             .iterator()
                             .next()
                             .toString()
-                            .startsWith( currentDate )
+                            .startsWith( date )
                     )
                     .map( neighbor -> new ChronicleAppsUsageDetails(
                             neighbor.getNeighborDetails().get(),
@@ -798,6 +799,44 @@ public class ChronicleServiceImpl implements ChronicleService {
     }
 
     @Scheduled( fixedRate = 60000 )
+    public void refreshUserAppsDictionary() {
+        DataApi dataApi;
+        String jwtToken;
+        try {
+            ApiClient apiClient = apiClientCache.get( ApiClient.class );
+            dataApi = apiClient.getDataApi();
+            jwtToken = MissionControl.getIdToken( username, password );
+        } catch ( ExecutionException | Auth0Exception e ) {
+            logger.error( "Caught an exception", e );
+            return;
+        }
+
+        logger.info( "Refreshing chronicle user apps dictionary" );
+
+        Iterable<SetMultimap<FullQualifiedName, Object>> entitySetData = dataApi.loadEntitySetData( userAppsDictESID, FileType.json, jwtToken  );
+        logger.info( "Fetched {} items from user apps dictionary entity set", Iterators.size( entitySetData.iterator() ) );
+
+        Map<String, String> appsDict = new HashMap<>();
+        entitySetData
+                .forEach( entity -> {
+                    String packageName = entity.get( FULL_NAME_FQN ).iterator().next().toString();
+                    String appName = entity.get( TITLE_FQN ).iterator().next().toString();
+                    String recordType = "";
+                    if (entity.containsKey( RECORD_TYPE_FQN )) {
+                        recordType = entity.get( RECORD_TYPE_FQN ).iterator().next().toString();
+                    }
+                    if ( !RecordType.SYSTEM.name().equals( recordType ) )  {
+                        appsDict.put( packageName, appName );
+                    }
+                } );
+
+        this.userAppsDict.clear();
+        this.userAppsDict.putAll( appsDict );
+
+        logger.info( "Loaded {} items into user apps dictionary", appsDict.size() );
+    }
+
+    @Scheduled( fixedRate = 60000 )
     public void refreshStudyInformation() {
         EntitySetsApi entitySetsApi;
         SearchApi searchApi;
@@ -1025,8 +1064,12 @@ public class ChronicleServiceImpl implements ChronicleService {
                         neighbor.getNeighborDetails().get().remove( ID_FQN );
                         Map<String, Set<Object>> neighborDetails = Maps.newHashMap();
                         neighbor.getNeighborDetails().get()
-                                .forEach( ( key, value ) -> neighborDetails.put( columnNameDictionary.get( key.toString()), value ) )
-                               ;
+                                .forEach( ( key, value ) -> neighborDetails.put(
+                                        ENTITY_PREFIX + columnNameDictionary.get( key.toString()), value ) );
+                        neighbor.getAssociationDetails()
+                                .forEach( ( key, value ) -> neighborDetails.put(
+                                        ASSOCIATION_PREFIX + columnNameDictionary.get(key.toString()), value ) );
+
                         return neighborDetails;
                     } )
                     .collect( Collectors.toSet() );

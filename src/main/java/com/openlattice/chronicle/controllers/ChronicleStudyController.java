@@ -139,8 +139,9 @@ public class ChronicleStudyController implements ChronicleStudyApi {
     )
     public List<ChronicleAppsUsageDetails> getParticipantAppsUsageData(
             @PathVariable( STUDY_ID ) UUID studyId,
-            @PathVariable( PARTICIPANT_ID ) String participantId ) {
-        return chronicleService.getParticipantAppsUsageData( studyId, participantId );
+            @PathVariable( PARTICIPANT_ID ) String participantId,
+            @RequestParam( value = DATE ) String date ) {
+        return chronicleService.getParticipantAppsUsageData( studyId, participantId, date );
     }
 
     @RequestMapping(
