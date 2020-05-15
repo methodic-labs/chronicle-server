@@ -40,6 +40,7 @@ import com.openlattice.data.requests.NeighborEntityDetails;
 import com.openlattice.directory.PrincipalApi;
 import com.openlattice.edm.EdmApi;
 import com.openlattice.edm.EntitySet;
+import com.openlattice.edm.type.EntityType;
 import com.openlattice.entitysets.EntitySetsApi;
 import com.openlattice.search.SearchApi;
 import com.openlattice.search.requests.EntityNeighborsFilter;
@@ -983,15 +984,25 @@ public class ChronicleServiceImpl implements ChronicleService {
             String entitySetName,
             String token ) {
         try {
-
             ApiClient apiClient = new ApiClient( () -> token );
             EntitySetsApi entitySetsApi = apiClient.getEntitySetsApi();
             SearchApi searchApi = apiClient.getSearchApi();
+            EdmApi edmApi = apiClient.getEdmApi();
 
             String participantEntitySetName = ChronicleServerUtil.getParticipantEntitySetName( studyId );
             UUID participantEntitySetId = entitySetsApi.getEntitySetId( participantEntitySetName );
-
             UUID srcEntitySetId = entitySetsApi.getEntitySetId( entitySetName );
+
+            // create a dictionary from property fqn to title of
+            EntityType appDataET = edmApi.getEntityType( entitySetsApi.getEntitySet( srcEntitySetId ).getEntityTypeId() );
+            Map<String, String> columnNameDictionary = appDataET.getProperties()
+                    .stream()
+                    .collect(
+                            Collectors.toMap(
+                                    k -> edmApi.getPropertyType( k ).getType().getFullQualifiedNameAsString(),
+                                    k -> entitySetsApi.getEntitySetPropertyMetadata( srcEntitySetId, k ).getTitle()
+                            )
+                    );
 
             Map<UUID, List<NeighborEntityDetails>> participantNeighbors = searchApi.executeFilteredEntityNeighborSearch(
                     participantEntitySetId,
@@ -1012,7 +1023,8 @@ public class ChronicleServiceImpl implements ChronicleService {
                         neighbor.getNeighborDetails().get().remove( ID_FQN );
                         Map<String, Set<Object>> neighborDetails = Maps.newHashMap();
                         neighbor.getNeighborDetails().get()
-                                .forEach( ( key, value ) -> neighborDetails.put( key.toString(), value ) );
+                                .forEach( ( key, value ) -> neighborDetails.put( columnNameDictionary.get( key.toString()), value ) )
+                               ;
                         return neighborDetails;
                     } )
                     .collect( Collectors.toSet() );
