@@ -1018,6 +1018,7 @@ public class ChronicleServiceImpl implements ChronicleService {
     private Iterable<Map<String, Set<Object>>> getParticipantDataHelper(
             UUID studyId,
             UUID participantEntityKeyId,
+            UUID edgeEntitySetId,
             String entitySetName,
             String token ) {
         try {
@@ -1037,7 +1038,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                             Set.of( participantEntityKeyId ),
                             java.util.Optional.of( ImmutableSet.of( srcEntitySetId ) ),
                             java.util.Optional.of( ImmutableSet.of( participantEntitySetId ) ),
-                            java.util.Optional.of( ImmutableSet.of( recordedByESID ) )
+                            java.util.Optional.of( ImmutableSet.of( edgeEntitySetId ) )
                     )
 
             );
@@ -1071,7 +1072,7 @@ public class ChronicleServiceImpl implements ChronicleService {
             UUID studyId,
             UUID participatedInEntityKeyId,
             String token ) {
-        return getParticipantDataHelper( studyId, participatedInEntityKeyId, PREPROCESSED_DATA_ENTITY_SET_NAME, token );
+        return getParticipantDataHelper( studyId, participatedInEntityKeyId, recordedByESID, PREPROCESSED_DATA_ENTITY_SET_NAME, token );
     }
 
     @Override
@@ -1079,8 +1080,17 @@ public class ChronicleServiceImpl implements ChronicleService {
             UUID studyId,
             UUID participantEntityKeyId,
             String token ) {
-        return getParticipantDataHelper( studyId, participantEntityKeyId, DATA_ENTITY_SET_NAME, token );
+        return getParticipantDataHelper( studyId, participantEntityKeyId, recordedByESID, DATA_ENTITY_SET_NAME, token );
     }
+
+    @Override
+    public Iterable<Map<String, Set<Object>>> getAllParticipantAppsUsageData(
+            UUID studyId,
+            UUID participantEntityKeyId,
+            String token ) {
+        return getParticipantDataHelper( studyId, participantEntityKeyId, usedByESID, CHRONICLE_USER_APPS, token );
+    }
+
 
     @Override
     @Nonnull
