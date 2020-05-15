@@ -62,6 +62,11 @@ public interface ChronicleService {
             UUID participantEntityId,
             String token );
 
+    Iterable<Map<String, Set<Object>>> getAllParticipantAppsUsageData(
+            UUID studyId,
+            UUID participantEntityId,
+            String token );
+
     Map<FullQualifiedName, Set<Object>> getParticipantEntity( UUID studyId, UUID participantEntityId );
 
     ParticipationStatus getParticipationStatus( UUID studyId, String participantId );

@@ -245,6 +245,41 @@ public class ChronicleStudyController implements ChronicleStudyApi {
         throw new InsufficientAuthenticationException( "request is not authenticated" );
     }
 
+    @RequestMapping(
+            path = PARTICIPANT_PATH + DATA_PATH + STUDY_ID_PATH + ENTITY_KEY_ID_PATH + USAGE_PATH,
+            method = RequestMethod.GET,
+            produces = { MediaType.APPLICATION_JSON_VALUE, CustomMediaType.TEXT_CSV_VALUE }
+    )
+    public Iterable<Map<String, Set<Object>>> getAllParticipantAppsUsageData(
+            @PathVariable( STUDY_ID ) UUID studyId,
+            @PathVariable( ENTITY_KEY_ID ) UUID participantEntityKeyId,
+            @RequestParam( value = FILE_TYPE, required = false ) FileType fileType,
+            HttpServletResponse response ) {
+
+        Iterable<Map<String, Set<Object>>> data = getAllParticipantAppsUsageData( studyId,
+                participantEntityKeyId,
+                fileType );
+
+        String fileName = getParticipantDataFileName( "ChronicleAppUsageData_", studyId, participantEntityKeyId );
+        setContentDisposition( response, fileName, fileType );
+        setDownloadContentType( response, fileType );
+        return data;
+    }
+
+    public Iterable<Map<String, Set<Object>>> getAllParticipantAppsUsageData(
+            UUID studyId,
+            UUID participantEntityKeyId,
+            FileType fileType ) {
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if ( authentication instanceof JwtAuthentication ) {
+            String token = ( (JwtAuthentication) authentication ).getToken();
+            return chronicleService.getAllParticipantAppsUsageData( studyId, participantEntityKeyId, token );
+        }
+
+        throw new InsufficientAuthenticationException( "request is not authenticated" );
+    }
+
     private String getParticipantDataFileName( String fileNamePrefix, UUID studyId, UUID participantEntityKeyId ) {
         String participantId = chronicleService
                 .getParticipantEntity( studyId, participantEntityKeyId )
