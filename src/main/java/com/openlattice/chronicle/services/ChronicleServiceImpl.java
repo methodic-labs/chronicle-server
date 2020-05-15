@@ -43,6 +43,9 @@ import com.openlattice.data.requests.NeighborEntityDetails;
 import com.openlattice.directory.PrincipalApi;
 import com.openlattice.edm.EdmApi;
 import com.openlattice.edm.EntitySet;
+import com.openlattice.edm.set.EntitySetPropertyMetadata;
+import com.openlattice.edm.type.EntityType;
+import com.openlattice.edm.type.PropertyType;
 import com.openlattice.entitysets.EntitySetsApi;
 import com.openlattice.search.SearchApi;
 import com.openlattice.search.requests.EntityNeighborsFilter;
@@ -65,6 +68,7 @@ import java.util.stream.Collectors;
 
 import static com.openlattice.chronicle.ChronicleServerUtil.PARTICIPANTS_PREFIX;
 import static com.openlattice.chronicle.constants.EdmConstants.*;
+import static com.openlattice.chronicle.constants.OutputConstants.*;
 import static com.openlattice.edm.EdmConstants.ID_FQN;
 
 public class ChronicleServiceImpl implements ChronicleService {
@@ -1022,15 +1026,25 @@ public class ChronicleServiceImpl implements ChronicleService {
             String entitySetName,
             String token ) {
         try {
-
             ApiClient apiClient = new ApiClient( () -> token );
             EntitySetsApi entitySetsApi = apiClient.getEntitySetsApi();
             SearchApi searchApi = apiClient.getSearchApi();
+            EdmApi edmApi = apiClient.getEdmApi();
 
             String participantEntitySetName = ChronicleServerUtil.getParticipantEntitySetName( studyId );
             UUID participantEntitySetId = entitySetsApi.getEntitySetId( participantEntitySetName );
-
             UUID srcEntitySetId = entitySetsApi.getEntitySetId( entitySetName );
+
+            // create a dictionary from property type fqn to title of
+            Map<UUID, String> propertyDictionary = Maps.newHashMap();
+            edmApi.getPropertyTypes().forEach(
+                    k -> propertyDictionary.put(k.getId(), k.getType().getFullQualifiedNameAsString()) );
+            Map<String, String> columnNameDictionary = Maps.newHashMap();
+            entitySetsApi.getAllEntitySetPropertyMetadata( srcEntitySetId )
+                    .forEach( (propertyTypeId, propertyMetadata) -> columnNameDictionary.put(
+                            propertyDictionary.get(propertyTypeId),
+                            propertyMetadata.getTitle()
+                    ));
 
             Map<UUID, List<NeighborEntityDetails>> participantNeighbors = searchApi.executeFilteredEntityNeighborSearch(
                     participantEntitySetId,
@@ -1051,7 +1065,12 @@ public class ChronicleServiceImpl implements ChronicleService {
                         neighbor.getNeighborDetails().get().remove( ID_FQN );
                         Map<String, Set<Object>> neighborDetails = Maps.newHashMap();
                         neighbor.getNeighborDetails().get()
-                                .forEach( ( key, value ) -> neighborDetails.put( key.toString(), value ) );
+                                .forEach( ( key, value ) -> neighborDetails.put(
+                                        APP_PREFIX + columnNameDictionary.get( key.toString()), value ) );
+                        neighbor.getAssociationDetails()
+                                .forEach( ( key, value ) -> neighborDetails.put(
+                                        USER_PREFIX + columnNameDictionary.get(key.toString()), value ) );
+
                         return neighborDetails;
                     } )
                     .collect( Collectors.toSet() );
