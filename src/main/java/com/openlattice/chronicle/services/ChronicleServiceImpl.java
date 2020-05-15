@@ -159,7 +159,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         dataKey = edmApi.getEntityType( entitySetsApi.getEntitySet( dataESID ).getEntityTypeId() ).getKey();
 
         refreshStudyInformation();
-//        refreshUserAppsDictionary();
+        refreshUserAppsDictionary();
 
     }
 
@@ -1048,7 +1048,6 @@ public class ChronicleServiceImpl implements ChronicleService {
                     .filter( neighbor -> neighbor.getNeighborDetails().isPresent() )
                     .map( neighbor -> {
                         neighbor.getNeighborDetails().get().remove( ID_FQN );
-
                         Map<String, Set<Object>> neighborDetails = Maps.newHashMap();
                         neighbor.getNeighborDetails().get()
                                 .forEach( ( key, value ) -> neighborDetails.put( ENTITY_PREFIX + key.toString(), value ) );
