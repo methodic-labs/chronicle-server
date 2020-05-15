@@ -43,9 +43,6 @@ import com.openlattice.data.requests.NeighborEntityDetails;
 import com.openlattice.directory.PrincipalApi;
 import com.openlattice.edm.EdmApi;
 import com.openlattice.edm.EntitySet;
-import com.openlattice.edm.set.EntitySetPropertyMetadata;
-import com.openlattice.edm.type.EntityType;
-import com.openlattice.edm.type.PropertyType;
 import com.openlattice.entitysets.EntitySetsApi;
 import com.openlattice.search.SearchApi;
 import com.openlattice.search.requests.EntityNeighborsFilter;
@@ -68,7 +65,8 @@ import java.util.stream.Collectors;
 
 import static com.openlattice.chronicle.ChronicleServerUtil.PARTICIPANTS_PREFIX;
 import static com.openlattice.chronicle.constants.EdmConstants.*;
-import static com.openlattice.chronicle.constants.OutputConstants.*;
+import static com.openlattice.chronicle.constants.OutputConstants.APP_PREFIX;
+import static com.openlattice.chronicle.constants.OutputConstants.USER_PREFIX;
 import static com.openlattice.edm.EdmConstants.ID_FQN;
 
 public class ChronicleServiceImpl implements ChronicleService {
@@ -819,14 +817,16 @@ public class ChronicleServiceImpl implements ChronicleService {
         Map<String, String> appsDict = new HashMap<>();
         entitySetData
                 .forEach( entity -> {
-                    String packageName = entity.get( FULL_NAME_FQN ).iterator().next().toString();
-                    String appName = entity.get( TITLE_FQN ).iterator().next().toString();
-                    String recordType = "";
-                    if (entity.containsKey( RECORD_TYPE_FQN )) {
-                        recordType = entity.get( RECORD_TYPE_FQN ).iterator().next().toString();
-                    }
-                    if ( !RecordType.SYSTEM.name().equals( recordType ) )  {
-                        appsDict.put( packageName, appName );
+                    if (!entity.get( FULL_NAME_FQN ).isEmpty() && !entity.get( TITLE_FQN ).isEmpty()) {
+                        String packageName = entity.get( FULL_NAME_FQN ).iterator().next().toString();
+                        String appName = entity.get( TITLE_FQN ).iterator().next().toString();
+                        String recordType = "";
+                        if (!entity.get( RECORD_TYPE_FQN ).isEmpty() ) {
+                            recordType = entity.get( RECORD_TYPE_FQN ).iterator().next().toString();
+                        }
+                        if ( !RecordType.SYSTEM.name().equals( recordType ) )  {
+                            appsDict.put( packageName, appName );
+                        }
                     }
                 } );
 
