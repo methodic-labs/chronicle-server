@@ -1019,6 +1019,25 @@ public class ChronicleServiceImpl implements ChronicleService {
                 this.notificationEnabledStudyEKIDs.size() );
     }
 
+    private Map<String, PropertyType> getPropertyFqnDictionaryHelper(
+            Map<UUID, PropertyType> propertyDictionary,
+            Map<UUID, EntitySetPropertyMetadata> entitySetPropertyMetadata ) {
+
+        Map<String, PropertyType> entityPropertyFqnDictionary = Maps.newHashMap();
+        entitySetPropertyMetadata.forEach( (propertyTypeId, propertyMetadata) -> {
+            PropertyType propertyType = propertyDictionary
+                    .get(propertyTypeId);
+            propertyType.setTitle( propertyMetadata.getTitle() );
+            propertyType.setDescription( propertyMetadata.getDescription() );
+            entityPropertyFqnDictionary.put(
+                    propertyType.getType().getFullQualifiedNameAsString(),
+                    propertyType
+            );
+        });
+
+        return entityPropertyFqnDictionary;
+
+    }
     private Iterable<Map<String, Set<Object>>> getParticipantDataHelper(
             UUID studyId,
             UUID participantEntityKeyId,
@@ -1036,15 +1055,23 @@ public class ChronicleServiceImpl implements ChronicleService {
             UUID srcEntitySetId = entitySetsApi.getEntitySetId( entitySetName );
 
             // create a dictionary from property type fqn to title of
-            Map<UUID, String> propertyDictionary = Maps.newHashMap();
+            Map<UUID, PropertyType> propertyDictionary = Maps.newHashMap();
             edmApi.getPropertyTypes().forEach(
-                    k -> propertyDictionary.put(k.getId(), k.getType().getFullQualifiedNameAsString()) );
-            Map<String, String> columnNameDictionary = Maps.newHashMap();
-            entitySetsApi.getAllEntitySetPropertyMetadata( srcEntitySetId )
-                    .forEach( (propertyTypeId, propertyMetadata) -> columnNameDictionary.put(
-                            propertyDictionary.get(propertyTypeId),
-                            propertyMetadata.getTitle()
-                    ));
+                    k -> propertyDictionary.put(k.getId(), k ));
+
+            // srcPropertyFqn
+            Map<UUID, EntitySetPropertyMetadata> entitySetPropertyMetadata = entitySetsApi
+                    .getAllEntitySetPropertyMetadata( srcEntitySetId );
+            Map<String, PropertyType> entityPropertyFqnDictionary =
+                    getPropertyFqnDictionaryHelper(propertyDictionary, entitySetPropertyMetadata);
+
+            // edgePropertyFqn
+            Map<UUID, EntitySetPropertyMetadata> associationSetPropertyMetadata = entitySetsApi
+                    .getAllEntitySetPropertyMetadata( srcEntitySetId );
+            Map<String, PropertyType> associationPropertyFqnDictionary =
+                    getPropertyFqnDictionaryHelper(propertyDictionary, associationSetPropertyMetadata);
+
+
 
             Map<UUID, List<NeighborEntityDetails>> participantNeighbors = searchApi.executeFilteredEntityNeighborSearch(
                     participantEntitySetId,
@@ -1066,10 +1093,10 @@ public class ChronicleServiceImpl implements ChronicleService {
                         Map<String, Set<Object>> neighborDetails = Maps.newHashMap();
                         neighbor.getNeighborDetails().get()
                                 .forEach( ( key, value ) -> neighborDetails.put(
-                                        APP_PREFIX + columnNameDictionary.get( key.toString()), value ) );
+                                        APP_PREFIX + entityPropertyFqnDictionary.get( key.toString()).getTitle(), value ) );
                         neighbor.getAssociationDetails()
                                 .forEach( ( key, value ) -> neighborDetails.put(
-                                        USER_PREFIX + columnNameDictionary.get(key.toString()), value ) );
+                                        USER_PREFIX + associationPropertyFqnDictionary.get(key.toString()).getTitle(), value ) );
 
                         return neighborDetails;
                     } )
