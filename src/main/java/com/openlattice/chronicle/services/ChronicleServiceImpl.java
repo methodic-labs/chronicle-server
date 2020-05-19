@@ -1085,12 +1085,24 @@ public class ChronicleServiceImpl implements ChronicleService {
                     .getAllEntitySetPropertyMetadata( srcEntitySetId );
             Map<String, PropertyType> entityPropertyFqnDictionary =
                     getPropertyFqnDictionaryHelper(propertyDictionary, entitySetPropertyMetadata);
+            Set<String> srcKeys = edmApi.getEntityType(
+                    entitySetsApi.getEntitySet( srcEntitySetId ).getEntityTypeId() )
+                    .getKey()
+                    .stream()
+                    .map(k -> propertyDictionary.get(k).getType().getFullQualifiedNameAsString() )
+                    .collect( Collectors.toSet() );
 
             // edgePropertyFqn
             Map<UUID, EntitySetPropertyMetadata> associationSetPropertyMetadata = entitySetsApi
-                    .getAllEntitySetPropertyMetadata( srcEntitySetId );
+                    .getAllEntitySetPropertyMetadata( edgeEntitySetId );
             Map<String, PropertyType> associationPropertyFqnDictionary =
                     getPropertyFqnDictionaryHelper(propertyDictionary, associationSetPropertyMetadata);
+            Set<String> edgeKeys = edmApi.getEntityType(
+                    entitySetsApi.getEntitySet( edgeEntitySetId ).getEntityTypeId() )
+                    .getKey()
+                    .stream()
+                    .map(k -> propertyDictionary.get(k).getType().getFullQualifiedNameAsString() )
+                    .collect( Collectors.toSet() );
 
 
 
@@ -1113,11 +1125,22 @@ public class ChronicleServiceImpl implements ChronicleService {
                         neighbor.getNeighborDetails().get().remove( ID_FQN );
                         Map<String, Set<Object>> neighborDetails = Maps.newHashMap();
                         neighbor.getNeighborDetails().get()
-                                .forEach( ( key, value ) -> neighborDetails.put(
-                                        APP_PREFIX + entityPropertyFqnDictionary.get( key.toString()).getTitle(), value ) );
+                                .entrySet().stream()
+                                .filter( k -> !srcKeys.contains( k.getKey().getFullQualifiedNameAsString() ))
+                                .forEach( k ->
+                                        neighborDetails.put(
+                                                APP_PREFIX + entityPropertyFqnDictionary.get( k.getKey().toString()).getTitle(),
+                                                k.getValue()
+                                        ) );
+
+                        neighbor.getAssociationDetails().remove( ID_FQN );
                         neighbor.getAssociationDetails()
-                                .forEach( ( key, value ) -> neighborDetails.put(
-                                        USER_PREFIX + associationPropertyFqnDictionary.get(key.toString()).getTitle(), value ) );
+                                .entrySet().stream()
+                                .filter( k -> !edgeKeys.contains (k.getKey().getFullQualifiedNameAsString()))
+                                .forEach( k ->
+                                        neighborDetails.put(
+                                                USER_PREFIX + associationPropertyFqnDictionary.get(k.getKey().toString()).getTitle(),
+                                                k.getValue() ) );
 
                         return neighborDetails;
                     } )
