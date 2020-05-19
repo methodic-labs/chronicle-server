@@ -33,6 +33,7 @@ import com.openlattice.chronicle.ChronicleServerUtil;
 import com.openlattice.chronicle.configuration.ChronicleConfiguration;
 import com.openlattice.chronicle.constants.RecordType;
 import com.openlattice.chronicle.data.ChronicleAppsUsageDetails;
+import com.openlattice.chronicle.data.ChronicleQuestionnaire;
 import com.openlattice.chronicle.data.ParticipationStatus;
 import com.openlattice.chronicle.sources.AndroidDevice;
 import com.openlattice.chronicle.sources.Datasource;
@@ -63,9 +64,10 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import static com.openlattice.chronicle.ChronicleServerUtil.PARTICIPANTS_PREFIX;
+import static com.openlattice.chronicle.ChronicleServerUtil.*;
 import static com.openlattice.chronicle.constants.EdmConstants.*;
-import static com.openlattice.chronicle.constants.OutputConstants.*;
+import static com.openlattice.chronicle.constants.OutputConstants.APP_PREFIX;
+import static com.openlattice.chronicle.constants.OutputConstants.USER_PREFIX;
 import static com.openlattice.edm.EdmConstants.ID_FQN;
 
 public class ChronicleServiceImpl implements ChronicleService {
@@ -1235,5 +1237,101 @@ public class ChronicleServiceImpl implements ChronicleService {
         }
 
         return ParticipationStatus.UNKNOWN;
+    }
+
+    @Override
+    public ChronicleQuestionnaire getQuestionnaire( UUID studyId, UUID questionnaireEKID ) {
+        SearchApi searchApi;
+        EntitySetsApi entitySetsApi;
+        try {
+            ApiClient apiClient = apiClientCache.get( ApiClient.class );
+            searchApi = apiClient.getSearchApi();
+            entitySetsApi = apiClient.getEntitySetsApi();
+        } catch ( ExecutionException e ) {
+            throw new IllegalStateException( "unable to get apis", e );
+        }
+
+        logger.info( "Retrieving questionnaire: studyId = {}, questionnaire EKID = {}", studyId, questionnaireEKID );
+
+        try {
+            UUID studyEKID = getStudyEntityKeyId( studyId );
+            if ( studyEKID == null ) {
+                throw new IllegalArgumentException( "invalid studyId: " + studyId );
+            }
+
+            String questionnaireESName = getQuestionnaireEntitySetName( studyId );
+            String partOfESName = getPartOfAssociationEntitySetName( studyId );
+            String questionsESNAME = getQuestionnaireQuestionsESName( studyId );
+
+            Map<String, UUID> entitySets = entitySetsApi
+                    .getEntitySetIds( Set.of( questionnaireESName, questionsESNAME, partOfESName ) );
+
+            // Get study neighbors in questionnaire entity set filtered by study EKID
+            Map<UUID, List<NeighborEntityDetails>> neighbors = searchApi.executeFilteredEntityNeighborSearch(
+                    studyESID,
+                    new EntityNeighborsFilter(
+                            Set.of( studyEKID ),
+                            java.util.Optional.of( Set.of( entitySets.get( questionnaireESName ) ) ),
+                            java.util.Optional.of( Set.of( studyESID ) ),
+                            java.util.Optional.of( Set.of( entitySets.get( partOfESName ) ) )
+
+                    )
+            );
+            ChronicleQuestionnaire questionnaire = new ChronicleQuestionnaire();
+            if ( neighbors.containsKey( studyEKID ) ) {
+
+                // find questionnaire entity matching given entity key id
+                neighbors.get( studyEKID )
+                        .stream()
+                        .filter( neighbor -> neighbor.getNeighborDetails().isPresent() && neighbor.getNeighborId()
+                                .isPresent() )
+                        .filter( neighbor -> neighbor.getNeighborId().get().toString()
+                                .equals( questionnaireEKID.toString() ) )
+                        .map( neighbor -> neighbor.getNeighborDetails().get() )
+                        .findFirst()
+                        .ifPresent( questionnaire::setQuestionnaireDetails );
+
+                if ( questionnaire.getQuestionnaireDetails() == null ) {
+                    throw new IllegalArgumentException(
+                            "questionnaire does not exist, studyId: " + studyId + "questionnaire EKID = "
+                                    + questionnaireEKID );
+                }
+
+                // Get neighbors of questionnaire in the questions entity set
+                neighbors = searchApi.executeFilteredEntityNeighborSearch(
+                        entitySets.get( questionnaireESName ),
+                        new EntityNeighborsFilter(
+                                Set.of( questionnaireEKID ),
+                                java.util.Optional.of( Set.of( entitySets.get( questionsESNAME ) ) ),
+                                java.util.Optional.of( Set.of( entitySets.get( questionnaireESName ) ) ),
+                                java.util.Optional.of( Set.of( entitySets.get( partOfESName ) ) )
+                        )
+                );
+
+                List<SetMultimap<FullQualifiedName, Object>> questions = new ArrayList<>();
+                neighbors
+                        .getOrDefault( questionnaireEKID, List.of() )
+                        .stream()
+                        .filter( neighbor -> neighbor.getNeighborDetails().isPresent() )
+                        .forEach( neighbor -> {
+                            SetMultimap<FullQualifiedName, Object> question = HashMultimap.create();
+
+                            for ( Map.Entry<FullQualifiedName, Set<Object>> entry : neighbor.getNeighborDetails().get()
+                                    .entrySet() ) {
+                                question.put( entry.getKey(), entry.getValue() );
+                            }
+                            questions.add( question );
+                        } );
+
+                questionnaire.setQuestions( questions );
+            }
+            return questionnaire;
+        } catch ( Exception e ) {
+            // catch all errors encountered during execution
+            logger.error( "unable to retrieve questionnaire, studyId = {}, questionnaire EKID = {}",
+                    studyId,
+                    questionnaireEKID );
+            throw new RuntimeException( "unable to retrieve questionnaire", e );
+        }
     }
 }
