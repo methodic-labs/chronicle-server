@@ -1309,22 +1309,16 @@ public class ChronicleServiceImpl implements ChronicleService {
                         )
                 );
 
-                List<SetMultimap<FullQualifiedName, Object>> questions = new ArrayList<>();
-                neighbors
+                List<Map<FullQualifiedName, Set<Object>>> questions = neighbors
                         .getOrDefault( questionnaireEKID, List.of() )
                         .stream()
                         .filter( neighbor -> neighbor.getNeighborDetails().isPresent() )
-                        .forEach( neighbor -> {
-                            SetMultimap<FullQualifiedName, Object> question = HashMultimap.create();
-
-                            for ( Map.Entry<FullQualifiedName, Set<Object>> entry : neighbor.getNeighborDetails().get()
-                                    .entrySet() ) {
-                                question.put( entry.getKey(), entry.getValue() );
-                            }
-                            questions.add( question );
-                        } );
+                        .map( neighbor -> neighbor.getNeighborDetails().get() )
+                        .collect( Collectors.toList() );
                 questionnaire.setQuestions( questions );
-                logger.info( "retrieved {} questions associated with questionnaire {}", questions.size(), questionnaireEKID );
+                logger.info( "retrieved {} questions associated with questionnaire {}",
+                        questions.size(),
+                        questionnaireEKID );
             }
             return questionnaire;
         } catch ( Exception e ) {

@@ -20,16 +20,19 @@ public class EdmConstants {
     public static final String USED_BY_ENTITY_SET_NAME           = "chronicle_used_by";
     public static final String PARTICIPATED_IN_AESN              = "chronicle_participated_in";
     public static final String NOTIFICATION_ENTITY_SET_PREFIX    = "chronicle_notifications_";
+    public static final String PARTICIPANTS_PREFIX               = "chronicle_participants_";
+    public static final String QUESTIONNAIRE_PREFIX              = "chronicle_questionnaires_";
+    public static final String PART_OF_PREFIX                    = "chronicle_partof_";
+    public static final String QUESTIONNAIRE_QUESTIONS_PREFIX    = "chronicle_questionnaire_questions_";
 
     // entity types
 
-    public static final FullQualifiedName STUDY_FQN = new FullQualifiedName( "ol.study" );
-    public static final FullQualifiedName APP_DATA_FQN = new FullQualifiedName( "ol.applicationdata" );
-    public static final FullQualifiedName DEVICE_FQN = new FullQualifiedName( "ol.device");
-    public static final FullQualifiedName RECORDED_BY_FQN = new FullQualifiedName( "ol.recordedby" );
-    public static final FullQualifiedName USED_BY_FQN = new FullQualifiedName( "ol.usedby" );
+    public static final FullQualifiedName STUDY_FQN           = new FullQualifiedName( "ol.study" );
+    public static final FullQualifiedName APP_DATA_FQN        = new FullQualifiedName( "ol.applicationdata" );
+    public static final FullQualifiedName DEVICE_FQN          = new FullQualifiedName( "ol.device" );
+    public static final FullQualifiedName RECORDED_BY_FQN     = new FullQualifiedName( "ol.recordedby" );
+    public static final FullQualifiedName USED_BY_FQN         = new FullQualifiedName( "ol.usedby" );
     public static final FullQualifiedName PARTICIPATED_IN_FQN = new FullQualifiedName( "general.participatedin" );
-
 
     // property types
     public static final FullQualifiedName STRING_ID_FQN   = new FullQualifiedName( "general.stringid" );

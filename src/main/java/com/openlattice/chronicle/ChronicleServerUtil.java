@@ -36,25 +36,23 @@ import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 
+import static com.openlattice.chronicle.constants.EdmConstants.*;
+
 public final class ChronicleServerUtil {
     private static final Logger logger = LoggerFactory.getLogger( ChronicleServer.class );
 
     private ChronicleServerUtil() {
     }
 
-    public static final String PARTICIPANTS_PREFIX = "chronicle_participants_";
-    public static final String QUESTIONNAIRE_PREFIX = "chronicle_questionnaires_";
-    public static final String PART_OF_PREFIX = "chronicle_partof_";
-    public static final String QUESTIONNAIRE_QUESTIONS_PREFIX = "chronicle_questionnaire_questions_";
-
-    public static String getPartOfAssociationEntitySetName (UUID studyId) {
+    public static String getPartOfAssociationEntitySetName( UUID studyId ) {
         return PART_OF_PREFIX.concat( studyId.toString() );
     }
-    public static String getQuestionnaireEntitySetName (UUID studyId ) {
+
+    public static String getQuestionnaireEntitySetName( UUID studyId ) {
         return QUESTIONNAIRE_PREFIX.concat( studyId.toString() );
     }
 
-    public static String getQuestionnaireQuestionsESName(UUID studyId) {
+    public static String getQuestionnaireQuestionsESName( UUID studyId ) {
         return QUESTIONNAIRE_QUESTIONS_PREFIX.concat( studyId.toString() );
     }
 
