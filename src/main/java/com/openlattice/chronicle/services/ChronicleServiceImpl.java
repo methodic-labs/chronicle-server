@@ -50,15 +50,16 @@ import com.openlattice.search.SearchApi;
 import com.openlattice.search.requests.EntityNeighborsFilter;
 import com.openlattice.search.requests.SearchTerm;
 import com.openlattice.shuttle.MissionControl;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.olingo.commons.api.edm.EdmPrimitiveTypeKind;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 
 import javax.annotation.Nonnull;
-import java.time.LocalDate;
-import java.time.OffsetDateTime;
+import java.time.*;
 import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
@@ -1122,16 +1123,36 @@ public class ChronicleServiceImpl implements ChronicleService {
                     .stream()
                     .filter( neighbor -> neighbor.getNeighborDetails().isPresent() )
                     .map( neighbor -> {
+                        ZoneId tz = ZoneId.of(neighbor
+                                .getNeighborDetails().get()
+                                .getOrDefault(TIMEZONE_FQN, ImmutableSet.of(DEFAULT_TIMEZONE))
+                                .iterator().next().toString());
                         neighbor.getNeighborDetails().get().remove( ID_FQN );
                         Map<String, Set<Object>> neighborDetails = Maps.newHashMap();
                         neighbor.getNeighborDetails().get()
                                 .entrySet().stream()
                                 .filter( k -> !srcKeys.contains( k.getKey().getFullQualifiedNameAsString() ))
-                                .forEach( k ->
+                                .forEach( k -> {
+                                    PropertyType propertyType = entityPropertyFqnDictionary.get( k.getKey().toString());
+                                    if (propertyType.getDatatype() == EdmPrimitiveTypeKind.DateTimeOffset) {
+                                        HashSet<Object> values = new HashSet<>();
+                                        for ( Object value : k.getValue() ) {
+                                            String dt = OffsetDateTime.parse( value.toString() )
+                                                    .toInstant().atZone( tz ).toOffsetDateTime().toString();
+                                            if ( !StringUtils.isBlank( dt ) )
+                                                values.add( dt );
+                                        }
                                         neighborDetails.put(
-                                                APP_PREFIX + entityPropertyFqnDictionary.get( k.getKey().toString()).getTitle(),
+                                                APP_PREFIX + propertyType.getTitle(),
+                                                values
+                                        );
+                                    } else {
+                                        neighborDetails.put(
+                                                APP_PREFIX + propertyType.getTitle(),
                                                 k.getValue()
-                                        ) );
+                                        );
+                                    }
+                                });
 
                         neighbor.getAssociationDetails().remove( ID_FQN );
                         neighbor.getAssociationDetails()
