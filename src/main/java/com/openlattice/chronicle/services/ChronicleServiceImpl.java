@@ -1296,6 +1296,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                             "questionnaire does not exist, studyId: " + studyId + "questionnaire EKID = "
                                     + questionnaireEKID );
                 }
+                logger.info( "retrieved questionnaire: {}", questionnaire.getQuestionnaireDetails().toString() );
 
                 // Get neighbors of questionnaire in the questions entity set
                 neighbors = searchApi.executeFilteredEntityNeighborSearch(
@@ -1322,8 +1323,8 @@ public class ChronicleServiceImpl implements ChronicleService {
                             }
                             questions.add( question );
                         } );
-
                 questionnaire.setQuestions( questions );
+                logger.info( "retrieved {} questions associated with questionnaire {}", questions.size(), questionnaireEKID );
             }
             return questionnaire;
         } catch ( Exception e ) {
