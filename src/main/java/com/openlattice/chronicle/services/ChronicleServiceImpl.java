@@ -65,7 +65,8 @@ import java.util.stream.Collectors;
 
 import static com.openlattice.chronicle.ChronicleServerUtil.PARTICIPANTS_PREFIX;
 import static com.openlattice.chronicle.constants.EdmConstants.*;
-import static com.openlattice.chronicle.constants.OutputConstants.*;
+import static com.openlattice.chronicle.constants.OutputConstants.APP_PREFIX;
+import static com.openlattice.chronicle.constants.OutputConstants.USER_PREFIX;
 import static com.openlattice.edm.EdmConstants.ID_FQN;
 
 public class ChronicleServiceImpl implements ChronicleService {
@@ -97,6 +98,8 @@ public class ChronicleServiceImpl implements ChronicleService {
     private final UUID dataESID;
     private final UUID preProcessedESID;
     private final UUID recordedByESID;
+    private final UUID notificationsESID;
+    private final UUID partOfESID;
     private final UUID usedByESID;
     private final UUID participatedInESID;
     private final UUID stringIdPTID;
@@ -145,6 +148,8 @@ public class ChronicleServiceImpl implements ChronicleService {
         usedByESID = entitySetsApi.getEntitySetId( USED_BY_ENTITY_SET_NAME );
         participatedInESID = entitySetsApi.getEntitySetId( PARTICIPATED_IN_AESN );
         userAppsESID = entitySetsApi.getEntitySetId( CHRONICLE_USER_APPS );
+        notificationsESID = entitySetsApi.getEntitySetId( NOTIFICATION_ENTITY_SET_NAME );
+        partOfESID = entitySetsApi.getEntitySetId( PART_OF_ENTITY_SET_NAME );
 
         durationPTID = edmApi.getPropertyTypeId( DURATION.getNamespace(), DURATION.getName() );
         stringIdPTID = edmApi.getPropertyTypeId( STRING_ID_FQN.getNamespace(), STRING_ID_FQN.getName() );
@@ -760,40 +765,60 @@ public class ChronicleServiceImpl implements ChronicleService {
     private Set<UUID> getNotificationEnabledStudies(
             List<Map<FullQualifiedName, Set<Object>>> studies,
             SearchApi searchApi ) {
+        Set<UUID> result = new HashSet<>();
+
         Set<UUID> studyEntityKeyIds = studies
                 .stream()
                 .map( study -> UUID.fromString( study.get( ID_FQN ).iterator().next().toString() ) )
                 .collect( Collectors.toSet() );
 
-        Set<UUID> studyIds = studies
-                .stream()
-                .map( study -> UUID.fromString( study.get( STRING_ID_FQN ).iterator().next().toString() ) )
-                .collect( Collectors.toSet() );
+        //mapping from studyEKID -> studyId
+        Map<UUID, UUID> studyEntityKeyIdMap = new HashMap<>();
+
+        studies.forEach( study -> {
+            UUID studyId = UUID.fromString( study.get( STRING_ID_FQN ).iterator().next().toString() );
+            UUID entityKeyId = UUID.fromString( study.get( ID_FQN ).iterator().next().toString() );
+            studyEntityKeyIdMap.put( entityKeyId, studyId );
+        } );
 
         Map<UUID, List<NeighborEntityDetails>> studyNeighbors = searchApi
-                .executeEntityNeighborSearchBulk(
+                .executeFilteredEntityNeighborSearch(
                         studyESID,
-                        studyEntityKeyIds
+                        new EntityNeighborsFilter(
+                                studyEntityKeyIds,
+                                java.util.Optional.of( ImmutableSet.of( notificationsESID ) ),
+                                java.util.Optional.of( ImmutableSet.of( studyESID ) ),
+                                java.util.Optional.of( ImmutableSet.of( partOfESID ) )
+                        )
                 );
 
-        // studies with notifications enabled have 'ol.id' property in the corresponding associationDetails set to
-        // the value of the studyId
-        return studyNeighbors
-                .entrySet()
-                .stream()
-                .filter( entry -> entry
-                        .getValue()
-                        .stream()
-                        .filter( neighbor -> neighbor.getNeighborEntitySet().isPresent() &&
-                                neighbor.getNeighborEntitySet().get().getName()
-                                        .startsWith( NOTIFICATION_ENTITY_SET_PREFIX ) &&
-                                neighbor.getAssociationDetails().containsKey( OL_ID_FQN ) &&
-                                studyIds.contains( UUID
-                                        .fromString( neighbor.getAssociationDetails().get( OL_ID_FQN ).iterator().next()
-                                                .toString() ) ) )
-                        .count() != 0 )
-                .map( Map.Entry::getKey )
-                .collect( Collectors.toSet() );
+        /*
+         * studies with notifications enabled have 'ol.id' property in the corresponding
+         * associationDetails set to the value of the studyId
+         * For each study, there is can only be at most 1 notification -> partof -> study association,
+         * therefore it suffices to explore the first neighbor
+         */
+
+        for ( Map.Entry<UUID, List<NeighborEntityDetails>> entry : studyNeighbors.entrySet() ) {
+
+            List<NeighborEntityDetails> entityDetailsList = entry.getValue();
+            UUID entityKeyId = entry.getKey();
+
+            if ( !entityDetailsList.isEmpty() ) {
+                NeighborEntityDetails details = entityDetailsList.get( 0 );
+
+                String associationVal = details.getAssociationDetails().getOrDefault( OL_ID_FQN, Set.of( "" ) )
+                        .iterator()
+                        .next().toString();
+
+                String studyId = studyEntityKeyIdMap.getOrDefault( entityKeyId, UUID.randomUUID() ).toString();
+                if ( studyId.equals( associationVal ) ) {
+                    result.add( entityKeyId );
+                }
+
+            }
+        }
+        return result;
     }
 
     @Scheduled( fixedRate = 60000 )
