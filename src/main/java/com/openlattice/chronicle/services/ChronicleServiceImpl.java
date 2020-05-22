@@ -767,20 +767,17 @@ public class ChronicleServiceImpl implements ChronicleService {
             SearchApi searchApi ) {
         Set<UUID> result = new HashSet<>();
 
-        Set<UUID> studyEntityKeyIds = studies
-                .stream()
-                .map( study -> UUID.fromString( study.get( ID_FQN ).iterator().next().toString() ) )
-                .collect( Collectors.toSet() );
-
         //mapping from studyEKID -> studyId
-        Map<UUID, UUID> studyEntityKeyIdMap = new HashMap<>();
+        Map<UUID, UUID> studyEntityKeyIdMap = studies
+                .stream()
+                .collect( Collectors.toMap(
+                        study -> UUID.fromString( study.get( ID_FQN ).iterator().next().toString() ),
+                        study -> UUID.fromString( study.get( STRING_ID_FQN ).iterator().next().toString() )
+                ) );
 
-        studies.forEach( study -> {
-            UUID studyId = UUID.fromString( study.get( STRING_ID_FQN ).iterator().next().toString() );
-            UUID entityKeyId = UUID.fromString( study.get( ID_FQN ).iterator().next().toString() );
-            studyEntityKeyIdMap.put( entityKeyId, studyId );
-        } );
+        Set<UUID> studyEntityKeyIds = studyEntityKeyIdMap.keySet();
 
+        // Get notification entities that neighbor study
         Map<UUID, List<NeighborEntityDetails>> studyNeighbors = searchApi
                 .executeFilteredEntityNeighborSearch(
                         studyESID,
