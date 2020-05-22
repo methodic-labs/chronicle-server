@@ -1253,11 +1253,9 @@ public class ChronicleServiceImpl implements ChronicleService {
     @Override
     public ChronicleQuestionnaire getQuestionnaire( UUID studyId, UUID questionnaireEKID ) {
         SearchApi searchApi;
-        EntitySetsApi entitySetsApi;
         try {
             ApiClient apiClient = apiClientCache.get( ApiClient.class );
             searchApi = apiClient.getSearchApi();
-            entitySetsApi = apiClient.getEntitySetsApi();
         } catch ( ExecutionException e ) {
             throw new IllegalStateException( "unable to get apis", e );
         }
@@ -1265,8 +1263,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         logger.info( "Retrieving questionnaire: studyId = {}, questionnaire EKID = {}", studyId, questionnaireEKID );
 
         try {
-            UUID studyEKID = Preconditions.checkNotNull(  getStudyEntityKeyId( studyId ), "invalid study: " + studyId);
-
+            UUID studyEKID = Preconditions.checkNotNull( getStudyEntityKeyId( studyId ), "invalid study: " + studyId );
 
             // Get study neighbors in questionnaire entity set filtered by study EKID
             Map<UUID, List<NeighborEntityDetails>> neighbors = searchApi.executeFilteredEntityNeighborSearch(
@@ -1279,8 +1276,8 @@ public class ChronicleServiceImpl implements ChronicleService {
 
                     )
             );
-            ChronicleQuestionnaire questionnaire = new ChronicleQuestionnaire();
             if ( neighbors.containsKey( studyEKID ) ) {
+                ChronicleQuestionnaire questionnaire = new ChronicleQuestionnaire();
 
                 // find questionnaire entity matching given entity key id
                 neighbors.get( studyEKID )
@@ -1317,18 +1314,22 @@ public class ChronicleServiceImpl implements ChronicleService {
                         .filter( neighbor -> neighbor.getNeighborDetails().isPresent() )
                         .map( neighbor -> neighbor.getNeighborDetails().get() )
                         .collect( Collectors.toList() );
+
                 questionnaire.setQuestions( questions );
+
                 logger.info( "retrieved {} questions associated with questionnaire {}",
                         questions.size(),
                         questionnaireEKID );
+
+                return questionnaire;
             }
-            return questionnaire;
         } catch ( Exception e ) {
             // catch all errors encountered during execution
-            logger.error( "unable to retrieve questionnaire, studyId = {}, questionnaire EKID = {}",
+            logger.error( "unable to retrieve questionnaire: studyId = {}, questionnaire = {}",
                     studyId,
                     questionnaireEKID );
-            throw new RuntimeException( "unable to retrieve questionnaire", e );
+            throw new RuntimeException( "caught exception", e );
         }
+        throw new IllegalArgumentException( "questionnaire not found: questionnaire =" + questionnaireEKID );
     }
 }
