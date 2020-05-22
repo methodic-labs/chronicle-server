@@ -44,18 +44,6 @@ public final class ChronicleServerUtil {
     private ChronicleServerUtil() {
     }
 
-    public static String getPartOfAssociationEntitySetName( UUID studyId ) {
-        return PART_OF_PREFIX.concat( studyId.toString() );
-    }
-
-    public static String getQuestionnaireEntitySetName( UUID studyId ) {
-        return QUESTIONNAIRE_PREFIX.concat( studyId.toString() );
-    }
-
-    public static String getQuestionnaireQuestionsESName( UUID studyId ) {
-        return QUESTIONNAIRE_QUESTIONS_PREFIX.concat( studyId.toString() );
-    }
-
     public static String getParticipantEntitySetName( UUID studyId ) {
         return PARTICIPANTS_PREFIX.concat( studyId.toString() );
     }
