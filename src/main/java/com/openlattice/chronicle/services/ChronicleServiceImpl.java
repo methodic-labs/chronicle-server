@@ -38,6 +38,7 @@ import com.openlattice.chronicle.data.ParticipationStatus;
 import com.openlattice.chronicle.sources.AndroidDevice;
 import com.openlattice.chronicle.sources.Datasource;
 import com.openlattice.client.ApiClient;
+import com.openlattice.client.RetrofitFactory;
 import com.openlattice.data.*;
 import com.openlattice.data.requests.FileType;
 import com.openlattice.data.requests.NeighborEntityDetails;
@@ -1252,18 +1253,16 @@ public class ChronicleServiceImpl implements ChronicleService {
 
     @Override
     public ChronicleQuestionnaire getQuestionnaire( UUID studyId, UUID questionnaireEKID ) {
-        SearchApi searchApi;
         try {
-            ApiClient apiClient = apiClientCache.get( ApiClient.class );
-            searchApi = apiClient.getSearchApi();
-        } catch ( ExecutionException e ) {
-            throw new IllegalStateException( "unable to get apis", e );
-        }
+            logger.info( "Retrieving questionnaire: studyId = {}, questionnaire EKID = {}",
+                    studyId,
+                    questionnaireEKID );
 
-        logger.info( "Retrieving questionnaire: studyId = {}, questionnaire EKID = {}", studyId, questionnaireEKID );
-
-        try {
             UUID studyEKID = Preconditions.checkNotNull( getStudyEntityKeyId( studyId ), "invalid study: " + studyId );
+
+            // get apis
+            ApiClient apiClient = apiClientCache.get( ApiClient.class );
+            SearchApi searchApi = apiClient.getSearchApi();
 
             // Get questionnaires that neighboring study
             Map<UUID, List<NeighborEntityDetails>> neighbors = searchApi.executeFilteredEntityNeighborSearch(
@@ -1275,10 +1274,11 @@ public class ChronicleServiceImpl implements ChronicleService {
                             java.util.Optional.of( Set.of( partOfESID ) )
                     )
             );
+
+            // find questionnaire entity matching given entity key id
             if ( neighbors.containsKey( studyEKID ) ) {
                 ChronicleQuestionnaire questionnaire = new ChronicleQuestionnaire();
 
-                // find questionnaire entity matching given entity key id
                 neighbors.get( studyEKID )
                         .stream()
                         .filter( neighbor -> neighbor.getNeighborDetails().isPresent() && neighbor.getNeighborId()
@@ -1293,7 +1293,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                     logger.info( "questionnaire does not exist - studyId: {}, questionnaireEKID: {}, neighbors: {}",
                             studyId,
                             questionnaireEKID,
-                            neighbors );
+                            neighbors.size() );
                     throw new IllegalArgumentException(
                             "questionnaire does not exist, studyId: " + studyId + "questionnaire EKID = "
                                     + questionnaireEKID );
@@ -1326,13 +1326,19 @@ public class ChronicleServiceImpl implements ChronicleService {
 
                 return questionnaire;
             }
+
         } catch ( Exception e ) {
             // catch all errors encountered during execution
             logger.error( "unable to retrieve questionnaire: studyId = {}, questionnaire = {}",
                     studyId,
                     questionnaireEKID );
-            throw new RuntimeException( "caught exception", e );
+            throw new RuntimeException( "questionnaire not found");
         }
-        throw new IllegalArgumentException( "questionnaire not found: questionnaire =" + questionnaireEKID );
+
+        /*
+         * IF we get to this point, the requested questionnaire was not found. We shouldn't return null since
+         * the caller would get an "ok" response. Instead send an error response.
+         */
+        throw new IllegalArgumentException( "questionnaire not found" );
     }
 }
