@@ -64,7 +64,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import static com.openlattice.chronicle.ChronicleServerUtil.*;
 import static com.openlattice.chronicle.constants.EdmConstants.*;
 import static com.openlattice.chronicle.constants.OutputConstants.APP_PREFIX;
 import static com.openlattice.chronicle.constants.OutputConstants.USER_PREFIX;
@@ -101,6 +100,12 @@ public class ChronicleServiceImpl implements ChronicleService {
     private final UUID recordedByESID;
     private final UUID usedByESID;
     private final UUID participatedInESID;
+    private final UUID questionnaireESID;
+    private final UUID questionsESID;
+    private final UUID answersESID;
+    private final UUID addressesESID;
+    private final UUID respondsWithESID;
+    private final UUID partOfESID;
     private final UUID stringIdPTID;
     private final UUID personIdPSID;
     private final UUID dateLoggedPTID;
@@ -147,6 +152,12 @@ public class ChronicleServiceImpl implements ChronicleService {
         usedByESID = entitySetsApi.getEntitySetId( USED_BY_ENTITY_SET_NAME );
         participatedInESID = entitySetsApi.getEntitySetId( PARTICIPATED_IN_AESN );
         userAppsESID = entitySetsApi.getEntitySetId( CHRONICLE_USER_APPS );
+        questionnaireESID = entitySetsApi.getEntitySetId( QUESTIONNAIRE_ENTITY_SET_NAME );
+        questionsESID = entitySetsApi.getEntitySetId( QUESTIONS_ENTITY_SET_NAME );
+        answersESID = entitySetsApi.getEntitySetId( ANSWERS_ENTITY_SET_NAME );
+        addressesESID = entitySetsApi.getEntitySetId( ADDRESSES_ENTITY_SET_NAME );
+        respondsWithESID = entitySetsApi.getEntitySetId( RESPONDS_WITH_ENTITY_SET_NAME );
+        partOfESID = entitySetsApi.getEntitySetId( PART_OF_ENTITY_SET_NAME );
 
         durationPTID = edmApi.getPropertyTypeId( DURATION.getNamespace(), DURATION.getName() );
         stringIdPTID = edmApi.getPropertyTypeId( STRING_ID_FQN.getNamespace(), STRING_ID_FQN.getName() );
@@ -1254,26 +1265,17 @@ public class ChronicleServiceImpl implements ChronicleService {
         logger.info( "Retrieving questionnaire: studyId = {}, questionnaire EKID = {}", studyId, questionnaireEKID );
 
         try {
-            UUID studyEKID = getStudyEntityKeyId( studyId );
-            if ( studyEKID == null ) {
-                throw new IllegalArgumentException( "invalid studyId: " + studyId );
-            }
+            UUID studyEKID = Preconditions.checkNotNull(  getStudyEntityKeyId( studyId ), "invalid study: " + studyId);
 
-            String questionnaireESName = getQuestionnaireEntitySetName( studyId );
-            String partOfESName = getPartOfAssociationEntitySetName( studyId );
-            String questionsESNAME = getQuestionnaireQuestionsESName( studyId );
-
-            Map<String, UUID> entitySets = entitySetsApi
-                    .getEntitySetIds( Set.of( questionnaireESName, questionsESNAME, partOfESName ) );
 
             // Get study neighbors in questionnaire entity set filtered by study EKID
             Map<UUID, List<NeighborEntityDetails>> neighbors = searchApi.executeFilteredEntityNeighborSearch(
                     studyESID,
                     new EntityNeighborsFilter(
                             Set.of( studyEKID ),
-                            java.util.Optional.of( Set.of( entitySets.get( questionnaireESName ) ) ),
+                            java.util.Optional.of( Set.of( questionnaireESID ) ),
                             java.util.Optional.of( Set.of( studyESID ) ),
-                            java.util.Optional.of( Set.of( entitySets.get( partOfESName ) ) )
+                            java.util.Optional.of( Set.of( partOfESID ) )
 
                     )
             );
@@ -1300,12 +1302,12 @@ public class ChronicleServiceImpl implements ChronicleService {
 
                 // Get neighbors of questionnaire in the questions entity set
                 neighbors = searchApi.executeFilteredEntityNeighborSearch(
-                        entitySets.get( questionnaireESName ),
+                        questionnaireESID,
                         new EntityNeighborsFilter(
                                 Set.of( questionnaireEKID ),
-                                java.util.Optional.of( Set.of( entitySets.get( questionsESNAME ) ) ),
-                                java.util.Optional.of( Set.of( entitySets.get( questionnaireESName ) ) ),
-                                java.util.Optional.of( Set.of( entitySets.get( partOfESName ) ) )
+                                java.util.Optional.of( Set.of( questionsESID ) ),
+                                java.util.Optional.of( Set.of( questionnaireESID ) ),
+                                java.util.Optional.of( Set.of( partOfESID ) )
                         )
                 );
 
