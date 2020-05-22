@@ -1265,7 +1265,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         try {
             UUID studyEKID = Preconditions.checkNotNull( getStudyEntityKeyId( studyId ), "invalid study: " + studyId );
 
-            // Get study neighbors in questionnaire entity set filtered by study EKID
+            // Get questionnaires that neighboring study
             Map<UUID, List<NeighborEntityDetails>> neighbors = searchApi.executeFilteredEntityNeighborSearch(
                     studyESID,
                     new EntityNeighborsFilter(
@@ -1297,7 +1297,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                 }
                 logger.info( "retrieved questionnaire: {}", questionnaire.getQuestionnaireDetails().toString() );
 
-                // Get neighbors of questionnaire in the questions entity set
+                // get questions neighboring questionnaire
                 neighbors = searchApi.executeFilteredEntityNeighborSearch(
                         questionnaireESID,
                         new EntityNeighborsFilter(
