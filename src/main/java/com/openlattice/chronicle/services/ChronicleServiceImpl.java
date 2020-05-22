@@ -1273,7 +1273,6 @@ public class ChronicleServiceImpl implements ChronicleService {
                             java.util.Optional.of( Set.of( questionnaireESID ) ),
                             java.util.Optional.of( Set.of( studyESID ) ),
                             java.util.Optional.of( Set.of( partOfESID ) )
-
                     )
             );
             if ( neighbors.containsKey( studyEKID ) ) {
@@ -1287,10 +1286,14 @@ public class ChronicleServiceImpl implements ChronicleService {
                         .filter( neighbor -> neighbor.getNeighborId().get().toString()
                                 .equals( questionnaireEKID.toString() ) )
                         .map( neighbor -> neighbor.getNeighborDetails().get() )
-                        .findFirst()
+                        .findFirst() // If a study has multiple questionnaires, we are only interested in the one with a matching EKID
                         .ifPresent( questionnaire::setQuestionnaireDetails );
 
                 if ( questionnaire.getQuestionnaireDetails() == null ) {
+                    logger.info( "questionnaire does not exist - studyId: {}, questionnaireEKID: {}, neighbors: {}",
+                            studyId,
+                            questionnaireEKID,
+                            neighbors );
                     throw new IllegalArgumentException(
                             "questionnaire does not exist, studyId: " + studyId + "questionnaire EKID = "
                                     + questionnaireEKID );
