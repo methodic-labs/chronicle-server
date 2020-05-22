@@ -804,7 +804,8 @@ public class ChronicleServiceImpl implements ChronicleService {
             if ( !entityDetailsList.isEmpty() ) {
                 NeighborEntityDetails details = entityDetailsList.get( 0 );
 
-                String associationVal = details.getAssociationDetails().getOrDefault( OL_ID_FQN, Set.of( "" ) )
+                String associationVal = details.getAssociationDetails()
+                        .getOrDefault( OL_ID_FQN, Set.of( "" ) )
                         .iterator()
                         .next().toString();
 
