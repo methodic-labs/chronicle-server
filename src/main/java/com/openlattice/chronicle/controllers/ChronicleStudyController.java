@@ -280,6 +280,19 @@ public class ChronicleStudyController implements ChronicleStudyApi {
         return chronicleService.getQuestionnaire(studyId, questionnaireEKID);
     }
 
+    @RequestMapping(
+            path = STUDY_ID_PATH + PARTICIPANT_ID_PATH +  QUESTIONNAIRE,
+            method = RequestMethod.POST,
+            consumes = MediaType.APPLICATION_JSON_VALUE
+    )
+    @Override
+    public Boolean submitQuestionnaire(
+            @PathVariable (STUDY_ID) UUID studyId,
+            @PathVariable (PARTICIPANT_ID) String participantId,
+            @RequestBody  Map<UUID, Map<FullQualifiedName, Set<Object>>> questionnaireResponses ) {
+        // TODO implement this
+        return null;
+    }
 
     public Iterable<Map<String, Set<Object>>> getAllParticipantAppsUsageData(
             UUID studyId,
