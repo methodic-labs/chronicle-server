@@ -171,7 +171,8 @@ public class ChronicleServiceImpl implements ChronicleService {
         recordTypePTID = edmApi.getPropertyTypeId( RECORD_TYPE_FQN.getNamespace(), RECORD_TYPE_FQN.getName() );
         startDateTimePTID = edmApi.getPropertyTypeId( START_DATE_TIME.getNamespace(), START_DATE_TIME.getName() );
         endDateTimePTID = edmApi.getPropertyTypeId( END_DATE_TIME.getNamespace(), END_DATE_TIME.getName() );
-        recordedDateTimePTID = edmApi.getPropertyTypeId (RECORDED_DATE_TIME_FQN.getNamespace(), RECORDED_DATE_TIME_FQN.getName());
+        recordedDateTimePTID = edmApi
+                .getPropertyTypeId( RECORDED_DATE_TIME_FQN.getNamespace(), RECORDED_DATE_TIME_FQN.getName() );
         dataKey = edmApi.getEntityType( entitySetsApi.getEntitySet( dataESID ).getEntityTypeId() ).getKey();
 
         refreshStudyInformation();
@@ -259,7 +260,6 @@ public class ChronicleServiceImpl implements ChronicleService {
                 .withNano( 0 )
                 .toString();
     }
-
 
     // unique for user + app + date
     private UUID reserveUsedByEntityKeyId(
@@ -432,12 +432,12 @@ public class ChronicleServiceImpl implements ChronicleService {
                 .map( entity -> {
                     ZoneId tz = ZoneId.of( "UTC" );
                     Iterator<Object> timezoneStringIterator = entity.get( timezonePTID ).iterator();
-                    if (timezoneStringIterator.hasNext()){
-                        tz = ZoneId.of( timezoneStringIterator.next().toString());
+                    if ( timezoneStringIterator.hasNext() ) {
+                        tz = ZoneId.of( timezoneStringIterator.next().toString() );
                     }
 
                     HashSet<OffsetDateTime> dateTimes = new HashSet<>();
-                    for (Object date : entity.get(dateLoggedPTID)) {
+                    for ( Object date : entity.get( dateLoggedPTID ) ) {
                         dateTimes.add(
                                 OffsetDateTime
                                         .parse( date.toString() )
@@ -447,9 +447,9 @@ public class ChronicleServiceImpl implements ChronicleService {
 
                     }
                     return dateTimes;
-                })
+                } )
                 .flatMap( Set::stream )
-                .filter( datetime -> datetime.isAfter( MINIMUM_DATE ))
+                .filter( datetime -> datetime.isAfter( MINIMUM_DATE ) )
                 .collect( Collectors.toSet() );
 
         String firstDateTime = pushedDateTimes
@@ -466,28 +466,28 @@ public class ChronicleServiceImpl implements ChronicleService {
 
         Set<Object> uniqueDates = pushedDateTimes
                 .stream()
-                .map(dt ->  dt
+                .map( dt -> dt
                         .truncatedTo( ChronoUnit.DAYS )
-                        .format( DateTimeFormatter.ISO_DATE_TIME))
-                .collect( Collectors.toSet());
+                        .format( DateTimeFormatter.ISO_DATE_TIME ) )
+                .collect( Collectors.toSet() );
 
         Map<UUID, Set<Object>> metadataEntityData = new HashMap<>();
-        metadataEntityData.put(olidPTID, Set.of(participantEntityKeyId));
-        UUID metadataEntityKeyId = reserveMetadataEntityKeyId( metadataEntityData, dataIntegrationApi);
+        metadataEntityData.put( olidPTID, Set.of( participantEntityKeyId ) );
+        UUID metadataEntityKeyId = reserveMetadataEntityKeyId( metadataEntityData, dataIntegrationApi );
 
         Map<FullQualifiedName, Set<Object>> entity = dataApi.getEntity( metadataESID, metadataEntityKeyId );
-        metadataEntityData.put(startDateTimePTID, entity.getOrDefault( START_DATE_TIME, Set.of(firstDateTime) ));
-        metadataEntityData.put(endDateTimePTID, Set.of(lastDateTime));
-        uniqueDates.addAll(entity.getOrDefault(RECORDED_DATE_TIME_FQN, Set.of()));
-        metadataEntityData.put(recordedDateTimePTID, uniqueDates);
+        metadataEntityData.put( startDateTimePTID, entity.getOrDefault( START_DATE_TIME, Set.of( firstDateTime ) ) );
+        metadataEntityData.put( endDateTimePTID, Set.of( lastDateTime ) );
+        uniqueDates.addAll( entity.getOrDefault( RECORDED_DATE_TIME_FQN, Set.of() ) );
+        metadataEntityData.put( recordedDateTimePTID, uniqueDates );
 
         dataApi.updateEntitiesInEntitySet( metadataESID,
                 ImmutableMap.of( metadataEntityKeyId, metadataEntityData ),
                 UpdateType.PartialReplace );
 
         Map<UUID, Set<Object>> hasEntityData = new HashMap<>();
-        hasEntityData.put(olidPTID, Set.of(firstDateTime));
-        UUID hasEntityKeyId = reserveHasEntityKeyId( metadataEntityData, dataIntegrationApi);
+        hasEntityData.put( olidPTID, Set.of( firstDateTime ) );
+        UUID hasEntityKeyId = reserveHasEntityKeyId( metadataEntityData, dataIntegrationApi );
         dataApi.updateEntitiesInEntitySet( hasESID,
                 ImmutableMap.of( hasEntityKeyId, hasEntityData ),
                 UpdateType.Merge );
@@ -495,8 +495,8 @@ public class ChronicleServiceImpl implements ChronicleService {
         EntityDataKey dst = new EntityDataKey( metadataESID, metadataEntityKeyId );
         EntityDataKey edge = new EntityDataKey( hasESID, hasEntityKeyId );
         EntityDataKey src = new EntityDataKey( participantEntitySetId, participantEntityKeyId );
-        DataEdgeKey dataEdgeKey = new DataEdgeKey( src, dst, edge ) ;
-        dataApi.createEdges( Set.of(dataEdgeKey) );
+        DataEdgeKey dataEdgeKey = new DataEdgeKey( src, dst, edge );
+        dataApi.createEdges( Set.of( dataEdgeKey ) );
 
         logger.info( "Uploaded user metadata entries: participantId = {}", participantId );
     }
