@@ -119,7 +119,7 @@ public class ChronicleServiceImpl implements ChronicleService {
     private final UUID endDateTimePTID;
     private final UUID recordedDateTimePTID;
     private final UUID durationPTID;
-    private final UUID olidPTID;
+    private final UUID olIdPTID;
 
     private transient LoadingCache<Class<?>, ApiClient> apiClientCache = null;
 
@@ -162,7 +162,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         personIdPSID = edmApi.getPropertyTypeId( PERSON_ID_FQN.getNamespace(), PERSON_ID_FQN.getName() );
         dateLoggedPTID = edmApi.getPropertyTypeId( DATE_LOGGED_FQN.getNamespace(), DATE_LOGGED_FQN.getName() );
         versionPTID = edmApi.getPropertyTypeId( VERSION_FQN.getNamespace(), VERSION_FQN.getName() );
-        olidPTID = edmApi.getPropertyTypeId( OL_ID_FQN.getNamespace(), OL_ID_FQN.getName() );
+        olIdPTID = edmApi.getPropertyTypeId( OL_ID_FQN.getNamespace(), OL_ID_FQN.getName() );
         modelPTID = edmApi.getPropertyTypeId( MODEL_FQN.getNamespace(), MODEL_FQN.getName() );
         dateTimePTID = edmApi.getPropertyTypeId( DATE_TIME_FQN.getNamespace(), DATE_TIME_FQN.getName() );
         titlePTID = edmApi.getPropertyTypeId( TITLE_FQN.getNamespace(), TITLE_FQN.getName() );
@@ -315,7 +315,7 @@ public class ChronicleServiceImpl implements ChronicleService {
 
         return reserveEntityKeyId(
                 metadataESID,
-                ImmutableList.of( olidPTID ),
+                ImmutableList.of( olIdPTID ),
                 entityData,
                 dataIntegrationApi
         );
@@ -327,7 +327,7 @@ public class ChronicleServiceImpl implements ChronicleService {
 
         return reserveEntityKeyId(
                 hasESID,
-                ImmutableList.of( olidPTID ),
+                ImmutableList.of( olIdPTID ),
                 entityData,
                 dataIntegrationApi
         );
@@ -472,7 +472,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                 .collect( Collectors.toSet() );
 
         Map<UUID, Set<Object>> metadataEntityData = new HashMap<>();
-        metadataEntityData.put( olidPTID, Set.of( participantEntityKeyId ) );
+        metadataEntityData.put( olIdPTID, Set.of( participantEntityKeyId ) );
         UUID metadataEntityKeyId = reserveMetadataEntityKeyId( metadataEntityData, dataIntegrationApi );
 
         Map<FullQualifiedName, Set<Object>> entity = dataApi.getEntity( metadataESID, metadataEntityKeyId );
@@ -486,7 +486,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                 UpdateType.PartialReplace );
 
         Map<UUID, Set<Object>> hasEntityData = new HashMap<>();
-        hasEntityData.put( olidPTID, Set.of( firstDateTime ) );
+        hasEntityData.put( olIdPTID, Set.of( firstDateTime ) );
         UUID hasEntityKeyId = reserveHasEntityKeyId( metadataEntityData, dataIntegrationApi );
         dataApi.updateEntitiesInEntitySet( hasESID,
                 ImmutableMap.of( hasEntityKeyId, hasEntityData ),
