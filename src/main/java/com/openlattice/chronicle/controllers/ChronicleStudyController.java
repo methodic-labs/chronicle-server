@@ -24,6 +24,7 @@ import com.google.common.base.Optional;
 import com.openlattice.chronicle.ChronicleStudyApi;
 import com.openlattice.chronicle.constants.CustomMediaType;
 import com.openlattice.chronicle.data.ChronicleAppsUsageDetails;
+import com.openlattice.chronicle.data.ChronicleQuestionnaire;
 import com.openlattice.chronicle.data.FileType;
 import com.openlattice.chronicle.data.ParticipationStatus;
 import com.openlattice.chronicle.services.ChronicleService;
@@ -162,6 +163,18 @@ public class ChronicleStudyController implements ChronicleStudyApi {
             @PathVariable( STUDY_ID ) UUID studyId,
             @PathVariable( PARTICIPANT_ID ) String participantId ) {
         return chronicleService.getParticipationStatus( studyId, participantId );
+    }
+
+    @Override
+    public ChronicleQuestionnaire getChronicleQuestionnaire(
+            UUID studyId, UUID questionnaireEKID ) {
+        return null;
+    }
+
+    @Override
+    public Boolean submitQuestionnaire(
+            UUID uuid, String s, Map<UUID, Map<FullQualifiedName, Set<Object>>> map ) {
+        return null;
     }
 
     @RequestMapping(
