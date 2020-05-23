@@ -165,18 +165,6 @@ public class ChronicleStudyController implements ChronicleStudyApi {
         return chronicleService.getParticipationStatus( studyId, participantId );
     }
 
-    @Override
-    public ChronicleQuestionnaire getChronicleQuestionnaire(
-            UUID studyId, UUID questionnaireEKID ) {
-        return null;
-    }
-
-    @Override
-    public Boolean submitQuestionnaire(
-            UUID uuid, String s, Map<UUID, Map<FullQualifiedName, Set<Object>>> map ) {
-        return null;
-    }
-
     @RequestMapping(
             path = PARTICIPANT_PATH + DATA_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH + APPS,
             method = RequestMethod.POST,
