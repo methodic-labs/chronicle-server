@@ -64,7 +64,9 @@ import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import static com.openlattice.chronicle.ChronicleServerUtil.PARTICIPANTS_PREFIX;
 import static com.openlattice.chronicle.constants.EdmConstants.*;
@@ -1041,129 +1043,149 @@ public class ChronicleServiceImpl implements ChronicleService {
                 this.notificationEnabledStudyEKIDs.size() );
     }
 
-    private Map<String, PropertyType> getPropertyFqnDictionaryHelper(
-            Map<UUID, PropertyType> propertyDictionary,
-            Map<UUID, EntitySetPropertyMetadata> entitySetPropertyMetadata ) {
-
-        Map<String, PropertyType> entityPropertyFqnDictionary = Maps.newHashMap();
-        entitySetPropertyMetadata.forEach( (propertyTypeId, propertyMetadata) -> {
-            PropertyType propertyType = propertyDictionary
-                    .get(propertyTypeId);
-            propertyType.setTitle( propertyMetadata.getTitle() );
-            propertyType.setDescription( propertyMetadata.getDescription() );
-            entityPropertyFqnDictionary.put(
-                    propertyType.getType().getFullQualifiedNameAsString(),
-                    propertyType
-            );
-        });
-
-        return entityPropertyFqnDictionary;
-
-    }
     private Iterable<Map<String, Set<Object>>> getParticipantDataHelper(
             UUID studyId,
             UUID participantEntityKeyId,
-            UUID edgeEntitySetId,
-            String entitySetName,
+            String edgeEntitySetName,
+            String sourceEntitySetName,
             String token ) {
+
         try {
             ApiClient apiClient = new ApiClient( () -> token );
             EntitySetsApi entitySetsApi = apiClient.getEntitySetsApi();
             SearchApi searchApi = apiClient.getSearchApi();
             EdmApi edmApi = apiClient.getEdmApi();
 
+            /*
+             * 1. get the relevant EntitySets
+             */
+
             String participantEntitySetName = ChronicleServerUtil.getParticipantEntitySetName( studyId );
-            UUID participantEntitySetId = entitySetsApi.getEntitySetId( participantEntitySetName );
-            UUID srcEntitySetId = entitySetsApi.getEntitySetId( entitySetName );
+            Map<String, EntitySet> entitySetsByName = entitySetsApi.getEntitySetsByName(
+                    Set.of( participantEntitySetName, sourceEntitySetName, edgeEntitySetName )
+            );
 
-            // create a dictionary from property type fqn to title of
-            Map<UUID, PropertyType> propertyDictionary = Maps.newHashMap();
-            edmApi.getPropertyTypes().forEach(
-                    k -> propertyDictionary.put(k.getId(), k ));
+            EntitySet participantsES = entitySetsByName.get( participantEntitySetName );
+            EntitySet sourceES = entitySetsByName.get( sourceEntitySetName );
+            EntitySet edgeES = entitySetsByName.get( edgeEntitySetName );
 
-            // srcPropertyFqn
-            Map<UUID, EntitySetPropertyMetadata> entitySetPropertyMetadata = entitySetsApi
-                    .getAllEntitySetPropertyMetadata( srcEntitySetId );
-            Map<String, PropertyType> entityPropertyFqnDictionary =
-                    getPropertyFqnDictionaryHelper(propertyDictionary, entitySetPropertyMetadata);
-            Set<String> srcKeys = edmApi.getEntityType(
-                    entitySetsApi.getEntitySet( srcEntitySetId ).getEntityTypeId() )
+            /*
+             * 2. get all PropertyTypes and set up maps for easy lookups
+             */
+
+            Map<UUID, PropertyType> propertyTypesById = StreamSupport
+                    .stream( edmApi.getPropertyTypes().spliterator(), false )
+                    .collect( Collectors.toMap( PropertyType::getId, Function.identity() ) );
+
+            Map<FullQualifiedName, UUID> propertyTypeIdsByFQN = propertyTypesById
+                    .values()
+                    .stream()
+                    .collect( Collectors.toMap( PropertyType::getType, PropertyType::getId ) );
+
+            Map<UUID, Map<UUID, EntitySetPropertyMetadata>> meta =
+                    entitySetsApi.getPropertyMetadataForEntitySets( Set.of( sourceES.getId(), edgeES.getId() ) );
+
+            Map<UUID, EntitySetPropertyMetadata> sourceMeta = meta.get( sourceES.getId() );
+            Map<UUID, EntitySetPropertyMetadata> edgeMeta = meta.get( edgeES.getId() );
+
+            /*
+             * 3. get EntitySet primary keys, which are used later for filtering
+             */
+
+            Set<FullQualifiedName> sourceKeys = edmApi.getEntityType( sourceES.getEntityTypeId() )
                     .getKey()
                     .stream()
-                    .map(k -> propertyDictionary.get(k).getType().getFullQualifiedNameAsString() )
+                    .map( propertyTypeId -> propertyTypesById.get( propertyTypeId ).getType() )
                     .collect( Collectors.toSet() );
 
-            // edgePropertyFqn
-            Map<UUID, EntitySetPropertyMetadata> associationSetPropertyMetadata = entitySetsApi
-                    .getAllEntitySetPropertyMetadata( edgeEntitySetId );
-            Map<String, PropertyType> associationPropertyFqnDictionary =
-                    getPropertyFqnDictionaryHelper(propertyDictionary, associationSetPropertyMetadata);
-            Set<String> edgeKeys = edmApi.getEntityType(
-                    entitySetsApi.getEntitySet( edgeEntitySetId ).getEntityTypeId() )
+            Set<FullQualifiedName> edgeKeys = edmApi.getEntityType( edgeES.getEntityTypeId() )
                     .getKey()
                     .stream()
-                    .map(k -> propertyDictionary.get(k).getType().getFullQualifiedNameAsString() )
+                    .map( propertyTypeId -> propertyTypesById.get( propertyTypeId ).getType() )
                     .collect( Collectors.toSet() );
 
-
+            /*
+             * 4. perform filtered search to get participant neighbors
+             */
 
             Map<UUID, List<NeighborEntityDetails>> participantNeighbors = searchApi.executeFilteredEntityNeighborSearch(
-                    participantEntitySetId,
+                    participantsES.getId(),
                     new EntityNeighborsFilter(
                             Set.of( participantEntityKeyId ),
-                            java.util.Optional.of( ImmutableSet.of( srcEntitySetId ) ),
-                            java.util.Optional.of( ImmutableSet.of( participantEntitySetId ) ),
-                            java.util.Optional.of( ImmutableSet.of( edgeEntitySetId ) )
+                            java.util.Optional.of( ImmutableSet.of( sourceES.getId() ) ),
+                            java.util.Optional.of( ImmutableSet.of( participantsES.getId() ) ),
+                            java.util.Optional.of( ImmutableSet.of( edgeES.getId() ) )
                     )
-
             );
+
+            /*
+             * 5. filter and clean the data before sending it back
+             */
 
             return participantNeighbors
                     .getOrDefault( participantEntityKeyId, List.of() )
                     .stream()
                     .filter( neighbor -> neighbor.getNeighborDetails().isPresent() )
                     .map( neighbor -> {
-                        ZoneId tz = ZoneId.of(neighbor
-                                .getNeighborDetails().get()
-                                .getOrDefault(TIMEZONE_FQN, ImmutableSet.of(DEFAULT_TIMEZONE))
-                                .iterator().next().toString());
-                        neighbor.getNeighborDetails().get().remove( ID_FQN );
-                        Map<String, Set<Object>> neighborDetails = Maps.newHashMap();
-                        neighbor.getNeighborDetails().get()
-                                .entrySet().stream()
-                                .filter( k -> !srcKeys.contains( k.getKey().getFullQualifiedNameAsString() ))
-                                .forEach( k -> {
-                                    PropertyType propertyType = entityPropertyFqnDictionary.get( k.getKey().toString());
+
+                        Map<FullQualifiedName, Set<Object>> entityData = neighbor.getNeighborDetails().get();
+                        entityData.remove( ID_FQN );
+
+                        ZoneId tz = ZoneId.of( entityData
+                                .getOrDefault( TIMEZONE_FQN, ImmutableSet.of( DEFAULT_TIMEZONE ) )
+                                .iterator()
+                                .next()
+                                .toString()
+                        );
+
+                        Map<String, Set<Object>> cleanEntityData = Maps.newHashMap();
+                        entityData
+                                .entrySet()
+                                .stream()
+                                .filter( entry -> !sourceKeys.contains( entry.getKey() ) )
+                                .forEach( entry -> {
+                                    Set<Object> values = entry.getValue();
+                                    PropertyType propertyType = propertyTypesById.get(
+                                            propertyTypeIdsByFQN.get( entry.getKey() )
+                                    );
+                                    String propertyTitle = sourceMeta.get( propertyType.getId() ).getTitle();
                                     if (propertyType.getDatatype() == EdmPrimitiveTypeKind.DateTimeOffset) {
-                                        HashSet<Object> values = new HashSet<>();
-                                        for ( Object value : k.getValue() ) {
-                                            String dt = OffsetDateTime.parse( value.toString() )
-                                                    .toInstant().atZone( tz ).toOffsetDateTime().toString();
-                                            if ( !StringUtils.isBlank( dt ) )
-                                                values.add( dt );
-                                        }
-                                        neighborDetails.put(
-                                                APP_PREFIX + propertyType.getTitle(),
-                                                values
-                                        );
-                                    } else {
-                                        neighborDetails.put(
-                                                APP_PREFIX + propertyType.getTitle(),
-                                                k.getValue()
-                                        );
+                                        Set<Object> dateTimeValues = values
+                                                .stream()
+                                                .map( value -> {
+                                                    try {
+                                                        return OffsetDateTime
+                                                                .parse( value.toString() )
+                                                                .toInstant()
+                                                                .atZone( tz )
+                                                                .toOffsetDateTime()
+                                                                .toString();
+                                                    }
+                                                    catch ( Exception e) {
+                                                        return null;
+                                                    }
+                                                })
+                                                .filter( StringUtils::isBlank )
+                                                .collect( Collectors.toSet() );
+                                        cleanEntityData.put( APP_PREFIX + propertyTitle, dateTimeValues );
                                     }
-                                });
+                                    else {
+                                        cleanEntityData.put( APP_PREFIX + propertyTitle, values );
+                                    }
+                                } );
 
                         neighbor.getAssociationDetails().remove( ID_FQN );
                         neighbor.getAssociationDetails()
-                                .entrySet().stream()
-                                .filter( k -> !edgeKeys.contains (k.getKey().getFullQualifiedNameAsString()))
-                                .forEach( k ->
-                                        neighborDetails.put(
-                                                USER_PREFIX + associationPropertyFqnDictionary.get(k.getKey().toString()).getTitle(),
-                                                k.getValue() ) );
+                                .entrySet()
+                                .stream()
+                                .filter( entry -> !edgeKeys.contains( entry.getKey() ) )
+                                .forEach( entry -> {
+                                    UUID propertyTypeId = propertyTypeIdsByFQN.get( entry.getKey() );
+                                    String propertyTitle = edgeMeta.get( propertyTypeId ).getTitle();
+                                    cleanEntityData.put( USER_PREFIX + propertyTitle, entry.getValue() );
+                                } );
 
-                        return neighborDetails;
+                        return cleanEntityData;
                     } )
                     .collect( Collectors.toSet() );
         } catch ( Exception e ) {
@@ -1183,11 +1205,13 @@ public class ChronicleServiceImpl implements ChronicleService {
             UUID studyId,
             UUID participatedInEntityKeyId,
             String token ) {
-        return getParticipantDataHelper( studyId,
+        return getParticipantDataHelper(
+                studyId,
                 participatedInEntityKeyId,
-                recordedByESID,
+                RECORDED_BY_ENTITY_SET_NAME,
                 PREPROCESSED_DATA_ENTITY_SET_NAME,
-                token );
+                token
+        );
     }
 
     @Override
@@ -1195,7 +1219,13 @@ public class ChronicleServiceImpl implements ChronicleService {
             UUID studyId,
             UUID participantEntityKeyId,
             String token ) {
-        return getParticipantDataHelper( studyId, participantEntityKeyId, recordedByESID, DATA_ENTITY_SET_NAME, token );
+        return getParticipantDataHelper(
+                studyId,
+                participantEntityKeyId,
+                RECORDED_BY_ENTITY_SET_NAME,
+                DATA_ENTITY_SET_NAME,
+                token
+        );
     }
 
     @Override
@@ -1203,7 +1233,13 @@ public class ChronicleServiceImpl implements ChronicleService {
             UUID studyId,
             UUID participantEntityKeyId,
             String token ) {
-        return getParticipantDataHelper( studyId, participantEntityKeyId, usedByESID, CHRONICLE_USER_APPS, token );
+        return getParticipantDataHelper(
+                studyId,
+                participantEntityKeyId,
+                USED_BY_ENTITY_SET_NAME,
+                CHRONICLE_USER_APPS,
+                token
+        );
     }
 
     @Override
