@@ -1082,6 +1082,12 @@ public class ChronicleServiceImpl implements ChronicleService {
                     .stream()
                     .collect( Collectors.toMap( PropertyType::getType, PropertyType::getId ) );
 
+            Map<UUID, Map<UUID, EntitySetPropertyMetadata>> meta =
+                    entitySetsApi.getPropertyMetadataForEntitySets( Set.of( sourceES.getId(), edgeES.getId() ) );
+
+            Map<UUID, EntitySetPropertyMetadata> sourceMeta = meta.get( sourceES.getId() );
+            Map<UUID, EntitySetPropertyMetadata> edgeMeta = meta.get( edgeES.getId() );
+
             /*
              * 3. get EntitySet primary keys, which are used later for filtering
              */
@@ -1142,6 +1148,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                                     PropertyType propertyType = propertyTypesById.get(
                                             propertyTypeIdsByFQN.get( entry.getKey() )
                                     );
+                                    String propertyTitle = sourceMeta.get( propertyType.getId() ).getTitle();
                                     if (propertyType.getDatatype() == EdmPrimitiveTypeKind.DateTimeOffset) {
                                         Set<Object> dateTimeValues = values
                                                 .stream()
@@ -1160,10 +1167,10 @@ public class ChronicleServiceImpl implements ChronicleService {
                                                 })
                                                 .filter( StringUtils::isBlank )
                                                 .collect( Collectors.toSet() );
-                                        cleanEntityData.put( APP_PREFIX + propertyType.getTitle(), dateTimeValues );
+                                        cleanEntityData.put( APP_PREFIX + propertyTitle, dateTimeValues );
                                     }
                                     else {
-                                        cleanEntityData.put( APP_PREFIX + propertyType.getTitle(), values );
+                                        cleanEntityData.put( APP_PREFIX + propertyTitle, values );
                                     }
                                 } );
 
@@ -1173,10 +1180,9 @@ public class ChronicleServiceImpl implements ChronicleService {
                                 .stream()
                                 .filter( entry -> !edgeKeys.contains( entry.getKey() ) )
                                 .forEach( entry -> {
-                                    PropertyType propertyType = propertyTypesById.get(
-                                            propertyTypeIdsByFQN.get( entry.getKey() )
-                                    );
-                                    cleanEntityData.put( USER_PREFIX + propertyType.getTitle(), entry.getValue() );
+                                    UUID propertyTypeId = propertyTypeIdsByFQN.get( entry.getKey() );
+                                    String propertyTitle = edgeMeta.get( propertyTypeId ).getTitle();
+                                    cleanEntityData.put( USER_PREFIX + propertyTitle, entry.getValue() );
                                 } );
 
                         return cleanEntityData;
