@@ -10,6 +10,7 @@ public class OutputConstants {
     // prefix for column names
     public static final String APP_PREFIX = "app_";
     public static final String USER_PREFIX = "user_";
+    public static final String DEFAULT_TIMEZONE = "UTC";
 
     // minimum datetime
     public static final OffsetDateTime MINIMUM_DATE = OffsetDateTime
