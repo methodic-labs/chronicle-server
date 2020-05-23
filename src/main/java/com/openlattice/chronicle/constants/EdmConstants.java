@@ -26,6 +26,7 @@ public class EdmConstants {
     public static final String ANSWERS_ENTITY_SET_NAME           = "chronicle_answers";
     public static final String RESPONDS_WITH_ENTITY_SET_NAME     = "chronicle_respondswith";
     public static final String ADDRESSES_ENTITY_SET_NAME         = "chronicle_addresses";
+    public static final String NOTIFICATION_ENTITY_SET_NAME      = "chronicle_notifications";
     public static final String PART_OF_ENTITY_SET_NAME           = "chronicle_partof";
 
     // entity types
@@ -52,5 +53,6 @@ public class EdmConstants {
     public static final FullQualifiedName DURATION        = new FullQualifiedName( "general.Duration" );
     public static final FullQualifiedName OL_ID_FQN       = new FullQualifiedName( "ol.id" );
     public static final FullQualifiedName USER_FQN        = new FullQualifiedName( "ol.user" );
+    public static final FullQualifiedName TIMEZONE_FQN    = new FullQualifiedName( "ol.timezone" );
 
 }
