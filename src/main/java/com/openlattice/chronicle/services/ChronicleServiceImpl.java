@@ -57,7 +57,10 @@ import org.springframework.scheduling.annotation.Scheduled;
 import javax.annotation.Nonnull;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -93,8 +96,10 @@ public class ChronicleServiceImpl implements ChronicleService {
     private final Set<UUID> dataKey;
 
     private final UUID studyESID;
+    private final UUID metadataESID;
     private final UUID deviceESID;
     private final UUID dataESID;
+    private final UUID hasESID;
     private final UUID preProcessedESID;
     private final UUID recordedByESID;
     private final UUID usedByESID;
@@ -102,6 +107,7 @@ public class ChronicleServiceImpl implements ChronicleService {
     private final UUID stringIdPTID;
     private final UUID personIdPSID;
     private final UUID dateLoggedPTID;
+    private final UUID timezonePTID;
     private final UUID dateTimePTID;
     private final UUID versionPTID;
     private final UUID modelPTID;
@@ -110,7 +116,10 @@ public class ChronicleServiceImpl implements ChronicleService {
     private final UUID fullNamePTID;
     private final UUID recordTypePTID;
     private final UUID startDateTimePTID;
+    private final UUID endDateTimePTID;
+    private final UUID recordedDateTimePTID;
     private final UUID durationPTID;
+    private final UUID olidPTID;
 
     private transient LoadingCache<Class<?>, ApiClient> apiClientCache = null;
 
@@ -138,8 +147,10 @@ public class ChronicleServiceImpl implements ChronicleService {
         EntitySetsApi entitySetsApi = apiClient.getEntitySetsApi();
 
         studyESID = entitySetsApi.getEntitySetId( STUDY_ENTITY_SET_NAME );
+        metadataESID = entitySetsApi.getEntitySetId( METADATA_ENTITY_SET_NAME );
         deviceESID = entitySetsApi.getEntitySetId( DEVICES_ENTITY_SET_NAME );
         dataESID = entitySetsApi.getEntitySetId( DATA_ENTITY_SET_NAME );
+        hasESID = entitySetsApi.getEntitySetId( HAS_ENTITY_SET_NAME );
         preProcessedESID = entitySetsApi.getEntitySetId( PREPROCESSED_DATA_ENTITY_SET_NAME );
         recordedByESID = entitySetsApi.getEntitySetId( RECORDED_BY_ENTITY_SET_NAME );
         usedByESID = entitySetsApi.getEntitySetId( USED_BY_ENTITY_SET_NAME );
@@ -151,12 +162,16 @@ public class ChronicleServiceImpl implements ChronicleService {
         personIdPSID = edmApi.getPropertyTypeId( PERSON_ID_FQN.getNamespace(), PERSON_ID_FQN.getName() );
         dateLoggedPTID = edmApi.getPropertyTypeId( DATE_LOGGED_FQN.getNamespace(), DATE_LOGGED_FQN.getName() );
         versionPTID = edmApi.getPropertyTypeId( VERSION_FQN.getNamespace(), VERSION_FQN.getName() );
+        olidPTID = edmApi.getPropertyTypeId( OL_ID_FQN.getNamespace(), OL_ID_FQN.getName() );
         modelPTID = edmApi.getPropertyTypeId( MODEL_FQN.getNamespace(), MODEL_FQN.getName() );
         dateTimePTID = edmApi.getPropertyTypeId( DATE_TIME_FQN.getNamespace(), DATE_TIME_FQN.getName() );
         titlePTID = edmApi.getPropertyTypeId( TITLE_FQN.getNamespace(), TITLE_FQN.getName() );
         fullNamePTID = edmApi.getPropertyTypeId( FULL_NAME_FQN.getNamespace(), FULL_NAME_FQN.getName() );
+        timezonePTID = edmApi.getPropertyTypeId( TIMEZONE_FQN.getNamespace(), TIMEZONE_FQN.getName() );
         recordTypePTID = edmApi.getPropertyTypeId( RECORD_TYPE_FQN.getNamespace(), RECORD_TYPE_FQN.getName() );
         startDateTimePTID = edmApi.getPropertyTypeId( START_DATE_TIME.getNamespace(), START_DATE_TIME.getName() );
+        endDateTimePTID = edmApi.getPropertyTypeId( END_DATE_TIME.getNamespace(), END_DATE_TIME.getName() );
+        recordedDateTimePTID = edmApi.getPropertyTypeId (RECORDED_DATE_TIME_FQN.getNamespace(), RECORDED_DATE_TIME_FQN.getName());
         dataKey = edmApi.getEntityType( entitySetsApi.getEntitySet( dataESID ).getEntityTypeId() ).getKey();
 
         refreshStudyInformation();
@@ -245,6 +260,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                 .toString();
     }
 
+
     // unique for user + app + date
     private UUID reserveUsedByEntityKeyId(
             Map<UUID, Set<Object>> entityData,
@@ -288,6 +304,30 @@ public class ChronicleServiceImpl implements ChronicleService {
         return reserveEntityKeyId(
                 userAppsESID,
                 ImmutableList.of( fullNamePTID ),
+                entityData,
+                dataIntegrationApi
+        );
+    }
+
+    private UUID reserveMetadataEntityKeyId(
+            Map<UUID, Set<Object>> entityData,
+            DataIntegrationApi dataIntegrationApi ) {
+
+        return reserveEntityKeyId(
+                metadataESID,
+                ImmutableList.of( olidPTID ),
+                entityData,
+                dataIntegrationApi
+        );
+    }
+
+    private UUID reserveHasEntityKeyId(
+            Map<UUID, Set<Object>> entityData,
+            DataIntegrationApi dataIntegrationApi ) {
+
+        return reserveEntityKeyId(
+                hasESID,
+                ImmutableList.of( olidPTID ),
                 entityData,
                 dataIntegrationApi
         );
@@ -373,6 +413,92 @@ public class ChronicleServiceImpl implements ChronicleService {
         }
 
         logger.info( "Uploaded user apps entries: size = {}, participantId = {}", numAppsUploaded, participantId );
+    }
+
+    private void updateParticipantMetadata(
+            DataApi dataApi,
+            DataIntegrationApi dataIntegrationApi,
+            List<SetMultimap<UUID, Object>> data,
+            UUID participantEntitySetId,
+            UUID participantEntityKeyId,
+            String participantId ) {
+
+        /*
+         * Creates or adds to an existing metadata entity, with general statistics (at this moment mostly datetimes)
+         * about the data collection.
+         */
+
+        Set<OffsetDateTime> pushedDateTimes = data.stream()
+                .map( entity -> {
+                    ZoneId tz = ZoneId.of( "UTC" );
+                    Iterator<Object> timezoneStringIterator = entity.get( timezonePTID ).iterator();
+                    if (timezoneStringIterator.hasNext()){
+                        tz = ZoneId.of( timezoneStringIterator.next().toString());
+                    }
+
+                    HashSet<OffsetDateTime> dateTimes = new HashSet<>();
+                    for (Object date : entity.get(dateLoggedPTID)) {
+                        dateTimes.add(
+                                OffsetDateTime
+                                        .parse( date.toString() )
+                                        .toInstant()
+                                        .atZone( tz )
+                                        .toOffsetDateTime() );
+
+                    }
+                    return dateTimes;
+                })
+                .flatMap( Set::stream )
+                .filter( datetime -> datetime.isAfter( MINIMUM_DATE ))
+                .collect( Collectors.toSet() );
+
+        String firstDateTime = pushedDateTimes
+                .stream()
+                .min( OffsetDateTime::compareTo )
+                .orElse( null )
+                .toString();
+
+        String lastDateTime = pushedDateTimes
+                .stream()
+                .max( OffsetDateTime::compareTo )
+                .orElse( null )
+                .toString();
+
+        Set<Object> uniqueDates = pushedDateTimes
+                .stream()
+                .map(dt ->  dt
+                        .truncatedTo( ChronoUnit.DAYS )
+                        .format( DateTimeFormatter.ISO_DATE_TIME))
+                .collect( Collectors.toSet());
+
+        Map<UUID, Set<Object>> metadataEntityData = new HashMap<>();
+        metadataEntityData.put(olidPTID, Set.of(participantEntityKeyId));
+        UUID metadataEntityKeyId = reserveMetadataEntityKeyId( metadataEntityData, dataIntegrationApi);
+
+        Map<FullQualifiedName, Set<Object>> entity = dataApi.getEntity( metadataESID, metadataEntityKeyId );
+        metadataEntityData.put(startDateTimePTID, entity.getOrDefault( START_DATE_TIME, Set.of(firstDateTime) ));
+        metadataEntityData.put(endDateTimePTID, Set.of(lastDateTime));
+        uniqueDates.addAll(entity.getOrDefault(RECORDED_DATE_TIME_FQN, Set.of()));
+        metadataEntityData.put(recordedDateTimePTID, uniqueDates);
+
+        dataApi.updateEntitiesInEntitySet( metadataESID,
+                ImmutableMap.of( metadataEntityKeyId, metadataEntityData ),
+                UpdateType.PartialReplace );
+
+        Map<UUID, Set<Object>> hasEntityData = new HashMap<>();
+        hasEntityData.put(olidPTID, Set.of(firstDateTime));
+        UUID hasEntityKeyId = reserveHasEntityKeyId( metadataEntityData, dataIntegrationApi);
+        dataApi.updateEntitiesInEntitySet( hasESID,
+                ImmutableMap.of( hasEntityKeyId, hasEntityData ),
+                UpdateType.Merge );
+
+        EntityDataKey dst = new EntityDataKey( metadataESID, metadataEntityKeyId );
+        EntityDataKey edge = new EntityDataKey( hasESID, hasEntityKeyId );
+        EntityDataKey src = new EntityDataKey( participantEntitySetId, participantEntityKeyId );
+        DataEdgeKey dataEdgeKey = new DataEdgeKey( src, dst, edge ) ;
+        dataApi.createEdges( Set.of(dataEdgeKey) );
+
+        logger.info( "Uploaded user metadata entries: participantId = {}", participantId );
     }
 
     private void createAppDataEntitiesAndAssociations(
@@ -603,7 +729,12 @@ public class ChronicleServiceImpl implements ChronicleService {
                 participantId,
                 participantEntityKeyId,
                 participantEntitySetId );
-
+        updateParticipantMetadata( dataApi,
+                dataIntegrationApi,
+                data,
+                participantEntitySetId,
+                participantEntityKeyId,
+                participantId );
         //  TODO:s Make sure to return any errors??? Currently void method.
         return data.size();
     }
