@@ -165,18 +165,6 @@ public class ChronicleStudyController implements ChronicleStudyApi {
         return chronicleService.getParticipationStatus( studyId, participantId );
     }
 
-    @Override
-    public ChronicleQuestionnaire getChronicleQuestionnaire(
-            UUID studyId, UUID questionnaireEKID ) {
-        return null;
-    }
-
-    @Override
-    public Boolean submitQuestionnaire(
-            UUID uuid, String s, Map<UUID, Map<FullQualifiedName, Set<Object>>> map ) {
-        return null;
-    }
-
     @RequestMapping(
             path = PARTICIPANT_PATH + DATA_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH + APPS,
             method = RequestMethod.POST,
@@ -277,6 +265,33 @@ public class ChronicleStudyController implements ChronicleStudyApi {
         setContentDisposition( response, fileName, fileType );
         setDownloadContentType( response, fileType );
         return data;
+    }
+
+    @RequestMapping(
+            path = STUDY_ID_PATH + QUESTIONNAIRE +  ENTITY_KEY_ID_PATH,
+            method = RequestMethod.GET,
+            produces = MediaType.APPLICATION_JSON_VALUE
+    )
+    @Override
+    public ChronicleQuestionnaire getChronicleQuestionnaire(
+            @PathVariable( STUDY_ID ) UUID studyId,
+            @PathVariable( ENTITY_KEY_ID ) UUID questionnaireEKID
+    ) {
+        return chronicleService.getQuestionnaire(studyId, questionnaireEKID);
+    }
+
+    @RequestMapping(
+            path = STUDY_ID_PATH + PARTICIPANT_ID_PATH +  QUESTIONNAIRE,
+            method = RequestMethod.POST,
+            consumes = MediaType.APPLICATION_JSON_VALUE
+    )
+    @Override
+    public Boolean submitQuestionnaire(
+            @PathVariable (STUDY_ID) UUID studyId,
+            @PathVariable (PARTICIPANT_ID) String participantId,
+            @RequestBody  Map<UUID, Map<FullQualifiedName, Set<Object>>> questionnaireResponses ) {
+        // TODO implement this
+        return null;
     }
 
     public Iterable<Map<String, Set<Object>>> getAllParticipantAppsUsageData(

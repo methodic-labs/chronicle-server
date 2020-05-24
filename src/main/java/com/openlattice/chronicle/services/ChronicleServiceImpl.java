@@ -33,6 +33,7 @@ import com.openlattice.chronicle.ChronicleServerUtil;
 import com.openlattice.chronicle.configuration.ChronicleConfiguration;
 import com.openlattice.chronicle.constants.RecordType;
 import com.openlattice.chronicle.data.ChronicleAppsUsageDetails;
+import com.openlattice.chronicle.data.ChronicleQuestionnaire;
 import com.openlattice.chronicle.data.ParticipationStatus;
 import com.openlattice.chronicle.sources.AndroidDevice;
 import com.openlattice.chronicle.sources.Datasource;
@@ -59,7 +60,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 
 import javax.annotation.Nonnull;
-import java.time.*;
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
@@ -68,10 +71,8 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-import static com.openlattice.chronicle.ChronicleServerUtil.PARTICIPANTS_PREFIX;
 import static com.openlattice.chronicle.constants.EdmConstants.*;
-import static com.openlattice.chronicle.constants.OutputConstants.APP_PREFIX;
-import static com.openlattice.chronicle.constants.OutputConstants.USER_PREFIX;
+import static com.openlattice.chronicle.constants.OutputConstants.*;
 import static com.openlattice.edm.EdmConstants.ID_FQN;
 
 public class ChronicleServiceImpl implements ChronicleService {
@@ -107,6 +108,11 @@ public class ChronicleServiceImpl implements ChronicleService {
     private final UUID partOfESID;
     private final UUID usedByESID;
     private final UUID participatedInESID;
+    private final UUID questionnaireESID;
+    private final UUID questionsESID;
+    private final UUID answersESID;
+    private final UUID addressesESID;
+    private final UUID respondsWithESID;
     private final UUID stringIdPTID;
     private final UUID personIdPSID;
     private final UUID dateLoggedPTID;
@@ -153,6 +159,11 @@ public class ChronicleServiceImpl implements ChronicleService {
         usedByESID = entitySetsApi.getEntitySetId( USED_BY_ENTITY_SET_NAME );
         participatedInESID = entitySetsApi.getEntitySetId( PARTICIPATED_IN_AESN );
         userAppsESID = entitySetsApi.getEntitySetId( CHRONICLE_USER_APPS );
+        questionnaireESID = entitySetsApi.getEntitySetId( QUESTIONNAIRE_ENTITY_SET_NAME );
+        questionsESID = entitySetsApi.getEntitySetId( QUESTIONS_ENTITY_SET_NAME );
+        answersESID = entitySetsApi.getEntitySetId( ANSWERS_ENTITY_SET_NAME );
+        addressesESID = entitySetsApi.getEntitySetId( ADDRESSES_ENTITY_SET_NAME );
+        respondsWithESID = entitySetsApi.getEntitySetId( RESPONDS_WITH_ENTITY_SET_NAME );
         notificationsESID = entitySetsApi.getEntitySetId( NOTIFICATION_ENTITY_SET_NAME );
         partOfESID = entitySetsApi.getEntitySetId( PART_OF_ENTITY_SET_NAME );
 
@@ -1367,5 +1378,96 @@ public class ChronicleServiceImpl implements ChronicleService {
         }
 
         return ParticipationStatus.UNKNOWN;
+    }
+
+    @Override
+    public ChronicleQuestionnaire getQuestionnaire( UUID studyId, UUID questionnaireEKID ) {
+        try {
+            logger.info( "Retrieving questionnaire: studyId = {}, questionnaire EKID = {}",
+                    studyId,
+                    questionnaireEKID );
+
+            UUID studyEKID = Preconditions.checkNotNull( getStudyEntityKeyId( studyId ), "invalid study: " + studyId );
+
+            // get apis
+            ApiClient apiClient = apiClientCache.get( ApiClient.class );
+            SearchApi searchApi = apiClient.getSearchApi();
+
+            // Get questionnaires that neighboring study
+            Map<UUID, List<NeighborEntityDetails>> neighbors = searchApi.executeFilteredEntityNeighborSearch(
+                    studyESID,
+                    new EntityNeighborsFilter(
+                            Set.of( studyEKID ),
+                            java.util.Optional.of( Set.of( questionnaireESID ) ),
+                            java.util.Optional.of( Set.of( studyESID ) ),
+                            java.util.Optional.of( Set.of( partOfESID ) )
+                    )
+            );
+
+            // find questionnaire entity matching given entity key id
+            if ( neighbors.containsKey( studyEKID ) ) {
+                ChronicleQuestionnaire questionnaire = new ChronicleQuestionnaire();
+
+                neighbors.get( studyEKID )
+                        .stream()
+                        .filter( neighbor -> neighbor.getNeighborDetails().isPresent() && neighbor.getNeighborId()
+                                .isPresent() )
+                        .filter( neighbor -> neighbor.getNeighborId().get().toString()
+                                .equals( questionnaireEKID.toString() ) )
+                        .map( neighbor -> neighbor.getNeighborDetails().get() )
+                        .findFirst() // If a study has multiple questionnaires, we are only interested in the one with a matching EKID
+                        .ifPresent( questionnaire::setQuestionnaireDetails );
+
+                if ( questionnaire.getQuestionnaireDetails() == null ) {
+                    logger.info( "questionnaire does not exist - studyId: {}, questionnaireEKID: {}, neighbors: {}",
+                            studyId,
+                            questionnaireEKID,
+                            neighbors.size() );
+                    throw new IllegalArgumentException(
+                            "questionnaire does not exist, studyId: " + studyId + "questionnaire EKID = "
+                                    + questionnaireEKID );
+                }
+                logger.info( "retrieved questionnaire: {}", questionnaire.getQuestionnaireDetails().toString() );
+
+                // get questions neighboring questionnaire
+                neighbors = searchApi.executeFilteredEntityNeighborSearch(
+                        questionnaireESID,
+                        new EntityNeighborsFilter(
+                                Set.of( questionnaireEKID ),
+                                java.util.Optional.of( Set.of( questionsESID ) ),
+                                java.util.Optional.of( Set.of( questionnaireESID ) ),
+                                java.util.Optional.of( Set.of( partOfESID ) )
+                        )
+                );
+
+                List<Map<FullQualifiedName, Set<Object>>> questions = neighbors
+                        .getOrDefault( questionnaireEKID, List.of() )
+                        .stream()
+                        .filter( neighbor -> neighbor.getNeighborDetails().isPresent() )
+                        .map( neighbor -> neighbor.getNeighborDetails().get() )
+                        .collect( Collectors.toList() );
+
+                questionnaire.setQuestions( questions );
+
+                logger.info( "retrieved {} questions associated with questionnaire {}",
+                        questions.size(),
+                        questionnaireEKID );
+
+                return questionnaire;
+            }
+
+        } catch ( Exception e ) {
+            // catch all errors encountered during execution
+            logger.error( "unable to retrieve questionnaire: studyId = {}, questionnaire = {}",
+                    studyId,
+                    questionnaireEKID );
+            throw new RuntimeException( "questionnaire not found");
+        }
+
+        /*
+         * IF we get to this point, the requested questionnaire was not found. We shouldn't return null since
+         * the caller would get an "ok" response. Instead send an error response.
+         */
+        throw new IllegalArgumentException( "questionnaire not found" );
     }
 }

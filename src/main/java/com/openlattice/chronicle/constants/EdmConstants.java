@@ -19,6 +19,13 @@ public class EdmConstants {
     public static final String CHRONICLE_USER_APPS               = "chronicle_user_apps";
     public static final String USED_BY_ENTITY_SET_NAME           = "chronicle_used_by";
     public static final String PARTICIPATED_IN_AESN              = "chronicle_participated_in";
+    public static final String NOTIFICATION_ENTITY_SET_PREFIX    = "chronicle_notifications_";
+    public static final String PARTICIPANTS_PREFIX               = "chronicle_participants_";
+    public static final String QUESTIONNAIRE_ENTITY_SET_NAME     = "chronicle_questionnaires";
+    public static final String QUESTIONS_ENTITY_SET_NAME         = "chronicle_questions";
+    public static final String ANSWERS_ENTITY_SET_NAME           = "chronicle_answers";
+    public static final String RESPONDS_WITH_ENTITY_SET_NAME     = "chronicle_respondswith";
+    public static final String ADDRESSES_ENTITY_SET_NAME         = "chronicle_addresses";
     public static final String NOTIFICATION_ENTITY_SET_NAME      = "chronicle_notifications";
     public static final String PART_OF_ENTITY_SET_NAME           = "chronicle_partof";
 
