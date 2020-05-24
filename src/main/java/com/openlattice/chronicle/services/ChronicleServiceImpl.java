@@ -447,7 +447,7 @@ public class ChronicleServiceImpl implements ChronicleService {
 
         Set<OffsetDateTime> pushedDateTimes = data.stream()
                 .map( entity -> {
-                    ZoneId tz = ZoneId.of( "UTC" );
+                    ZoneId tz = ZoneId.of( DEFAULT_TIMEZONE );
                     Iterator<Object> timezoneStringIterator = entity.get( timezonePTID ).iterator();
                     if ( timezoneStringIterator.hasNext() ) {
                         tz = ZoneId.of( timezoneStringIterator.next().toString() );
