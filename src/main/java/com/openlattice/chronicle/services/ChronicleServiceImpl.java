@@ -508,7 +508,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         UUID hasEntityKeyId = reserveHasEntityKeyId( metadataEntityData, dataIntegrationApi );
         dataApi.updateEntitiesInEntitySet( hasESID,
                 ImmutableMap.of( hasEntityKeyId, hasEntityData ),
-                UpdateType.Merge );
+                UpdateType.PartialReplace );
 
         EntityDataKey dst = new EntityDataKey( metadataESID, metadataEntityKeyId );
         EntityDataKey edge = new EntityDataKey( hasESID, hasEntityKeyId );
