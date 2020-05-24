@@ -33,6 +33,7 @@ import com.openlattice.chronicle.ChronicleServerUtil;
 import com.openlattice.chronicle.configuration.ChronicleConfiguration;
 import com.openlattice.chronicle.constants.RecordType;
 import com.openlattice.chronicle.data.ChronicleAppsUsageDetails;
+import com.openlattice.chronicle.data.ChronicleQuestionnaire;
 import com.openlattice.chronicle.data.ParticipationStatus;
 import com.openlattice.chronicle.sources.AndroidDevice;
 import com.openlattice.chronicle.sources.Datasource;
@@ -43,12 +44,16 @@ import com.openlattice.data.requests.NeighborEntityDetails;
 import com.openlattice.directory.PrincipalApi;
 import com.openlattice.edm.EdmApi;
 import com.openlattice.edm.EntitySet;
+import com.openlattice.edm.set.EntitySetPropertyMetadata;
+import com.openlattice.edm.type.PropertyType;
 import com.openlattice.entitysets.EntitySetsApi;
 import com.openlattice.search.SearchApi;
 import com.openlattice.search.requests.EntityNeighborsFilter;
 import com.openlattice.search.requests.SearchTerm;
 import com.openlattice.shuttle.MissionControl;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.olingo.commons.api.edm.EdmPrimitiveTypeKind;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,9 +69,10 @@ import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
-import static com.openlattice.chronicle.ChronicleServerUtil.PARTICIPANTS_PREFIX;
 import static com.openlattice.chronicle.constants.EdmConstants.*;
 import static com.openlattice.chronicle.constants.OutputConstants.*;
 import static com.openlattice.edm.EdmConstants.ID_FQN;
@@ -102,8 +108,15 @@ public class ChronicleServiceImpl implements ChronicleService {
     private final UUID hasESID;
     private final UUID preProcessedESID;
     private final UUID recordedByESID;
+    private final UUID notificationsESID;
+    private final UUID partOfESID;
     private final UUID usedByESID;
     private final UUID participatedInESID;
+    private final UUID questionnaireESID;
+    private final UUID questionsESID;
+    private final UUID answersESID;
+    private final UUID addressesESID;
+    private final UUID respondsWithESID;
     private final UUID stringIdPTID;
     private final UUID personIdPSID;
     private final UUID dateLoggedPTID;
@@ -156,6 +169,13 @@ public class ChronicleServiceImpl implements ChronicleService {
         usedByESID = entitySetsApi.getEntitySetId( USED_BY_ENTITY_SET_NAME );
         participatedInESID = entitySetsApi.getEntitySetId( PARTICIPATED_IN_AESN );
         userAppsESID = entitySetsApi.getEntitySetId( CHRONICLE_USER_APPS );
+        questionnaireESID = entitySetsApi.getEntitySetId( QUESTIONNAIRE_ENTITY_SET_NAME );
+        questionsESID = entitySetsApi.getEntitySetId( QUESTIONS_ENTITY_SET_NAME );
+        answersESID = entitySetsApi.getEntitySetId( ANSWERS_ENTITY_SET_NAME );
+        addressesESID = entitySetsApi.getEntitySetId( ADDRESSES_ENTITY_SET_NAME );
+        respondsWithESID = entitySetsApi.getEntitySetId( RESPONDS_WITH_ENTITY_SET_NAME );
+        notificationsESID = entitySetsApi.getEntitySetId( NOTIFICATION_ENTITY_SET_NAME );
+        partOfESID = entitySetsApi.getEntitySetId( PART_OF_ENTITY_SET_NAME );
 
         durationPTID = edmApi.getPropertyTypeId( DURATION.getNamespace(), DURATION.getName() );
         stringIdPTID = edmApi.getPropertyTypeId( STRING_ID_FQN.getNamespace(), STRING_ID_FQN.getName() );
@@ -891,40 +911,58 @@ public class ChronicleServiceImpl implements ChronicleService {
     private Set<UUID> getNotificationEnabledStudies(
             List<Map<FullQualifiedName, Set<Object>>> studies,
             SearchApi searchApi ) {
-        Set<UUID> studyEntityKeyIds = studies
-                .stream()
-                .map( study -> UUID.fromString( study.get( ID_FQN ).iterator().next().toString() ) )
-                .collect( Collectors.toSet() );
+        Set<UUID> result = new HashSet<>();
 
-        Set<UUID> studyIds = studies
+        //mapping from studyEKID -> studyId
+        Map<UUID, UUID> studyEntityKeyIdMap = studies
                 .stream()
-                .map( study -> UUID.fromString( study.get( STRING_ID_FQN ).iterator().next().toString() ) )
-                .collect( Collectors.toSet() );
+                .collect( Collectors.toMap(
+                        study -> UUID.fromString( study.get( ID_FQN ).iterator().next().toString() ),
+                        study -> UUID.fromString( study.get( STRING_ID_FQN ).iterator().next().toString() )
+                ) );
 
+        Set<UUID> studyEntityKeyIds = studyEntityKeyIdMap.keySet();
+
+        // Get notification entities that neighbor study
         Map<UUID, List<NeighborEntityDetails>> studyNeighbors = searchApi
-                .executeEntityNeighborSearchBulk(
+                .executeFilteredEntityNeighborSearch(
                         studyESID,
-                        studyEntityKeyIds
+                        new EntityNeighborsFilter(
+                                studyEntityKeyIds,
+                                java.util.Optional.of( ImmutableSet.of( notificationsESID ) ),
+                                java.util.Optional.of( ImmutableSet.of( studyESID ) ),
+                                java.util.Optional.of( ImmutableSet.of( partOfESID ) )
+                        )
                 );
 
-        // studies with notifications enabled have 'ol.id' property in the corresponding associationDetails set to
-        // the value of the studyId
-        return studyNeighbors
-                .entrySet()
-                .stream()
-                .filter( entry -> entry
-                        .getValue()
-                        .stream()
-                        .filter( neighbor -> neighbor.getNeighborEntitySet().isPresent() &&
-                                neighbor.getNeighborEntitySet().get().getName()
-                                        .startsWith( NOTIFICATION_ENTITY_SET_PREFIX ) &&
-                                neighbor.getAssociationDetails().containsKey( OL_ID_FQN ) &&
-                                studyIds.contains( UUID
-                                        .fromString( neighbor.getAssociationDetails().get( OL_ID_FQN ).iterator().next()
-                                                .toString() ) ) )
-                        .count() != 0 )
-                .map( Map.Entry::getKey )
-                .collect( Collectors.toSet() );
+        /*
+         * studies with notifications enabled have 'ol.id' property in the corresponding
+         * associationDetails set to the value of the studyId
+         * For each study, there is can only be at most 1 notification -> partof -> study association,
+         * therefore it suffices to explore the first neighbor
+         */
+
+        for ( Map.Entry<UUID, List<NeighborEntityDetails>> entry : studyNeighbors.entrySet() ) {
+
+            List<NeighborEntityDetails> entityDetailsList = entry.getValue();
+            UUID entityKeyId = entry.getKey();
+
+            if ( !entityDetailsList.isEmpty() ) {
+                NeighborEntityDetails details = entityDetailsList.get( 0 );
+
+                String associationVal = details.getAssociationDetails()
+                        .getOrDefault( OL_ID_FQN, Set.of( "" ) )
+                        .iterator()
+                        .next().toString();
+
+                String studyId = studyEntityKeyIdMap.getOrDefault( entityKeyId, UUID.randomUUID() ).toString();
+                if ( studyId.equals( associationVal ) ) {
+                    result.add( entityKeyId );
+                }
+
+            }
+        }
+        return result;
     }
 
     @Scheduled( fixedRate = 60000 )
@@ -1172,56 +1210,146 @@ public class ChronicleServiceImpl implements ChronicleService {
     private Iterable<Map<String, Set<Object>>> getParticipantDataHelper(
             UUID studyId,
             UUID participantEntityKeyId,
-            UUID edgeEntitySetId,
-            String entitySetName,
+            String edgeEntitySetName,
+            String sourceEntitySetName,
             String token ) {
+
         try {
             ApiClient apiClient = new ApiClient( () -> token );
             EntitySetsApi entitySetsApi = apiClient.getEntitySetsApi();
             SearchApi searchApi = apiClient.getSearchApi();
             EdmApi edmApi = apiClient.getEdmApi();
 
-            String participantEntitySetName = ChronicleServerUtil.getParticipantEntitySetName( studyId );
-            UUID participantEntitySetId = entitySetsApi.getEntitySetId( participantEntitySetName );
-            UUID srcEntitySetId = entitySetsApi.getEntitySetId( entitySetName );
+            /*
+             * 1. get the relevant EntitySets
+             */
 
-            // create a dictionary from property type fqn to title of
-            Map<UUID, String> propertyDictionary = Maps.newHashMap();
-            edmApi.getPropertyTypes().forEach(
-                    k -> propertyDictionary.put( k.getId(), k.getType().getFullQualifiedNameAsString() ) );
-            Map<String, String> columnNameDictionary = Maps.newHashMap();
-            entitySetsApi.getAllEntitySetPropertyMetadata( srcEntitySetId )
-                    .forEach( ( propertyTypeId, propertyMetadata ) -> columnNameDictionary.put(
-                            propertyDictionary.get( propertyTypeId ),
-                            propertyMetadata.getTitle()
-                    ) );
+            String participantEntitySetName = ChronicleServerUtil.getParticipantEntitySetName( studyId );
+            Map<String, EntitySet> entitySetsByName = entitySetsApi.getEntitySetsByName(
+                    Set.of( participantEntitySetName, sourceEntitySetName, edgeEntitySetName )
+            );
+
+            EntitySet participantsES = entitySetsByName.get( participantEntitySetName );
+            EntitySet sourceES = entitySetsByName.get( sourceEntitySetName );
+            EntitySet edgeES = entitySetsByName.get( edgeEntitySetName );
+
+            /*
+             * 2. get all PropertyTypes and set up maps for easy lookups
+             */
+
+            Map<UUID, PropertyType> propertyTypesById = StreamSupport
+                    .stream( edmApi.getPropertyTypes().spliterator(), false )
+                    .collect( Collectors.toMap( PropertyType::getId, Function.identity() ) );
+
+            Map<FullQualifiedName, UUID> propertyTypeIdsByFQN = propertyTypesById
+                    .values()
+                    .stream()
+                    .collect( Collectors.toMap( PropertyType::getType, PropertyType::getId ) );
+
+            Map<UUID, Map<UUID, EntitySetPropertyMetadata>> meta =
+                    entitySetsApi.getPropertyMetadataForEntitySets( Set.of( sourceES.getId(), edgeES.getId() ) );
+
+            Map<UUID, EntitySetPropertyMetadata> sourceMeta = meta.get( sourceES.getId() );
+            Map<UUID, EntitySetPropertyMetadata> edgeMeta = meta.get( edgeES.getId() );
+
+            /*
+             * 3. get EntitySet primary keys, which are used later for filtering
+             */
+
+            Set<FullQualifiedName> sourceKeys = edmApi.getEntityType( sourceES.getEntityTypeId() )
+                    .getKey()
+                    .stream()
+                    .map( propertyTypeId -> propertyTypesById.get( propertyTypeId ).getType() )
+                    .collect( Collectors.toSet() );
+
+            Set<FullQualifiedName> edgeKeys = edmApi.getEntityType( edgeES.getEntityTypeId() )
+                    .getKey()
+                    .stream()
+                    .map( propertyTypeId -> propertyTypesById.get( propertyTypeId ).getType() )
+                    .collect( Collectors.toSet() );
+
+            /*
+             * 4. perform filtered search to get participant neighbors
+             */
 
             Map<UUID, List<NeighborEntityDetails>> participantNeighbors = searchApi.executeFilteredEntityNeighborSearch(
-                    participantEntitySetId,
+                    participantsES.getId(),
                     new EntityNeighborsFilter(
                             Set.of( participantEntityKeyId ),
-                            java.util.Optional.of( ImmutableSet.of( srcEntitySetId ) ),
-                            java.util.Optional.of( ImmutableSet.of( participantEntitySetId ) ),
-                            java.util.Optional.of( ImmutableSet.of( edgeEntitySetId ) )
+                            java.util.Optional.of( ImmutableSet.of( sourceES.getId() ) ),
+                            java.util.Optional.of( ImmutableSet.of( participantsES.getId() ) ),
+                            java.util.Optional.of( ImmutableSet.of( edgeES.getId() ) )
                     )
-
             );
+
+            /*
+             * 5. filter and clean the data before sending it back
+             */
 
             return participantNeighbors
                     .getOrDefault( participantEntityKeyId, List.of() )
                     .stream()
                     .filter( neighbor -> neighbor.getNeighborDetails().isPresent() )
                     .map( neighbor -> {
-                        neighbor.getNeighborDetails().get().remove( ID_FQN );
-                        Map<String, Set<Object>> neighborDetails = Maps.newHashMap();
-                        neighbor.getNeighborDetails().get()
-                                .forEach( ( key, value ) -> neighborDetails.put(
-                                        APP_PREFIX + columnNameDictionary.get( key.toString() ), value ) );
-                        neighbor.getAssociationDetails()
-                                .forEach( ( key, value ) -> neighborDetails.put(
-                                        USER_PREFIX + columnNameDictionary.get( key.toString() ), value ) );
 
-                        return neighborDetails;
+                        Map<FullQualifiedName, Set<Object>> entityData = neighbor.getNeighborDetails().get();
+                        entityData.remove( ID_FQN );
+
+                        ZoneId tz = ZoneId.of( entityData
+                                .getOrDefault( TIMEZONE_FQN, ImmutableSet.of( DEFAULT_TIMEZONE ) )
+                                .iterator()
+                                .next()
+                                .toString()
+                        );
+
+                        Map<String, Set<Object>> cleanEntityData = Maps.newHashMap();
+                        entityData
+                                .entrySet()
+                                .stream()
+                                .filter( entry -> !sourceKeys.contains( entry.getKey() ) )
+                                .forEach( entry -> {
+                                    Set<Object> values = entry.getValue();
+                                    PropertyType propertyType = propertyTypesById.get(
+                                            propertyTypeIdsByFQN.get( entry.getKey() )
+                                    );
+                                    String propertyTitle = sourceMeta.get( propertyType.getId() ).getTitle();
+                                    if (propertyType.getDatatype() == EdmPrimitiveTypeKind.DateTimeOffset) {
+                                        Set<Object> dateTimeValues = values
+                                                .stream()
+                                                .map( value -> {
+                                                    try {
+                                                        return OffsetDateTime
+                                                                .parse( value.toString() )
+                                                                .toInstant()
+                                                                .atZone( tz )
+                                                                .toOffsetDateTime()
+                                                                .toString();
+                                                    }
+                                                    catch ( Exception e) {
+                                                        return null;
+                                                    }
+                                                })
+                                                .filter( StringUtils::isBlank )
+                                                .collect( Collectors.toSet() );
+                                        cleanEntityData.put( APP_PREFIX + propertyTitle, dateTimeValues );
+                                    }
+                                    else {
+                                        cleanEntityData.put( APP_PREFIX + propertyTitle, values );
+                                    }
+                                } );
+
+                        neighbor.getAssociationDetails().remove( ID_FQN );
+                        neighbor.getAssociationDetails()
+                                .entrySet()
+                                .stream()
+                                .filter( entry -> !edgeKeys.contains( entry.getKey() ) )
+                                .forEach( entry -> {
+                                    UUID propertyTypeId = propertyTypeIdsByFQN.get( entry.getKey() );
+                                    String propertyTitle = edgeMeta.get( propertyTypeId ).getTitle();
+                                    cleanEntityData.put( USER_PREFIX + propertyTitle, entry.getValue() );
+                                } );
+
+                        return cleanEntityData;
                     } )
                     .collect( Collectors.toSet() );
         } catch ( Exception e ) {
@@ -1241,11 +1369,13 @@ public class ChronicleServiceImpl implements ChronicleService {
             UUID studyId,
             UUID participatedInEntityKeyId,
             String token ) {
-        return getParticipantDataHelper( studyId,
+        return getParticipantDataHelper(
+                studyId,
                 participatedInEntityKeyId,
-                recordedByESID,
+                RECORDED_BY_ENTITY_SET_NAME,
                 PREPROCESSED_DATA_ENTITY_SET_NAME,
-                token );
+                token
+        );
     }
 
     @Override
@@ -1253,7 +1383,13 @@ public class ChronicleServiceImpl implements ChronicleService {
             UUID studyId,
             UUID participantEntityKeyId,
             String token ) {
-        return getParticipantDataHelper( studyId, participantEntityKeyId, recordedByESID, DATA_ENTITY_SET_NAME, token );
+        return getParticipantDataHelper(
+                studyId,
+                participantEntityKeyId,
+                RECORDED_BY_ENTITY_SET_NAME,
+                DATA_ENTITY_SET_NAME,
+                token
+        );
     }
 
     @Override
@@ -1261,7 +1397,13 @@ public class ChronicleServiceImpl implements ChronicleService {
             UUID studyId,
             UUID participantEntityKeyId,
             String token ) {
-        return getParticipantDataHelper( studyId, participantEntityKeyId, usedByESID, CHRONICLE_USER_APPS, token );
+        return getParticipantDataHelper(
+                studyId,
+                participantEntityKeyId,
+                USED_BY_ENTITY_SET_NAME,
+                CHRONICLE_USER_APPS,
+                token
+        );
     }
 
     @Override
@@ -1366,5 +1508,96 @@ public class ChronicleServiceImpl implements ChronicleService {
         }
 
         return ParticipationStatus.UNKNOWN;
+    }
+
+    @Override
+    public ChronicleQuestionnaire getQuestionnaire( UUID studyId, UUID questionnaireEKID ) {
+        try {
+            logger.info( "Retrieving questionnaire: studyId = {}, questionnaire EKID = {}",
+                    studyId,
+                    questionnaireEKID );
+
+            UUID studyEKID = Preconditions.checkNotNull( getStudyEntityKeyId( studyId ), "invalid study: " + studyId );
+
+            // get apis
+            ApiClient apiClient = apiClientCache.get( ApiClient.class );
+            SearchApi searchApi = apiClient.getSearchApi();
+
+            // Get questionnaires that neighboring study
+            Map<UUID, List<NeighborEntityDetails>> neighbors = searchApi.executeFilteredEntityNeighborSearch(
+                    studyESID,
+                    new EntityNeighborsFilter(
+                            Set.of( studyEKID ),
+                            java.util.Optional.of( Set.of( questionnaireESID ) ),
+                            java.util.Optional.of( Set.of( studyESID ) ),
+                            java.util.Optional.of( Set.of( partOfESID ) )
+                    )
+            );
+
+            // find questionnaire entity matching given entity key id
+            if ( neighbors.containsKey( studyEKID ) ) {
+                ChronicleQuestionnaire questionnaire = new ChronicleQuestionnaire();
+
+                neighbors.get( studyEKID )
+                        .stream()
+                        .filter( neighbor -> neighbor.getNeighborDetails().isPresent() && neighbor.getNeighborId()
+                                .isPresent() )
+                        .filter( neighbor -> neighbor.getNeighborId().get().toString()
+                                .equals( questionnaireEKID.toString() ) )
+                        .map( neighbor -> neighbor.getNeighborDetails().get() )
+                        .findFirst() // If a study has multiple questionnaires, we are only interested in the one with a matching EKID
+                        .ifPresent( questionnaire::setQuestionnaireDetails );
+
+                if ( questionnaire.getQuestionnaireDetails() == null ) {
+                    logger.info( "questionnaire does not exist - studyId: {}, questionnaireEKID: {}, neighbors: {}",
+                            studyId,
+                            questionnaireEKID,
+                            neighbors.size() );
+                    throw new IllegalArgumentException(
+                            "questionnaire does not exist, studyId: " + studyId + "questionnaire EKID = "
+                                    + questionnaireEKID );
+                }
+                logger.info( "retrieved questionnaire: {}", questionnaire.getQuestionnaireDetails().toString() );
+
+                // get questions neighboring questionnaire
+                neighbors = searchApi.executeFilteredEntityNeighborSearch(
+                        questionnaireESID,
+                        new EntityNeighborsFilter(
+                                Set.of( questionnaireEKID ),
+                                java.util.Optional.of( Set.of( questionsESID ) ),
+                                java.util.Optional.of( Set.of( questionnaireESID ) ),
+                                java.util.Optional.of( Set.of( partOfESID ) )
+                        )
+                );
+
+                List<Map<FullQualifiedName, Set<Object>>> questions = neighbors
+                        .getOrDefault( questionnaireEKID, List.of() )
+                        .stream()
+                        .filter( neighbor -> neighbor.getNeighborDetails().isPresent() )
+                        .map( neighbor -> neighbor.getNeighborDetails().get() )
+                        .collect( Collectors.toList() );
+
+                questionnaire.setQuestions( questions );
+
+                logger.info( "retrieved {} questions associated with questionnaire {}",
+                        questions.size(),
+                        questionnaireEKID );
+
+                return questionnaire;
+            }
+
+        } catch ( Exception e ) {
+            // catch all errors encountered during execution
+            logger.error( "unable to retrieve questionnaire: studyId = {}, questionnaire = {}",
+                    studyId,
+                    questionnaireEKID );
+            throw new RuntimeException( "questionnaire not found");
+        }
+
+        /*
+         * IF we get to this point, the requested questionnaire was not found. We shouldn't return null since
+         * the caller would get an "ok" response. Instead send an error response.
+         */
+        throw new IllegalArgumentException( "questionnaire not found" );
     }
 }

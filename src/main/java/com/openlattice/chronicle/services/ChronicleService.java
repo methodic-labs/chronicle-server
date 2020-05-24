@@ -21,8 +21,9 @@ package com.openlattice.chronicle.services;
 
 import com.google.common.base.Optional;
 import com.google.common.collect.SetMultimap;
-import com.openlattice.chronicle.data.ParticipationStatus;
 import com.openlattice.chronicle.data.ChronicleAppsUsageDetails;
+import com.openlattice.chronicle.data.ChronicleQuestionnaire;
+import com.openlattice.chronicle.data.ParticipationStatus;
 import com.openlattice.chronicle.sources.Datasource;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
 
@@ -79,4 +80,6 @@ public interface ChronicleService {
     Integer updateAppsUsageAssociationData(UUID studyId, String participantId,  Map<UUID, Map<FullQualifiedName, Set<Object>>> associationDetails);
 
     boolean isNotificationsEnabled( UUID studyId);
+
+    ChronicleQuestionnaire getQuestionnaire( UUID studyId, UUID questionnaireEKID );
 }

@@ -20,18 +20,9 @@
 
 package com.openlattice.chronicle;
 
-import java.util.List;
-import java.util.Locale;
-import java.util.UUID;
-
 import org.apache.olingo.commons.api.data.Entity;
 import org.apache.olingo.commons.api.data.EntityCollection;
-import org.apache.olingo.commons.api.edm.EdmEntitySet;
-import org.apache.olingo.commons.api.edm.EdmEntityType;
-import org.apache.olingo.commons.api.edm.EdmPrimitiveType;
-import org.apache.olingo.commons.api.edm.EdmPrimitiveTypeException;
-import org.apache.olingo.commons.api.edm.EdmProperty;
-import org.apache.olingo.commons.api.edm.EdmType;
+import org.apache.olingo.commons.api.edm.*;
 import org.apache.olingo.commons.api.http.HttpStatusCode;
 import org.apache.olingo.server.api.ODataApplicationException;
 import org.apache.olingo.server.api.uri.UriInfoResource;
@@ -41,13 +32,17 @@ import org.apache.olingo.server.api.uri.UriResourceEntitySet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
+import java.util.Locale;
+import java.util.UUID;
+
+import static com.openlattice.chronicle.constants.EdmConstants.*;
+
 public final class ChronicleServerUtil {
     private static final Logger logger = LoggerFactory.getLogger( ChronicleServer.class );
 
     private ChronicleServerUtil() {
     }
-
-    public static final String PARTICIPANTS_PREFIX = "chronicle_participants_";
 
     public static String getParticipantEntitySetName( UUID studyId ) {
         return PARTICIPANTS_PREFIX.concat( studyId.toString() );
