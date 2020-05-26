@@ -463,7 +463,6 @@ public class ChronicleServiceImpl implements ChronicleService {
                     for ( Object date : entity.get( dateLoggedPTID ) ) {
                         OffsetDateTime parsedDateTime = OffsetDateTime
                                 .parse( date.toString() )
-                                .parse( date.toString() )
                                 .toInstant()
                                 .atZone( tz )
                                 .toOffsetDateTime();
