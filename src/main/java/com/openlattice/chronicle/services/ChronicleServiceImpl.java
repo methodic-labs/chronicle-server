@@ -90,11 +90,12 @@ public class ChronicleServiceImpl implements ChronicleService {
     private final Map<String, String> userAppsDict                  = Collections.synchronizedMap( new HashMap<>() );
     private final Set<UUID>           notificationEnabledStudyEKIDs = new HashSet<>();
 
-    private final ImmutableMap<UUID, PropertyType> propertyTypesById;
-    private final ImmutableMap<String, UUID>                entitySetIdMap;
-    private final Map<FullQualifiedName, UUID>     propertyTypeIdsByFQN;
-    private final String                           username;
-    private final String                           password;
+    private final ImmutableMap<UUID, PropertyType>      propertyTypesById;
+    private final ImmutableMap<String, UUID>            entitySetIdMap;
+    private final ImmutableMap<FullQualifiedName, UUID> propertyTypeIdsByFQN;
+
+    private final String                                username;
+    private final String                                password;
 
     private transient LoadingCache<Class<?>, ApiClient> apiClientCache = null;
 
@@ -121,7 +122,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         EntitySetsApi entitySetsApi = apiClient.getEntitySetsApi();
 
         // get entity setId map
-        entitySetIdMap = ImmutableMap.copyOf(entitySetsApi.getEntitySetIds( ENTITY_SET_NAMES ));
+        entitySetIdMap = ImmutableMap.copyOf( entitySetsApi.getEntitySetIds( ENTITY_SET_NAMES ) );
 
         // get propertyTypeId map
         Iterable<PropertyType> propertyTypes = edmApi.getPropertyTypes();
