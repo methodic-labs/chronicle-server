@@ -54,5 +54,7 @@ public class EdmConstants {
     public static final FullQualifiedName OL_ID_FQN       = new FullQualifiedName( "ol.id" );
     public static final FullQualifiedName USER_FQN        = new FullQualifiedName( "ol.user" );
     public static final FullQualifiedName TIMEZONE_FQN    = new FullQualifiedName( "ol.timezone" );
+    public static final FullQualifiedName VALUES_FQN      = new FullQualifiedName( "ol.values" );
+    public static final FullQualifiedName COMPLETED_DATE_TIME_FQN = new FullQualifiedName( "date.completeddatetime" );
 
 }
