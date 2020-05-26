@@ -2,6 +2,11 @@ package com.openlattice.chronicle.constants;
 
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
 
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.UUID;
+
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
  */
@@ -19,7 +24,6 @@ public class EdmConstants {
     public static final String CHRONICLE_USER_APPS               = "chronicle_user_apps";
     public static final String USED_BY_ENTITY_SET_NAME           = "chronicle_used_by";
     public static final String PARTICIPATED_IN_AESN              = "chronicle_participated_in";
-    public static final String NOTIFICATION_ENTITY_SET_PREFIX    = "chronicle_notifications_";
     public static final String PARTICIPANTS_PREFIX               = "chronicle_participants_";
     public static final String QUESTIONNAIRE_ENTITY_SET_NAME     = "chronicle_questionnaires";
     public static final String QUESTIONS_ENTITY_SET_NAME         = "chronicle_questions";
@@ -29,14 +33,22 @@ public class EdmConstants {
     public static final String NOTIFICATION_ENTITY_SET_NAME      = "chronicle_notifications";
     public static final String PART_OF_ENTITY_SET_NAME           = "chronicle_partof";
 
-    // entity types
-
-    public static final FullQualifiedName STUDY_FQN           = new FullQualifiedName( "ol.study" );
-    public static final FullQualifiedName APP_DATA_FQN        = new FullQualifiedName( "ol.applicationdata" );
-    public static final FullQualifiedName DEVICE_FQN          = new FullQualifiedName( "ol.device" );
-    public static final FullQualifiedName RECORDED_BY_FQN     = new FullQualifiedName( "ol.recordedby" );
-    public static final FullQualifiedName USED_BY_FQN         = new FullQualifiedName( "ol.usedby" );
-    public static final FullQualifiedName PARTICIPATED_IN_FQN = new FullQualifiedName( "general.participatedin" );
+    public static final Set<String> ENTITY_SET_NAMES = new HashSet<>( Arrays.asList(
+            STUDY_ENTITY_SET_NAME,
+            DEVICES_ENTITY_SET_NAME,
+            DATA_ENTITY_SET_NAME,
+            RECORDED_BY_ENTITY_SET_NAME,
+            CHRONICLE_USER_APPS,
+            USED_BY_ENTITY_SET_NAME,
+            PARTICIPATED_IN_AESN,
+            QUESTIONNAIRE_ENTITY_SET_NAME,
+            QUESTIONS_ENTITY_SET_NAME,
+            ANSWERS_ENTITY_SET_NAME,
+            RESPONDS_WITH_ENTITY_SET_NAME,
+            ADDRESSES_ENTITY_SET_NAME,
+            NOTIFICATION_ENTITY_SET_NAME,
+            PART_OF_ENTITY_SET_NAME
+    ) );
 
     // property types
     public static final FullQualifiedName STRING_ID_FQN   = new FullQualifiedName( "general.stringid" );
@@ -54,5 +66,8 @@ public class EdmConstants {
     public static final FullQualifiedName OL_ID_FQN       = new FullQualifiedName( "ol.id" );
     public static final FullQualifiedName USER_FQN        = new FullQualifiedName( "ol.user" );
     public static final FullQualifiedName TIMEZONE_FQN    = new FullQualifiedName( "ol.timezone" );
+
+    // Others
+    public static final UUID USER_APPS_ESID = UUID.fromString( "628ad697-7ec8-4954-81d4-d5eab40001d9" );
 
 }
