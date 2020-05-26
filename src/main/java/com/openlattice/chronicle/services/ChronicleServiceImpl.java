@@ -452,20 +452,10 @@ public class ChronicleServiceImpl implements ChronicleService {
 
         data.forEach(
                 entity -> {
-                    // see if there is a timezone in the entity, there should only be one
-                    ZoneId tz = ZoneId.of( DEFAULT_TIMEZONE );
-                    Iterator<Object> timezoneStringIterator = entity.get( timezonePTID ).iterator();
-                    if ( timezoneStringIterator.hasNext() ) {
-                        tz = ZoneId.of( timezoneStringIterator.next().toString() );
-                    }
-
                     // most date properties in the entity are of length 1
                     for ( Object date : entity.get( dateLoggedPTID ) ) {
                         OffsetDateTime parsedDateTime = OffsetDateTime
-                                .parse( date.toString() )
-                                .toInstant()
-                                .atZone( tz )
-                                .toOffsetDateTime();
+                                .parse( date.toString() );
 
                         // filter out problematic entities with dates in the sixties
                         if ( parsedDateTime.isAfter( MINIMUM_DATE ) ) {
