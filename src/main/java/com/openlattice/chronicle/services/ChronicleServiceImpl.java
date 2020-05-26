@@ -60,7 +60,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 
 import javax.annotation.Nonnull;
-import java.time.*;
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
@@ -446,29 +448,33 @@ public class ChronicleServiceImpl implements ChronicleService {
          * about the data collection.
          */
 
-        Set<OffsetDateTime> pushedDateTimes = data.stream()
-                .map( entity -> {
+        Set<OffsetDateTime> pushedDateTimes = new HashSet<>();
+
+        data.forEach(
+                entity -> {
+                    // see if there is a timezone in the entity, there should only be one
                     ZoneId tz = ZoneId.of( DEFAULT_TIMEZONE );
                     Iterator<Object> timezoneStringIterator = entity.get( timezonePTID ).iterator();
                     if ( timezoneStringIterator.hasNext() ) {
                         tz = ZoneId.of( timezoneStringIterator.next().toString() );
                     }
 
-                    HashSet<OffsetDateTime> dateTimes = new HashSet<>();
+                    // most date properties in the entity are of length 1
                     for ( Object date : entity.get( dateLoggedPTID ) ) {
-                        dateTimes.add(
-                                OffsetDateTime
-                                        .parse( date.toString() )
-                                        .toInstant()
-                                        .atZone( tz )
-                                        .toOffsetDateTime() );
+                        OffsetDateTime parsedDateTime = OffsetDateTime
+                                .parse( date.toString() )
+                                .parse( date.toString() )
+                                .toInstant()
+                                .atZone( tz )
+                                .toOffsetDateTime();
 
+                        // filter out problematic entities with dates in the sixties
+                        if ( parsedDateTime.isAfter( MINIMUM_DATE ) ) {
+                            pushedDateTimes.add( parsedDateTime );
+                        }
                     }
-                    return dateTimes;
-                } )
-                .flatMap( Set::stream )
-                .filter( datetime -> datetime.isAfter( MINIMUM_DATE ) )
-                .collect( Collectors.toSet() );
+                }
+        );
 
         String firstDateTime = pushedDateTimes
                 .stream()
@@ -1311,7 +1317,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                                             propertyTypeIdsByFQN.get( entry.getKey() )
                                     );
                                     String propertyTitle = sourceMeta.get( propertyType.getId() ).getTitle();
-                                    if (propertyType.getDatatype() == EdmPrimitiveTypeKind.DateTimeOffset) {
+                                    if ( propertyType.getDatatype() == EdmPrimitiveTypeKind.DateTimeOffset ) {
                                         Set<Object> dateTimeValues = values
                                                 .stream()
                                                 .map( value -> {
@@ -1322,16 +1328,14 @@ public class ChronicleServiceImpl implements ChronicleService {
                                                                 .atZone( tz )
                                                                 .toOffsetDateTime()
                                                                 .toString();
-                                                    }
-                                                    catch ( Exception e) {
+                                                    } catch ( Exception e ) {
                                                         return null;
                                                     }
-                                                })
+                                                } )
                                                 .filter( StringUtils::isBlank )
                                                 .collect( Collectors.toSet() );
                                         cleanEntityData.put( APP_PREFIX + propertyTitle, dateTimeValues );
-                                    }
-                                    else {
+                                    } else {
                                         cleanEntityData.put( APP_PREFIX + propertyTitle, values );
                                     }
                                 } );
@@ -1589,7 +1593,7 @@ public class ChronicleServiceImpl implements ChronicleService {
             logger.error( "unable to retrieve questionnaire: studyId = {}, questionnaire = {}",
                     studyId,
                     questionnaireEKID );
-            throw new RuntimeException( "questionnaire not found");
+            throw new RuntimeException( "questionnaire not found" );
         }
 
         /*
