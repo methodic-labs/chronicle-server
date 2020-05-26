@@ -291,7 +291,7 @@ public class ChronicleStudyController implements ChronicleStudyApi {
             @PathVariable (PARTICIPANT_ID) String participantId,
             @RequestBody  Map<UUID, Map<FullQualifiedName, Set<Object>>> questionnaireResponses ) {
         // TODO implement this
-        return null;
+        return chronicleService.submitQuestionnaire(studyId, participantId, questionnaireResponses);
     }
 
     public Iterable<Map<String, Set<Object>>> getAllParticipantAppsUsageData(
