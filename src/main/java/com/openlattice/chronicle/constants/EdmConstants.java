@@ -58,13 +58,10 @@ public class EdmConstants {
     public static final FullQualifiedName VERSION_FQN     = new FullQualifiedName( "ol.version" );
     public static final FullQualifiedName MODEL_FQN       = new FullQualifiedName( "vehicle.model" );
     public static final FullQualifiedName DATE_TIME_FQN   = new FullQualifiedName( "ol.datetime" );
-    public static final FullQualifiedName START_DATE_TIME = new FullQualifiedName( "ol.datetimestart" );
     public static final FullQualifiedName FULL_NAME_FQN   = new FullQualifiedName( "general.fullname" );
     public static final FullQualifiedName TITLE_FQN       = new FullQualifiedName( "ol.title" );
     public static final FullQualifiedName RECORD_TYPE_FQN = new FullQualifiedName( "ol.recordtype" );
-    public static final FullQualifiedName DURATION        = new FullQualifiedName( "general.Duration" );
     public static final FullQualifiedName OL_ID_FQN       = new FullQualifiedName( "ol.id" );
-    public static final FullQualifiedName USER_FQN        = new FullQualifiedName( "ol.user" );
     public static final FullQualifiedName TIMEZONE_FQN    = new FullQualifiedName( "ol.timezone" );
 
     // Others
