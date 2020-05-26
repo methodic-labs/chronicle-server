@@ -37,7 +37,6 @@ import com.openlattice.chronicle.data.ParticipationStatus;
 import com.openlattice.chronicle.sources.AndroidDevice;
 import com.openlattice.chronicle.sources.Datasource;
 import com.openlattice.client.ApiClient;
-import com.openlattice.client.RetrofitFactory;
 import com.openlattice.data.*;
 import com.openlattice.data.requests.FileType;
 import com.openlattice.data.requests.NeighborEntityDetails;
@@ -1495,7 +1494,7 @@ public class ChronicleServiceImpl implements ChronicleService {
             String participantESName = getParticipantEntitySetName( studyId );
             UUID participantESID = Preconditions
                     .checkNotNull( entitySetsApi.getEntitySetId( participantESName ),
-                            "participants entity set does not exist" );
+                            "participant entity set does not exist" );
 
             ListMultimap<UUID, Map<UUID, Set<Object>>> entities = ArrayListMultimap.create();
             ListMultimap<UUID, DataAssociation> associations = ArrayListMultimap.create();
@@ -1550,8 +1549,6 @@ public class ChronicleServiceImpl implements ChronicleService {
             logger.error( errorMsg, e );
             throw new RuntimeException( errorMsg );
         }
-
         return true;
     }
-
 }
