@@ -24,6 +24,7 @@ import com.google.common.base.Optional;
 import com.openlattice.chronicle.ChronicleStudyApi;
 import com.openlattice.chronicle.constants.CustomMediaType;
 import com.openlattice.chronicle.data.ChronicleAppsUsageDetails;
+import com.openlattice.chronicle.data.ChronicleQuestionnaire;
 import com.openlattice.chronicle.data.FileType;
 import com.openlattice.chronicle.data.ParticipationStatus;
 import com.openlattice.chronicle.services.ChronicleService;
@@ -264,6 +265,33 @@ public class ChronicleStudyController implements ChronicleStudyApi {
         setContentDisposition( response, fileName, fileType );
         setDownloadContentType( response, fileType );
         return data;
+    }
+
+    @RequestMapping(
+            path = STUDY_ID_PATH + QUESTIONNAIRE +  ENTITY_KEY_ID_PATH,
+            method = RequestMethod.GET,
+            produces = MediaType.APPLICATION_JSON_VALUE
+    )
+    @Override
+    public ChronicleQuestionnaire getChronicleQuestionnaire(
+            @PathVariable( STUDY_ID ) UUID studyId,
+            @PathVariable( ENTITY_KEY_ID ) UUID questionnaireEKID
+    ) {
+        return chronicleService.getQuestionnaire(studyId, questionnaireEKID);
+    }
+
+    @RequestMapping(
+            path = STUDY_ID_PATH + PARTICIPANT_ID_PATH +  QUESTIONNAIRE,
+            method = RequestMethod.POST,
+            consumes = MediaType.APPLICATION_JSON_VALUE
+    )
+    @Override
+    public Boolean submitQuestionnaire(
+            @PathVariable (STUDY_ID) UUID studyId,
+            @PathVariable (PARTICIPANT_ID) String participantId,
+            @RequestBody  Map<UUID, Map<FullQualifiedName, Set<Object>>> questionnaireResponses ) {
+        // TODO implement this
+        return null;
     }
 
     public Iterable<Map<String, Set<Object>>> getAllParticipantAppsUsageData(
