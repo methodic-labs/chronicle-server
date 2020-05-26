@@ -90,10 +90,11 @@ public class ChronicleServiceImpl implements ChronicleService {
     private final Map<String, String> userAppsDict                  = Collections.synchronizedMap( new HashMap<>() );
     private final Set<UUID>           notificationEnabledStudyEKIDs = new HashSet<>();
 
-    private final Map<String, UUID>            entitySetIdMap;
-    private final Map<FullQualifiedName, UUID> propertyTypeIdMap;
-    private final String                       username;
-    private final String                       password;
+    private final ImmutableMap<UUID, PropertyType> propertyTypesById;
+    private final ImmutableMap<String, UUID>                entitySetIdMap;
+    private final Map<FullQualifiedName, UUID>     propertyTypeIdsByFQN;
+    private final String                           username;
+    private final String                           password;
 
     private transient LoadingCache<Class<?>, ApiClient> apiClientCache = null;
 
@@ -120,16 +121,17 @@ public class ChronicleServiceImpl implements ChronicleService {
         EntitySetsApi entitySetsApi = apiClient.getEntitySetsApi();
 
         // get entity setId map
-        entitySetIdMap = entitySetsApi.getEntitySetIds( ENTITY_SET_NAMES );
+        entitySetIdMap = ImmutableMap.copyOf(entitySetsApi.getEntitySetIds( ENTITY_SET_NAMES ));
 
         // get propertyTypeId map
         Iterable<PropertyType> propertyTypes = edmApi.getPropertyTypes();
-        propertyTypeIdMap = StreamSupport
+        propertyTypesById = StreamSupport
                 .stream( propertyTypes.spliterator(), false )
-                .collect( Collectors.toMap(
-                        propertyType -> propertyType.getType(),
-                        propertyType -> propertyType.getId()
-                ) );
+                .collect( ImmutableMap.toImmutableMap( PropertyType::getId, Function.identity() ) );
+        propertyTypeIdsByFQN = propertyTypesById
+                .values()
+                .stream()
+                .collect( ImmutableMap.toImmutableMap( PropertyType::getType, PropertyType::getId ) );
 
         refreshStudyInformation();
         refreshUserAppsDictionary();
@@ -153,7 +155,7 @@ public class ChronicleServiceImpl implements ChronicleService {
 
         return reserveEntityKeyId(
                 entitySetIdMap.get( DEVICES_ENTITY_SET_NAME ),
-                ImmutableList.of( propertyTypeIdMap.get( STRING_ID_FQN ) ),
+                ImmutableList.of( propertyTypeIdsByFQN.get( STRING_ID_FQN ) ),
                 data,
                 dataIntegrationApi
         );
@@ -224,15 +226,15 @@ public class ChronicleServiceImpl implements ChronicleService {
             DataIntegrationApi dataIntegrationApi ) {
 
         Map<UUID, Set<Object>> data = new HashMap<>( entityData );
-        data.put( propertyTypeIdMap.get( FULL_NAME_FQN ), ImmutableSet.of( appPackageName ) );
-        data.put( propertyTypeIdMap.get( PERSON_ID_FQN ), Sets.newHashSet( participantId ) );
+        data.put( propertyTypeIdsByFQN.get( FULL_NAME_FQN ), ImmutableSet.of( appPackageName ) );
+        data.put( propertyTypeIdsByFQN.get( PERSON_ID_FQN ), Sets.newHashSet( participantId ) );
 
         return reserveEntityKeyId(
                 entitySetIdMap.get( USED_BY_ENTITY_SET_NAME ),
                 ImmutableList.of(
-                        propertyTypeIdMap.get( FULL_NAME_FQN ),
-                        propertyTypeIdMap.get( DATE_TIME_FQN ),
-                        propertyTypeIdMap.get( PERSON_ID_FQN )
+                        propertyTypeIdsByFQN.get( FULL_NAME_FQN ),
+                        propertyTypeIdsByFQN.get( DATE_TIME_FQN ),
+                        propertyTypeIdsByFQN.get( PERSON_ID_FQN )
                 ),
                 data,
                 dataIntegrationApi
@@ -246,14 +248,14 @@ public class ChronicleServiceImpl implements ChronicleService {
             DataIntegrationApi dataIntegrationApi ) {
 
         Map<UUID, Set<Object>> data = new HashMap<>( recordedByEntity );
-        data.put( propertyTypeIdMap.get( FULL_NAME_FQN ), Sets.newHashSet( appPackageName ) );
+        data.put( propertyTypeIdsByFQN.get( FULL_NAME_FQN ), Sets.newHashSet( appPackageName ) );
 
         return reserveEntityKeyId(
                 entitySetIdMap.get( RECORDED_BY_ENTITY_SET_NAME ),
                 ImmutableList.of(
-                        propertyTypeIdMap.get( DATE_LOGGED_FQN ),
-                        propertyTypeIdMap.get( STRING_ID_FQN ),
-                        propertyTypeIdMap.get( FULL_NAME_FQN )
+                        propertyTypeIdsByFQN.get( DATE_LOGGED_FQN ),
+                        propertyTypeIdsByFQN.get( STRING_ID_FQN ),
+                        propertyTypeIdsByFQN.get( FULL_NAME_FQN )
                 ),
                 data,
                 dataIntegrationApi
@@ -266,7 +268,7 @@ public class ChronicleServiceImpl implements ChronicleService {
 
         return reserveEntityKeyId(
                 entitySetIdMap.get( CHRONICLE_USER_APPS ),
-                ImmutableList.of( propertyTypeIdMap.get( FULL_NAME_FQN ) ),
+                ImmutableList.of( propertyTypeIdsByFQN.get( FULL_NAME_FQN ) ),
                 entityData,
                 dataIntegrationApi
         );
@@ -293,19 +295,19 @@ public class ChronicleServiceImpl implements ChronicleService {
             try {
                 Set<DataEdgeKey> dataEdgeKeys = new HashSet<>();
 
-                String appPackageName = appEntity.get( propertyTypeIdMap.get( FULL_NAME_FQN ) ).iterator().next()
+                String appPackageName = appEntity.get( propertyTypeIdsByFQN.get( FULL_NAME_FQN ) ).iterator().next()
                         .toString();
                 String appName = userAppsDict.get( appPackageName );
                 if ( appName == null )
                     continue;
-                String dateLogged = getMidnightDateTime( appEntity.get( propertyTypeIdMap.get( DATE_LOGGED_FQN ) )
+                String dateLogged = getMidnightDateTime( appEntity.get( propertyTypeIdsByFQN.get( DATE_LOGGED_FQN ) )
                         .iterator().next()
                         .toString() );
 
                 // create entity in chronicle_user_apps
                 Map<UUID, Set<Object>> userAppEntityData = new HashMap<>();
-                userAppEntityData.put( propertyTypeIdMap.get( FULL_NAME_FQN ), Sets.newHashSet( appPackageName ) );
-                userAppEntityData.put( propertyTypeIdMap.get( TITLE_FQN ), Sets.newHashSet( appName ) );
+                userAppEntityData.put( propertyTypeIdsByFQN.get( FULL_NAME_FQN ), Sets.newHashSet( appPackageName ) );
+                userAppEntityData.put( propertyTypeIdsByFQN.get( TITLE_FQN ), Sets.newHashSet( appName ) );
 
                 UUID userAppEntityKeyId = reserveUserAppEntityKeyId( userAppEntityData, dataIntegrationApi );
                 dataApi.updateEntitiesInEntitySet( entitySetIdMap.get( CHRONICLE_USER_APPS ),
@@ -314,8 +316,8 @@ public class ChronicleServiceImpl implements ChronicleService {
 
                 // association: chronicle_user_apps => chronicle_recorded_by => chronicle_device
                 Map<UUID, Set<Object>> recordedByEntityData = new HashMap<>();
-                recordedByEntityData.put( propertyTypeIdMap.get( DATE_LOGGED_FQN ), ImmutableSet.of( dateLogged ) );
-                recordedByEntityData.put( propertyTypeIdMap.get( STRING_ID_FQN ), ImmutableSet.of( deviceId ) );
+                recordedByEntityData.put( propertyTypeIdsByFQN.get( DATE_LOGGED_FQN ), ImmutableSet.of( dateLogged ) );
+                recordedByEntityData.put( propertyTypeIdsByFQN.get( STRING_ID_FQN ), ImmutableSet.of( deviceId ) );
 
                 UUID recordedByEntityKeyId = reserveRecordedByEntityKeyId(
                         recordedByEntityData,
@@ -342,7 +344,7 @@ public class ChronicleServiceImpl implements ChronicleService {
 
                 // association: chronicle_user_apps => chronicle_used_by => chronicle_participants_{studyId}
                 Map<UUID, Set<Object>> usedByEntityData = new HashMap<>();
-                usedByEntityData.put( propertyTypeIdMap.get( DATE_TIME_FQN ), ImmutableSet.of( dateLogged ) );
+                usedByEntityData.put( propertyTypeIdsByFQN.get( DATE_TIME_FQN ), ImmutableSet.of( dateLogged ) );
 
                 UUID usedByEntityKeyId = reserveUsedByEntityKeyId( usedByEntityData,
                         appPackageName,
@@ -385,7 +387,7 @@ public class ChronicleServiceImpl implements ChronicleService {
             entities.put( entitySetIdMap.get( DATA_ENTITY_SET_NAME ), Multimaps.asMap( data.get( i ) ) );
 
             Map<UUID, Set<Object>> recordedByEntity = ImmutableMap
-                    .of( propertyTypeIdMap.get( DATE_LOGGED_FQN ), Sets.newHashSet( timeStamp ) );
+                    .of( propertyTypeIdsByFQN.get( DATE_LOGGED_FQN ), Sets.newHashSet( timeStamp ) );
 
             associations.put( entitySetIdMap.get( RECORDED_BY_ENTITY_SET_NAME ), new DataAssociation(
                     entitySetIdMap.get( DATA_ENTITY_SET_NAME ),
@@ -629,12 +631,12 @@ public class ChronicleServiceImpl implements ChronicleService {
 
         // device entity data
         Map<UUID, Set<Object>> deviceData = new HashMap<>();
-        deviceData.put( propertyTypeIdMap.get( STRING_ID_FQN ), Sets.newHashSet( datasourceId ) );
+        deviceData.put( propertyTypeIdsByFQN.get( STRING_ID_FQN ), Sets.newHashSet( datasourceId ) );
 
         if ( datasource.isPresent() && AndroidDevice.class.isAssignableFrom( datasource.get().getClass() ) ) {
             AndroidDevice device = (AndroidDevice) datasource.get();
-            deviceData.put( propertyTypeIdMap.get( MODEL_FQN ), Sets.newHashSet( device.getModel() ) );
-            deviceData.put( propertyTypeIdMap.get( VERSION_FQN ), Sets.newHashSet( device.getOsVersion() ) );
+            deviceData.put( propertyTypeIdsByFQN.get( MODEL_FQN ), Sets.newHashSet( device.getModel() ) );
+            deviceData.put( propertyTypeIdsByFQN.get( VERSION_FQN ), Sets.newHashSet( device.getOsVersion() ) );
         }
 
         UUID deviceEntityKeyId = reserveDeviceEntityKeyId( deviceData, dataIntegrationApi );
@@ -673,7 +675,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         ListMultimap<UUID, DataEdge> associations = ArrayListMultimap.create();
 
         Map<UUID, Set<Object>> usedByEntity = ImmutableMap
-                .of( propertyTypeIdMap.get( STRING_ID_FQN ), Sets.newHashSet( UUID.randomUUID() ) );
+                .of( propertyTypeIdsByFQN.get( STRING_ID_FQN ), Sets.newHashSet( UUID.randomUUID() ) );
 
         associations.put( entitySetIdMap.get( USED_BY_ENTITY_SET_NAME ),
                 new DataEdge( deviceEDK, participantEDK, usedByEntity ) );
@@ -1090,11 +1092,6 @@ public class ChronicleServiceImpl implements ChronicleService {
             Map<UUID, PropertyType> propertyTypesById = StreamSupport
                     .stream( edmApi.getPropertyTypes().spliterator(), false )
                     .collect( Collectors.toMap( PropertyType::getId, Function.identity() ) );
-
-            Map<FullQualifiedName, UUID> propertyTypeIdsByFQN = propertyTypesById
-                    .values()
-                    .stream()
-                    .collect( Collectors.toMap( PropertyType::getType, PropertyType::getId ) );
 
             Map<UUID, Map<UUID, EntitySetPropertyMetadata>> meta =
                     entitySetsApi.getPropertyMetadataForEntitySets( Set.of( sourceES.getId(), edgeES.getId() ) );

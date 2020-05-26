@@ -1,10 +1,8 @@
 package com.openlattice.chronicle.constants;
 
+import com.google.common.collect.ImmutableSet;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
 
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -33,22 +31,22 @@ public class EdmConstants {
     public static final String NOTIFICATION_ENTITY_SET_NAME      = "chronicle_notifications";
     public static final String PART_OF_ENTITY_SET_NAME           = "chronicle_partof";
 
-    public static final Set<String> ENTITY_SET_NAMES = new HashSet<>( Arrays.asList(
-            STUDY_ENTITY_SET_NAME,
-            DEVICES_ENTITY_SET_NAME,
-            DATA_ENTITY_SET_NAME,
-            RECORDED_BY_ENTITY_SET_NAME,
+    public static final ImmutableSet<String> ENTITY_SET_NAMES = ImmutableSet.of(
+            ADDRESSES_ENTITY_SET_NAME,
+            ANSWERS_ENTITY_SET_NAME,
             CHRONICLE_USER_APPS,
-            USED_BY_ENTITY_SET_NAME,
+            DATA_ENTITY_SET_NAME,
+            DEVICES_ENTITY_SET_NAME,
+            NOTIFICATION_ENTITY_SET_NAME,
             PARTICIPATED_IN_AESN,
+            PART_OF_ENTITY_SET_NAME,
             QUESTIONNAIRE_ENTITY_SET_NAME,
             QUESTIONS_ENTITY_SET_NAME,
-            ANSWERS_ENTITY_SET_NAME,
+            RECORDED_BY_ENTITY_SET_NAME,
             RESPONDS_WITH_ENTITY_SET_NAME,
-            ADDRESSES_ENTITY_SET_NAME,
-            NOTIFICATION_ENTITY_SET_NAME,
-            PART_OF_ENTITY_SET_NAME
-    ) );
+            USED_BY_ENTITY_SET_NAME,
+            STUDY_ENTITY_SET_NAME
+    );
 
     // property types
     public static final FullQualifiedName STRING_ID_FQN   = new FullQualifiedName( "general.stringid" );
