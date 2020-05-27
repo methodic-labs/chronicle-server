@@ -72,7 +72,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-import static com.openlattice.chronicle.ModelDataUtils.createTestQuestionnaire;
 import static com.openlattice.chronicle.constants.EdmConstants.*;
 import static com.openlattice.chronicle.constants.OutputConstants.*;
 import static com.openlattice.edm.EdmConstants.ID_FQN;
@@ -184,8 +183,6 @@ public class ChronicleServiceImpl implements ChronicleService {
 
         refreshStudyInformation();
         refreshUserAppsDictionary();
-
-        createTestQuestionnaire(apiClient, "Test Questionnaire 1");
     }
 
     private UUID reserveEntityKeyId(
