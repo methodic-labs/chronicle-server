@@ -38,6 +38,7 @@ import com.openlattice.chronicle.data.ParticipationStatus;
 import com.openlattice.chronicle.sources.AndroidDevice;
 import com.openlattice.chronicle.sources.Datasource;
 import com.openlattice.client.ApiClient;
+import com.openlattice.client.RetrofitFactory;
 import com.openlattice.data.*;
 import com.openlattice.data.requests.FileType;
 import com.openlattice.data.requests.NeighborEntityDetails;
@@ -71,6 +72,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
+import static com.openlattice.chronicle.ModelDataUtils.createTestQuestionnaire;
 import static com.openlattice.chronicle.constants.EdmConstants.*;
 import static com.openlattice.chronicle.constants.OutputConstants.*;
 import static com.openlattice.edm.EdmConstants.ID_FQN;
@@ -183,6 +185,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         refreshStudyInformation();
         refreshUserAppsDictionary();
 
+        createTestQuestionnaire(apiClient, "Test Questionnaire 1");
     }
 
     private UUID reserveEntityKeyId(
@@ -1471,6 +1474,7 @@ public class ChronicleServiceImpl implements ChronicleService {
 
     public Map<UUID, Map<FullQualifiedName, Set<Object>>> getActiveQuestionnaires( UUID studyId ) {
         try {
+            logger.info( "Retrieving active questionnaires for study :{}", studyId );
 
             // check if study is valid
             UUID studyEntityKeyId = Preconditions
@@ -1491,9 +1495,10 @@ public class ChronicleServiceImpl implements ChronicleService {
                                     java.util.Optional.of( Set.of( partOfESID ) )
                             )
                     );
+            logger.info( "Found {} questionnaires for study {}", neighbors.getOrDefault( studyEntityKeyId, List.of() ).size() );
 
             // filter neighbors that have ol.active property set to false
-            return neighbors.getOrDefault( studyEntityKeyId, List.of() )
+            Map<UUID, Map<FullQualifiedName, Set<Object>>> result =  neighbors.getOrDefault( studyEntityKeyId, List.of() )
                     .stream()
                     .filter( neighbor -> neighbor.getNeighborDetails().orElseThrow().getOrDefault( ACTIVE_FQN, Set.of( false ) )
                             .iterator().next().equals( true ) )
@@ -1501,6 +1506,10 @@ public class ChronicleServiceImpl implements ChronicleService {
                             neighbor -> neighbor.getNeighborId().orElseThrow(),
                             neighbor -> neighbor.getNeighborDetails().get()
                     ) );
+
+            logger.info( "found {} active questionnaires for study {}", result.size(), studyId );
+            return result;
+
         } catch ( Exception e ) {
             logger.error( "failed to get active questionnaires for study {}", studyId, e );
             throw new RuntimeException( "failed to get active questionnaires" );
