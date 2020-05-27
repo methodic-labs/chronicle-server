@@ -294,6 +294,17 @@ public class ChronicleStudyController implements ChronicleStudyApi {
         return null;
     }
 
+    @RequestMapping(
+            path = STUDY_ID_PATH  + QUESTIONNAIRE + "/active",
+            method = RequestMethod.GET,
+            produces = MediaType.APPLICATION_JSON_VALUE
+    )
+    public Map<UUID, Map<FullQualifiedName, Set<Object>>> getActiveQuestionnaires(
+            @PathVariable (STUDY_ID) UUID studyId
+    ) {
+        return chronicleService.getActiveQuestionnaires(studyId);
+    }
+
     public Iterable<Map<String, Set<Object>>> getAllParticipantAppsUsageData(
             UUID studyId,
             UUID participantEntityKeyId,

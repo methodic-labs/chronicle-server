@@ -1183,7 +1183,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                                             propertyTypeIdsByFQN.get( entry.getKey() )
                                     );
                                     String propertyTitle = sourceMeta.get( propertyType.getId() ).getTitle();
-                                    if (propertyType.getDatatype() == EdmPrimitiveTypeKind.DateTimeOffset) {
+                                    if ( propertyType.getDatatype() == EdmPrimitiveTypeKind.DateTimeOffset ) {
                                         Set<Object> dateTimeValues = values
                                                 .stream()
                                                 .map( value -> {
@@ -1194,16 +1194,14 @@ public class ChronicleServiceImpl implements ChronicleService {
                                                                 .atZone( tz )
                                                                 .toOffsetDateTime()
                                                                 .toString();
-                                                    }
-                                                    catch ( Exception e) {
+                                                    } catch ( Exception e ) {
                                                         return null;
                                                     }
-                                                })
+                                                } )
                                                 .filter( StringUtils::isNotBlank )
                                                 .collect( Collectors.toSet() );
                                         cleanEntityData.put( APP_PREFIX + propertyTitle, dateTimeValues );
-                                    }
-                                    else {
+                                    } else {
                                         cleanEntityData.put( APP_PREFIX + propertyTitle, values );
                                     }
                                 } );
@@ -1461,7 +1459,7 @@ public class ChronicleServiceImpl implements ChronicleService {
             logger.error( "unable to retrieve questionnaire: studyId = {}, questionnaire = {}",
                     studyId,
                     questionnaireEKID );
-            throw new RuntimeException( "questionnaire not found");
+            throw new RuntimeException( "questionnaire not found" );
         }
 
         /*
@@ -1469,5 +1467,43 @@ public class ChronicleServiceImpl implements ChronicleService {
          * the caller would get an "ok" response. Instead send an error response.
          */
         throw new IllegalArgumentException( "questionnaire not found" );
+    }
+
+    public Map<UUID, Map<FullQualifiedName, Set<Object>>> getActiveQuestionnaires( UUID studyId ) {
+        try {
+
+            // check if study is valid
+            UUID studyEntityKeyId = Preconditions
+                    .checkNotNull( getStudyEntityKeyId( studyId ), "invalid studyId: " + studyId );
+
+            // load apis
+            ApiClient apiClient = apiClientCache.get( ApiClient.class );
+            SearchApi searchApi = apiClient.getSearchApi();
+
+            // filtered search on questionnaires ES to get neighbors of study
+            Map<UUID, List<NeighborEntityDetails>> neighbors = searchApi
+                    .executeFilteredEntityNeighborSearch(
+                            studyESID,
+                            new EntityNeighborsFilter(
+                                    Set.of( studyEntityKeyId ),
+                                    java.util.Optional.of( Set.of( questionnaireESID ) ),
+                                    java.util.Optional.of( Set.of( studyESID ) ),
+                                    java.util.Optional.of( Set.of( partOfESID ) )
+                            )
+                    );
+
+            // filter neighbors that have ol.active property set to false
+            return neighbors.getOrDefault( studyEntityKeyId, List.of() )
+                    .stream()
+                    .filter( neighbor -> neighbor.getNeighborDetails().orElseThrow().getOrDefault( ACTIVE_FQN, Set.of( false ) )
+                            .iterator().next().equals( true ) )
+                    .collect( Collectors.toMap(
+                            neighbor -> neighbor.getNeighborId().orElseThrow(),
+                            neighbor -> neighbor.getNeighborDetails().get()
+                    ) );
+        } catch ( Exception e ) {
+            logger.error( "failed to get active questionnaires for study {}", studyId, e );
+            throw new RuntimeException( "failed to get active questionnaires" );
+        }
     }
 }

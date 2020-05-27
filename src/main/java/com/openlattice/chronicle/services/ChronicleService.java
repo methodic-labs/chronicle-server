@@ -82,4 +82,6 @@ public interface ChronicleService {
     boolean isNotificationsEnabled( UUID studyId);
 
     ChronicleQuestionnaire getQuestionnaire( UUID studyId, UUID questionnaireEKID );
+
+    Map<UUID, Map<FullQualifiedName, Set<Object>>> getActiveQuestionnaires( UUID studyId );
 }
