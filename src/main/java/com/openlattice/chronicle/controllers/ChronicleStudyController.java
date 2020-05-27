@@ -290,7 +290,6 @@ public class ChronicleStudyController implements ChronicleStudyApi {
             @PathVariable (STUDY_ID) UUID studyId,
             @PathVariable (PARTICIPANT_ID) String participantId,
             @RequestBody  Map<UUID, Map<FullQualifiedName, Set<Object>>> questionnaireResponses ) {
-        // TODO implement this
         return chronicleService.submitQuestionnaire(studyId, participantId, questionnaireResponses);
     }
 
