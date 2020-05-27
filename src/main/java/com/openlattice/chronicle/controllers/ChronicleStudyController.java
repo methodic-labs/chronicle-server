@@ -295,7 +295,7 @@ public class ChronicleStudyController implements ChronicleStudyApi {
     }
 
     @RequestMapping(
-            path = STUDY_ID_PATH  + QUESTIONNAIRE + "/active",
+            path = STUDY_ID_PATH  + "/questionnaires" + "/active",
             method = RequestMethod.GET,
             produces = MediaType.APPLICATION_JSON_VALUE
     )
