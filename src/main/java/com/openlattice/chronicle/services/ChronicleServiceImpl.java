@@ -1208,7 +1208,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                                                         return null;
                                                     }
                                                 } )
-                                                .filter( StringUtils::isBlank )
+                                                .filter( StringUtils::isNotBlank )
                                                 .collect( Collectors.toSet() );
                                         cleanEntityData.put( APP_PREFIX + propertyTitle, dateTimeValues );
                                     } else {
