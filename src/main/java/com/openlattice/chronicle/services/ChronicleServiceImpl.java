@@ -756,6 +756,18 @@ public class ChronicleServiceImpl implements ChronicleService {
     }
 
     @Override
+    public int deleteParticipantAndAllNeighbors( UUID studyId, String participantId ) {
+        // to do
+        return 0;
+    }
+
+    @Override
+    public int deleteStudyAndAllNeighbors( UUID studyId ) {
+        // to do
+        return 0;
+    }
+
+    @Override
     public boolean isKnownParticipant( UUID studyId, String participantId ) {
         return studyParticipants.getOrDefault( studyId, new HashMap<>() ).containsKey( participantId );
     }
