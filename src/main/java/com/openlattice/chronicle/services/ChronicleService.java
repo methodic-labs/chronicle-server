@@ -51,9 +51,9 @@ public interface ChronicleService {
 
     boolean isKnownParticipant( UUID studyId, String participantId );
 
-    int deleteParticipantAndAllNeighbors( UUID studyId, String participantId );
+    void deleteParticipantAndAllNeighbors( UUID studyId, String participantId );
 
-    int deleteStudyAndAllNeighbors( UUID studyId );
+    void deleteStudyAndAllNeighbors( UUID studyId );
 
     Map<String, UUID> getPropertyTypeIds( Set<String> propertyTypeFqns );
 

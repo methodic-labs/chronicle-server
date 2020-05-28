@@ -756,15 +756,13 @@ public class ChronicleServiceImpl implements ChronicleService {
     }
 
     @Override
-    public int deleteParticipantAndAllNeighbors( UUID studyId, String participantId ) {
+    public void deleteParticipantAndAllNeighbors( UUID studyId, String participantId ) {
         // to do
-        return 0;
     }
 
     @Override
-    public int deleteStudyAndAllNeighbors( UUID studyId ) {
+    public void deleteStudyAndAllNeighbors( UUID studyId ) {
         // to do
-        return 0;
     }
 
     @Override
