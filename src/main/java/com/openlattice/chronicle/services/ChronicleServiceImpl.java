@@ -756,6 +756,16 @@ public class ChronicleServiceImpl implements ChronicleService {
     }
 
     @Override
+    public void deleteParticipantAndAllNeighbors( UUID studyId, String participantId ) {
+        // to do
+    }
+
+    @Override
+    public void deleteStudyAndAllNeighbors( UUID studyId ) {
+        // to do
+    }
+
+    @Override
     public boolean isKnownParticipant( UUID studyId, String participantId ) {
         return studyParticipants.getOrDefault( studyId, new HashMap<>() ).containsKey( participantId );
     }
@@ -1183,7 +1193,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                                             propertyTypeIdsByFQN.get( entry.getKey() )
                                     );
                                     String propertyTitle = sourceMeta.get( propertyType.getId() ).getTitle();
-                                    if (propertyType.getDatatype() == EdmPrimitiveTypeKind.DateTimeOffset) {
+                                    if ( propertyType.getDatatype() == EdmPrimitiveTypeKind.DateTimeOffset ) {
                                         Set<Object> dateTimeValues = values
                                                 .stream()
                                                 .map( value -> {
@@ -1194,16 +1204,14 @@ public class ChronicleServiceImpl implements ChronicleService {
                                                                 .atZone( tz )
                                                                 .toOffsetDateTime()
                                                                 .toString();
-                                                    }
-                                                    catch ( Exception e) {
+                                                    } catch ( Exception e ) {
                                                         return null;
                                                     }
-                                                })
+                                                } )
                                                 .filter( StringUtils::isNotBlank )
                                                 .collect( Collectors.toSet() );
                                         cleanEntityData.put( APP_PREFIX + propertyTitle, dateTimeValues );
-                                    }
-                                    else {
+                                    } else {
                                         cleanEntityData.put( APP_PREFIX + propertyTitle, values );
                                     }
                                 } );
@@ -1461,7 +1469,7 @@ public class ChronicleServiceImpl implements ChronicleService {
             logger.error( "unable to retrieve questionnaire: studyId = {}, questionnaire = {}",
                     studyId,
                     questionnaireEKID );
-            throw new RuntimeException( "questionnaire not found");
+            throw new RuntimeException( "questionnaire not found" );
         }
 
         /*
