@@ -879,6 +879,16 @@ public class ChronicleServiceImpl implements ChronicleService {
     }
 
     @Override
+    public void deleteParticipantAndAllNeighbors( UUID studyId, String participantId ) {
+        // to do
+    }
+
+    @Override
+    public void deleteStudyAndAllNeighbors( UUID studyId ) {
+        // to do
+    }
+
+    @Override
     public boolean isKnownParticipant( UUID studyId, String participantId ) {
         return studyParticipants.getOrDefault( studyId, new HashMap<>() ).containsKey( participantId );
     }
@@ -1321,7 +1331,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                                                         return null;
                                                     }
                                                 } )
-                                                .filter( StringUtils::isBlank )
+                                                .filter( StringUtils::isNotBlank )
                                                 .collect( Collectors.toSet() );
                                         cleanEntityData.put( APP_PREFIX + propertyTitle, dateTimeValues );
                                     } else {
