@@ -834,7 +834,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         logger.info( "Refreshing chronicle user apps dictionary" );
 
         Iterable<SetMultimap<FullQualifiedName, Object>> entitySetData = dataApi.loadEntitySetData(
-                USER_APPS_ESID,
+                entitySetIdMap.get( USER_APPS_DICTIONARY ),
                 FileType.json,
                 jwtToken
         );

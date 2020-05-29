@@ -3,8 +3,6 @@ package com.openlattice.chronicle.constants;
 import com.google.common.collect.ImmutableSet;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
 
-import java.util.UUID;
-
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
  */
@@ -30,6 +28,7 @@ public class EdmConstants {
     public static final String ADDRESSES_ENTITY_SET_NAME         = "chronicle_addresses";
     public static final String NOTIFICATION_ENTITY_SET_NAME      = "chronicle_notifications";
     public static final String PART_OF_ENTITY_SET_NAME           = "chronicle_partof";
+    public static final String USER_APPS_DICTIONARY              = "chronicle_application_dictionary";
 
     public static final ImmutableSet<String> ENTITY_SET_NAMES = ImmutableSet.of(
             ADDRESSES_ENTITY_SET_NAME,
@@ -44,8 +43,9 @@ public class EdmConstants {
             QUESTIONS_ENTITY_SET_NAME,
             RECORDED_BY_ENTITY_SET_NAME,
             RESPONDS_WITH_ENTITY_SET_NAME,
+            STUDY_ENTITY_SET_NAME,
             USED_BY_ENTITY_SET_NAME,
-            STUDY_ENTITY_SET_NAME
+            USER_APPS_DICTIONARY
     );
 
     // property types
@@ -61,8 +61,4 @@ public class EdmConstants {
     public static final FullQualifiedName RECORD_TYPE_FQN = new FullQualifiedName( "ol.recordtype" );
     public static final FullQualifiedName OL_ID_FQN       = new FullQualifiedName( "ol.id" );
     public static final FullQualifiedName TIMEZONE_FQN    = new FullQualifiedName( "ol.timezone" );
-
-    // Others
-    public static final UUID USER_APPS_ESID = UUID.fromString( "628ad697-7ec8-4954-81d4-d5eab40001d9" );
-
 }
