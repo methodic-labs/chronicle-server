@@ -51,6 +51,10 @@ public interface ChronicleService {
 
     boolean isKnownParticipant( UUID studyId, String participantId );
 
+    void deleteParticipantAndAllNeighbors( UUID studyId, String participantId );
+
+    void deleteStudyAndAllNeighbors( UUID studyId );
+
     Map<String, UUID> getPropertyTypeIds( Set<String> propertyTypeFqns );
 
     Iterable<Map<String, Set<Object>>> getAllParticipantData(
@@ -77,9 +81,12 @@ public interface ChronicleService {
             String participantId,
             String date );
 
-    Integer updateAppsUsageAssociationData(UUID studyId, String participantId,  Map<UUID, Map<FullQualifiedName, Set<Object>>> associationDetails);
+    Integer updateAppsUsageAssociationData(
+            UUID studyId,
+            String participantId,
+            Map<UUID, Map<FullQualifiedName, Set<Object>>> associationDetails );
 
-    boolean isNotificationsEnabled( UUID studyId);
+    boolean isNotificationsEnabled( UUID studyId );
 
     ChronicleQuestionnaire getQuestionnaire( UUID studyId, UUID questionnaireEKID );
 
