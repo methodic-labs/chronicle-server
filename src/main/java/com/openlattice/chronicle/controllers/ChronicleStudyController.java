@@ -299,6 +299,7 @@ public class ChronicleStudyController implements ChronicleStudyApi {
             method = RequestMethod.GET,
             produces = MediaType.APPLICATION_JSON_VALUE
     )
+    @Override
     public Map<UUID, Map<FullQualifiedName, Set<Object>>> getActiveQuestionnaires(
             @PathVariable (STUDY_ID) UUID studyId
     ) {
