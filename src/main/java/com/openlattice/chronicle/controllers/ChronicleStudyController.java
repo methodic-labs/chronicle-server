@@ -135,16 +135,14 @@ public class ChronicleStudyController implements ChronicleStudyApi {
     }
 
     @Override
-    public Void deleteParticipantAndAllNeighbors(
+    public void deleteParticipantAndAllNeighbors(
             UUID studyId, String participantId, DeleteType deleteType ) {
         // TODO implement this
-        return null;
     }
 
     @Override
-    public Void deleteStudyAndAllNeighbors( UUID studyId, DeleteType deleteType ) {
+    public void deleteStudyAndAllNeighbors( UUID studyId, DeleteType deleteType ) {
         // TODO implement this
-        return null;
     }
 
     @RequestMapping(
