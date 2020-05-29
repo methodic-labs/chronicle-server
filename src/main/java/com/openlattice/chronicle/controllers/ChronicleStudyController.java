@@ -29,6 +29,7 @@ import com.openlattice.chronicle.data.FileType;
 import com.openlattice.chronicle.data.ParticipationStatus;
 import com.openlattice.chronicle.services.ChronicleService;
 import com.openlattice.chronicle.sources.Datasource;
+import com.openlattice.data.DeleteType;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -131,6 +132,19 @@ public class ChronicleStudyController implements ChronicleStudyApi {
         //  DataApi.getEntity(entitySetId :UUID, entityKeyId :UUID)
         // TODO: Waiting on data model to exist, then ready to implement
         return chronicleService.isKnownParticipant( studyId, participantId );
+    }
+
+    @Override
+    public Void deleteParticipantAndAllNeighbors(
+            UUID studyId, String participantId, DeleteType deleteType ) {
+        // TODO implement this
+        return null;
+    }
+
+    @Override
+    public Void deleteStudyAndAllNeighbors( UUID studyId, DeleteType deleteType ) {
+        // TODO implement this
+        return null;
     }
 
     @RequestMapping(
