@@ -1501,10 +1501,11 @@ public class ChronicleServiceImpl implements ChronicleService {
                                     java.util.Optional.of( Set.of( partOfESID ) )
                             )
                     );
-            logger.info( "Found {} questionnaires for study {}", neighbors.getOrDefault( studyEntityKeyId, List.of() ).size(), studyId );
+            List<NeighborEntityDetails> studyQuestionnaires = neighbors.getOrDefault( studyEntityKeyId, List.of() );
+            logger.info( "Found {} questionnaires for study {}", studyQuestionnaires.size(), studyId );
 
             // filter neighbors that have ol.active property set to false
-            Map<UUID, Map<FullQualifiedName, Set<Object>>> result =  neighbors.getOrDefault( studyEntityKeyId, List.of() )
+            Map<UUID, Map<FullQualifiedName, Set<Object>>> result =  studyQuestionnaires
                     .stream()
                     .filter( neighbor -> neighbor.getNeighborDetails().orElseThrow().getOrDefault( ACTIVE_FQN, Set.of( false ) )
                             .iterator().next().equals( true ) )
