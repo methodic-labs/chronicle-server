@@ -29,6 +29,7 @@ import com.openlattice.chronicle.data.FileType;
 import com.openlattice.chronicle.data.ParticipationStatus;
 import com.openlattice.chronicle.services.ChronicleService;
 import com.openlattice.chronicle.sources.Datasource;
+import com.openlattice.data.DeleteType;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,6 +39,7 @@ import org.springframework.security.authentication.InsufficientAuthenticationExc
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import retrofit2.http.Query;
 
 import javax.inject.Inject;
 import javax.servlet.http.HttpServletResponse;
@@ -131,6 +133,51 @@ public class ChronicleStudyController implements ChronicleStudyApi {
         //  DataApi.getEntity(entitySetId :UUID, entityKeyId :UUID)
         // TODO: Waiting on data model to exist, then ready to implement
         return chronicleService.isKnownParticipant( studyId, participantId );
+    }
+
+    @RequestMapping(
+            path = STUDY_ID_PATH + PARTICIPANT_ID_PATH,
+            method = RequestMethod.DELETE,
+            produces = MediaType.APPLICATION_JSON_VALUE
+    )
+    public Void deleteParticipantAndAllNeighbors(
+            @PathVariable( STUDY_ID ) UUID studyId,
+            @PathVariable( PARTICIPANT_ID ) String participantId,
+            @Query( TYPE )DeleteType deleteType
+            ) {
+
+        if (deleteType == null)
+            deleteType = DeleteType.Soft;
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if ( authentication instanceof JwtAuthentication ) {
+            String token = ( (JwtAuthentication) authentication ).getToken();
+            chronicleService.deleteParticipantAndAllNeighbors( studyId, participantId, deleteType, token );
+            return null;
+        }
+        throw new InsufficientAuthenticationException( "request is not authenticated" );
+    }
+
+    @RequestMapping(
+            path = STUDY_ID_PATH,
+            method = RequestMethod.DELETE,
+            produces = MediaType.APPLICATION_JSON_VALUE
+    )
+    public Void deleteStudyAndAllNeighbors(
+            @PathVariable( STUDY_ID ) UUID studyId,
+            @Query( TYPE )DeleteType deleteType
+            ) {
+
+        if (deleteType == null)
+            deleteType = DeleteType.Soft;
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if ( authentication instanceof JwtAuthentication ) {
+            String token = ( (JwtAuthentication) authentication ).getToken();
+            chronicleService.deleteStudyAndAllNeighbors( studyId, deleteType, token );
+            return null;
+        }
+        throw new InsufficientAuthenticationException( "request is not authenticated" );
     }
 
     @RequestMapping(
@@ -291,6 +338,10 @@ public class ChronicleStudyController implements ChronicleStudyApi {
             @PathVariable (PARTICIPANT_ID) String participantId,
             @RequestBody  Map<UUID, Map<FullQualifiedName, Set<Object>>> questionnaireResponses ) {
         // TODO implement this
+        return null;
+    }
+
+    @Override public Map<UUID, Map<FullQualifiedName, Set<Object>>> getActiveQuestionnaires( UUID studyId ) {
         return null;
     }
 
