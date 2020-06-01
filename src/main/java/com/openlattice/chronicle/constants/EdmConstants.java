@@ -55,4 +55,6 @@ public class EdmConstants {
     public static final FullQualifiedName USER_FQN        = new FullQualifiedName( "ol.user" );
     public static final FullQualifiedName TIMEZONE_FQN    = new FullQualifiedName( "ol.timezone" );
 
+    public static final FullQualifiedName OPENLATTICE_FQN = new FullQualifiedName( "openlattice.@id" );
+
 }
