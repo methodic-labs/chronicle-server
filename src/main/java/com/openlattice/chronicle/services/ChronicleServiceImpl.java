@@ -41,6 +41,7 @@ import com.openlattice.client.ApiClient;
 import com.openlattice.data.*;
 import com.openlattice.data.requests.FileType;
 import com.openlattice.data.requests.NeighborEntityDetails;
+import com.openlattice.data.requests.NeighborEntityIds;
 import com.openlattice.directory.PrincipalApi;
 import com.openlattice.edm.EdmApi;
 import com.openlattice.edm.EntitySet;
@@ -242,7 +243,7 @@ public class ChronicleServiceImpl implements ChronicleService {
             if ( participantIdToEKMap.containsKey( participantId ) ) {
                 return participantIdToEKMap.get( participantId );
             } else {
-                logger.error( "Unable to get participantEntityKeyId. participant {} not associated with studId {} ",
+                logger.error( "Unable to get participantEntityKeyId. participant {} not associated with studyId {} ",
                         participantId,
                         studyId );
             }
@@ -755,14 +756,144 @@ public class ChronicleServiceImpl implements ChronicleService {
                 && participantDevices.get( participantId ).containsKey( datasourceId );
     }
 
-    @Override
-    public void deleteParticipantAndAllNeighbors( UUID studyId, String participantId ) {
-        // to do
+    private void deleteStudyData(
+            UUID studyId,
+            java.util.Optional<String> participantId,
+            DeleteType deleteType,
+            String userToken ) {
+        try {
+            // load api for actions authenticated by the user
+            ApiClient userApiClient = new ApiClient( () -> userToken
+            );
+            SearchApi userSearchApi = userApiClient.getSearchApi();
+            EntitySetsApi userEntitySetsApi = userApiClient.getEntitySetsApi();
+            DataApi userDataApi = userApiClient.getDataApi();
+
+            // load api for actions authenticated by chronicle
+            // because of the way we do things right now, only the chronicle
+            // user can have permissions to delete from the entity set.
+            // To be replaced fully with user authentication after refactoring.
+            ApiClient chronicleApiClient = apiClientCache.get( ApiClient.class );
+            DataApi chronicleDataApi = chronicleApiClient.getDataApi();
+
+            String participantsEntitySetName = ChronicleServerUtil.getParticipantEntitySetName( studyId );
+            UUID participantsEntitySetId = userEntitySetsApi.getEntitySetId( participantsEntitySetName );
+            if ( participantsEntitySetId == null ) {
+                logger.error( "unable to get the participants EntitySet id for studyId = {}", studyId );
+            }
+
+            // get a set of all participants to remove:
+            Set<UUID> participantsToRemove = new HashSet<>();
+            if ( participantId.isPresent() ) {
+                // if participantId: add to set
+                UUID participantEntityKeyId = getParticipantEntityKeyId( participantId.get(), studyId );
+                participantsToRemove.add( participantEntityKeyId );
+            } else {
+                // if no participant Id: load all participants and add to set
+                chronicleDataApi
+                        .loadEntitySetData( participantsEntitySetId, FileType.json,
+                                userToken ).forEach(
+                        k -> k.get( OPENLATTICE_FQN ).forEach(
+                                l -> participantsToRemove.add( UUID.fromString( l.toString() ) )
+                        )
+                );
+            }
+
+            // Be super careful here that the mapping is one-to-one:
+            // don't delete neighbors that might have other neighbors/participants
+            Set<UUID> srcNeighborSetIds = ImmutableSet.of( deviceESID, dataESID, preProcessedESID, answersESID );
+            Set<UUID> dstNeighborSetIds = ImmutableSet.of( answersESID );
+            Map<UUID, Set<UUID>> toDeleteEntitySetIdEntityKeyId = new HashMap<>();
+
+            participantsToRemove.forEach(
+                    participantEntityKeyId -> {
+                        // Get neighbors
+                        Map<UUID, Map<UUID, SetMultimap<UUID, NeighborEntityIds>>> studyNeighbors = userSearchApi
+                                .executeFilteredEntityNeighborIdsSearch(
+                                        participantsEntitySetId,
+                                        new EntityNeighborsFilter(
+                                                Set.of( participantEntityKeyId ),
+                                                java.util.Optional.of( srcNeighborSetIds ),
+                                                java.util.Optional.of( dstNeighborSetIds ),
+                                                java.util.Optional.empty()
+                                        )
+                                );
+
+                        if ( studyNeighbors.size() == 0 ) {
+                            logger.debug( "Attempt to remove participant without data." );
+                        }
+
+                        // create a key for all entity sets
+                        Sets.union( srcNeighborSetIds, dstNeighborSetIds ).forEach( entitySetId -> {
+                            toDeleteEntitySetIdEntityKeyId.put( entitySetId, new HashSet<>() );
+                        } );
+
+                        // fill Map<entitySetId, Set<entityKeyId>>
+                        studyNeighbors
+                                .get( participantEntityKeyId )
+                                .forEach( ( edgeEntitySetId, edgeNeighbor ) -> {
+                                    edgeNeighbor.forEach( ( neighborEntitySetId, neighborEntityIds ) -> {
+                                        Set<UUID> set = toDeleteEntitySetIdEntityKeyId.get( neighborEntitySetId );
+                                        set.add( neighborEntityIds.getNeighborEntityKeyId() );
+                                    } );
+                                } );
+                    }
+
+            );
+
+            // delete all neighbors
+            toDeleteEntitySetIdEntityKeyId
+                    .forEach(
+                            ( entitySetId, entityKeyId ) -> chronicleDataApi
+                                    .deleteEntities( entitySetId, entityKeyId, deleteType )
+                    );
+
+            // delete participants
+            userDataApi.deleteEntities( participantsEntitySetId, participantsToRemove, deleteType );
+
+            // delete study if no participantId is specified
+            if ( participantId.isEmpty() ) {
+                // delete participant entity set
+                userEntitySetsApi.deleteEntitySet( participantsEntitySetId );
+                List<Map<FullQualifiedName, Set<Object>>> studySearchResult = userSearchApi
+                        .executeEntitySetDataQuery( studyESID,
+                                new SearchTerm( studyId.toString(), 0, SearchApi.MAX_SEARCH_RESULTS,
+                                        java.util.Optional.of( false ) ) )
+                        .getHits();
+                if ( studySearchResult.size() != 1 ) {
+                    logger.error( "Tried to remove study " + studyId
+                            + "but couldn't find matching study in chronicle_study." );
+                }
+
+                // delete entity in chronicle_study
+                UUID studyEntityKeyId = UUID
+                        .fromString( studySearchResult.get( 0 ).get( OPENLATTICE_FQN ).iterator().next().toString() );
+                userDataApi.deleteEntities( studyESID, Set.of( studyEntityKeyId ), deleteType );
+
+                logger.info( "Deleted study " + studyId );
+            }
+
+        } catch ( Exception e ) {
+            String errorMsg = "failed to delete participant data";
+            logger.error( errorMsg, e );
+            throw new RuntimeException( errorMsg );
+        }
     }
 
     @Override
-    public void deleteStudyAndAllNeighbors( UUID studyId ) {
-        // to do
+    public void deleteParticipantAndAllNeighbors(
+            UUID studyId,
+            String participantId,
+            DeleteType deleteType,
+            String userToken ) {
+        deleteStudyData( studyId, java.util.Optional.of( participantId ), deleteType, userToken );
+        logger.info( "Successfully removed a participant from " + studyId );
+    }
+
+    @Override
+    public void deleteStudyAndAllNeighbors( UUID studyId, DeleteType deleteType, String userToken ) {
+        deleteStudyData( studyId, java.util.Optional.empty(), deleteType, userToken );
+        logger.info( "Successfully removed study " + studyId );
     }
 
     @Override
