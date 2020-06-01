@@ -29,6 +29,7 @@ import com.openlattice.chronicle.data.FileType;
 import com.openlattice.chronicle.data.ParticipationStatus;
 import com.openlattice.chronicle.services.ChronicleService;
 import com.openlattice.chronicle.sources.Datasource;
+import com.openlattice.data.DeleteType;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -131,6 +132,17 @@ public class ChronicleStudyController implements ChronicleStudyApi {
         //  DataApi.getEntity(entitySetId :UUID, entityKeyId :UUID)
         // TODO: Waiting on data model to exist, then ready to implement
         return chronicleService.isKnownParticipant( studyId, participantId );
+    }
+
+    @Override
+    public void deleteParticipantAndAllNeighbors(
+            UUID studyId, String participantId, DeleteType deleteType ) {
+        // TODO implement this
+    }
+
+    @Override
+    public void deleteStudyAndAllNeighbors( UUID studyId, DeleteType deleteType ) {
+        // TODO implement this
     }
 
     @RequestMapping(
@@ -291,6 +303,18 @@ public class ChronicleStudyController implements ChronicleStudyApi {
             @PathVariable (PARTICIPANT_ID) String participantId,
             @RequestBody  Map<UUID, Map<FullQualifiedName, Set<Object>>> questionnaireResponses ) {
         return chronicleService.submitQuestionnaire(studyId, participantId, questionnaireResponses);
+    }
+
+    @RequestMapping(
+            path = STUDY_ID_PATH  + QUESTIONNAIRES + ACTIVE,
+            method = RequestMethod.GET,
+            produces = MediaType.APPLICATION_JSON_VALUE
+    )
+    @Override
+    public Map<UUID, Map<FullQualifiedName, Set<Object>>> getActiveQuestionnaires(
+            @PathVariable (STUDY_ID) UUID studyId
+    ) {
+        return chronicleService.getActiveQuestionnaires(studyId);
     }
 
     public Iterable<Map<String, Set<Object>>> getAllParticipantAppsUsageData(
