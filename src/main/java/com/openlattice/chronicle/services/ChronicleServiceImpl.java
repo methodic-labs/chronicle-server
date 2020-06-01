@@ -1528,7 +1528,7 @@ public class ChronicleServiceImpl implements ChronicleService {
             throw new RuntimeException( "failed to get active questionnaires" );
         }
     }
-    
+
     @Override
     public Boolean submitQuestionnaire(
             UUID studyId,
