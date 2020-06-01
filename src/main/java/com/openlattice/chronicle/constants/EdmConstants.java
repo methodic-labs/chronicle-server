@@ -56,5 +56,6 @@ public class EdmConstants {
     public static final FullQualifiedName TIMEZONE_FQN            = new FullQualifiedName( "ol.timezone" );
     public static final FullQualifiedName VALUES_FQN              = new FullQualifiedName( "ol.values" );
     public static final FullQualifiedName COMPLETED_DATE_TIME_FQN = new FullQualifiedName( "date.completeddatetime" );
+    public static final FullQualifiedName ACTIVE_FQN              = new FullQualifiedName( "ol.active" );
 
 }

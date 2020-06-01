@@ -1510,9 +1510,10 @@ public class ChronicleServiceImpl implements ChronicleService {
             logger.info( "Found {} questionnaires for study {}", studyQuestionnaires.size(), studyId );
 
             // filter neighbors that have ol.active property set to false
-            Map<UUID, Map<FullQualifiedName, Set<Object>>> result =  studyQuestionnaires
+            Map<UUID, Map<FullQualifiedName, Set<Object>>> result = studyQuestionnaires
                     .stream()
-                    .filter( neighbor -> neighbor.getNeighborDetails().orElseThrow().getOrDefault( ACTIVE_FQN, Set.of( false ) )
+                    .filter( neighbor -> neighbor.getNeighborDetails().orElseThrow()
+                            .getOrDefault( ACTIVE_FQN, Set.of( false ) )
                             .iterator().next().equals( true ) )
                     .collect( Collectors.toMap(
                             neighbor -> neighbor.getNeighborId().orElseThrow(),
@@ -1526,6 +1527,8 @@ public class ChronicleServiceImpl implements ChronicleService {
             logger.error( "failed to get active questionnaires for study {}", studyId, e );
             throw new RuntimeException( "failed to get active questionnaires" );
         }
+    }
+    
     @Override
     public Boolean submitQuestionnaire(
             UUID studyId,
