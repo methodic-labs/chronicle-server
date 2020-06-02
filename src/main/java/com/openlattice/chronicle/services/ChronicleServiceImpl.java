@@ -183,7 +183,6 @@ public class ChronicleServiceImpl implements ChronicleService {
 
         refreshStudyInformation();
         refreshUserAppsDictionary();
-
     }
 
     private UUID reserveEntityKeyId(
@@ -1608,5 +1607,50 @@ public class ChronicleServiceImpl implements ChronicleService {
          * the caller would get an "ok" response. Instead send an error response.
          */
         throw new IllegalArgumentException( "questionnaire not found" );
+    }
+
+    public Map<UUID, Map<FullQualifiedName, Set<Object>>> getActiveQuestionnaires( UUID studyId ) {
+        try {
+            logger.info( "Retrieving active questionnaires for study :{}", studyId );
+
+            // check if study is valid
+            UUID studyEntityKeyId = Preconditions
+                    .checkNotNull( getStudyEntityKeyId( studyId ), "invalid studyId: " + studyId );
+
+            // load apis
+            ApiClient apiClient = apiClientCache.get( ApiClient.class );
+            SearchApi searchApi = apiClient.getSearchApi();
+
+            // filtered search on questionnaires ES to get neighbors of study
+            Map<UUID, List<NeighborEntityDetails>> neighbors = searchApi
+                    .executeFilteredEntityNeighborSearch(
+                            studyESID,
+                            new EntityNeighborsFilter(
+                                    Set.of( studyEntityKeyId ),
+                                    java.util.Optional.of( Set.of( questionnaireESID ) ),
+                                    java.util.Optional.of( Set.of( studyESID ) ),
+                                    java.util.Optional.of( Set.of( partOfESID ) )
+                            )
+                    );
+            List<NeighborEntityDetails> studyQuestionnaires = neighbors.getOrDefault( studyEntityKeyId, List.of() );
+            logger.info( "Found {} questionnaires for study {}", studyQuestionnaires.size(), studyId );
+
+            // filter neighbors that have ol.active property set to false
+            Map<UUID, Map<FullQualifiedName, Set<Object>>> result =  studyQuestionnaires
+                    .stream()
+                    .filter( neighbor -> neighbor.getNeighborDetails().orElseThrow().getOrDefault( ACTIVE_FQN, Set.of( false ) )
+                            .iterator().next().equals( true ) )
+                    .collect( Collectors.toMap(
+                            neighbor -> neighbor.getNeighborId().orElseThrow(),
+                            neighbor -> neighbor.getNeighborDetails().get()
+                    ) );
+
+            logger.info( "found {} active questionnaires for study {}", result.size(), studyId );
+            return result;
+
+        } catch ( Exception e ) {
+            logger.error( "failed to get active questionnaires for study {}", studyId, e );
+            throw new RuntimeException( "failed to get active questionnaires" );
+        }
     }
 }
