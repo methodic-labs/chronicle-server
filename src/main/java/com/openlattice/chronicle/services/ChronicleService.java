@@ -92,5 +92,5 @@ public interface ChronicleService {
 
     Map<UUID, Map<FullQualifiedName, Set<Object>>> getActiveQuestionnaires( UUID studyId );
     
-    Boolean submitQuestionnaire( UUID studyId, String participantId, Map<UUID, Map<FullQualifiedName, Set<Object>>> questionnaireResponses );
+    void submitQuestionnaire( UUID studyId, String participantId, Map<UUID, Map<FullQualifiedName, Set<Object>>> questionnaireResponses );
 }

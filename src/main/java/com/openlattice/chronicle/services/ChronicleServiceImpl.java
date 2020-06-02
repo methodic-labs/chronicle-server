@@ -1530,7 +1530,7 @@ public class ChronicleServiceImpl implements ChronicleService {
     }
 
     @Override
-    public Boolean submitQuestionnaire(
+    public void submitQuestionnaire(
             UUID studyId,
             String participantId,
             Map<UUID, Map<FullQualifiedName, Set<Object>>> questionnaireResponses ) {
@@ -1604,6 +1604,5 @@ public class ChronicleServiceImpl implements ChronicleService {
             logger.error( errorMsg, e );
             throw new RuntimeException( errorMsg );
         }
-        return true;
     }
 }
