@@ -29,7 +29,6 @@ import com.google.common.cache.LoadingCache;
 import com.google.common.collect.*;
 import com.google.common.eventbus.EventBus;
 import com.openlattice.ApiUtil;
-import com.openlattice.chronicle.ChronicleServerUtil;
 import com.openlattice.chronicle.configuration.ChronicleConfiguration;
 import com.openlattice.chronicle.constants.RecordType;
 import com.openlattice.chronicle.data.ChronicleAppsUsageDetails;
@@ -71,6 +70,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
+import static com.openlattice.chronicle.ChronicleServerUtil.getParticipantEntitySetName;
 import static com.openlattice.chronicle.constants.EdmConstants.*;
 import static com.openlattice.chronicle.constants.OutputConstants.*;
 import static com.openlattice.edm.EdmConstants.ID_FQN;
@@ -122,6 +122,8 @@ public class ChronicleServiceImpl implements ChronicleService {
     private final UUID userAppsESID;
     private final UUID titlePTID;
     private final UUID fullNamePTID;
+    private final UUID completedDateTimePTID;
+    private final UUID valuesPTID;
     private final UUID recordTypePTID;
     private final UUID startDateTimePTID;
     private final UUID durationPTID;
@@ -178,11 +180,13 @@ public class ChronicleServiceImpl implements ChronicleService {
         fullNamePTID = edmApi.getPropertyTypeId( FULL_NAME_FQN.getNamespace(), FULL_NAME_FQN.getName() );
         recordTypePTID = edmApi.getPropertyTypeId( RECORD_TYPE_FQN.getNamespace(), RECORD_TYPE_FQN.getName() );
         startDateTimePTID = edmApi.getPropertyTypeId( START_DATE_TIME.getNamespace(), START_DATE_TIME.getName() );
+        completedDateTimePTID = edmApi
+                .getPropertyTypeId( COMPLETED_DATE_TIME_FQN.getNamespace(), COMPLETED_DATE_TIME_FQN.getName() );
+        valuesPTID = edmApi.getPropertyTypeId( VALUES_FQN.getNamespace(), VALUES_FQN.getName() );
         dataKey = edmApi.getEntityType( entitySetsApi.getEntitySet( dataESID ).getEntityTypeId() ).getKey();
 
         refreshStudyInformation();
         refreshUserAppsDictionary();
-
     }
 
     private UUID reserveEntityKeyId(
@@ -230,7 +234,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         }
 
         return entitySetsApi.getEntitySetId(
-                ChronicleServerUtil.getParticipantEntitySetName( studyId )
+                getParticipantEntitySetName( studyId )
         );
 
     }
@@ -756,6 +760,16 @@ public class ChronicleServiceImpl implements ChronicleService {
     }
 
     @Override
+    public void deleteParticipantAndAllNeighbors( UUID studyId, String participantId ) {
+        // to do
+    }
+
+    @Override
+    public void deleteStudyAndAllNeighbors( UUID studyId ) {
+        // to do
+    }
+
+    @Override
     public boolean isKnownParticipant( UUID studyId, String participantId ) {
         return studyParticipants.getOrDefault( studyId, new HashMap<>() ).containsKey( participantId );
     }
@@ -1094,7 +1108,7 @@ public class ChronicleServiceImpl implements ChronicleService {
              * 1. get the relevant EntitySets
              */
 
-            String participantEntitySetName = ChronicleServerUtil.getParticipantEntitySetName( studyId );
+            String participantEntitySetName = getParticipantEntitySetName( studyId );
             Map<String, EntitySet> entitySetsByName = entitySetsApi.getEntitySetsByName(
                     Set.of( participantEntitySetName, sourceEntitySetName, edgeEntitySetName )
             );
@@ -1183,7 +1197,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                                             propertyTypeIdsByFQN.get( entry.getKey() )
                                     );
                                     String propertyTitle = sourceMeta.get( propertyType.getId() ).getTitle();
-                                    if (propertyType.getDatatype() == EdmPrimitiveTypeKind.DateTimeOffset) {
+                                    if ( propertyType.getDatatype() == EdmPrimitiveTypeKind.DateTimeOffset ) {
                                         Set<Object> dateTimeValues = values
                                                 .stream()
                                                 .map( value -> {
@@ -1194,16 +1208,14 @@ public class ChronicleServiceImpl implements ChronicleService {
                                                                 .atZone( tz )
                                                                 .toOffsetDateTime()
                                                                 .toString();
-                                                    }
-                                                    catch ( Exception e) {
+                                                    } catch ( Exception e ) {
                                                         return null;
                                                     }
-                                                })
+                                                } )
                                                 .filter( StringUtils::isNotBlank )
                                                 .collect( Collectors.toSet() );
                                         cleanEntityData.put( APP_PREFIX + propertyTitle, dateTimeValues );
-                                    }
-                                    else {
+                                    } else {
                                         cleanEntityData.put( APP_PREFIX + propertyTitle, values );
                                     }
                                 } );
@@ -1285,7 +1297,7 @@ public class ChronicleServiceImpl implements ChronicleService {
             DataApi dataApi = apiClient.getDataApi();
             EntitySetsApi entitySetsApi = apiClient.getEntitySetsApi();
 
-            String entitySetName = ChronicleServerUtil.getParticipantEntitySetName( studyId );
+            String entitySetName = getParticipantEntitySetName( studyId );
             UUID entitySetId = entitySetsApi.getEntitySetId( entitySetName );
             if ( entitySetId == null ) {
                 logger.error( "Unable to load participant EntitySet id." );
@@ -1319,7 +1331,7 @@ public class ChronicleServiceImpl implements ChronicleService {
             return ParticipationStatus.UNKNOWN;
         }
 
-        String participantsEntitySetName = ChronicleServerUtil.getParticipantEntitySetName( studyId );
+        String participantsEntitySetName = getParticipantEntitySetName( studyId );
         UUID participantsEntitySetId = entitySetsApi.getEntitySetId( participantsEntitySetName );
         if ( participantsEntitySetId == null ) {
             logger.error( "unable to get the participants EntitySet id for studyId = {}", studyId );
@@ -1461,7 +1473,7 @@ public class ChronicleServiceImpl implements ChronicleService {
             logger.error( "unable to retrieve questionnaire: studyId = {}, questionnaire = {}",
                     studyId,
                     questionnaireEKID );
-            throw new RuntimeException( "questionnaire not found");
+            throw new RuntimeException( "questionnaire not found" );
         }
 
         /*
@@ -1469,5 +1481,128 @@ public class ChronicleServiceImpl implements ChronicleService {
          * the caller would get an "ok" response. Instead send an error response.
          */
         throw new IllegalArgumentException( "questionnaire not found" );
+    }
+
+    public Map<UUID, Map<FullQualifiedName, Set<Object>>> getActiveQuestionnaires( UUID studyId ) {
+        try {
+            logger.info( "Retrieving active questionnaires for study :{}", studyId );
+
+            // check if study is valid
+            UUID studyEntityKeyId = Preconditions
+                    .checkNotNull( getStudyEntityKeyId( studyId ), "invalid studyId: " + studyId );
+
+            // load apis
+            ApiClient apiClient = apiClientCache.get( ApiClient.class );
+            SearchApi searchApi = apiClient.getSearchApi();
+
+            // filtered search on questionnaires ES to get neighbors of study
+            Map<UUID, List<NeighborEntityDetails>> neighbors = searchApi
+                    .executeFilteredEntityNeighborSearch(
+                            studyESID,
+                            new EntityNeighborsFilter(
+                                    Set.of( studyEntityKeyId ),
+                                    java.util.Optional.of( Set.of( questionnaireESID ) ),
+                                    java.util.Optional.of( Set.of( studyESID ) ),
+                                    java.util.Optional.of( Set.of( partOfESID ) )
+                            )
+                    );
+            List<NeighborEntityDetails> studyQuestionnaires = neighbors.getOrDefault( studyEntityKeyId, List.of() );
+            logger.info( "Found {} questionnaires for study {}", studyQuestionnaires.size(), studyId );
+
+            // filter neighbors that have ol.active property set to false
+            Map<UUID, Map<FullQualifiedName, Set<Object>>> result = studyQuestionnaires
+                    .stream()
+                    .filter( neighbor -> neighbor.getNeighborDetails().orElseThrow()
+                            .getOrDefault( ACTIVE_FQN, Set.of( false ) )
+                            .iterator().next().equals( true ) )
+                    .collect( Collectors.toMap(
+                            neighbor -> neighbor.getNeighborId().orElseThrow(),
+                            neighbor -> neighbor.getNeighborDetails().get()
+                    ) );
+
+            logger.info( "found {} active questionnaires for study {}", result.size(), studyId );
+            return result;
+
+        } catch ( Exception e ) {
+            logger.error( "failed to get active questionnaires for study {}", studyId, e );
+            throw new RuntimeException( "failed to get active questionnaires" );
+        }
+    }
+
+    @Override
+    public void submitQuestionnaire(
+            UUID studyId,
+            String participantId,
+            Map<UUID, Map<FullQualifiedName, Set<Object>>> questionnaireResponses ) {
+        DataApi dataApi;
+        EntitySetsApi entitySetsApi;
+        try {
+            logger.info( "submitting questionnaire: studyId = {}, participantId = {}", studyId, participantId );
+
+            ApiClient apiClient = apiClientCache.get( ApiClient.class );
+            dataApi = apiClient.getDataApi();
+            entitySetsApi = apiClient.getEntitySetsApi();
+
+            UUID participantEKID = Preconditions
+                    .checkNotNull( getParticipantEntityKeyId( participantId, studyId ), "participant not found" );
+
+            String participantESName = getParticipantEntitySetName( studyId );
+            UUID participantESID = Preconditions
+                    .checkNotNull( entitySetsApi.getEntitySetId( participantESName ),
+                            "participant entity set does not exist" );
+
+            ListMultimap<UUID, Map<UUID, Set<Object>>> entities = ArrayListMultimap.create();
+            ListMultimap<UUID, DataAssociation> associations = ArrayListMultimap.create();
+
+            OffsetDateTime dateTime = OffsetDateTime.now();
+
+            List<UUID> questionEntityKeyIds = new ArrayList<>( questionnaireResponses.keySet() );
+            for ( int i = 0; i < questionEntityKeyIds.size(); i++ ) {
+                UUID questionEntityKeyId = questionEntityKeyIds.get( i );
+
+                Map<UUID, Set<Object>> answerEntity = ImmutableMap.of(
+                        valuesPTID,
+                        questionnaireResponses.get( questionEntityKeyId ).get( VALUES_FQN ) );
+                entities.put( answersESID, answerEntity );
+
+                // 1. create participant -> respondsWith -> answer association
+                Map<UUID, Set<Object>> respondsWithEntity = ImmutableMap.of(
+                        dateTimePTID,
+                        ImmutableSet.of( dateTime )
+                );
+                associations.put( respondsWithESID, new DataAssociation(
+                        participantESID,
+                        java.util.Optional.empty(),
+                        java.util.Optional.of( participantEKID ),
+                        answersESID,
+                        java.util.Optional.of( i ),
+                        java.util.Optional.empty(),
+                        respondsWithEntity
+                ) );
+
+                // 2. create answer -> addresses -> question association
+                Map<UUID, Set<Object>> addressesEntity = ImmutableMap.of(
+                        completedDateTimePTID,
+                        ImmutableSet.of( dateTime )
+                );
+                associations.put( addressesESID, new DataAssociation(
+                        answersESID,
+                        java.util.Optional.of( i ),
+                        java.util.Optional.empty(),
+                        questionsESID,
+                        java.util.Optional.empty(),
+                        java.util.Optional.of( questionEntityKeyId ),
+                        addressesEntity
+                ) );
+            }
+            DataGraph dataGraph = new DataGraph( entities, associations );
+            dataApi.createEntityAndAssociationData( dataGraph );
+
+            logger.info( "submitted questionnaire: studyId = {}, participantId = {}", studyId, participantId );
+        } catch ( Exception e ) {
+            String errorMsg = "an error occurred while attempting to submit questionnaire";
+            logger.error( errorMsg, e );
+            throw new RuntimeException( errorMsg );
+        }
     }
 }
