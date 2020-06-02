@@ -294,12 +294,11 @@ public class ChronicleStudyController implements ChronicleStudyApi {
             consumes = MediaType.APPLICATION_JSON_VALUE
     )
     @Override
-    public Boolean submitQuestionnaire(
+    public void submitQuestionnaire(
             @PathVariable (STUDY_ID) UUID studyId,
             @PathVariable (PARTICIPANT_ID) String participantId,
             @RequestBody  Map<UUID, Map<FullQualifiedName, Set<Object>>> questionnaireResponses ) {
-        // TODO implement this
-        return null;
+        chronicleService.submitQuestionnaire(studyId, participantId, questionnaireResponses);
     }
 
     @RequestMapping(
