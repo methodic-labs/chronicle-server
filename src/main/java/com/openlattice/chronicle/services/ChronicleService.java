@@ -52,9 +52,9 @@ public interface ChronicleService {
 
     boolean isKnownParticipant( UUID studyId, String participantId );
 
-    void deleteParticipantAndAllNeighbors( UUID studyId, String participantId, DeleteType deleteType, String token );
+    Void deleteParticipantAndAllNeighbors( UUID studyId, String participantId, DeleteType deleteType, String token );
 
-    void deleteStudyAndAllNeighbors( UUID studyId, DeleteType deleteType, String token );
+    Void deleteStudyAndAllNeighbors( UUID studyId, DeleteType deleteType, String token );
 
     Map<String, UUID> getPropertyTypeIds( Set<String> propertyTypeFqns );
 
