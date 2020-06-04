@@ -23,13 +23,9 @@ import com.auth0.spring.security.api.authentication.JwtAuthentication;
 import com.google.common.base.Optional;
 import com.openlattice.chronicle.ChronicleStudyApi;
 import com.openlattice.chronicle.constants.CustomMediaType;
-import com.openlattice.chronicle.data.ChronicleAppsUsageDetails;
-import com.openlattice.chronicle.data.ChronicleQuestionnaire;
-import com.openlattice.chronicle.data.FileType;
-import com.openlattice.chronicle.data.ParticipationStatus;
+import com.openlattice.chronicle.data.*;
 import com.openlattice.chronicle.services.ChronicleService;
 import com.openlattice.chronicle.sources.Datasource;
-import com.openlattice.data.DeleteType;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -333,12 +329,11 @@ public class ChronicleStudyController implements ChronicleStudyApi {
             consumes = MediaType.APPLICATION_JSON_VALUE
     )
     @Override
-    public Boolean submitQuestionnaire(
+    public void submitQuestionnaire(
             @PathVariable (STUDY_ID) UUID studyId,
             @PathVariable (PARTICIPANT_ID) String participantId,
             @RequestBody  Map<UUID, Map<FullQualifiedName, Set<Object>>> questionnaireResponses ) {
-        // TODO implement this
-        return null;
+        chronicleService.submitQuestionnaire(studyId, participantId, questionnaireResponses);
     }
 
 
