@@ -140,7 +140,7 @@ public class ChronicleStudyController implements ChronicleStudyApi {
             method = RequestMethod.DELETE,
             produces = MediaType.APPLICATION_JSON_VALUE
     )
-    public void deleteParticipantAndAllNeighbors(
+    public Void deleteParticipantAndAllNeighbors(
             @PathVariable( STUDY_ID ) UUID studyId,
             @PathVariable( PARTICIPANT_ID ) String participantId,
             @Query( TYPE )DeleteType deleteType
@@ -153,6 +153,7 @@ public class ChronicleStudyController implements ChronicleStudyApi {
         if ( authentication instanceof JwtAuthentication ) {
             String token = ( (JwtAuthentication) authentication ).getToken();
             chronicleService.deleteParticipantAndAllNeighbors( studyId, participantId, deleteType, token );
+            return null;
         }
         throw new InsufficientAuthenticationException( "request is not authenticated" );
     }
@@ -162,7 +163,7 @@ public class ChronicleStudyController implements ChronicleStudyApi {
             method = RequestMethod.DELETE,
             produces = MediaType.APPLICATION_JSON_VALUE
     )
-    public void deleteStudyAndAllNeighbors(
+    public Void deleteStudyAndAllNeighbors(
             @PathVariable( STUDY_ID ) UUID studyId,
             @Query( TYPE )DeleteType deleteType
             ) {
@@ -174,6 +175,7 @@ public class ChronicleStudyController implements ChronicleStudyApi {
         if ( authentication instanceof JwtAuthentication ) {
             String token = ( (JwtAuthentication) authentication ).getToken();
             chronicleService.deleteStudyAndAllNeighbors( studyId, deleteType, token );
+            return null;
         }
         throw new InsufficientAuthenticationException( "request is not authenticated" );
     }
