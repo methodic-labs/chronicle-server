@@ -1506,9 +1506,9 @@ public class ChronicleServiceImpl implements ChronicleService {
                                     java.util.Optional.of( Set.of( partOfESID ) )
                             )
                     );
-            List<NeighborEntityDetails> studyQuestionnaires = neighbors.getOrDefault( studyEntityKeyId, List.of() );
 
             // create a mapping from entity key id -> entity details
+            List<NeighborEntityDetails> studyQuestionnaires = neighbors.getOrDefault( studyEntityKeyId, List.of() );
             Map<UUID, Map<FullQualifiedName, Set<Object>>> result = studyQuestionnaires
                     .stream()
                     .filter( neighbor -> neighbor.getNeighborId().isPresent() && neighbor.getNeighborDetails().isPresent() )
