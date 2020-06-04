@@ -23,9 +23,9 @@ import com.google.common.base.Optional;
 import com.google.common.collect.SetMultimap;
 import com.openlattice.chronicle.data.ChronicleAppsUsageDetails;
 import com.openlattice.chronicle.data.ChronicleQuestionnaire;
+import com.openlattice.chronicle.data.DeleteType;
 import com.openlattice.chronicle.data.ParticipationStatus;
 import com.openlattice.chronicle.sources.Datasource;
-import com.openlattice.data.DeleteType;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
 
 import java.util.List;

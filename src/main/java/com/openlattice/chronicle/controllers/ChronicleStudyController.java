@@ -24,6 +24,7 @@ import com.google.common.base.Optional;
 import com.openlattice.chronicle.ChronicleStudyApi;
 import com.openlattice.chronicle.constants.CustomMediaType;
 import com.openlattice.chronicle.data.*;
+import com.openlattice.chronicle.data.DeleteType;
 import com.openlattice.chronicle.services.ChronicleService;
 import com.openlattice.chronicle.sources.Datasource;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
@@ -36,7 +37,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import retrofit2.http.Query;
-
 import javax.inject.Inject;
 import javax.servlet.http.HttpServletResponse;
 import java.time.LocalDate;
@@ -45,6 +45,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+
 
 /**
  * @author Matthew Tamayo-Rios &lt;matthew@openlattice.com&gt;
@@ -130,6 +131,7 @@ public class ChronicleStudyController implements ChronicleStudyApi {
         // TODO: Waiting on data model to exist, then ready to implement
         return chronicleService.isKnownParticipant( studyId, participantId );
     }
+
 
     @RequestMapping(
             path = STUDY_ID_PATH + PARTICIPANT_ID_PATH,

@@ -39,6 +39,7 @@ import com.openlattice.chronicle.sources.Datasource;
 import com.openlattice.client.ApiClient;
 import com.openlattice.client.RetrofitFactory;
 import com.openlattice.data.*;
+import com.openlattice.chronicle.data.DeleteType;
 import com.openlattice.data.requests.FileType;
 import com.openlattice.data.requests.NeighborEntityDetails;
 import com.openlattice.data.requests.NeighborEntityIds;
@@ -59,6 +60,8 @@ import org.apache.olingo.commons.api.edm.FullQualifiedName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
+
+import com.openlattice.chronicle.data.DeleteType;
 
 import javax.annotation.Nonnull;
 import java.time.LocalDate;
@@ -767,7 +770,7 @@ public class ChronicleServiceImpl implements ChronicleService {
     private Void deleteStudyData(
             UUID studyId,
             java.util.Optional<String> participantId,
-            DeleteType deleteType,
+            com.openlattice.data.DeleteType deleteType,
             String userToken ) {
         try {
             // load api for actions authenticated by the user
@@ -897,7 +900,8 @@ public class ChronicleServiceImpl implements ChronicleService {
             String participantId,
             DeleteType deleteType,
             String userToken ) {
-        deleteStudyData( studyId, java.util.Optional.of( participantId ), deleteType, userToken );
+        com.openlattice.data.DeleteType deleteTypeTransformed = com.openlattice.data.DeleteType.valueOf( deleteType.toString() );
+        deleteStudyData( studyId, java.util.Optional.of( participantId ), deleteTypeTransformed, userToken );
         logger.info( "Successfully removed a participant from " + studyId );
 
         return null;
@@ -905,7 +909,8 @@ public class ChronicleServiceImpl implements ChronicleService {
 
     @Override
     public Void deleteStudyAndAllNeighbors( UUID studyId, DeleteType deleteType, String userToken ) {
-        deleteStudyData( studyId, java.util.Optional.empty(), deleteType, userToken );
+        com.openlattice.data.DeleteType deleteTypeTransformed = com.openlattice.data.DeleteType.valueOf( deleteType.toString() );
+        deleteStudyData( studyId, java.util.Optional.empty(), deleteTypeTransformed, userToken );
         logger.info( "Successfully removed study " + studyId );
 
         return null;
@@ -915,6 +920,7 @@ public class ChronicleServiceImpl implements ChronicleService {
     public boolean isKnownParticipant( UUID studyId, String participantId ) {
         return studyParticipants.getOrDefault( studyId, new HashMap<>() ).containsKey( participantId );
     }
+
 
     @Override
     public Map<String, UUID> getPropertyTypeIds( Set<String> propertyTypeFqns ) {
