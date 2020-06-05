@@ -276,7 +276,7 @@ public class ChronicleStudyController implements ChronicleStudyApi {
     }
 
     @RequestMapping(
-            path = STUDY_ID_PATH + QUESTIONNAIRE +  ENTITY_KEY_ID_PATH,
+            path = STUDY_ID_PATH + QUESTIONNAIRE + ENTITY_KEY_ID_PATH,
             method = RequestMethod.GET,
             produces = MediaType.APPLICATION_JSON_VALUE
     )
@@ -285,32 +285,32 @@ public class ChronicleStudyController implements ChronicleStudyApi {
             @PathVariable( STUDY_ID ) UUID studyId,
             @PathVariable( ENTITY_KEY_ID ) UUID questionnaireEKID
     ) {
-        return chronicleService.getQuestionnaire(studyId, questionnaireEKID);
+        return chronicleService.getQuestionnaire( studyId, questionnaireEKID );
     }
 
     @RequestMapping(
-            path = STUDY_ID_PATH + PARTICIPANT_ID_PATH +  QUESTIONNAIRE,
+            path = STUDY_ID_PATH + PARTICIPANT_ID_PATH + QUESTIONNAIRE,
             method = RequestMethod.POST,
             consumes = MediaType.APPLICATION_JSON_VALUE
     )
     @Override
     public void submitQuestionnaire(
-            @PathVariable (STUDY_ID) UUID studyId,
-            @PathVariable (PARTICIPANT_ID) String participantId,
-            @RequestBody  Map<UUID, Map<FullQualifiedName, Set<Object>>> questionnaireResponses ) {
-        chronicleService.submitQuestionnaire(studyId, participantId, questionnaireResponses);
+            @PathVariable( STUDY_ID ) UUID studyId,
+            @PathVariable( PARTICIPANT_ID ) String participantId,
+            @RequestBody Map<UUID, Map<FullQualifiedName, Set<Object>>> questionnaireResponses ) {
+        chronicleService.submitQuestionnaire( studyId, participantId, questionnaireResponses );
     }
 
     @RequestMapping(
-            path = STUDY_ID_PATH  + QUESTIONNAIRES,
+            path = STUDY_ID_PATH + QUESTIONNAIRES,
             method = RequestMethod.GET,
             produces = MediaType.APPLICATION_JSON_VALUE
     )
     @Override
     public Map<UUID, Map<FullQualifiedName, Set<Object>>> getStudyQuestionnaires(
-            @PathVariable (STUDY_ID) UUID studyId
+            @PathVariable( STUDY_ID ) UUID studyId
     ) {
-        return chronicleService.getStudyQuestionnaires(studyId);
+        return chronicleService.getStudyQuestionnaires( studyId );
     }
 
     public Iterable<Map<String, Set<Object>>> getAllParticipantAppsUsageData(

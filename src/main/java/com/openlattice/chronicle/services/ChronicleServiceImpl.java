@@ -1511,7 +1511,8 @@ public class ChronicleServiceImpl implements ChronicleService {
             List<NeighborEntityDetails> studyQuestionnaires = neighbors.getOrDefault( studyEntityKeyId, List.of() );
             Map<UUID, Map<FullQualifiedName, Set<Object>>> result = studyQuestionnaires
                     .stream()
-                    .filter( neighbor -> neighbor.getNeighborId().isPresent() && neighbor.getNeighborDetails().isPresent() )
+                    .filter( neighbor -> neighbor.getNeighborId().isPresent() && neighbor.getNeighborDetails()
+                            .isPresent() )
                     .collect( Collectors.toMap(
                             neighbor -> neighbor.getNeighborId().get(),
                             neighbor -> neighbor.getNeighborDetails().get()
