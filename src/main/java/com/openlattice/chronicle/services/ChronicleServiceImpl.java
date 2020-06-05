@@ -892,7 +892,7 @@ public class ChronicleServiceImpl implements ChronicleService {
             String userToken ) {
         com.openlattice.data.DeleteType deleteTypeTransformed = com.openlattice.data.DeleteType.valueOf( deleteType.toString() );
         deleteStudyData( studyId, java.util.Optional.of( participantId ), deleteTypeTransformed, userToken );
-        logger.info( "Successfully removed a participant from " + studyId );
+        logger.info( "Successfully removed a participant from {}", studyId );
 
     return null;
     }
@@ -901,7 +901,7 @@ public class ChronicleServiceImpl implements ChronicleService {
     public Void deleteStudyAndAllNeighbors( UUID studyId, DeleteType deleteType, String userToken ) {
         com.openlattice.data.DeleteType deleteTypeTransformed = com.openlattice.data.DeleteType.valueOf( deleteType.toString() );
         deleteStudyData( studyId, java.util.Optional.empty(), deleteTypeTransformed, userToken );
-        logger.info( "Successfully removed study " + studyId );
+        logger.info( "Successfully removed study {}", studyId );
 
         return null;
     }
