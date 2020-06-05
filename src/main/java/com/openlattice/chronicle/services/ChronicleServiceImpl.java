@@ -148,6 +148,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                 .build( new CacheLoader<Class<?>, ApiClient>() {
                     @Override
                     public ApiClient load( Class<?> key ) throws Exception {
+
                         String jwtToken = MissionControl.getIdToken( username, password );
                         return new ApiClient ( () -> jwtToken );
                     }
@@ -767,7 +768,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                 && participantDevices.get( participantId ).containsKey( datasourceId );
     }
 
-    private Void deleteStudyData(
+    private void deleteStudyData(
             UUID studyId,
             java.util.Optional<String> participantId,
             com.openlattice.data.DeleteType deleteType,
@@ -798,14 +799,17 @@ public class ChronicleServiceImpl implements ChronicleService {
             if ( participantId.isPresent() ) {
                 // if participantId: add to set
                 UUID participantEntityKeyId = getParticipantEntityKeyId( participantId.get(), studyId );
+                if (participantEntityKeyId == null) {
+                    logger.error("unable to delete participant {}: participant does not exist.", participantId);
+                }
                 participantsToRemove.add( participantEntityKeyId );
             } else {
                 // if no participant Id: load all participants and add to set
                 chronicleDataApi
                         .loadEntitySetData( participantsEntitySetId, FileType.json,
                                 userToken ).forEach(
-                        k -> k.get( ID_FQN ).forEach(
-                                l -> participantsToRemove.add( UUID.fromString( l.toString() ) )
+                        entity -> entity.get( ID_FQN ).forEach(
+                                personId -> participantsToRemove.add( UUID.fromString( personId.toString() ) )
                         )
                 );
             }
@@ -819,7 +823,7 @@ public class ChronicleServiceImpl implements ChronicleService {
             participantsToRemove.forEach(
                     participantEntityKeyId -> {
                         // Get neighbors
-                        Map<UUID, Map<UUID, SetMultimap<UUID, NeighborEntityIds>>> studyNeighbors = userSearchApi
+                        Map<UUID, Map<UUID, SetMultimap<UUID, NeighborEntityIds>>> participantNeighbors = userSearchApi
                                 .executeFilteredEntityNeighborIdsSearch(
                                         participantsEntitySetId,
                                         new EntityNeighborsFilter(
@@ -830,7 +834,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                                         )
                                 );
 
-                        if ( studyNeighbors.size() == 0 ) {
+                        if ( participantNeighbors.size() == 0 ) {
                             logger.debug( "Attempt to remove participant without data." );
                         }
 
@@ -840,7 +844,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                         } );
 
                         // fill Map<entitySetId, Set<entityKeyId>>
-                        studyNeighbors
+                        participantNeighbors
                                 .get( participantEntityKeyId )
                                 .forEach( ( edgeEntitySetId, edgeNeighbor ) -> {
                                     edgeNeighbor.forEach( ( neighborEntitySetId, neighborEntityIds ) -> {
@@ -861,28 +865,16 @@ public class ChronicleServiceImpl implements ChronicleService {
 
             // delete participants
             Integer deleted = userDataApi.deleteEntities( participantsEntitySetId, participantsToRemove, deleteType );
-            logger.info("Deleted "+ deleted.toString() +" entities for participant "+participantId.toString() + ".");
+            logger.info("Deleted {} entities for participant {}.", deleted.toString(), participantId.toString());
 
             // delete study if no participantId is specified
             if ( participantId.isEmpty() ) {
                 // delete participant entity set
                 userEntitySetsApi.deleteEntitySet( participantsEntitySetId );
-                logger.info("Deleted participant dataset for study " + studyId +".");
-                List<Map<FullQualifiedName, Set<Object>>> studySearchResult = userSearchApi
-                        .executeEntitySetDataQuery( studyESID,
-                                new SearchTerm( studyId.toString(), 0, SearchApi.MAX_SEARCH_RESULTS,
-                                        java.util.Optional.of( false ) ) )
-                        .getHits();
-                if ( studySearchResult.size() != 1 ) {
-                    logger.error( "Tried to remove study " + studyId
-                            + "but couldn't find matching study in chronicle_study." );
-                }
-
-                // delete entity in chronicle_study
-                UUID studyEntityKeyId = UUID
-                        .fromString( studySearchResult.get( 0 ).get( ID_FQN ).iterator().next().toString() );
+                logger.info("Deleted participant dataset for study {}.", studyId);
+                UUID studyEntityKeyId = getStudyEntityKeyId( studyId );
                 userDataApi.deleteEntities( studyESID, Set.of( studyEntityKeyId ), deleteType );
-                logger.info("Deleted study " + studyId +" from global studies dataset.");
+                logger.info("Deleted study {} from global studies dataset.", studyId);
             }
 
         } catch ( Exception e ) {
@@ -890,8 +882,6 @@ public class ChronicleServiceImpl implements ChronicleService {
             logger.error( errorMsg, e );
             throw new RuntimeException( errorMsg );
         }
-
-        return null;
     }
 
     @Override
@@ -904,7 +894,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         deleteStudyData( studyId, java.util.Optional.of( participantId ), deleteTypeTransformed, userToken );
         logger.info( "Successfully removed a participant from " + studyId );
 
-        return null;
+    return null;
     }
 
     @Override

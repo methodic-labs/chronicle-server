@@ -7,9 +7,6 @@ import org.apache.olingo.commons.api.edm.FullQualifiedName;
  */
 public class EdmConstants {
 
-    private EdmConstants() {
-    }
-
     // entity set names
 
     public static final String ADDRESSES_ENTITY_SET_NAME         = "chronicle_addresses";
@@ -46,7 +43,6 @@ public class EdmConstants {
     public static final FullQualifiedName ACTIVE_FQN              = new FullQualifiedName( "ol.active" );
     public static final FullQualifiedName DATE_LOGGED_FQN         =  new FullQualifiedName( "ol.datelogged" );
     public static final FullQualifiedName DATE_TIME_FQN           = new FullQualifiedName( "ol.datetime" );
-    public static final FullQualifiedName DATETIME_FQN            = new FullQualifiedName( "ol.datetime" );
     public static final FullQualifiedName DURATION_FQN            = new FullQualifiedName( "general.Duration" );
     public static final FullQualifiedName FULL_NAME_FQN           = new FullQualifiedName( "general.fullname" );
     public static final FullQualifiedName GENERAL_ID_FQN          = new FullQualifiedName( "general.stringid" );

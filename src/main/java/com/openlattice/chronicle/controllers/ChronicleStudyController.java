@@ -24,19 +24,19 @@ import com.google.common.base.Optional;
 import com.openlattice.chronicle.ChronicleStudyApi;
 import com.openlattice.chronicle.constants.CustomMediaType;
 import com.openlattice.chronicle.data.*;
-import com.openlattice.chronicle.data.DeleteType;
 import com.openlattice.chronicle.services.ChronicleService;
 import com.openlattice.chronicle.sources.Datasource;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.InsufficientAuthenticationException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
-import retrofit2.http.Query;
+
 import javax.inject.Inject;
 import javax.servlet.http.HttpServletResponse;
 import java.time.LocalDate;
@@ -45,7 +45,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-
 
 /**
  * @author Matthew Tamayo-Rios &lt;matthew@openlattice.com&gt;
@@ -132,50 +131,51 @@ public class ChronicleStudyController implements ChronicleStudyApi {
         return chronicleService.isKnownParticipant( studyId, participantId );
     }
 
-
     @RequestMapping(
             path = STUDY_ID_PATH + PARTICIPANT_ID_PATH,
-            method = RequestMethod.DELETE,
-            produces = MediaType.APPLICATION_JSON_VALUE
+            method = RequestMethod.DELETE
     )
+    @Override
     public Void deleteParticipantAndAllNeighbors(
             @PathVariable( STUDY_ID ) UUID studyId,
             @PathVariable( PARTICIPANT_ID ) String participantId,
-            @Query( TYPE )DeleteType deleteType
-            ) {
-
-        if (deleteType == null)
+            @RequestParam( TYPE ) DeleteType deleteType
+    ) {
+        if ( deleteType == null )
             deleteType = DeleteType.Soft;
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if ( authentication instanceof JwtAuthentication ) {
             String token = ( (JwtAuthentication) authentication ).getToken();
             chronicleService.deleteParticipantAndAllNeighbors( studyId, participantId, deleteType, token );
-            return null;
+        } else {
+            throw new InsufficientAuthenticationException( "request is not authenticated" );
         }
-        throw new InsufficientAuthenticationException( "request is not authenticated" );
+
+        return null;
     }
 
     @RequestMapping(
             path = STUDY_ID_PATH,
-            method = RequestMethod.DELETE,
-            produces = MediaType.APPLICATION_JSON_VALUE
+            method = RequestMethod.DELETE
     )
+    @ResponseStatus( HttpStatus.OK )
     public Void deleteStudyAndAllNeighbors(
             @PathVariable( STUDY_ID ) UUID studyId,
-            @Query( TYPE )DeleteType deleteType
-            ) {
+            @RequestParam( TYPE ) DeleteType deleteType
+    ) {
 
-        if (deleteType == null)
+        if ( deleteType == null )
             deleteType = DeleteType.Soft;
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if ( authentication instanceof JwtAuthentication ) {
             String token = ( (JwtAuthentication) authentication ).getToken();
             chronicleService.deleteStudyAndAllNeighbors( studyId, deleteType, token );
-            return null;
+        } else {
+            throw new InsufficientAuthenticationException( "request is not authenticated" );
         }
-        throw new InsufficientAuthenticationException( "request is not authenticated" );
+        return null;
     }
 
     @RequestMapping(
@@ -313,7 +313,7 @@ public class ChronicleStudyController implements ChronicleStudyApi {
     }
 
     @RequestMapping(
-            path = STUDY_ID_PATH + QUESTIONNAIRE +  ENTITY_KEY_ID_PATH,
+            path = STUDY_ID_PATH + QUESTIONNAIRE + ENTITY_KEY_ID_PATH,
             method = RequestMethod.GET,
             produces = MediaType.APPLICATION_JSON_VALUE
     )
@@ -322,33 +322,32 @@ public class ChronicleStudyController implements ChronicleStudyApi {
             @PathVariable( STUDY_ID ) UUID studyId,
             @PathVariable( ENTITY_KEY_ID ) UUID questionnaireEKID
     ) {
-        return chronicleService.getQuestionnaire(studyId, questionnaireEKID);
+        return chronicleService.getQuestionnaire( studyId, questionnaireEKID );
     }
 
     @RequestMapping(
-            path = STUDY_ID_PATH + PARTICIPANT_ID_PATH +  QUESTIONNAIRE,
+            path = STUDY_ID_PATH + PARTICIPANT_ID_PATH + QUESTIONNAIRE,
             method = RequestMethod.POST,
             consumes = MediaType.APPLICATION_JSON_VALUE
     )
     @Override
     public void submitQuestionnaire(
-            @PathVariable (STUDY_ID) UUID studyId,
-            @PathVariable (PARTICIPANT_ID) String participantId,
-            @RequestBody  Map<UUID, Map<FullQualifiedName, Set<Object>>> questionnaireResponses ) {
-        chronicleService.submitQuestionnaire(studyId, participantId, questionnaireResponses);
+            @PathVariable( STUDY_ID ) UUID studyId,
+            @PathVariable( PARTICIPANT_ID ) String participantId,
+            @RequestBody Map<UUID, Map<FullQualifiedName, Set<Object>>> questionnaireResponses ) {
+        chronicleService.submitQuestionnaire( studyId, participantId, questionnaireResponses );
     }
 
-
     @RequestMapping(
-            path = STUDY_ID_PATH  + QUESTIONNAIRES + ACTIVE,
+            path = STUDY_ID_PATH + QUESTIONNAIRES + ACTIVE,
             method = RequestMethod.GET,
             produces = MediaType.APPLICATION_JSON_VALUE
     )
     @Override
     public Map<UUID, Map<FullQualifiedName, Set<Object>>> getActiveQuestionnaires(
-            @PathVariable (STUDY_ID) UUID studyId
+            @PathVariable( STUDY_ID ) UUID studyId
     ) {
-        return chronicleService.getActiveQuestionnaires(studyId);
+        return chronicleService.getActiveQuestionnaires( studyId );
     }
 
     public Iterable<Map<String, Set<Object>>> getAllParticipantAppsUsageData(
