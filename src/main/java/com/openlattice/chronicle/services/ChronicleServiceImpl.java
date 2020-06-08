@@ -1483,9 +1483,9 @@ public class ChronicleServiceImpl implements ChronicleService {
         throw new IllegalArgumentException( "questionnaire not found" );
     }
 
-    public Map<UUID, Map<FullQualifiedName, Set<Object>>> getActiveQuestionnaires( UUID studyId ) {
+    public Map<UUID, Map<FullQualifiedName, Set<Object>>> getStudyQuestionnaires( UUID studyId ) {
         try {
-            logger.info( "Retrieving active questionnaires for study :{}", studyId );
+            logger.info( "Retrieving questionnaires for study :{}", studyId );
 
             // check if study is valid
             UUID studyEntityKeyId = Preconditions
@@ -1506,26 +1506,24 @@ public class ChronicleServiceImpl implements ChronicleService {
                                     java.util.Optional.of( Set.of( partOfESID ) )
                             )
                     );
-            List<NeighborEntityDetails> studyQuestionnaires = neighbors.getOrDefault( studyEntityKeyId, List.of() );
-            logger.info( "Found {} questionnaires for study {}", studyQuestionnaires.size(), studyId );
 
-            // filter neighbors that have ol.active property set to false
+            // create a mapping from entity key id -> entity details
+            List<NeighborEntityDetails> studyQuestionnaires = neighbors.getOrDefault( studyEntityKeyId, List.of() );
             Map<UUID, Map<FullQualifiedName, Set<Object>>> result = studyQuestionnaires
                     .stream()
-                    .filter( neighbor -> neighbor.getNeighborDetails().orElseThrow()
-                            .getOrDefault( ACTIVE_FQN, Set.of( false ) )
-                            .iterator().next().equals( true ) )
+                    .filter( neighbor -> neighbor.getNeighborId().isPresent() && neighbor.getNeighborDetails()
+                            .isPresent() )
                     .collect( Collectors.toMap(
-                            neighbor -> neighbor.getNeighborId().orElseThrow(),
+                            neighbor -> neighbor.getNeighborId().get(),
                             neighbor -> neighbor.getNeighborDetails().get()
                     ) );
 
-            logger.info( "found {} active questionnaires for study {}", result.size(), studyId );
+            logger.info( "found {} questionnaires for study {}", result.size(), studyId );
             return result;
 
         } catch ( Exception e ) {
-            logger.error( "failed to get active questionnaires for study {}", studyId, e );
-            throw new RuntimeException( "failed to get active questionnaires" );
+            logger.error( "failed to get questionnaires for study {}", studyId, e );
+            throw new RuntimeException( "failed to get questionnaires" );
         }
     }
 

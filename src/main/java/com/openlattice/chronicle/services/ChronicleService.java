@@ -90,7 +90,7 @@ public interface ChronicleService {
 
     ChronicleQuestionnaire getQuestionnaire( UUID studyId, UUID questionnaireEKID );
 
-    Map<UUID, Map<FullQualifiedName, Set<Object>>> getActiveQuestionnaires( UUID studyId );
+    Map<UUID, Map<FullQualifiedName, Set<Object>>> getStudyQuestionnaires( UUID studyId );
     
     void submitQuestionnaire( UUID studyId, String participantId, Map<UUID, Map<FullQualifiedName, Set<Object>>> questionnaireResponses );
 }
