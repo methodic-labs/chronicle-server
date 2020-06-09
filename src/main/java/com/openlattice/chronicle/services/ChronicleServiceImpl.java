@@ -33,13 +33,12 @@ import com.openlattice.chronicle.configuration.ChronicleConfiguration;
 import com.openlattice.chronicle.constants.RecordType;
 import com.openlattice.chronicle.data.ChronicleAppsUsageDetails;
 import com.openlattice.chronicle.data.ChronicleQuestionnaire;
+import com.openlattice.chronicle.data.DeleteType;
 import com.openlattice.chronicle.data.ParticipationStatus;
 import com.openlattice.chronicle.sources.AndroidDevice;
 import com.openlattice.chronicle.sources.Datasource;
 import com.openlattice.client.ApiClient;
-import com.openlattice.client.RetrofitFactory;
 import com.openlattice.data.*;
-import com.openlattice.chronicle.data.DeleteType;
 import com.openlattice.data.requests.FileType;
 import com.openlattice.data.requests.NeighborEntityDetails;
 import com.openlattice.data.requests.NeighborEntityIds;
@@ -92,7 +91,6 @@ public class ChronicleServiceImpl implements ChronicleService {
 
     private final Map<String, String> userAppsDict                  = Collections.synchronizedMap( new HashMap<>() );
     private final Set<UUID>           notificationEnabledStudyEKIDs = new HashSet<>();
-
 
     private final String username;
     private final String password;
@@ -148,7 +146,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                     public ApiClient load( Class<?> key ) throws Exception {
 
                         String jwtToken = MissionControl.getIdToken( username, password );
-                        return new ApiClient ( () -> jwtToken );
+                        return new ApiClient( () -> jwtToken );
                     }
                 } );
 
@@ -184,7 +182,8 @@ public class ChronicleServiceImpl implements ChronicleService {
         titlePTID = edmApi.getPropertyTypeId( TITLE_FQN.getNamespace(), TITLE_FQN.getName() );
         fullNamePTID = edmApi.getPropertyTypeId( FULL_NAME_FQN.getNamespace(), FULL_NAME_FQN.getName() );
         recordTypePTID = edmApi.getPropertyTypeId( RECORD_TYPE_FQN.getNamespace(), RECORD_TYPE_FQN.getName() );
-        startDateTimePTID = edmApi.getPropertyTypeId( START_DATE_TIME_FQN.getNamespace(), START_DATE_TIME_FQN.getName() );
+        startDateTimePTID = edmApi
+                .getPropertyTypeId( START_DATE_TIME_FQN.getNamespace(), START_DATE_TIME_FQN.getName() );
         completedDateTimePTID = edmApi
                 .getPropertyTypeId( COMPLETED_DATE_TIME_FQN.getNamespace(), COMPLETED_DATE_TIME_FQN.getName() );
         valuesPTID = edmApi.getPropertyTypeId( VALUES_FQN.getNamespace(), VALUES_FQN.getName() );
@@ -773,8 +772,7 @@ public class ChronicleServiceImpl implements ChronicleService {
             String userToken ) {
         try {
             // load api for actions authenticated by the user
-            ApiClient userApiClient = new ApiClient( () -> userToken
-            );
+            ApiClient userApiClient = new ApiClient( () -> userToken );
             SearchApi userSearchApi = userApiClient.getSearchApi();
             EntitySetsApi userEntitySetsApi = userApiClient.getEntitySetsApi();
             DataApi userDataApi = userApiClient.getDataApi();
@@ -797,8 +795,8 @@ public class ChronicleServiceImpl implements ChronicleService {
             if ( participantId.isPresent() ) {
                 // if participantId: add to set
                 UUID participantEntityKeyId = getParticipantEntityKeyId( participantId.get(), studyId );
-                if (participantEntityKeyId == null) {
-                    logger.error("unable to delete participant {}: participant does not exist.", participantId);
+                if ( participantEntityKeyId == null ) {
+                    logger.error( "unable to delete participant {}: participant does not exist.", participantId );
                 }
                 participantsToRemove.add( participantEntityKeyId );
             } else {
@@ -863,16 +861,16 @@ public class ChronicleServiceImpl implements ChronicleService {
 
             // delete participants
             Integer deleted = userDataApi.deleteEntities( participantsEntitySetId, participantsToRemove, deleteType );
-            logger.info("Deleted {} entities for participant {}.", deleted.toString(), participantId.toString());
+            logger.info( "Deleted {} entities for participant {}.", deleted.toString(), participantId.toString() );
 
             // delete study if no participantId is specified
             if ( participantId.isEmpty() ) {
                 // delete participant entity set
                 userEntitySetsApi.deleteEntitySet( participantsEntitySetId );
-                logger.info("Deleted participant dataset for study {}.", studyId);
+                logger.info( "Deleted participant dataset for study {}.", studyId );
                 UUID studyEntityKeyId = getStudyEntityKeyId( studyId );
                 userDataApi.deleteEntities( studyESID, Set.of( studyEntityKeyId ), deleteType );
-                logger.info("Deleted study {} from global studies dataset.", studyId);
+                logger.info( "Deleted study {} from global studies dataset.", studyId );
             }
 
         } catch ( Exception e ) {
@@ -888,14 +886,16 @@ public class ChronicleServiceImpl implements ChronicleService {
             String participantId,
             DeleteType deleteType,
             String userToken ) {
-        com.openlattice.data.DeleteType deleteTypeTransformed = com.openlattice.data.DeleteType.valueOf( deleteType.toString() );
+        com.openlattice.data.DeleteType deleteTypeTransformed = com.openlattice.data.DeleteType
+                .valueOf( deleteType.toString() );
         deleteStudyData( studyId, java.util.Optional.of( participantId ), deleteTypeTransformed, userToken );
         logger.info( "Successfully removed a participant from {}", studyId );
     }
 
     @Override
     public void deleteStudyAndAllNeighbors( UUID studyId, DeleteType deleteType, String userToken ) {
-        com.openlattice.data.DeleteType deleteTypeTransformed = com.openlattice.data.DeleteType.valueOf( deleteType.toString() );
+        com.openlattice.data.DeleteType deleteTypeTransformed = com.openlattice.data.DeleteType
+                .valueOf( deleteType.toString() );
         deleteStudyData( studyId, java.util.Optional.empty(), deleteTypeTransformed, userToken );
         logger.info( "Successfully removed study {}", studyId );
     }
@@ -904,7 +904,6 @@ public class ChronicleServiceImpl implements ChronicleService {
     public boolean isKnownParticipant( UUID studyId, String participantId ) {
         return studyParticipants.getOrDefault( studyId, new HashMap<>() ).containsKey( participantId );
     }
-
 
     @Override
     public Map<String, UUID> getPropertyTypeIds( Set<String> propertyTypeFqns ) {
