@@ -41,7 +41,8 @@ public class ChronicleServerSecurityPod extends Auth0SecurityPod {
         //TODO: Lock these down
         http.authorizeRequests()
                 .antMatchers( HttpMethod.OPTIONS ).permitAll()
-                .antMatchers( HttpMethod.POST, "/chronicle/data/study/participant" ).permitAll();
+                .antMatchers( HttpMethod.POST, "/chronicle/data/study/participant" ).permitAll()
+                .antMatchers ( "/chronicle/data/authenticated/**" ).authenticated();
     }
 
 }

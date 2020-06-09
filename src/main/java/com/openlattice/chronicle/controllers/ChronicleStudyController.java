@@ -31,7 +31,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.authentication.InsufficientAuthenticationException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -212,12 +211,9 @@ public class ChronicleStudyController implements ChronicleStudyApi {
             FileType fileType ) {
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if ( authentication instanceof JwtAuthentication ) {
-            String token = ( (JwtAuthentication) authentication ).getToken();
-            return chronicleService.getAllPreprocessedParticipantData( studyId, participantEntityKeyId, token );
-        }
+        String token = ( (JwtAuthentication) authentication ).getToken();
+        return chronicleService.getAllPreprocessedParticipantData( studyId, participantEntityKeyId, token );
 
-        throw new InsufficientAuthenticationException( "request is not authenticated" );
     }
 
     @RequestMapping(
@@ -246,12 +242,8 @@ public class ChronicleStudyController implements ChronicleStudyApi {
             FileType fileType ) {
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if ( authentication instanceof JwtAuthentication ) {
-            String token = ( (JwtAuthentication) authentication ).getToken();
-            return chronicleService.getAllParticipantData( studyId, participantEntityKeyId, token );
-        }
-
-        throw new InsufficientAuthenticationException( "request is not authenticated" );
+        String token = ( (JwtAuthentication) authentication ).getToken();
+        return chronicleService.getAllParticipantData( studyId, participantEntityKeyId, token );
     }
 
     @RequestMapping(
@@ -319,12 +311,9 @@ public class ChronicleStudyController implements ChronicleStudyApi {
             FileType fileType ) {
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if ( authentication instanceof JwtAuthentication ) {
-            String token = ( (JwtAuthentication) authentication ).getToken();
-            return chronicleService.getAllParticipantAppsUsageData( studyId, participantEntityKeyId, token );
-        }
+        String token = ( (JwtAuthentication) authentication ).getToken();
+        return chronicleService.getAllParticipantAppsUsageData( studyId, participantEntityKeyId, token );
 
-        throw new InsufficientAuthenticationException( "request is not authenticated" );
     }
 
     private String getParticipantDataFileName( String fileNamePrefix, UUID studyId, UUID participantEntityKeyId ) {
