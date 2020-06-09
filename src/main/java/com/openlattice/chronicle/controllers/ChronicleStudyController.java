@@ -185,7 +185,7 @@ public class ChronicleStudyController implements ChronicleStudyApi {
     }
 
     @RequestMapping(
-            path = PARTICIPANT_PATH + DATA_PATH + AUTHENTICATED + STUDY_ID_PATH + ENTITY_KEY_ID_PATH + PREPROCESSED_PATH,
+            path = AUTHENTICATED + PARTICIPANT_PATH + DATA_PATH + STUDY_ID_PATH + ENTITY_KEY_ID_PATH + PREPROCESSED_PATH,
             method = RequestMethod.GET,
             produces = { MediaType.APPLICATION_JSON_VALUE, CustomMediaType.TEXT_CSV_VALUE }
     )
@@ -217,7 +217,7 @@ public class ChronicleStudyController implements ChronicleStudyApi {
     }
 
     @RequestMapping(
-            path = PARTICIPANT_PATH + DATA_PATH + AUTHENTICATED + STUDY_ID_PATH + ENTITY_KEY_ID_PATH,
+            path = AUTHENTICATED + PARTICIPANT_PATH + DATA_PATH + STUDY_ID_PATH + ENTITY_KEY_ID_PATH,
             method = RequestMethod.GET,
             produces = { MediaType.APPLICATION_JSON_VALUE, CustomMediaType.TEXT_CSV_VALUE }
     )
@@ -247,7 +247,7 @@ public class ChronicleStudyController implements ChronicleStudyApi {
     }
 
     @RequestMapping(
-            path = PARTICIPANT_PATH + DATA_PATH + AUTHENTICATED + STUDY_ID_PATH + ENTITY_KEY_ID_PATH + USAGE_PATH,
+            path = AUTHENTICATED + PARTICIPANT_PATH + DATA_PATH + STUDY_ID_PATH + ENTITY_KEY_ID_PATH + USAGE_PATH,
             method = RequestMethod.GET,
             produces = { MediaType.APPLICATION_JSON_VALUE, CustomMediaType.TEXT_CSV_VALUE }
     )
