@@ -893,8 +893,6 @@ public class ChronicleServiceImpl implements ChronicleService {
         com.openlattice.data.DeleteType deleteTypeTransformed = com.openlattice.data.DeleteType.valueOf( deleteType.toString() );
         deleteStudyData( studyId, java.util.Optional.of( participantId ), deleteTypeTransformed, userToken );
         logger.info( "Successfully removed a participant from {}", studyId );
-
-    return null;
     }
 
     @Override
@@ -902,8 +900,6 @@ public class ChronicleServiceImpl implements ChronicleService {
         com.openlattice.data.DeleteType deleteTypeTransformed = com.openlattice.data.DeleteType.valueOf( deleteType.toString() );
         deleteStudyData( studyId, java.util.Optional.empty(), deleteTypeTransformed, userToken );
         logger.info( "Successfully removed study {}", studyId );
-
-        return null;
     }
 
     @Override
