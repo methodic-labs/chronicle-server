@@ -868,7 +868,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                 userEntitySetsApi.deleteEntitySet( participantsEntitySetId );
                 logger.info( "Deleted participant dataset for study {}.", studyId );
                 UUID studyEntityKeyId = getStudyEntityKeyId( studyId );
-                userDataApi.deleteEntities( studyESID, Set.of( studyEntityKeyId ), deleteType );
+                userDataApi.deleteEntities( studyESID, ImmutableSet.of( studyEntityKeyId ), deleteType );
                 logger.info( "Deleted study {} from global studies dataset.", studyId );
             }
 
