@@ -129,12 +129,20 @@ public class ChronicleStudyController implements ChronicleStudyApi {
         return chronicleService.isKnownParticipant( studyId, participantId );
     }
 
+    @RequestMapping(
+    path = AUTHENTICATED + STUDY_ID_PATH + PARTICIPANT_ID_PATH,
+    method = RequestMethod.DELETE
+    )
     @Override
     public void deleteParticipantAndAllNeighbors(
             UUID studyId, String participantId, DeleteType deleteType ) {
         // TODO implement this
     }
 
+    @RequestMapping(
+            path = AUTHENTICATED + STUDY_ID_PATH,
+            method = RequestMethod.DELETE
+    )
     @Override
     public void deleteStudyAndAllNeighbors( UUID studyId, DeleteType deleteType ) {
         // TODO implement this
