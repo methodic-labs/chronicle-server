@@ -787,7 +787,7 @@ public class ChronicleServiceImpl implements ChronicleService {
             String participantsEntitySetName = getParticipantEntitySetName( studyId );
             UUID participantsEntitySetId = userEntitySetsApi.getEntitySetId( participantsEntitySetName );
             if ( participantsEntitySetId == null ) {
-                logger.error( "unable to get the participants EntitySet id for studyId = {}", studyId );
+                throw new Exception( "unable to get the participants EntitySet id for studyId " + studyId );
             }
 
             // get a set of all participants to remove:
@@ -796,16 +796,15 @@ public class ChronicleServiceImpl implements ChronicleService {
                 // if participantId: add to set
                 UUID participantEntityKeyId = getParticipantEntityKeyId( participantId.get(), studyId );
                 if ( participantEntityKeyId == null ) {
-                    logger.error( "unable to delete participant {}: participant does not exist.", participantId );
+                    throw new Exception( "unable to delete participant " + participantId + ": participant does not exist." );
                 }
                 participantsToRemove.add( participantEntityKeyId );
             } else {
                 // if no participant Id: load all participants and add to set
                 chronicleDataApi
-                        .loadEntitySetData( participantsEntitySetId, FileType.json,
-                                userToken ).forEach(
-                        entity -> entity.get( ID_FQN ).forEach(
-                                personId -> participantsToRemove.add( UUID.fromString( personId.toString() ) )
+                        .loadEntitySetData( participantsEntitySetId, FileType.json, userToken )
+                        .forEach( entity -> entity.get( ID_FQN ).forEach( personId ->
+                                participantsToRemove.add( UUID.fromString( personId.toString() ) )
                         )
                 );
             }
