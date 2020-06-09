@@ -141,9 +141,6 @@ public class ChronicleStudyController implements ChronicleStudyApi {
             @PathVariable( PARTICIPANT_ID ) String participantId,
             @RequestParam( TYPE ) DeleteType deleteType
     ) {
-        if ( deleteType == null )
-            deleteType = DeleteType.Soft;
-
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if ( authentication instanceof JwtAuthentication ) {
             String token = ( (JwtAuthentication) authentication ).getToken();
