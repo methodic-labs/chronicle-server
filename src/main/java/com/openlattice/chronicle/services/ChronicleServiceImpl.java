@@ -885,7 +885,7 @@ public class ChronicleServiceImpl implements ChronicleService {
     }
 
     @Override
-    public Void deleteParticipantAndAllNeighbors(
+    public void deleteParticipantAndAllNeighbors(
             UUID studyId,
             String participantId,
             DeleteType deleteType,
@@ -898,7 +898,7 @@ public class ChronicleServiceImpl implements ChronicleService {
     }
 
     @Override
-    public Void deleteStudyAndAllNeighbors( UUID studyId, DeleteType deleteType, String userToken ) {
+    public void deleteStudyAndAllNeighbors( UUID studyId, DeleteType deleteType, String userToken ) {
         com.openlattice.data.DeleteType deleteTypeTransformed = com.openlattice.data.DeleteType.valueOf( deleteType.toString() );
         deleteStudyData( studyId, java.util.Optional.empty(), deleteTypeTransformed, userToken );
         logger.info( "Successfully removed study {}", studyId );
