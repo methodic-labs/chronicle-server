@@ -339,15 +339,15 @@ public class ChronicleStudyController implements ChronicleStudyApi {
     }
 
     @RequestMapping(
-            path = STUDY_ID_PATH + QUESTIONNAIRES + ACTIVE,
+            path = STUDY_ID_PATH + QUESTIONNAIRES,
             method = RequestMethod.GET,
             produces = MediaType.APPLICATION_JSON_VALUE
     )
     @Override
-    public Map<UUID, Map<FullQualifiedName, Set<Object>>> getActiveQuestionnaires(
+    public Map<UUID, Map<FullQualifiedName, Set<Object>>> getStudyQuestionnaires(
             @PathVariable( STUDY_ID ) UUID studyId
     ) {
-        return chronicleService.getActiveQuestionnaires( studyId );
+        return chronicleService.getStudyQuestionnaires( studyId );
     }
 
     public Iterable<Map<String, Set<Object>>> getAllParticipantAppsUsageData(
