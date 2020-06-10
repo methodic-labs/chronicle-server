@@ -94,8 +94,8 @@ public class ChronicleServiceImpl implements ChronicleService {
     private final ImmutableMap<String, UUID>            entitySetIdMap;
     private final ImmutableMap<FullQualifiedName, UUID> propertyTypeIdsByFQN;
 
-    private final String                                username;
-    private final String                                password;
+    private final String username;
+    private final String password;
 
     private transient LoadingCache<Class<?>, ApiClient> apiClientCache = null;
 
@@ -1475,7 +1475,8 @@ public class ChronicleServiceImpl implements ChronicleService {
                             entitySetIdMap.get( STUDY_ENTITY_SET_NAME ),
                             new EntityNeighborsFilter(
                                     Set.of( studyEntityKeyId ),
-                                    java.util.Optional.of( Set.of( entitySetIdMap.get( QUESTIONNAIRE_ENTITY_SET_NAME ) ) ),
+                                    java.util.Optional
+                                            .of( Set.of( entitySetIdMap.get( QUESTIONNAIRE_ENTITY_SET_NAME ) ) ),
                                     java.util.Optional.of( Set.of( entitySetIdMap.get( STUDY_ENTITY_SET_NAME ) ) ),
                                     java.util.Optional.of( Set.of( entitySetIdMap.get( PART_OF_ENTITY_SET_NAME ) ) )
                             )
