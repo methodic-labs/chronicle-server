@@ -130,8 +130,8 @@ public class ChronicleStudyController implements ChronicleStudyApi {
     }
 
     @RequestMapping(
-    path = AUTHENTICATED + STUDY_ID_PATH + PARTICIPANT_ID_PATH,
-    method = RequestMethod.DELETE
+            path = AUTHENTICATED + STUDY_ID_PATH + PARTICIPANT_ID_PATH,
+            method = RequestMethod.DELETE
     )
     @Override
     public void deleteParticipantAndAllNeighbors(
@@ -193,7 +193,8 @@ public class ChronicleStudyController implements ChronicleStudyApi {
     }
 
     @RequestMapping(
-            path = AUTHENTICATED + PARTICIPANT_PATH + DATA_PATH + STUDY_ID_PATH + ENTITY_KEY_ID_PATH + PREPROCESSED_PATH,
+            path = AUTHENTICATED + PARTICIPANT_PATH + DATA_PATH + STUDY_ID_PATH + ENTITY_KEY_ID_PATH
+                    + PREPROCESSED_PATH,
             method = RequestMethod.GET,
             produces = { MediaType.APPLICATION_JSON_VALUE, CustomMediaType.TEXT_CSV_VALUE }
     )
