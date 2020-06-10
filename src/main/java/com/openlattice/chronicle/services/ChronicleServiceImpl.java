@@ -1472,12 +1472,12 @@ public class ChronicleServiceImpl implements ChronicleService {
             // filtered search on questionnaires ES to get neighbors of study
             Map<UUID, List<NeighborEntityDetails>> neighbors = searchApi
                     .executeFilteredEntityNeighborSearch(
-                            studyESID,
+                            entitySetIdMap.get( STUDY_ENTITY_SET_NAME ),
                             new EntityNeighborsFilter(
                                     Set.of( studyEntityKeyId ),
-                                    java.util.Optional.of( Set.of( questionnaireESID ) ),
-                                    java.util.Optional.of( Set.of( studyESID ) ),
-                                    java.util.Optional.of( Set.of( partOfESID ) )
+                                    java.util.Optional.of( Set.of( entitySetIdMap.get( QUESTIONNAIRE_ENTITY_SET_NAME ) ) ),
+                                    java.util.Optional.of( Set.of( entitySetIdMap.get( STUDY_ENTITY_SET_NAME ) ) ),
+                                    java.util.Optional.of( Set.of( entitySetIdMap.get( PART_OF_ENTITY_SET_NAME ) ) )
                             )
                     );
 
@@ -1533,20 +1533,20 @@ public class ChronicleServiceImpl implements ChronicleService {
                 UUID questionEntityKeyId = questionEntityKeyIds.get( i );
 
                 Map<UUID, Set<Object>> answerEntity = ImmutableMap.of(
-                        valuesPTID,
+                        propertyTypeIdsByFQN.get( VALUES_FQN ),
                         questionnaireResponses.get( questionEntityKeyId ).get( VALUES_FQN ) );
-                entities.put( answersESID, answerEntity );
+                entities.put( entitySetIdMap.get( ANSWERS_ENTITY_SET_NAME ), answerEntity );
 
                 // 1. create participant -> respondsWith -> answer association
                 Map<UUID, Set<Object>> respondsWithEntity = ImmutableMap.of(
-                        dateTimePTID,
+                        propertyTypeIdsByFQN.get( DATE_TIME_FQN ),
                         ImmutableSet.of( dateTime )
                 );
-                associations.put( respondsWithESID, new DataAssociation(
+                associations.put( entitySetIdMap.get( RESPONDS_WITH_ENTITY_SET_NAME ), new DataAssociation(
                         participantESID,
                         java.util.Optional.empty(),
                         java.util.Optional.of( participantEKID ),
-                        answersESID,
+                        entitySetIdMap.get( ANSWERS_ENTITY_SET_NAME ),
                         java.util.Optional.of( i ),
                         java.util.Optional.empty(),
                         respondsWithEntity
@@ -1554,14 +1554,14 @@ public class ChronicleServiceImpl implements ChronicleService {
 
                 // 2. create answer -> addresses -> question association
                 Map<UUID, Set<Object>> addressesEntity = ImmutableMap.of(
-                        completedDateTimePTID,
+                        propertyTypeIdsByFQN.get( COMPLETED_DATE_TIME_FQN ),
                         ImmutableSet.of( dateTime )
                 );
-                associations.put( addressesESID, new DataAssociation(
-                        answersESID,
+                associations.put( entitySetIdMap.get( ADDRESSES_ENTITY_SET_NAME ), new DataAssociation(
+                        entitySetIdMap.get( ANSWERS_ENTITY_SET_NAME ),
                         java.util.Optional.of( i ),
                         java.util.Optional.empty(),
-                        questionsESID,
+                        entitySetIdMap.get( QUESTIONS_ENTITY_SET_NAME ),
                         java.util.Optional.empty(),
                         java.util.Optional.of( questionEntityKeyId ),
                         addressesEntity
