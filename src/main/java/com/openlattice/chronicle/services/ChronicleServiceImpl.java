@@ -21,7 +21,6 @@ package com.openlattice.chronicle.services;
 
 import com.auth0.exception.Auth0Exception;
 import com.dataloom.streams.StreamUtil;
-import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
@@ -421,21 +420,21 @@ public class ChronicleServiceImpl implements ChronicleService {
 
             associations.put( recordedByESID, new DataAssociation(
                     dataESID,
-                    java.util.Optional.of( i ),
-                    java.util.Optional.empty(),
+                    Optional.of( i ),
+                    Optional.empty(),
                     deviceESID,
-                    java.util.Optional.empty(),
-                    java.util.Optional.of( deviceEntityKeyId ),
+                    Optional.empty(),
+                    Optional.of( deviceEntityKeyId ),
                     recordedByEntity
             ) );
 
             associations.put( recordedByESID, new DataAssociation(
                     dataESID,
-                    java.util.Optional.of( i ),
-                    java.util.Optional.empty(),
+                    Optional.of( i ),
+                    Optional.empty(),
                     participantEntitySetId,
-                    java.util.Optional.empty(),
-                    java.util.Optional.of( participantEntityKeyId ),
+                    Optional.empty(),
+                    Optional.of( participantEntityKeyId ),
                     recordedByEntity
             ) );
 
@@ -549,9 +548,9 @@ public class ChronicleServiceImpl implements ChronicleService {
                 participantEntitySetId,
                 new EntityNeighborsFilter(
                         ImmutableSet.of( participantEntityKeyId ),
-                        java.util.Optional.of( ImmutableSet.of( userAppsESID ) ),
-                        java.util.Optional.of( ImmutableSet.of( participantEntitySetId ) ),
-                        java.util.Optional.of( ImmutableSet.of( usedByESID ) )
+                        Optional.of( ImmutableSet.of( userAppsESID ) ),
+                        Optional.of( ImmutableSet.of( participantEntitySetId ) ),
+                        Optional.of( ImmutableSet.of( usedByESID ) )
                 )
         );
 
@@ -638,7 +637,7 @@ public class ChronicleServiceImpl implements ChronicleService {
             UUID studyId,
             String participantId,
             String datasourceId,
-            Optional<Datasource> datasource ) {
+            com.google.common.base.Optional<Datasource> datasource ) {
 
         //  previous logic already verified the participant and that the device is not already connected.
         //  add the device and associate to the participant and to the study
@@ -813,9 +812,9 @@ public class ChronicleServiceImpl implements ChronicleService {
                         studyESID,
                         new EntityNeighborsFilter(
                                 studyEntityKeyIds,
-                                java.util.Optional.of( ImmutableSet.of( notificationsESID ) ),
-                                java.util.Optional.of( ImmutableSet.of( studyESID ) ),
-                                java.util.Optional.of( ImmutableSet.of( partOfESID ) )
+                                Optional.of( ImmutableSet.of( notificationsESID ) ),
+                                Optional.of( ImmutableSet.of( studyESID ) ),
+                                Optional.of( ImmutableSet.of( partOfESID ) )
                         )
                 );
 
@@ -958,9 +957,9 @@ public class ChronicleServiceImpl implements ChronicleService {
                 studyESID,
                 new EntityNeighborsFilter(
                         studyEntityKeyIds,
-                        java.util.Optional.of( participantEntitySetIds ),
-                        java.util.Optional.of( ImmutableSet.of() ),
-                        java.util.Optional.of( ImmutableSet.of( participatedInESID ) )
+                        Optional.of( participantEntitySetIds ),
+                        Optional.of( ImmutableSet.of() ),
+                        Optional.of( ImmutableSet.of( participatedInESID ) )
                 )
         );
 
@@ -987,9 +986,9 @@ public class ChronicleServiceImpl implements ChronicleService {
                 .putAll( searchApi
                         .executeFilteredEntityNeighborSearch( entry.getKey(),
                                 new EntityNeighborsFilter( Sets.newHashSet( entry.getValue() ),
-                                        java.util.Optional.of( ImmutableSet.of( deviceESID ) ),
-                                        java.util.Optional.of( ImmutableSet.of() ),
-                                        java.util.Optional.empty() ) ) ) );
+                                        Optional.of( ImmutableSet.of( deviceESID ) ),
+                                        Optional.of( ImmutableSet.of() ),
+                                        Optional.empty() ) ) ) );
 
         // get studies with notifications enabled
         Set<UUID> notificationEnabledStudyEKIDs = getNotificationEnabledStudies( studySearchResult, searchApi );
@@ -1160,9 +1159,9 @@ public class ChronicleServiceImpl implements ChronicleService {
                     participantsES.getId(),
                     new EntityNeighborsFilter(
                             Set.of( participantEntityKeyId ),
-                            java.util.Optional.of( ImmutableSet.of( sourceES.getId() ) ),
-                            java.util.Optional.of( ImmutableSet.of( participantsES.getId() ) ),
-                            java.util.Optional.of( ImmutableSet.of( edgeES.getId() ) )
+                            Optional.of( ImmutableSet.of( sourceES.getId() ) ),
+                            Optional.of( ImmutableSet.of( participantsES.getId() ) ),
+                            Optional.of( ImmutableSet.of( edgeES.getId() ) )
                     )
             );
 
@@ -1348,9 +1347,9 @@ public class ChronicleServiceImpl implements ChronicleService {
                 participantsEntitySetId,
                 new EntityNeighborsFilter(
                         ImmutableSet.of( participantEntityKeyId ),
-                        java.util.Optional.of( ImmutableSet.of() ),
-                        java.util.Optional.of( ImmutableSet.of( studyESID ) ),
-                        java.util.Optional.of( ImmutableSet.of( participatedInESID ) )
+                        Optional.of( ImmutableSet.of() ),
+                        Optional.of( ImmutableSet.of( studyESID ) ),
+                        Optional.of( ImmutableSet.of( participatedInESID ) )
                 )
         );
 
@@ -1410,9 +1409,9 @@ public class ChronicleServiceImpl implements ChronicleService {
                     studyESID,
                     new EntityNeighborsFilter(
                             Set.of( studyEKID ),
-                            java.util.Optional.of( Set.of( questionnaireESID ) ),
-                            java.util.Optional.of( Set.of( studyESID ) ),
-                            java.util.Optional.of( Set.of( partOfESID ) )
+                            Optional.of( Set.of( questionnaireESID ) ),
+                            Optional.of( Set.of( studyESID ) ),
+                            Optional.of( Set.of( partOfESID ) )
                     )
             );
 
@@ -1446,9 +1445,9 @@ public class ChronicleServiceImpl implements ChronicleService {
                         questionnaireESID,
                         new EntityNeighborsFilter(
                                 Set.of( questionnaireEKID ),
-                                java.util.Optional.of( Set.of( questionsESID ) ),
-                                java.util.Optional.of( Set.of( questionnaireESID ) ),
-                                java.util.Optional.of( Set.of( partOfESID ) )
+                                Optional.of( Set.of( questionsESID ) ),
+                                Optional.of( Set.of( questionnaireESID ) ),
+                                Optional.of( Set.of( partOfESID ) )
                         )
                 );
 
@@ -1501,9 +1500,9 @@ public class ChronicleServiceImpl implements ChronicleService {
                             studyESID,
                             new EntityNeighborsFilter(
                                     Set.of( studyEntityKeyId ),
-                                    java.util.Optional.of( Set.of( questionnaireESID ) ),
-                                    java.util.Optional.of( Set.of( studyESID ) ),
-                                    java.util.Optional.of( Set.of( partOfESID ) )
+                                    Optional.of( Set.of( questionnaireESID ) ),
+                                    Optional.of( Set.of( studyESID ) ),
+                                    Optional.of( Set.of( partOfESID ) )
                             )
                     );
 
@@ -1570,11 +1569,11 @@ public class ChronicleServiceImpl implements ChronicleService {
                 );
                 associations.put( respondsWithESID, new DataAssociation(
                         participantESID,
-                        java.util.Optional.empty(),
-                        java.util.Optional.of( participantEKID ),
+                        Optional.empty(),
+                        Optional.of( participantEKID ),
                         answersESID,
-                        java.util.Optional.of( i ),
-                        java.util.Optional.empty(),
+                        Optional.of( i ),
+                        Optional.empty(),
                         respondsWithEntity
                 ) );
 
@@ -1585,11 +1584,11 @@ public class ChronicleServiceImpl implements ChronicleService {
                 );
                 associations.put( addressesESID, new DataAssociation(
                         answersESID,
-                        java.util.Optional.of( i ),
-                        java.util.Optional.empty(),
+                        Optional.of( i ),
+                        Optional.empty(),
                         questionsESID,
-                        java.util.Optional.empty(),
-                        java.util.Optional.of( questionEntityKeyId ),
+                        Optional.empty(),
+                        Optional.of( questionEntityKeyId ),
                         addressesEntity
                 ) );
             }
