@@ -192,7 +192,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         timezonePTID = edmApi.getPropertyTypeId( TIMEZONE_FQN.getNamespace(), TIMEZONE_FQN.getName() );
         recordTypePTID = edmApi.getPropertyTypeId( RECORD_TYPE_FQN.getNamespace(), RECORD_TYPE_FQN.getName() );
         startDateTimePTID = edmApi.getPropertyTypeId( START_DATE_TIME.getNamespace(), START_DATE_TIME.getName() );
-        endDateTimePTID = edmApi.getPropertyTypeId( END_DATE_TIME.getNamespace(), END_DATE_TIME.getName() );
+        endDateTimePTID = edmApi.getPropertyTypeId( END_DATE_TIME_FQN.getNamespace(), END_DATE_TIME_FQN.getName() );
         recordedDateTimePTID = edmApi
                 .getPropertyTypeId( RECORDED_DATE_TIME_FQN.getNamespace(), RECORDED_DATE_TIME_FQN.getName() );
         completedDateTimePTID = edmApi

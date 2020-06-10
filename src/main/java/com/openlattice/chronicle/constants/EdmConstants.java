@@ -60,5 +60,6 @@ public class EdmConstants {
     public static final FullQualifiedName VALUES_FQN              = new FullQualifiedName( "ol.values" );
     public static final FullQualifiedName COMPLETED_DATE_TIME_FQN = new FullQualifiedName( "date.completeddatetime" );
     public static final FullQualifiedName ACTIVE_FQN              = new FullQualifiedName( "ol.active" );
-    public static final FullQualifiedName RECORDED_DATE_TIME_FQN = new FullQualifiedName( "ol.recordeddate" );
+    public static final FullQualifiedName RECORDED_DATE_TIME_FQN  = new FullQualifiedName( "ol.recordeddate" );
+    public static final FullQualifiedName END_DATE_TIME_FQN       = new FullQualifiedName( "ol.datetimeend" );
 }
