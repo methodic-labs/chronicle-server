@@ -843,8 +843,8 @@ public class ChronicleServiceImpl implements ChronicleService {
                                 .get( participantEntityKeyId )
                                 .forEach( ( edgeEntitySetId, edgeNeighbor ) -> {
                                     edgeNeighbor.forEach( ( neighborEntitySetId, neighborEntityIds ) -> {
-                                        Set<UUID> set = toDeleteEntitySetIdEntityKeyId.get( neighborEntitySetId );
-                                        set.add( neighborEntityIds.getNeighborEntityKeyId() );
+                                        toDeleteEntitySetIdEntityKeyId.get( neighborEntitySetId )
+                                            .add( neighborEntityIds.getNeighborEntityKeyId() );
                                     } );
                                 } );
                     }
@@ -860,7 +860,7 @@ public class ChronicleServiceImpl implements ChronicleService {
 
             // delete participants
             Integer deleted = userDataApi.deleteEntities( participantsEntitySetId, participantsToRemove, deleteType );
-            logger.info( "Deleted {} entities for participant {}.", deleted.toString(), participantId.toString() );
+            logger.info( "Deleted {} entities for participant {}.", deleted, participantId );
 
             // delete study if no participantId is specified
             if ( participantId.isEmpty() ) {
