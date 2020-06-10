@@ -23,10 +23,7 @@ import com.auth0.spring.security.api.authentication.JwtAuthentication;
 import com.google.common.base.Optional;
 import com.openlattice.chronicle.ChronicleStudyApi;
 import com.openlattice.chronicle.constants.CustomMediaType;
-import com.openlattice.chronicle.data.ChronicleAppsUsageDetails;
-import com.openlattice.chronicle.data.ChronicleQuestionnaire;
-import com.openlattice.chronicle.data.FileType;
-import com.openlattice.chronicle.data.ParticipationStatus;
+import com.openlattice.chronicle.data.*;
 import com.openlattice.chronicle.services.ChronicleService;
 import com.openlattice.chronicle.sources.Datasource;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
@@ -131,6 +128,17 @@ public class ChronicleStudyController implements ChronicleStudyApi {
         //  DataApi.getEntity(entitySetId :UUID, entityKeyId :UUID)
         // TODO: Waiting on data model to exist, then ready to implement
         return chronicleService.isKnownParticipant( studyId, participantId );
+    }
+
+    @Override
+    public void deleteParticipantAndAllNeighbors(
+            UUID studyId, String participantId, DeleteType deleteType ) {
+        // TODO implement this
+    }
+
+    @Override
+    public void deleteStudyAndAllNeighbors( UUID studyId, DeleteType deleteType ) {
+        // TODO implement this
     }
 
     @RequestMapping(
@@ -268,7 +276,7 @@ public class ChronicleStudyController implements ChronicleStudyApi {
     }
 
     @RequestMapping(
-            path = STUDY_ID_PATH + QUESTIONNAIRE +  ENTITY_KEY_ID_PATH,
+            path = STUDY_ID_PATH + QUESTIONNAIRE + ENTITY_KEY_ID_PATH,
             method = RequestMethod.GET,
             produces = MediaType.APPLICATION_JSON_VALUE
     )
@@ -277,21 +285,32 @@ public class ChronicleStudyController implements ChronicleStudyApi {
             @PathVariable( STUDY_ID ) UUID studyId,
             @PathVariable( ENTITY_KEY_ID ) UUID questionnaireEKID
     ) {
-        return chronicleService.getQuestionnaire(studyId, questionnaireEKID);
+        return chronicleService.getQuestionnaire( studyId, questionnaireEKID );
     }
 
     @RequestMapping(
-            path = STUDY_ID_PATH + PARTICIPANT_ID_PATH +  QUESTIONNAIRE,
+            path = STUDY_ID_PATH + PARTICIPANT_ID_PATH + QUESTIONNAIRE,
             method = RequestMethod.POST,
             consumes = MediaType.APPLICATION_JSON_VALUE
     )
     @Override
-    public Boolean submitQuestionnaire(
-            @PathVariable (STUDY_ID) UUID studyId,
-            @PathVariable (PARTICIPANT_ID) String participantId,
-            @RequestBody  Map<UUID, Map<FullQualifiedName, Set<Object>>> questionnaireResponses ) {
-        // TODO implement this
-        return null;
+    public void submitQuestionnaire(
+            @PathVariable( STUDY_ID ) UUID studyId,
+            @PathVariable( PARTICIPANT_ID ) String participantId,
+            @RequestBody Map<UUID, Map<FullQualifiedName, Set<Object>>> questionnaireResponses ) {
+        chronicleService.submitQuestionnaire( studyId, participantId, questionnaireResponses );
+    }
+
+    @RequestMapping(
+            path = STUDY_ID_PATH + QUESTIONNAIRES,
+            method = RequestMethod.GET,
+            produces = MediaType.APPLICATION_JSON_VALUE
+    )
+    @Override
+    public Map<UUID, Map<FullQualifiedName, Set<Object>>> getStudyQuestionnaires(
+            @PathVariable( STUDY_ID ) UUID studyId
+    ) {
+        return chronicleService.getStudyQuestionnaires( studyId );
     }
 
     public Iterable<Map<String, Set<Object>>> getAllParticipantAppsUsageData(
