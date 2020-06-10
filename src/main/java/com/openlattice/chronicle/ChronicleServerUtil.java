@@ -29,17 +29,14 @@ import org.apache.olingo.server.api.uri.UriInfoResource;
 import org.apache.olingo.server.api.uri.UriParameter;
 import org.apache.olingo.server.api.uri.UriResource;
 import org.apache.olingo.server.api.uri.UriResourceEntitySet;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 
-import static com.openlattice.chronicle.constants.EdmConstants.*;
+import static com.openlattice.chronicle.constants.EdmConstants.PARTICIPANTS_PREFIX;
 
 public final class ChronicleServerUtil {
-    private static final Logger logger = LoggerFactory.getLogger( ChronicleServer.class );
 
     private ChronicleServerUtil() {
     }
