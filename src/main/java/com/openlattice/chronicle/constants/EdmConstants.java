@@ -12,24 +12,24 @@ public class EdmConstants {
     }
 
     // entity set names
-    public static final String STUDY_ENTITY_SET_NAME             = "chronicle_study";
-    public static final String METADATA_ENTITY_SET_NAME          = "chronicle_metadata";
-    public static final String DEVICES_ENTITY_SET_NAME           = "chronicle_device";
-    public static final String DATA_ENTITY_SET_NAME              = "chronicle_app_data";
-    public static final String PREPROCESSED_DATA_ENTITY_SET_NAME = "chronicle_preprocessed_app_data";
-    public static final String RECORDED_BY_ENTITY_SET_NAME       = "chronicle_recorded_by";
+    public static final String ADDRESSES_ENTITY_SET_NAME         = "chronicle_addresses";
+    public static final String ANSWERS_ENTITY_SET_NAME           = "chronicle_answers";
     public static final String CHRONICLE_USER_APPS               = "chronicle_user_apps";
-    public static final String USED_BY_ENTITY_SET_NAME           = "chronicle_used_by";
+    public static final String DATA_ENTITY_SET_NAME              = "chronicle_app_data";
+    public static final String DEVICES_ENTITY_SET_NAME           = "chronicle_device";
     public static final String HAS_ENTITY_SET_NAME               = "chronicle_has";
-    public static final String PARTICIPATED_IN_AESN              = "chronicle_participated_in";
+    public static final String METADATA_ENTITY_SET_NAME          = "chronicle_metadata";
+    public static final String NOTIFICATION_ENTITY_SET_NAME      = "chronicle_notifications";
     public static final String PARTICIPANTS_PREFIX               = "chronicle_participants_";
+    public static final String PARTICIPATED_IN_AESN              = "chronicle_participated_in";
+    public static final String PART_OF_ENTITY_SET_NAME           = "chronicle_partof";
+    public static final String PREPROCESSED_DATA_ENTITY_SET_NAME = "chronicle_preprocessed_app_data";
     public static final String QUESTIONNAIRE_ENTITY_SET_NAME     = "chronicle_questionnaires";
     public static final String QUESTIONS_ENTITY_SET_NAME         = "chronicle_questions";
-    public static final String ANSWERS_ENTITY_SET_NAME           = "chronicle_answers";
+    public static final String RECORDED_BY_ENTITY_SET_NAME       = "chronicle_recorded_by";
     public static final String RESPONDS_WITH_ENTITY_SET_NAME     = "chronicle_respondswith";
-    public static final String ADDRESSES_ENTITY_SET_NAME         = "chronicle_addresses";
-    public static final String NOTIFICATION_ENTITY_SET_NAME      = "chronicle_notifications";
-    public static final String PART_OF_ENTITY_SET_NAME           = "chronicle_partof";
+    public static final String STUDY_ENTITY_SET_NAME             = "chronicle_study";
+    public static final String USED_BY_ENTITY_SET_NAME           = "chronicle_used_by";
     public static final String USER_APPS_DICTIONARY              = "chronicle_application_dictionary";
 
     public static final ImmutableSet<String> ENTITY_SET_NAMES = ImmutableSet.of(
@@ -38,9 +38,12 @@ public class EdmConstants {
             CHRONICLE_USER_APPS,
             DATA_ENTITY_SET_NAME,
             DEVICES_ENTITY_SET_NAME,
+            HAS_ENTITY_SET_NAME,
+            METADATA_ENTITY_SET_NAME,
             NOTIFICATION_ENTITY_SET_NAME,
             PARTICIPATED_IN_AESN,
             PART_OF_ENTITY_SET_NAME,
+            PREPROCESSED_DATA_ENTITY_SET_NAME,
             QUESTIONNAIRE_ENTITY_SET_NAME,
             QUESTIONS_ENTITY_SET_NAME,
             RECORDED_BY_ENTITY_SET_NAME,
