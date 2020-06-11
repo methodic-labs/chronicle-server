@@ -64,7 +64,9 @@ import javax.annotation.Nonnull;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -280,6 +282,30 @@ public class ChronicleServiceImpl implements ChronicleService {
         );
     }
 
+    private UUID reserveMetadataEntityKeyId(
+            Map<UUID, Set<Object>> entityData,
+            DataIntegrationApi dataIntegrationApi ) {
+
+        return reserveEntityKeyId(
+                entitySetIdMap.get( METADATA_ENTITY_SET_NAME ),
+                ImmutableList.of( propertyTypeIdsByFQN.get( OL_ID_FQN ) ),
+                entityData,
+                dataIntegrationApi
+        );
+    }
+
+    private UUID reserveHasEntityKeyId(
+            Map<UUID, Set<Object>> entityData,
+            DataIntegrationApi dataIntegrationApi ) {
+
+        return reserveEntityKeyId(
+                entitySetIdMap.get( HAS_ENTITY_SET_NAME ),
+                ImmutableList.of( propertyTypeIdsByFQN.get( OL_ID_FQN ) ),
+                entityData,
+                dataIntegrationApi
+        );
+    }
+
     private void createUserAppsEntitiesAndAssociations(
             DataApi dataApi,
             DataIntegrationApi dataIntegrationApi,
@@ -374,6 +400,87 @@ public class ChronicleServiceImpl implements ChronicleService {
         }
 
         logger.info( "Uploaded user apps entries: size = {}, participantId = {}", numAppsUploaded, participantId );
+    }
+
+    private void updateParticipantMetadata(
+            DataApi dataApi,
+            DataIntegrationApi dataIntegrationApi,
+            List<SetMultimap<UUID, Object>> data,
+            UUID participantEntitySetId,
+            UUID participantEntityKeyId,
+            String participantId ) {
+
+        /*
+         * Creates or adds to an existing metadata entity, with general statistics (at this moment mostly datetimes)
+         * about the data collection.
+         */
+
+        Set<OffsetDateTime> pushedDateTimes = new HashSet<>();
+
+        data.forEach(
+                entity -> {
+                    // most date properties in the entity are of length 1
+                    for ( Object date : entity.get( propertyTypeIdsByFQN.get( DATE_LOGGED_FQN ) ) ) {
+                        OffsetDateTime parsedDateTime = OffsetDateTime
+                                .parse( date.toString() );
+
+                        // filter out problematic entities with dates in the sixties
+                        if ( parsedDateTime.isAfter( MINIMUM_DATE ) ) {
+                            pushedDateTimes.add( parsedDateTime );
+                        }
+                    }
+                }
+        );
+
+        String firstDateTime = pushedDateTimes
+                .stream()
+                .min( OffsetDateTime::compareTo )
+                .orElse( null )
+                .toString();
+
+        String lastDateTime = pushedDateTimes
+                .stream()
+                .max( OffsetDateTime::compareTo )
+                .orElse( null )
+                .toString();
+
+        Set<Object> uniqueDates = pushedDateTimes
+                .stream()
+                .map( dt -> dt
+                        .truncatedTo( ChronoUnit.DAYS )
+                        .format( DateTimeFormatter.ISO_DATE_TIME ) )
+                .collect( Collectors.toSet() );
+
+        Map<UUID, Set<Object>> metadataEntityData = new HashMap<>();
+        metadataEntityData.put( propertyTypeIdsByFQN.get( OL_ID_FQN ), Set.of( participantEntityKeyId ) );
+        UUID metadataEntityKeyId = reserveMetadataEntityKeyId( metadataEntityData, dataIntegrationApi );
+
+        Map<FullQualifiedName, Set<Object>> entity = dataApi
+                .getEntity( entitySetIdMap.get( METADATA_ENTITY_SET_NAME ), metadataEntityKeyId );
+        metadataEntityData.put( propertyTypeIdsByFQN.get( START_DATE_TIME_FQN ),
+                entity.getOrDefault( propertyTypeIdsByFQN.get( START_DATE_TIME_FQN ), Set.of( firstDateTime ) ) );
+        metadataEntityData.put( propertyTypeIdsByFQN.get( END_DATE_TIME_FQN ), Set.of( lastDateTime ) );
+        uniqueDates.addAll( entity.getOrDefault( RECORDED_DATE_TIME_FQN, Set.of() ) );
+        metadataEntityData.put( propertyTypeIdsByFQN.get( RECORDED_DATE_TIME_FQN ), uniqueDates );
+
+        dataApi.updateEntitiesInEntitySet( entitySetIdMap.get( METADATA_ENTITY_SET_NAME ),
+                ImmutableMap.of( metadataEntityKeyId, metadataEntityData ),
+                UpdateType.PartialReplace );
+
+        Map<UUID, Set<Object>> hasEntityData = new HashMap<>();
+        hasEntityData.put( propertyTypeIdsByFQN.get( OL_ID_FQN ), Set.of( firstDateTime ) );
+        UUID hasEntityKeyId = reserveHasEntityKeyId( metadataEntityData, dataIntegrationApi );
+        dataApi.updateEntitiesInEntitySet( entitySetIdMap.get( HAS_ENTITY_SET_NAME ),
+                ImmutableMap.of( hasEntityKeyId, hasEntityData ),
+                UpdateType.PartialReplace );
+
+        EntityDataKey dst = new EntityDataKey( entitySetIdMap.get( METADATA_ENTITY_SET_NAME ), metadataEntityKeyId );
+        EntityDataKey edge = new EntityDataKey( entitySetIdMap.get( HAS_ENTITY_SET_NAME ), hasEntityKeyId );
+        EntityDataKey src = new EntityDataKey( participantEntitySetId, participantEntityKeyId );
+        DataEdgeKey dataEdgeKey = new DataEdgeKey( src, dst, edge );
+        dataApi.createEdges( Set.of( dataEdgeKey ) );
+
+        logger.info( "Uploaded user metadata entries: participantId = {}", participantId );
     }
 
     private void createAppDataEntitiesAndAssociations(
@@ -606,7 +713,12 @@ public class ChronicleServiceImpl implements ChronicleService {
                 participantId,
                 participantEntityKeyId,
                 participantEntitySetId );
-
+        updateParticipantMetadata( dataApi,
+                dataIntegrationApi,
+                data,
+                participantEntitySetId,
+                participantEntityKeyId,
+                participantId );
         //  TODO:s Make sure to return any errors??? Currently void method.
         return data.size();
     }
