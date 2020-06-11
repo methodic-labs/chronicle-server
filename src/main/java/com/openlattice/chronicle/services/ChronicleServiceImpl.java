@@ -906,6 +906,11 @@ public class ChronicleServiceImpl implements ChronicleService {
             Set<UUID> dstNeighborSetIds = ImmutableSet.of( entitySetIdMap.get( ANSWERS_ENTITY_SET_NAME ) );
             Map<UUID, Set<UUID>> toDeleteEntitySetIdEntityKeyId = new HashMap<>();
 
+            // create a key for all entity sets
+            Sets.union( srcNeighborSetIds, dstNeighborSetIds ).forEach( entitySetId -> {
+                toDeleteEntitySetIdEntityKeyId.put( entitySetId, new HashSet<>() );
+            } );
+
             participantsToRemove.forEach(
                     participantEntityKeyId -> {
                         // Get neighbors
@@ -924,14 +929,9 @@ public class ChronicleServiceImpl implements ChronicleService {
                             logger.debug( "Attempt to remove participant without data." );
                         }
 
-                        // create a key for all entity sets
-                        Sets.union( srcNeighborSetIds, dstNeighborSetIds ).forEach( entitySetId -> {
-                            toDeleteEntitySetIdEntityKeyId.put( entitySetId, new HashSet<>() );
-                        } );
-
                         // fill Map<entitySetId, Set<entityKeyId>>
                         participantNeighbors
-                                .get( participantEntityKeyId )
+                                .getOrDefault( participantEntityKeyId, Map.of() )
                                 .forEach( ( edgeEntitySetId, edgeNeighbor ) -> {
                                     edgeNeighbor.forEach( ( neighborEntitySetId, neighborEntityIds ) -> {
                                         toDeleteEntitySetIdEntityKeyId.get( neighborEntitySetId )
