@@ -62,7 +62,7 @@ public class EdmConstants {
     public static final FullQualifiedName PERSON_ID_FQN           = new FullQualifiedName( "nc.SubjectIdentification" );
     public static final FullQualifiedName RECORDED_DATE_TIME_FQN  = new FullQualifiedName( "ol.recordeddate" );
     public static final FullQualifiedName RECORD_TYPE_FQN         = new FullQualifiedName( "ol.recordtype" );
-    public static final FullQualifiedName START_DATE_TIME_FQN     = new FullQualifiedName( "ol.startdatetime" );
+    public static final FullQualifiedName START_DATE_TIME_FQN     = new FullQualifiedName( "ol.datetimestart" );
     public static final FullQualifiedName STATUS_FQN              = new FullQualifiedName( "ol.status" );
     public static final FullQualifiedName STRING_ID_FQN           = new FullQualifiedName( "general.stringid" );
     public static final FullQualifiedName TIMEZONE_FQN            = new FullQualifiedName( "ol.timezone" );
