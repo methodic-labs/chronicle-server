@@ -57,7 +57,7 @@ public class EdmConstants {
     public static final FullQualifiedName COMPLETED_DATE_TIME_FQN = new FullQualifiedName( "date.completeddatetime" );
     public static final FullQualifiedName DATE_LOGGED_FQN         = new FullQualifiedName( "ol.datelogged" );
     public static final FullQualifiedName DATE_TIME_FQN           = new FullQualifiedName( "ol.datetime" );
-    public static final FullQualifiedName DURATION_FQN            = new FullQualifiedName( "ol.duration" );
+    public static final FullQualifiedName DURATION_FQN            = new FullQualifiedName( "general.Duration" );
     public static final FullQualifiedName END_DATE_TIME_FQN       = new FullQualifiedName( "ol.datetimeend" );
     public static final FullQualifiedName FULL_NAME_FQN           = new FullQualifiedName( "general.fullname" );
     public static final FullQualifiedName MODEL_FQN               = new FullQualifiedName( "vehicle.model" );
