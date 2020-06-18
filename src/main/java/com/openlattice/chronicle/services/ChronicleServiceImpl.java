@@ -858,10 +858,10 @@ public class ChronicleServiceImpl implements ChronicleService {
             String userToken ) {
         try {
             // load api for actions authenticated by the user
-            ApiClient userApiClient = new ApiClient( () -> userToken );
-            SearchApi userSearchApi = userApiClient.getSearchApi();
-            EntitySetsApi userEntitySetsApi = userApiClient.getEntitySetsApi();
-            DataApi userDataApi = userApiClient.getDataApi();
+            ApiClient apiClient = new ApiClient( () -> userToken );
+            SearchApi searchApi = apiClient.getSearchApi();
+            EntitySetsApi entitySetsApi = apiClient.getEntitySetsApi();
+            DataApi userDataApi = apiClient.getDataApi();
 
             // load api for actions authenticated by chronicle
             // because of the way we do things right now, only the chronicle
@@ -871,7 +871,7 @@ public class ChronicleServiceImpl implements ChronicleService {
             DataApi chronicleDataApi = chronicleApiClient.getDataApi();
 
             String participantsEntitySetName = getParticipantEntitySetName( studyId );
-            UUID participantsEntitySetId = userEntitySetsApi.getEntitySetId( participantsEntitySetName );
+            UUID participantsEntitySetId = entitySetsApi.getEntitySetId( participantsEntitySetName );
             if ( participantsEntitySetId == null ) {
                 throw new Exception( "unable to get the participants EntitySet id for studyId " + studyId );
             }
@@ -914,7 +914,7 @@ public class ChronicleServiceImpl implements ChronicleService {
             participantsToRemove.forEach(
                     participantEntityKeyId -> {
                         // Get neighbors
-                        Map<UUID, Map<UUID, SetMultimap<UUID, NeighborEntityIds>>> participantNeighbors = userSearchApi
+                        Map<UUID, Map<UUID, SetMultimap<UUID, NeighborEntityIds>>> participantNeighbors = searchApi
                                 .executeFilteredEntityNeighborIdsSearch(
                                         participantsEntitySetId,
                                         new EntityNeighborsFilter(
@@ -956,7 +956,7 @@ public class ChronicleServiceImpl implements ChronicleService {
             // delete study if no participantId is specified
             if ( participantId.isEmpty() ) {
                 // delete participant entity set
-                userEntitySetsApi.deleteEntitySet( participantsEntitySetId );
+                entitySetsApi.deleteEntitySet( participantsEntitySetId );
                 logger.info( "Deleted participant dataset for study {}.", studyId );
                 UUID studyEntityKeyId = getStudyEntityKeyId( studyId );
                 userDataApi.deleteEntities( entitySetIdMap.get( STUDY_ENTITY_SET_NAME ),
