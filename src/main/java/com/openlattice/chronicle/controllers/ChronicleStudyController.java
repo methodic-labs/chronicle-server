@@ -29,9 +29,9 @@ import com.openlattice.chronicle.sources.Datasource;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.authentication.InsufficientAuthenticationException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -130,15 +130,37 @@ public class ChronicleStudyController implements ChronicleStudyApi {
         return chronicleService.isKnownParticipant( studyId, participantId );
     }
 
+    @RequestMapping(
+            path = AUTHENTICATED + STUDY_ID_PATH + PARTICIPANT_ID_PATH,
+            method = RequestMethod.DELETE
+    )
     @Override
-    public void deleteParticipantAndAllNeighbors(
-            UUID studyId, String participantId, DeleteType deleteType ) {
-        // TODO implement this
+    public Void deleteParticipantAndAllNeighbors(
+            @PathVariable( STUDY_ID ) UUID studyId,
+            @PathVariable( PARTICIPANT_ID ) String participantId,
+            @RequestParam( TYPE ) DeleteType deleteType
+    ) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String token = ( (JwtAuthentication) authentication ).getToken();
+        chronicleService.deleteParticipantAndAllNeighbors( studyId, participantId, deleteType, token );
+
+        return null;
     }
 
-    @Override
-    public void deleteStudyAndAllNeighbors( UUID studyId, DeleteType deleteType ) {
-        // TODO implement this
+    @RequestMapping(
+            path = AUTHENTICATED + STUDY_ID_PATH,
+            method = RequestMethod.DELETE
+    )
+    @ResponseStatus( HttpStatus.OK )
+    public Void deleteStudyAndAllNeighbors(
+            @PathVariable( STUDY_ID ) UUID studyId,
+            @RequestParam( TYPE ) DeleteType deleteType
+    ) {
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String token = ( (JwtAuthentication) authentication ).getToken();
+        chronicleService.deleteStudyAndAllNeighbors( studyId, deleteType, token );
+        return null;
     }
 
     @RequestMapping(
@@ -186,7 +208,8 @@ public class ChronicleStudyController implements ChronicleStudyApi {
     }
 
     @RequestMapping(
-            path = PARTICIPANT_PATH + DATA_PATH + STUDY_ID_PATH + ENTITY_KEY_ID_PATH + PREPROCESSED_PATH,
+            path = AUTHENTICATED + PARTICIPANT_PATH + DATA_PATH + STUDY_ID_PATH + ENTITY_KEY_ID_PATH
+                    + PREPROCESSED_PATH,
             method = RequestMethod.GET,
             produces = { MediaType.APPLICATION_JSON_VALUE, CustomMediaType.TEXT_CSV_VALUE }
     )
@@ -212,16 +235,13 @@ public class ChronicleStudyController implements ChronicleStudyApi {
             FileType fileType ) {
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if ( authentication instanceof JwtAuthentication ) {
-            String token = ( (JwtAuthentication) authentication ).getToken();
-            return chronicleService.getAllPreprocessedParticipantData( studyId, participantEntityKeyId, token );
-        }
+        String token = ( (JwtAuthentication) authentication ).getToken();
+        return chronicleService.getAllPreprocessedParticipantData( studyId, participantEntityKeyId, token );
 
-        throw new InsufficientAuthenticationException( "request is not authenticated" );
     }
 
     @RequestMapping(
-            path = PARTICIPANT_PATH + DATA_PATH + STUDY_ID_PATH + ENTITY_KEY_ID_PATH,
+            path = AUTHENTICATED + PARTICIPANT_PATH + DATA_PATH + STUDY_ID_PATH + ENTITY_KEY_ID_PATH,
             method = RequestMethod.GET,
             produces = { MediaType.APPLICATION_JSON_VALUE, CustomMediaType.TEXT_CSV_VALUE }
     )
@@ -246,16 +266,12 @@ public class ChronicleStudyController implements ChronicleStudyApi {
             FileType fileType ) {
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if ( authentication instanceof JwtAuthentication ) {
-            String token = ( (JwtAuthentication) authentication ).getToken();
-            return chronicleService.getAllParticipantData( studyId, participantEntityKeyId, token );
-        }
-
-        throw new InsufficientAuthenticationException( "request is not authenticated" );
+        String token = ( (JwtAuthentication) authentication ).getToken();
+        return chronicleService.getAllParticipantData( studyId, participantEntityKeyId, token );
     }
 
     @RequestMapping(
-            path = PARTICIPANT_PATH + DATA_PATH + STUDY_ID_PATH + ENTITY_KEY_ID_PATH + USAGE_PATH,
+            path = AUTHENTICATED + PARTICIPANT_PATH + DATA_PATH + STUDY_ID_PATH + ENTITY_KEY_ID_PATH + USAGE_PATH,
             method = RequestMethod.GET,
             produces = { MediaType.APPLICATION_JSON_VALUE, CustomMediaType.TEXT_CSV_VALUE }
     )
@@ -319,12 +335,9 @@ public class ChronicleStudyController implements ChronicleStudyApi {
             FileType fileType ) {
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if ( authentication instanceof JwtAuthentication ) {
-            String token = ( (JwtAuthentication) authentication ).getToken();
-            return chronicleService.getAllParticipantAppsUsageData( studyId, participantEntityKeyId, token );
-        }
+        String token = ( (JwtAuthentication) authentication ).getToken();
+        return chronicleService.getAllParticipantAppsUsageData( studyId, participantEntityKeyId, token );
 
-        throw new InsufficientAuthenticationException( "request is not authenticated" );
     }
 
     private String getParticipantDataFileName( String fileNamePrefix, UUID studyId, UUID participantEntityKeyId ) {

@@ -23,6 +23,7 @@ import com.google.common.base.Optional;
 import com.google.common.collect.SetMultimap;
 import com.openlattice.chronicle.data.ChronicleAppsUsageDetails;
 import com.openlattice.chronicle.data.ChronicleQuestionnaire;
+import com.openlattice.chronicle.data.DeleteType;
 import com.openlattice.chronicle.data.ParticipationStatus;
 import com.openlattice.chronicle.sources.Datasource;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
@@ -51,9 +52,9 @@ public interface ChronicleService {
 
     boolean isKnownParticipant( UUID studyId, String participantId );
 
-    void deleteParticipantAndAllNeighbors( UUID studyId, String participantId );
+    void deleteParticipantAndAllNeighbors( UUID studyId, String participantId, DeleteType deleteType, String token );
 
-    void deleteStudyAndAllNeighbors( UUID studyId );
+    void deleteStudyAndAllNeighbors( UUID studyId, DeleteType deleteType, String token );
 
     Map<String, UUID> getPropertyTypeIds( Set<String> propertyTypeFqns );
 
