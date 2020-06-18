@@ -888,7 +888,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                 participantsToRemove.add( participantEntityKeyId );
             } else {
                 // if no participant Id: load all participants and add to set
-                chronicleDataApi
+                userDataApi
                         .loadEntitySetData( participantsEntitySetId, FileType.json, userToken )
                         .forEach( entity -> entity.get( ID_FQN ).forEach( personId ->
                                         participantsToRemove.add( UUID.fromString( personId.toString() ) )
