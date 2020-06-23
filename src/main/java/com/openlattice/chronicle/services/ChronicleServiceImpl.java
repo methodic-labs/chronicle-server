@@ -437,14 +437,12 @@ public class ChronicleServiceImpl implements ChronicleService {
             return;
         }
 
-        // only if there is not a start date time yet, add it
         String firstDateTime = pushedDateTimes
                 .stream()
                 .min( OffsetDateTime::compareTo )
                 .orElse( null )
                 .toString();
 
-        // if last date is present: overwrite with newer last date
         String lastDateTime = pushedDateTimes
                 .stream()
                 .max( OffsetDateTime::compareTo )
