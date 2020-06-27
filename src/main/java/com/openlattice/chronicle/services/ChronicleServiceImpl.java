@@ -47,6 +47,7 @@ import com.openlattice.edm.EntitySet;
 import com.openlattice.edm.set.EntitySetPropertyMetadata;
 import com.openlattice.edm.type.PropertyType;
 import com.openlattice.entitysets.EntitySetsApi;
+import com.openlattice.retrofit.RhizomeRetrofitCallException;
 import com.openlattice.search.SearchApi;
 import com.openlattice.search.requests.EntityNeighborsFilter;
 import com.openlattice.search.requests.SearchTerm;
@@ -414,6 +415,7 @@ public class ChronicleServiceImpl implements ChronicleService {
          * about the data collection.
          */
 
+        // get all dates in new data batch
         Set<OffsetDateTime> pushedDateTimes = new HashSet<>();
 
         data.forEach(
@@ -430,6 +432,10 @@ public class ChronicleServiceImpl implements ChronicleService {
                     }
                 }
         );
+
+        if (pushedDateTimes.size() == 0) {
+            return;
+        }
 
         String firstDateTime = pushedDateTimes
                 .stream()
@@ -454,10 +460,16 @@ public class ChronicleServiceImpl implements ChronicleService {
         metadataEntityData.put( propertyTypeIdsByFQN.get( OL_ID_FQN ), Set.of( participantEntityKeyId ) );
         UUID metadataEntityKeyId = reserveMetadataEntityKeyId( metadataEntityData, dataIntegrationApi );
 
-        Map<FullQualifiedName, Set<Object>> entity = dataApi
-                .getEntity( entitySetIdMap.get( METADATA_ENTITY_SET_NAME ), metadataEntityKeyId );
+        // verify if there is already an entry of metadata for participant
+        // error means there is no metadata yet.
+        Map<FullQualifiedName, Set<Object>> entity = new HashMap<>(  );
+        try {
+            entity = dataApi
+                    .getEntity( entitySetIdMap.get( METADATA_ENTITY_SET_NAME ), metadataEntityKeyId );
+        } catch (RhizomeRetrofitCallException e) {}
+
         metadataEntityData.put( propertyTypeIdsByFQN.get( START_DATE_TIME_FQN ),
-                entity.getOrDefault( propertyTypeIdsByFQN.get( START_DATE_TIME_FQN ), Set.of( firstDateTime ) ) );
+                entity.getOrDefault( START_DATE_TIME_FQN, Set.of( firstDateTime ) ) );
         metadataEntityData.put( propertyTypeIdsByFQN.get( END_DATE_TIME_FQN ), Set.of( lastDateTime ) );
         uniqueDates.addAll( entity.getOrDefault( RECORDED_DATE_TIME_FQN, Set.of() ) );
         metadataEntityData.put( propertyTypeIdsByFQN.get( RECORDED_DATE_TIME_FQN ), uniqueDates );
