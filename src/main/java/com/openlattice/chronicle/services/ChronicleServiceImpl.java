@@ -100,7 +100,8 @@ public class ChronicleServiceImpl implements ChronicleService {
     private final String username;
     private final String password;
 
-    private transient LoadingCache<Class<?>, ApiClient> apiClientCache = null;
+    private transient LoadingCache<Class<?>, ApiClient> prodApiClientCache = null;
+    private transient LoadingCache<Class<?>, ApiClient> intApiClientCache = null;
 
     public ChronicleServiceImpl(
             EventBus eventBus,
@@ -108,7 +109,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         this.username = chronicleConfiguration.getUser();
         this.password = chronicleConfiguration.getPassword();
 
-        apiClientCache = CacheBuilder
+        prodApiClientCache = CacheBuilder
                 .newBuilder()
                 .expireAfterWrite( 10, TimeUnit.HOURS )
                 .build( new CacheLoader<Class<?>, ApiClient>() {
@@ -120,7 +121,21 @@ public class ChronicleServiceImpl implements ChronicleService {
                     }
                 } );
 
-        ApiClient apiClient = apiClientCache.get( ApiClient.class );
+        ApiClient prodApiClient = apiClientCache.get( prodApiClient.class );
+
+        intApiClientCache = CacheBuilder
+                .newBuilder()
+                .expireAfterWrite( 10, TimeUnit.HOURS )
+                .build( new CacheLoader<Class<?>, ApiClient>() {
+                    @Override
+                    public ApiClient load( Class<?> key ) throws Exception {
+
+                        String jwtToken = MissionControl.getIdToken( username, password );
+                        return new ApiClient( () -> jwtToken );
+                    }
+                } );
+
+        ApiClient intApiClient = apiClientCache.get( intApiClientCache.class );
 
         EdmApi edmApi = apiClient.getEdmApi();
         EntitySetsApi entitySetsApi = apiClient.getEntitySetsApi();
@@ -181,7 +196,7 @@ public class ChronicleServiceImpl implements ChronicleService {
     private UUID getParticipantEntitySetId( UUID studyId ) {
         EntitySetsApi entitySetsApi;
         try {
-            ApiClient apiClient = apiClientCache.get( ApiClient.class );
+            ApiClient apiClient = prodApiClientCache.get( ApiClient.class );
             entitySetsApi = apiClient.getEntitySetsApi();
         } catch ( ExecutionException e ) {
             logger.error( "Unable to load apis." );
@@ -542,7 +557,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         DataApi dataApi;
         EdmApi edmApi;
         try {
-            ApiClient apiClient = apiClientCache.get( ApiClient.class );
+            ApiClient apiClient = intApiClientCache.get( ApiClient.class );
             dataApi = apiClient.getDataApi();
             edmApi = apiClient.getEdmApi();
         } catch ( ExecutionException e ) {
@@ -595,7 +610,7 @@ public class ChronicleServiceImpl implements ChronicleService {
 
         SearchApi searchApi;
         try {
-            ApiClient apiClient = apiClientCache.get( ApiClient.class );
+            ApiClient apiClient = intApiClientCache.get( ApiClient.class );
             searchApi = apiClient.getSearchApi();
         } catch ( ExecutionException e ) {
             logger.error( "Unable to load apis" );
@@ -673,7 +688,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         DataApi dataApi;
         DataIntegrationApi dataIntegrationApi;
         try {
-            ApiClient apiClient = apiClientCache.get( ApiClient.class );
+            ApiClient apiClient = intApiClientCache.get( ApiClient.class );
             dataApi = apiClient.getDataApi();
             dataIntegrationApi = apiClient.getDataIntegrationApi();
         } catch ( ExecutionException e ) {
@@ -738,7 +753,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         DataApi dataApi;
         DataIntegrationApi dataIntegrationApi;
         try {
-            ApiClient apiClient = apiClientCache.get( ApiClient.class );
+            ApiClient apiClient = prodApiClientCache.get( ApiClient.class );
             dataApi = apiClient.getDataApi();
             dataIntegrationApi = apiClient.getDataIntegrationApi();
         } catch ( ExecutionException e ) {
@@ -866,7 +881,7 @@ public class ChronicleServiceImpl implements ChronicleService {
             // because of the way we do things right now, only the chronicle
             // user can have permissions to delete from the entity set.
             // To be replaced fully with user authentication after refactoring.
-            ApiClient chronicleApiClient = apiClientCache.get( ApiClient.class );
+            ApiClient chronicleApiClient = prodApiClientCache.get( ApiClient.class );
             DataApi chronicleDataApi = chronicleApiClient.getDataApi();
 
             String participantsEntitySetName = getParticipantEntitySetName( studyId );
@@ -1000,7 +1015,7 @@ public class ChronicleServiceImpl implements ChronicleService {
     public Map<String, UUID> getPropertyTypeIds( Set<String> propertyTypeFqns ) {
         EdmApi edmApi;
         try {
-            ApiClient apiClient = apiClientCache.get( ApiClient.class );
+            ApiClient apiClient = prodApiClientCache.get( ApiClient.class );
             edmApi = apiClient.getEdmApi();
         } catch ( ExecutionException e ) {
             logger.error( "Unable to load EdmApi" );
@@ -1078,7 +1093,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         String jwtToken;
 
         try {
-            ApiClient apiClient = apiClientCache.get( ApiClient.class );
+            ApiClient apiClient = intApiClientCache.get( ApiClient.class );
             dataApi = apiClient.getDataApi();
             jwtToken = MissionControl.getIdToken( username, password );
         } catch ( ExecutionException | Auth0Exception e ) {
@@ -1136,7 +1151,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         SearchApi searchApi;
         PrincipalApi principalApi;
         try {
-            ApiClient apiClient = apiClientCache.get( ApiClient.class );
+            ApiClient apiClient = intApiClientCache.get( ApiClient.class );
             entitySetsApi = apiClient.getEntitySetsApi();
             searchApi = apiClient.getSearchApi();
             principalApi = apiClient.getPrincipalApi();
@@ -1517,7 +1532,7 @@ public class ChronicleServiceImpl implements ChronicleService {
     public Map<FullQualifiedName, Set<Object>> getParticipantEntity( UUID studyId, UUID participantEntityKeyId ) {
 
         try {
-            ApiClient apiClient = apiClientCache.get( ApiClient.class );
+            ApiClient apiClient = prodApiClientCache.get( ApiClient.class );
             DataApi dataApi = apiClient.getDataApi();
             EntitySetsApi entitySetsApi = apiClient.getEntitySetsApi();
 
@@ -1547,7 +1562,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         SearchApi searchApi;
 
         try {
-            ApiClient apiClient = apiClientCache.get( ApiClient.class );
+            ApiClient apiClient = prodApiClientCache.get( ApiClient.class );
             entitySetsApi = apiClient.getEntitySetsApi();
             searchApi = apiClient.getSearchApi();
         } catch ( ExecutionException e ) {
@@ -1626,7 +1641,7 @@ public class ChronicleServiceImpl implements ChronicleService {
             UUID studyEKID = Preconditions.checkNotNull( getStudyEntityKeyId( studyId ), "invalid study: " + studyId );
 
             // get apis
-            ApiClient apiClient = apiClientCache.get( ApiClient.class );
+            ApiClient apiClient = prodApiClientCache.get( ApiClient.class );
             SearchApi searchApi = apiClient.getSearchApi();
 
             // Get questionnaires that neighboring study
@@ -1716,7 +1731,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                     .checkNotNull( getStudyEntityKeyId( studyId ), "invalid studyId: " + studyId );
 
             // load apis
-            ApiClient apiClient = apiClientCache.get( ApiClient.class );
+            ApiClient apiClient = prodApiClientCache.get( ApiClient.class );
             SearchApi searchApi = apiClient.getSearchApi();
 
             // filtered search on questionnaires ES to get neighbors of study
@@ -1761,7 +1776,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         try {
             logger.info( "submitting questionnaire: studyId = {}, participantId = {}", studyId, participantId );
 
-            ApiClient apiClient = apiClientCache.get( ApiClient.class );
+            ApiClient apiClient = prodApiClientCache.get( ApiClient.class );
             dataApi = apiClient.getDataApi();
             entitySetsApi = apiClient.getEntitySetsApi();
 
