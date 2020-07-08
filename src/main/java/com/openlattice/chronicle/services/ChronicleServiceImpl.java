@@ -37,6 +37,7 @@ import com.openlattice.chronicle.data.ParticipationStatus;
 import com.openlattice.chronicle.sources.AndroidDevice;
 import com.openlattice.chronicle.sources.Datasource;
 import com.openlattice.client.ApiClient;
+import com.openlattice.client.RetrofitFactory;
 import com.openlattice.data.*;
 import com.openlattice.data.requests.FileType;
 import com.openlattice.data.requests.NeighborEntityDetails;
@@ -131,7 +132,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                     public ApiClient load( Class<?> key ) throws Exception {
 
                         String jwtToken = MissionControl.getIdToken( username, password );
-                        return new ApiClient( () -> jwtToken );
+                        return new ApiClient( RetrofitFactory.Environment.PROD_INTEGRATION, () -> jwtToken );
                     }
                 } );
 
