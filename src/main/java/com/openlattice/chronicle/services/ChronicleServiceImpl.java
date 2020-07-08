@@ -121,7 +121,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                     }
                 } );
 
-        ApiClient prodApiClient = apiClientCache.get( prodApiClient.class );
+        ApiClient prodApiClient = prodApiClientCache.get( ApiClient.class );
 
         intApiClientCache = CacheBuilder
                 .newBuilder()
@@ -135,10 +135,10 @@ public class ChronicleServiceImpl implements ChronicleService {
                     }
                 } );
 
-        ApiClient intApiClient = apiClientCache.get( intApiClientCache.class );
+        ApiClient intApiClient = intApiClientCache.get( ApiClient.class );
 
-        EdmApi edmApi = apiClient.getEdmApi();
-        EntitySetsApi entitySetsApi = apiClient.getEntitySetsApi();
+        EdmApi edmApi = prodApiClient.getEdmApi();
+        EntitySetsApi entitySetsApi = prodApiClient.getEntitySetsApi();
 
         // get entity setId map
         entitySetIdMap = ImmutableMap.copyOf( entitySetsApi.getEntitySetIds( ENTITY_SET_NAMES ) );
