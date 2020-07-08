@@ -558,7 +558,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         DataApi dataApi;
         EdmApi edmApi;
         try {
-            ApiClient apiClient = intApiClientCache.get( ApiClient.class );
+            ApiClient apiClient = prodApiClientCache.get( ApiClient.class );
             dataApi = apiClient.getDataApi();
             edmApi = apiClient.getEdmApi();
         } catch ( ExecutionException e ) {
@@ -1152,7 +1152,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         SearchApi searchApi;
         PrincipalApi principalApi;
         try {
-            ApiClient apiClient = intApiClientCache.get( ApiClient.class );
+            ApiClient apiClient = prodApiClientCache.get( ApiClient.class );
             entitySetsApi = apiClient.getEntitySetsApi();
             searchApi = apiClient.getSearchApi();
             principalApi = apiClient.getPrincipalApi();
