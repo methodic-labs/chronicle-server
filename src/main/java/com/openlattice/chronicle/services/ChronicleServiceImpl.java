@@ -102,8 +102,8 @@ public class ChronicleServiceImpl implements ChronicleService {
     private final String username;
     private final String password;
 
-    private transient LoadingCache<Class<?>, ApiClient> prodApiClientCache = null;
-    private transient LoadingCache<Class<?>, ApiClient> intApiClientCache = null;
+    private final transient LoadingCache<Class<?>, ApiClient> prodApiClientCache;
+    private final transient LoadingCache<Class<?>, ApiClient> intApiClientCache;
 
     public ChronicleServiceImpl(
             EventBus eventBus,
@@ -119,7 +119,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                     public ApiClient load( Class<?> key ) throws Exception {
 
                         String jwtToken = MissionControl.getIdToken( username, password );
-                        return new ApiClient( RetrofitFactory.Environment.PROD_INTEGRATION, () -> jwtToken );
+                        return new ApiClient( RetrofitFactory.Environment.PRODUCTION, () -> jwtToken );
                     }
                 } );
 
@@ -136,8 +136,6 @@ public class ChronicleServiceImpl implements ChronicleService {
                         return new ApiClient( RetrofitFactory.Environment.PROD_INTEGRATION, () -> jwtToken );
                     }
                 } );
-
-        ApiClient intApiClient = intApiClientCache.get( ApiClient.class );
 
         EdmApi edmApi = prodApiClient.getEdmApi();
         EntitySetsApi entitySetsApi = prodApiClient.getEntitySetsApi();
