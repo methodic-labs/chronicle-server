@@ -887,7 +887,7 @@ public class ChronicleServiceImpl implements ChronicleService {
             String userToken ) {
         try {
             // load api for actions authenticated by the user
-            ApiClient userApiClient = new ApiClient( RetrofitFactory.Environment.LOCAL, () -> userToken );
+            ApiClient userApiClient = new ApiClient( RetrofitFactory.Environment.PROD_INTEGRATION, () -> userToken );
             SearchApi userSearchApi = userApiClient.getSearchApi();
             EntitySetsApi userEntitySetsApi = userApiClient.getEntitySetsApi();
             DataApi userDataApi = userApiClient.getDataApi();
