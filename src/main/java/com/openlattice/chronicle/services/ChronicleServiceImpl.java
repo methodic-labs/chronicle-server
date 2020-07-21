@@ -92,7 +92,7 @@ public class ChronicleServiceImpl implements ChronicleService {
     // studyId -> study EKID
     private final Map<UUID, UUID> studies = new HashMap<>();
 
-    private final Set<String> systemUserAppPackageNames     = Collections.synchronizedSet( new HashSet<>() );
+    private final Set<String> systemAppPackageNames     = Collections.synchronizedSet( new HashSet<>() );
     private final Set<UUID>   notificationEnabledStudyEKIDs = new HashSet<>();
 
     private final ImmutableMap<UUID, PropertyType>      propertyTypesById;
@@ -344,7 +344,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                 String appPackageName, appName;
                 appPackageName = appName = appEntity.get( propertyTypeIdsByFQN.get( FULL_NAME_FQN ) ).iterator().next()
                         .toString();
-                if ( systemUserAppPackageNames.contains( appPackageName ) ) continue; // a 'system' app
+                if ( systemAppPackageNames.contains( appPackageName ) ) continue; // a 'system' app
 
                 if (appEntity.containsKey( propertyTypeIdsByFQN.get( TITLE_FQN ) )) {
                     appName = appEntity.get( propertyTypeIdsByFQN.get( TITLE_FQN ) ).iterator().next().toString();
@@ -1128,7 +1128,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                 Iterators.size( entitySetData.iterator() )
         );
 
-        Set<String> systemUserApps = new HashSet<>();
+        Set<String> systemAppPackageNames = new HashSet<>();
 
         entitySetData.forEach( entity -> {
             try {
@@ -1143,17 +1143,17 @@ public class ChronicleServiceImpl implements ChronicleService {
                 }
 
                 if ( RecordType.SYSTEM.name().equals( recordType ) && packageName != null ) {
-                    systemUserApps.add( packageName );
+                    systemAppPackageNames.add( packageName );
                 }
             } catch ( Exception e ) {
                 logger.error( "caught exception while processing entities from user apps dictionary", e );
             }
         } );
 
-        this.systemUserAppPackageNames.clear();
-        this.systemUserAppPackageNames.addAll( systemUserApps );
+        this.systemAppPackageNames.clear();
+        this.systemAppPackageNames.addAll( systemAppPackageNames );
 
-        logger.info( "Loaded {} system apps from user apps dictionary", systemUserApps.size() );
+        logger.info( "Loaded {} system apps from user apps dictionary", systemAppPackageNames.size() );
     }
 
     @Scheduled( fixedRate = 60000 )
