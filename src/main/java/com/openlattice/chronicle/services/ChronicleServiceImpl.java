@@ -92,8 +92,8 @@ public class ChronicleServiceImpl implements ChronicleService {
     // studyId -> study EKID
     private final Map<UUID, UUID> studies = new HashMap<>();
 
-    private final Map<String, String> userAppsDict                  = Collections.synchronizedMap( new HashMap<>() );
-    private final Set<UUID>           notificationEnabledStudyEKIDs = new HashSet<>();
+    private final Set<String> systemAppPackageNames     = Collections.synchronizedSet( new HashSet<>() );
+    private final Set<UUID>   notificationEnabledStudyEKIDs = new HashSet<>();
 
     private final ImmutableMap<UUID, PropertyType>      propertyTypesById;
     private final ImmutableMap<String, UUID>            entitySetIdMap;
@@ -341,11 +341,15 @@ public class ChronicleServiceImpl implements ChronicleService {
             try {
                 Set<DataEdgeKey> dataEdgeKeys = new HashSet<>();
 
-                String appPackageName = appEntity.get( propertyTypeIdsByFQN.get( FULL_NAME_FQN ) ).iterator().next()
+                String appPackageName, appName;
+                appPackageName = appName = appEntity.get( propertyTypeIdsByFQN.get( FULL_NAME_FQN ) ).iterator().next()
                         .toString();
-                String appName = userAppsDict.get( appPackageName );
-                if ( appName == null )
-                    continue;
+                if ( systemAppPackageNames.contains( appPackageName ) ) continue; // a 'system' app
+
+                if (appEntity.containsKey( propertyTypeIdsByFQN.get( TITLE_FQN ) )) {
+                    appName = appEntity.get( propertyTypeIdsByFQN.get( TITLE_FQN ) ).iterator().next().toString();
+                }
+
                 String dateLogged = getMidnightDateTime( appEntity.get( propertyTypeIdsByFQN.get( DATE_LOGGED_FQN ) )
                         .iterator().next()
                         .toString() );
@@ -447,7 +451,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                 }
         );
 
-        if (pushedDateTimes.size() == 0) {
+        if ( pushedDateTimes.size() == 0 ) {
             return;
         }
 
@@ -476,11 +480,11 @@ public class ChronicleServiceImpl implements ChronicleService {
 
         // verify if there is already an entry of metadata for participant
         // error means there is no metadata yet.
-        Map<FullQualifiedName, Set<Object>> entity = new HashMap<>(  );
+        Map<FullQualifiedName, Set<Object>> entity = new HashMap<>();
         try {
             entity = dataApi
                     .getEntity( entitySetIdMap.get( METADATA_ENTITY_SET_NAME ), metadataEntityKeyId );
-        } catch (RhizomeRetrofitCallException e) {}
+        } catch ( RhizomeRetrofitCallException e ) {}
 
         metadataEntityData.put( propertyTypeIdsByFQN.get( START_DATE_TIME_FQN ),
                 entity.getOrDefault( START_DATE_TIME_FQN, Set.of( firstDateTime ) ) );
@@ -1124,36 +1128,32 @@ public class ChronicleServiceImpl implements ChronicleService {
                 Iterators.size( entitySetData.iterator() )
         );
 
-        Map<String, String> appsDict = new HashMap<>();
+        Set<String> systemAppPackageNames = new HashSet<>();
+
         entitySetData.forEach( entity -> {
             try {
                 String packageName = null;
-                if ( entity.containsKey( FULL_NAME_FQN ) && !entity.get( FULL_NAME_FQN ).isEmpty() ) {
+                if ( !entity.get( FULL_NAME_FQN ).isEmpty() ) {
                     packageName = entity.get( FULL_NAME_FQN ).iterator().next().toString();
                 }
 
-                String appName = null;
-                if ( entity.containsKey( TITLE_FQN ) && !entity.get( TITLE_FQN ).isEmpty() ) {
-                    appName = entity.get( TITLE_FQN ).iterator().next().toString();
-                }
-
                 String recordType = null;
-                if ( entity.containsKey( RECORD_TYPE_FQN ) && !entity.get( RECORD_TYPE_FQN ).isEmpty() ) {
+                if ( !entity.get( RECORD_TYPE_FQN ).isEmpty() ) {
                     recordType = entity.get( RECORD_TYPE_FQN ).iterator().next().toString();
                 }
 
-                if ( !RecordType.SYSTEM.name().equals( recordType ) && packageName != null && appName != null ) {
-                    appsDict.put( packageName, appName );
+                if ( RecordType.SYSTEM.name().equals( recordType ) && packageName != null ) {
+                    systemAppPackageNames.add( packageName );
                 }
             } catch ( Exception e ) {
                 logger.error( "caught exception while processing entities from user apps dictionary", e );
             }
         } );
 
-        this.userAppsDict.clear();
-        this.userAppsDict.putAll( appsDict );
+        this.systemAppPackageNames.clear();
+        this.systemAppPackageNames.addAll( systemAppPackageNames );
 
-        logger.info( "Loaded {} items into user apps dictionary", appsDict.size() );
+        logger.info( "Loaded {} system apps from user apps dictionary", systemAppPackageNames.size() );
     }
 
     @Scheduled( fixedRate = 60000 )
