@@ -26,8 +26,9 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.collect.*;
-import com.google.common.eventbus.EventBus;
 import com.openlattice.ApiUtil;
+import com.openlattice.auth0.Auth0Delegate;
+import com.openlattice.authentication.Auth0Configuration;
 import com.openlattice.chronicle.configuration.ChronicleConfiguration;
 import com.openlattice.chronicle.constants.RecordType;
 import com.openlattice.chronicle.data.ChronicleAppsUsageDetails;
@@ -52,7 +53,6 @@ import com.openlattice.retrofit.RhizomeRetrofitCallException;
 import com.openlattice.search.SearchApi;
 import com.openlattice.search.requests.EntityNeighborsFilter;
 import com.openlattice.search.requests.SearchTerm;
-import com.openlattice.shuttle.MissionControl;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.olingo.commons.api.edm.EdmPrimitiveTypeKind;
@@ -76,8 +76,47 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import static com.openlattice.chronicle.ChronicleServerUtil.getParticipantEntitySetName;
-import static com.openlattice.chronicle.constants.EdmConstants.*;
-import static com.openlattice.chronicle.constants.OutputConstants.*;
+import static com.openlattice.chronicle.constants.EdmConstants.ADDRESSES_ENTITY_SET_NAME;
+import static com.openlattice.chronicle.constants.EdmConstants.ANSWERS_ENTITY_SET_NAME;
+import static com.openlattice.chronicle.constants.EdmConstants.CHRONICLE_USER_APPS;
+import static com.openlattice.chronicle.constants.EdmConstants.COMPLETED_DATE_TIME_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.DATA_ENTITY_SET_NAME;
+import static com.openlattice.chronicle.constants.EdmConstants.DATE_LOGGED_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.DATE_TIME_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.DEVICES_ENTITY_SET_NAME;
+import static com.openlattice.chronicle.constants.EdmConstants.END_DATE_TIME_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.ENTITY_SET_NAMES;
+import static com.openlattice.chronicle.constants.EdmConstants.FULL_NAME_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.HAS_ENTITY_SET_NAME;
+import static com.openlattice.chronicle.constants.EdmConstants.METADATA_ENTITY_SET_NAME;
+import static com.openlattice.chronicle.constants.EdmConstants.MODEL_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.NOTIFICATION_ENTITY_SET_NAME;
+import static com.openlattice.chronicle.constants.EdmConstants.OL_ID_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.PARTICIPANTS_PREFIX;
+import static com.openlattice.chronicle.constants.EdmConstants.PARTICIPATED_IN_AESN;
+import static com.openlattice.chronicle.constants.EdmConstants.PART_OF_ENTITY_SET_NAME;
+import static com.openlattice.chronicle.constants.EdmConstants.PERSON_ID_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.PREPROCESSED_DATA_ENTITY_SET_NAME;
+import static com.openlattice.chronicle.constants.EdmConstants.QUESTIONNAIRE_ENTITY_SET_NAME;
+import static com.openlattice.chronicle.constants.EdmConstants.QUESTIONS_ENTITY_SET_NAME;
+import static com.openlattice.chronicle.constants.EdmConstants.RECORDED_BY_ENTITY_SET_NAME;
+import static com.openlattice.chronicle.constants.EdmConstants.RECORDED_DATE_TIME_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.RECORD_TYPE_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.RESPONDS_WITH_ENTITY_SET_NAME;
+import static com.openlattice.chronicle.constants.EdmConstants.START_DATE_TIME_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.STATUS_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.STRING_ID_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.STUDY_ENTITY_SET_NAME;
+import static com.openlattice.chronicle.constants.EdmConstants.TIMEZONE_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.TITLE_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.USED_BY_ENTITY_SET_NAME;
+import static com.openlattice.chronicle.constants.EdmConstants.USER_APPS_DICTIONARY;
+import static com.openlattice.chronicle.constants.EdmConstants.VALUES_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.VERSION_FQN;
+import static com.openlattice.chronicle.constants.OutputConstants.APP_PREFIX;
+import static com.openlattice.chronicle.constants.OutputConstants.DEFAULT_TIMEZONE;
+import static com.openlattice.chronicle.constants.OutputConstants.MINIMUM_DATE;
+import static com.openlattice.chronicle.constants.OutputConstants.USER_PREFIX;
 import static com.openlattice.edm.EdmConstants.ID_FQN;
 
 public class ChronicleServiceImpl implements ChronicleService {
@@ -104,10 +143,14 @@ public class ChronicleServiceImpl implements ChronicleService {
 
     private final transient LoadingCache<Class<?>, ApiClient> prodApiClientCache;
     private final transient LoadingCache<Class<?>, ApiClient> intApiClientCache;
+    private final           Auth0Delegate auth0Client;
 
     public ChronicleServiceImpl(
-            EventBus eventBus,
-            ChronicleConfiguration chronicleConfiguration ) throws ExecutionException {
+            ChronicleConfiguration chronicleConfiguration,
+            Auth0Configuration auth0Configuration
+    ) throws ExecutionException {
+
+        this.auth0Client = Auth0Delegate.fromConfig(auth0Configuration);
         this.username = chronicleConfiguration.getUser();
         this.password = chronicleConfiguration.getPassword();
 
@@ -118,7 +161,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                     @Override
                     public ApiClient load( Class<?> key ) throws Exception {
 
-                        String jwtToken = MissionControl.getIdToken( username, password );
+                        String jwtToken = auth0Client.getIdToken( username, password );
                         return new ApiClient( RetrofitFactory.Environment.PRODUCTION, () -> jwtToken );
                     }
                 } );
@@ -132,7 +175,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                     @Override
                     public ApiClient load( Class<?> key ) throws Exception {
 
-                        String jwtToken = MissionControl.getIdToken( username, password );
+                        String jwtToken = auth0Client.getIdToken( username, password );
                         return new ApiClient( RetrofitFactory.Environment.PROD_INTEGRATION, () -> jwtToken );
                     }
                 } );
@@ -1110,7 +1153,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         try {
             ApiClient apiClient = intApiClientCache.get( ApiClient.class );
             dataApi = apiClient.getDataApi();
-            jwtToken = MissionControl.getIdToken( username, password );
+            jwtToken = auth0Client.getIdToken( username, password );
         } catch ( ExecutionException | Auth0Exception e ) {
             logger.error( "Caught an exception", e );
             return;
