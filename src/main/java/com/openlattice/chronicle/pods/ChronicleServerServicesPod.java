@@ -22,9 +22,6 @@ package com.openlattice.chronicle.pods;
 
 import com.dataloom.mappers.ObjectMappers;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.eventbus.EventBus;
-import com.google.common.util.concurrent.ListeningExecutorService;
-import com.hazelcast.core.HazelcastInstance;
 import com.kryptnostic.rhizome.configuration.service.ConfigurationService;
 import com.openlattice.auth0.Auth0Pod;
 import com.openlattice.auth0.Auth0TokenProvider;
@@ -49,19 +46,10 @@ import java.util.concurrent.ExecutionException;
 public class ChronicleServerServicesPod {
 
     @Inject
-    private HazelcastInstance hazelcastInstance;
-
-    @Inject
-    private Auth0Configuration auth0Configuration;
-
-    @Inject
-    private ListeningExecutorService executor;
-
-    @Inject
     private ConfigurationService configurationService;
 
     @Inject
-    private EventBus eventBus;
+    private Auth0Configuration auth0Configuration;
 
     @Bean
     public ObjectMapper defaultObjectMapper() {
@@ -72,8 +60,7 @@ public class ChronicleServerServicesPod {
 
     @Bean( name = "chronicleConfiguration" )
     public ChronicleConfiguration getChronicleConfiguration() throws IOException {
-        ChronicleConfiguration config = configurationService.getConfiguration( ChronicleConfiguration.class );
-        return config;
+        return configurationService.getConfiguration( ChronicleConfiguration.class );
     }
 
     @Bean
@@ -83,6 +70,6 @@ public class ChronicleServerServicesPod {
 
     @Bean
     public ChronicleService chronicleService() throws IOException, ExecutionException {
-        return new ChronicleServiceImpl( eventBus, getChronicleConfiguration() );
+        return new ChronicleServiceImpl( getChronicleConfiguration(), auth0Configuration );
     }
 }
