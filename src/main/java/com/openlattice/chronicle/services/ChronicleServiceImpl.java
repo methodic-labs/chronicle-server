@@ -75,7 +75,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-import static com.openlattice.chronicle.ChronicleServerUtil.getParticipantEntitySetName;
 import static com.openlattice.chronicle.constants.EdmConstants.ADDRESSES_ENTITY_SET_NAME;
 import static com.openlattice.chronicle.constants.EdmConstants.ANSWERS_ENTITY_SET_NAME;
 import static com.openlattice.chronicle.constants.EdmConstants.CHRONICLE_USER_APPS;
@@ -131,7 +130,7 @@ public class ChronicleServiceImpl implements ChronicleService {
     // studyId -> study EKID
     private final Map<UUID, UUID> studies = new HashMap<>();
 
-    private final Set<String> systemAppPackageNames     = Collections.synchronizedSet( new HashSet<>() );
+    private final Set<String> systemAppPackageNames         = Collections.synchronizedSet( new HashSet<>() );
     private final Set<UUID>   notificationEnabledStudyEKIDs = new HashSet<>();
 
     private final ImmutableMap<UUID, PropertyType>      propertyTypesById;
@@ -143,14 +142,14 @@ public class ChronicleServiceImpl implements ChronicleService {
 
     private final transient LoadingCache<Class<?>, ApiClient> prodApiClientCache;
     private final transient LoadingCache<Class<?>, ApiClient> intApiClientCache;
-    private final           Auth0Delegate auth0Client;
+    private final           Auth0Delegate                     auth0Client;
 
     public ChronicleServiceImpl(
             ChronicleConfiguration chronicleConfiguration,
             Auth0Configuration auth0Configuration
     ) throws ExecutionException {
 
-        this.auth0Client = Auth0Delegate.fromConfig(auth0Configuration);
+        this.auth0Client = Auth0Delegate.fromConfig( auth0Configuration );
         this.username = chronicleConfiguration.getUser();
         this.password = chronicleConfiguration.getPassword();
 
@@ -387,9 +386,10 @@ public class ChronicleServiceImpl implements ChronicleService {
                 String appPackageName, appName;
                 appPackageName = appName = appEntity.get( propertyTypeIdsByFQN.get( FULL_NAME_FQN ) ).iterator().next()
                         .toString();
-                if ( systemAppPackageNames.contains( appPackageName ) ) continue; // a 'system' app
+                if ( systemAppPackageNames.contains( appPackageName ) )
+                    continue; // a 'system' app
 
-                if (appEntity.containsKey( propertyTypeIdsByFQN.get( TITLE_FQN ) )) {
+                if ( appEntity.containsKey( propertyTypeIdsByFQN.get( TITLE_FQN ) ) ) {
                     appName = appEntity.get( propertyTypeIdsByFQN.get( TITLE_FQN ) ).iterator().next().toString();
                 }
 
@@ -1895,5 +1895,9 @@ public class ChronicleServiceImpl implements ChronicleService {
             logger.error( errorMsg, e );
             throw new RuntimeException( errorMsg );
         }
+    }
+
+    private static String getParticipantEntitySetName( UUID studyId ) {
+        return PARTICIPANTS_PREFIX.concat( studyId.toString() );
     }
 }
