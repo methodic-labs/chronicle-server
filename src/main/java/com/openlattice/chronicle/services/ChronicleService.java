@@ -39,59 +39,65 @@ import java.util.UUID;
 public interface ChronicleService {
     //  TODO: add in throws exception!
     Integer logData(
+            UUID organizationId,
             UUID studyId,
             String participantId,
             String datasourceId,
             List<SetMultimap<UUID, Object>> data );
 
-    UUID registerDatasource( UUID studyId, String participantId, String datasourceId, Optional<Datasource> datasource );
+    UUID registerDatasource( UUID organizationId, UUID studyId, String participantId, String datasourceId, Optional<Datasource> datasource );
 
-    UUID getDeviceEntityKeyId( UUID studyId, String participantId, String datasourceId );
+    UUID getDeviceEntityKeyId( UUID organizationId, UUID studyId, String participantId, String datasourceId );
 
-    boolean isKnownDatasource( UUID studyId, String participantId, String datasourceId );
+    boolean isKnownDatasource( UUID organizationId, UUID studyId, String participantId, String datasourceId );
 
-    boolean isKnownParticipant( UUID studyId, String participantId );
+    boolean isKnownParticipant( UUID organizationId, UUID studyId, String participantId );
 
-    void deleteParticipantAndAllNeighbors( UUID studyId, String participantId, DeleteType deleteType, String token );
+    void deleteParticipantAndAllNeighbors( UUID organizationId, UUID studyId, String participantId, DeleteType deleteType, String token );
 
-    void deleteStudyAndAllNeighbors( UUID studyId, DeleteType deleteType, String token );
+    void deleteStudyAndAllNeighbors( UUID organizationId, UUID studyId, DeleteType deleteType, String token );
 
     Map<String, UUID> getPropertyTypeIds( Set<String> propertyTypeFqns );
 
     Iterable<Map<String, Set<Object>>> getAllParticipantData(
+            UUID organizationId,
             UUID studyId,
             UUID participantEntityId,
             String token );
 
     Iterable<Map<String, Set<Object>>> getAllPreprocessedParticipantData(
+            UUID organizationId,
             UUID studyId,
             UUID participantEntityId,
             String token );
 
     Iterable<Map<String, Set<Object>>> getAllParticipantAppsUsageData(
+            UUID organizationId,
             UUID studyId,
             UUID participantEntityId,
             String token );
 
-    Map<FullQualifiedName, Set<Object>> getParticipantEntity( UUID studyId, UUID participantEntityId );
+    Map<FullQualifiedName, Set<Object>> getParticipantEntity( UUID organizationId, UUID studyId, UUID participantEntityId );
 
-    ParticipationStatus getParticipationStatus( UUID studyId, String participantId );
+    ParticipationStatus getParticipationStatus( UUID organizationId, UUID studyId, String participantId );
 
     List<ChronicleAppsUsageDetails> getParticipantAppsUsageData(
+            UUID organizationId,
             UUID studyId,
             String participantId,
             String date );
 
     Integer updateAppsUsageAssociationData(
+            UUID organizationId,
             UUID studyId,
             String participantId,
             Map<UUID, Map<FullQualifiedName, Set<Object>>> associationDetails );
 
-    boolean isNotificationsEnabled( UUID studyId );
+    boolean isNotificationsEnabled( UUID organizationId, UUID studyId );
 
-    ChronicleQuestionnaire getQuestionnaire( UUID studyId, UUID questionnaireEKID );
+    ChronicleQuestionnaire getQuestionnaire( UUID organizationId, UUID studyId, UUID questionnaireEKID );
 
-    Map<UUID, Map<FullQualifiedName, Set<Object>>> getStudyQuestionnaires( UUID studyId );
+    Map<UUID, Map<FullQualifiedName, Set<Object>>> getStudyQuestionnaires( UUID organizationId, UUID studyId );
     
-    void submitQuestionnaire( UUID studyId, String participantId, Map<UUID, Map<FullQualifiedName, Set<Object>>> questionnaireResponses );
+    void submitQuestionnaire( UUID organizationId, UUID studyId, String participantId, Map<UUID, Map<FullQualifiedName, Set<Object>>> questionnaireResponses );
 }

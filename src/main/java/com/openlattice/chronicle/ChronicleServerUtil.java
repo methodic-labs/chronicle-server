@@ -32,17 +32,10 @@ import org.apache.olingo.server.api.uri.UriResourceEntitySet;
 
 import java.util.List;
 import java.util.Locale;
-import java.util.UUID;
-
-import static com.openlattice.chronicle.constants.EdmConstants.PARTICIPANTS_PREFIX;
 
 public final class ChronicleServerUtil {
 
     private ChronicleServerUtil() {
-    }
-
-    public static String getParticipantEntitySetName( UUID studyId ) {
-        return PARTICIPANTS_PREFIX.concat( studyId.toString() );
     }
 
     public static EdmEntitySet getEdmEntitySet( UriInfoResource uriInfo ) throws ODataApplicationException {

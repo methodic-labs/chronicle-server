@@ -3,6 +3,8 @@ package com.openlattice.chronicle.constants;
 import com.google.common.collect.ImmutableSet;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
 
+import java.util.UUID;
+
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
  */
@@ -12,46 +14,7 @@ public class EdmConstants {
     }
 
     // entity set names
-    public static final String ADDRESSES_ENTITY_SET_NAME         = "chronicle_addresses";
-    public static final String ANSWERS_ENTITY_SET_NAME           = "chronicle_answers";
-    public static final String CHRONICLE_USER_APPS               = "chronicle_user_apps";
-    public static final String DATA_ENTITY_SET_NAME              = "chronicle_app_data";
-    public static final String DEVICES_ENTITY_SET_NAME           = "chronicle_device";
-    public static final String HAS_ENTITY_SET_NAME               = "chronicle_has";
-    public static final String METADATA_ENTITY_SET_NAME          = "chronicle_metadata";
-    public static final String NOTIFICATION_ENTITY_SET_NAME      = "chronicle_notifications";
-    public static final String PARTICIPANTS_PREFIX               = "chronicle_participants_";
-    public static final String PARTICIPATED_IN_AESN              = "chronicle_participated_in";
-    public static final String PART_OF_ENTITY_SET_NAME           = "chronicle_partof";
-    public static final String PREPROCESSED_DATA_ENTITY_SET_NAME = "chronicle_preprocessed_app_data";
-    public static final String QUESTIONNAIRE_ENTITY_SET_NAME     = "chronicle_questionnaires";
-    public static final String QUESTIONS_ENTITY_SET_NAME         = "chronicle_questions";
-    public static final String RECORDED_BY_ENTITY_SET_NAME       = "chronicle_recorded_by";
-    public static final String RESPONDS_WITH_ENTITY_SET_NAME     = "chronicle_respondswith";
-    public static final String STUDY_ENTITY_SET_NAME             = "chronicle_study";
-    public static final String USED_BY_ENTITY_SET_NAME           = "chronicle_used_by";
     public static final String USER_APPS_DICTIONARY              = "chronicle_application_dictionary";
-
-    public static final ImmutableSet<String> ENTITY_SET_NAMES = ImmutableSet.of(
-            ADDRESSES_ENTITY_SET_NAME,
-            ANSWERS_ENTITY_SET_NAME,
-            CHRONICLE_USER_APPS,
-            DATA_ENTITY_SET_NAME,
-            DEVICES_ENTITY_SET_NAME,
-            HAS_ENTITY_SET_NAME,
-            METADATA_ENTITY_SET_NAME,
-            NOTIFICATION_ENTITY_SET_NAME,
-            PARTICIPATED_IN_AESN,
-            PART_OF_ENTITY_SET_NAME,
-            PREPROCESSED_DATA_ENTITY_SET_NAME,
-            QUESTIONNAIRE_ENTITY_SET_NAME,
-            QUESTIONS_ENTITY_SET_NAME,
-            RECORDED_BY_ENTITY_SET_NAME,
-            RESPONDS_WITH_ENTITY_SET_NAME,
-            STUDY_ENTITY_SET_NAME,
-            USED_BY_ENTITY_SET_NAME,
-            USER_APPS_DICTIONARY
-    );
 
     // property types
     public static final FullQualifiedName COMPLETED_DATE_TIME_FQN = new FullQualifiedName( "date.completeddatetime" );
@@ -77,5 +40,41 @@ public class EdmConstants {
     // entity types
     public static final FullQualifiedName PERSON_FQN              = new FullQualifiedName( "general.person" );
 
+    // CAFE ORG: to maintain backward compatibility, all studies before apps v2 will be assumed to belong to CAFE ORG
+    public static final UUID CAFE_ORG_ID = UUID.fromString( "7349c446-2acc-4d14-b2a9-a13be39cff93" );
 
+    // app names
+    public static final String CHRONICLE_CORE = "chronicle";
+    public static final String DATA_COLLECTION = "chronicle_data_collection";
+    public static final String CHRONICLE_QUESTIONNAIRES = "chronicle_questionnaires";
+
+    public static final ImmutableSet<String> APP_NAMES = ImmutableSet.of(
+            CHRONICLE_CORE,
+            CHRONICLE_QUESTIONNAIRES,
+            DATA_COLLECTION
+    );
+
+    // collection template names
+    public static final String STUDIES = "studies";
+    public static final String PARTICIPANTS = "participants";
+    public static final String NOTIFICATION = "notification";
+    public static final String PART_OF = "partof";
+    public static final String METADATA = "metadata";
+    public static final String HAS = "has";
+    public static final String PARTICIPATED_IN = "participatedin";
+    public static final String QUESTION = "question";
+    public static final String USER_APPS = "userapps";
+    public static final String ANSWER = "answer";
+    public static final String ADDRESSES = "addresses";
+    public static final String RESPONDS_WITH = "respondswith";
+    public static final String REGISTERED_FOR = "registeredfor";
+    public static final String SUBMISSION = "submission";
+    public static final String TIME_RANGE = "timerange";
+    public static final String APP_DATA = "appdata";
+    public static final String SURVEY = "survey";
+    public static final String PREPROCESSED_DATA = "preprocesseddata";
+    public static final String APPS_DICTIONARY = "dictionary";
+    public static final String DEVICE = "device";
+    public static final String USED_BY = "usedby";
+    public static final String RECORDED_BY = "recordedby";
 }
