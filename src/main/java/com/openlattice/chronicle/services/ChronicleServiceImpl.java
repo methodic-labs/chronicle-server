@@ -30,6 +30,8 @@ import com.openlattice.ApiUtil;
 import com.openlattice.apps.App;
 import com.openlattice.apps.AppApi;
 import com.openlattice.apps.UserAppConfig;
+import com.openlattice.auth0.Auth0Delegate;
+import com.openlattice.authentication.Auth0Configuration;
 import com.openlattice.authorization.securable.AbstractSecurableObject;
 import com.openlattice.chronicle.configuration.ChronicleConfiguration;
 import com.openlattice.chronicle.constants.RecordType;
@@ -56,7 +58,6 @@ import com.openlattice.entitysets.EntitySetsApi;
 import com.openlattice.retrofit.RhizomeRetrofitCallException;
 import com.openlattice.search.SearchApi;
 import com.openlattice.search.requests.EntityNeighborsFilter;
-import com.openlattice.shuttle.MissionControl;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.olingo.commons.api.edm.EdmPrimitiveTypeKind;
@@ -100,7 +101,7 @@ public class ChronicleServiceImpl implements ChronicleService {
 
     private final transient LoadingCache<Class<?>, ApiClient> prodApiClientCache;
     private final transient LoadingCache<Class<?>, ApiClient> intApiClientCache;
-    private final           Auth0Delegate auth0Client;
+    private final           Auth0Delegate                     auth0Client;
 
     public ChronicleServiceImpl(
             ChronicleConfiguration chronicleConfiguration,
@@ -250,7 +251,7 @@ public class ChronicleServiceImpl implements ChronicleService {
 
             UUID entitySetId = ensureEntitySetExists( organizationId, CHRONICLE_CORE, STUDIES );
 
-            String jwtToken = MissionControl.getIdToken( username, password );
+            String jwtToken = auth0Client.getIdToken( username, password );
 
             Iterable<SetMultimap<FullQualifiedName, Object>> data = dataApi
                     .loadEntitySetData( entitySetId, FileType.json, jwtToken );
