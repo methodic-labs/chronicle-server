@@ -26,7 +26,6 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.collect.*;
-import com.google.common.eventbus.EventBus;
 import com.openlattice.ApiUtil;
 import com.openlattice.apps.App;
 import com.openlattice.apps.AppApi;
@@ -101,10 +100,14 @@ public class ChronicleServiceImpl implements ChronicleService {
 
     private final transient LoadingCache<Class<?>, ApiClient> prodApiClientCache;
     private final transient LoadingCache<Class<?>, ApiClient> intApiClientCache;
+    private final           Auth0Delegate auth0Client;
 
     public ChronicleServiceImpl(
-            EventBus eventBus,
-            ChronicleConfiguration chronicleConfiguration ) throws ExecutionException {
+            ChronicleConfiguration chronicleConfiguration,
+            Auth0Configuration auth0Configuration
+    ) throws ExecutionException {
+
+        this.auth0Client = Auth0Delegate.fromConfig(auth0Configuration);
         this.username = chronicleConfiguration.getUser();
         this.password = chronicleConfiguration.getPassword();
 
@@ -115,7 +118,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                     @Override
                     public ApiClient load( Class<?> key ) throws Exception {
 
-                        String jwtToken = MissionControl.getIdToken( username, password );
+                        String jwtToken = auth0Client.getIdToken( username, password );
                         return new ApiClient( RetrofitFactory.Environment.PRODUCTION, () -> jwtToken );
                     }
                 } );
@@ -129,7 +132,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                     @Override
                     public ApiClient load( Class<?> key ) throws Exception {
 
-                        String jwtToken = MissionControl.getIdToken( username, password );
+                        String jwtToken = auth0Client.getIdToken( username, password );
                         return new ApiClient( RetrofitFactory.Environment.PROD_INTEGRATION, () -> jwtToken );
                     }
                 } );
@@ -1247,7 +1250,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         try {
             ApiClient apiClient = intApiClientCache.get( ApiClient.class );
             dataApi = apiClient.getDataApi();
-            jwtToken = MissionControl.getIdToken( username, password );
+            jwtToken = auth0Client.getIdToken( username, password );
         } catch ( ExecutionException | Auth0Exception e ) {
             logger.error( "Caught an exception", e );
             return;
