@@ -64,7 +64,9 @@ import org.apache.olingo.commons.api.edm.EdmPrimitiveTypeKind;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.InvalidDataAccessApiUsageException;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.security.access.AccessDeniedException;
 
 import javax.annotation.Nonnull;
 import java.time.LocalDate;
@@ -256,18 +258,19 @@ public class ChronicleServiceImpl implements ChronicleService {
     }
 
     private UUID getEntitySetId( UUID organizationId, AppName appName, CollectionTemplateName templateName ) {
+
         Map<CollectionTemplateName, UUID> templateEntitySetIdMap = entitySetIdsByOrgId
                 .getOrDefault( appName, ImmutableMap.of() )
                 .getOrDefault( organizationId, ImmutableMap.of() );
 
         if ( templateEntitySetIdMap.isEmpty() ) {
-            logger.warn( "organization {} does not have app {} installed", organizationId, appName );
-            return null;
+            logger.error( "organization {} does not have app {} installed", organizationId, appName );
+            throw new AccessDeniedException("app not installed for organization");
         }
 
         if ( !templateEntitySetIdMap.containsKey( templateName ) ) {
-            logger.warn( "app {} does not have a template {} in its entityTypeCollection", appName, templateName );
-            return null;
+            logger.error( "app {} does not have a template {} in its entityTypeCollection", appName, templateName );
+            throw new AccessDeniedException ("template not found in app");
         }
 
         return templateEntitySetIdMap.get( templateName );
