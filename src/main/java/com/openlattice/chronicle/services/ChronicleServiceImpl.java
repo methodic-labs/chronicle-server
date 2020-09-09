@@ -1818,4 +1818,8 @@ public class ChronicleServiceImpl implements ChronicleService {
             throw new RuntimeException( errorMsg );
         }
     }
+
+    private static String getParticipantEntitySetName( UUID studyId ) {
+        return PARTICIPANTS_PREFIX.concat( studyId.toString() );
+    }
 }
