@@ -27,13 +27,14 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.collect.*;
 import com.openlattice.ApiUtil;
-import com.openlattice.apps.App;
 import com.openlattice.apps.AppApi;
 import com.openlattice.apps.UserAppConfig;
 import com.openlattice.auth0.Auth0Delegate;
 import com.openlattice.authentication.Auth0Configuration;
 import com.openlattice.authorization.securable.AbstractSecurableObject;
 import com.openlattice.chronicle.configuration.ChronicleConfiguration;
+import com.openlattice.chronicle.constants.AppName;
+import com.openlattice.chronicle.constants.CollectionTemplateName;
 import com.openlattice.chronicle.constants.RecordType;
 import com.openlattice.chronicle.data.ChronicleAppsUsageDetails;
 import com.openlattice.chronicle.data.ChronicleQuestionnaire;
@@ -43,7 +44,6 @@ import com.openlattice.chronicle.sources.AndroidDevice;
 import com.openlattice.chronicle.sources.Datasource;
 import com.openlattice.client.ApiClient;
 import com.openlattice.client.RetrofitFactory;
-import com.openlattice.collections.CollectionTemplateType;
 import com.openlattice.collections.CollectionsApi;
 import com.openlattice.collections.EntitySetCollection;
 import com.openlattice.data.*;
@@ -79,15 +79,56 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-import static com.openlattice.chronicle.constants.EdmConstants.*;
-import static com.openlattice.chronicle.constants.OutputConstants.*;
+import static com.openlattice.chronicle.constants.AppName.CHRONICLE_QUESTIONNAIRES;
+import static com.openlattice.chronicle.constants.AppName.CHRONICLE_CORE;
+import static com.openlattice.chronicle.constants.AppName.DATA_COLLECTION;
+import static com.openlattice.chronicle.constants.CollectionTemplateName.STUDIES;
+import static com.openlattice.chronicle.constants.CollectionTemplateName.PARTICIPANTS;
+import static com.openlattice.chronicle.constants.CollectionTemplateName.NOTIFICATION;
+import static com.openlattice.chronicle.constants.CollectionTemplateName.PART_OF;
+import static com.openlattice.chronicle.constants.CollectionTemplateName.METADATA;
+import static com.openlattice.chronicle.constants.CollectionTemplateName.HAS;
+import static com.openlattice.chronicle.constants.CollectionTemplateName.PARTICIPATED_IN;
+import static com.openlattice.chronicle.constants.CollectionTemplateName.QUESTION;
+import static com.openlattice.chronicle.constants.CollectionTemplateName.USER_APPS;
+import static com.openlattice.chronicle.constants.CollectionTemplateName.ANSWER;
+import static com.openlattice.chronicle.constants.CollectionTemplateName.ADDRESSES;
+import static com.openlattice.chronicle.constants.CollectionTemplateName.RESPONDS_WITH;
+import static com.openlattice.chronicle.constants.CollectionTemplateName.APP_DATA;
+import static com.openlattice.chronicle.constants.CollectionTemplateName.SURVEY;
+import static com.openlattice.chronicle.constants.CollectionTemplateName.PREPROCESSED_DATA;
+import static com.openlattice.chronicle.constants.CollectionTemplateName.DEVICE;
+import static com.openlattice.chronicle.constants.CollectionTemplateName.USED_BY;
+import static com.openlattice.chronicle.constants.CollectionTemplateName.RECORDED_BY;
+import static com.openlattice.chronicle.constants.EdmConstants.COMPLETED_DATE_TIME_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.DATE_LOGGED_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.DATE_TIME_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.END_DATE_TIME_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.FULL_NAME_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.MODEL_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.OL_ID_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.PERSON_ID_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.RECORDED_DATE_TIME_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.RECORD_TYPE_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.START_DATE_TIME_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.STATUS_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.STRING_ID_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.TIMEZONE_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.TITLE_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.USER_APPS_DICTIONARY;
+import static com.openlattice.chronicle.constants.EdmConstants.VALUES_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.VERSION_FQN;
+import static com.openlattice.chronicle.constants.OutputConstants.APP_PREFIX;
+import static com.openlattice.chronicle.constants.OutputConstants.DEFAULT_TIMEZONE;
+import static com.openlattice.chronicle.constants.OutputConstants.MINIMUM_DATE;
+import static com.openlattice.chronicle.constants.OutputConstants.USER_PREFIX;
 import static com.openlattice.edm.EdmConstants.ID_FQN;
 
 public class ChronicleServiceImpl implements ChronicleService {
     protected static final Logger logger = LoggerFactory.getLogger( ChronicleServiceImpl.class );
 
     // appName -> orgId -> templateName -> entitySetID
-    private Map<String, Map<UUID, Map<String, UUID>>> entitySetIdsByOrgId;
+    private Map<AppName, Map<UUID, Map<CollectionTemplateName, UUID>>> entitySetIdsByOrgId;
 
     private final Set<String> systemAppPackageNames = Collections.synchronizedSet( new HashSet<>() );
 
@@ -179,29 +220,31 @@ public class ChronicleServiceImpl implements ChronicleService {
     private void initializeEntitySets( AppApi appApi, CollectionsApi collectionsApi ) {
 
         // get mapping appName -> appId
-        Map<String, UUID> appNameIdMap = APP_NAMES.stream()
-                .map( appApi::getAppByName )
-                .collect( Collectors.toMap( App::getName, AbstractSecurableObject::getId ) );
+        Map<AppName, UUID> appNameIdMap = Arrays.stream( AppName.values() )
+                .map( appName -> appApi.getAppByName( appName.toString() ) )
+                .collect( Collectors
+                        .toMap( entry -> AppName.valueOf( entry.getName() ), AbstractSecurableObject::getId ) );
 
-        Map<String, Map<UUID, Map<String, UUID>>> entitySets = new HashMap<>();
+        Map<AppName, Map<UUID, Map<CollectionTemplateName, UUID>>> entitySets = new HashMap<>();
 
         // get configs for each app
         appNameIdMap.forEach( ( appName, appId ) -> {
             List<UserAppConfig> configs = appApi.getAvailableAppConfigs( appId );
 
-            Map<UUID, Map<String, UUID>> orgEntitySetMap = new HashMap<>();
+            Map<UUID, Map<CollectionTemplateName, UUID>> orgEntitySetMap = new HashMap<>();
 
             configs.forEach( userAppConfig -> {
                 EntitySetCollection entitySetCollection = collectionsApi
                         .getEntitySetCollection( userAppConfig.getEntitySetCollectionId() );
                 Map<UUID, UUID> template = entitySetCollection.getTemplate();
 
-                Map<String, UUID> templateNameEntitySetId = collectionsApi
+                Map<CollectionTemplateName, UUID> templateNameEntitySetId = collectionsApi
                         .getEntityTypeCollection( entitySetCollection.getEntityTypeCollectionId() )
                         .getTemplate()
                         .stream()
-                        .collect( Collectors.toMap( CollectionTemplateType::getName,
-                                templateType -> template.get( templateType.getId() ) ) );
+                        .collect( Collectors
+                                .toMap( templateType -> CollectionTemplateName.valueOf( templateType.getName() ),
+                                        templateType -> template.get( templateType.getId() ) ) );
 
                 orgEntitySetMap.put( userAppConfig.getOrganizationId(), templateNameEntitySetId );
             } );
@@ -212,8 +255,8 @@ public class ChronicleServiceImpl implements ChronicleService {
         entitySetIdsByOrgId = ImmutableMap.copyOf( entitySets );
     }
 
-    private UUID getEntitySetId( UUID organizationId, String appName, String templateName ) {
-        Map<String, UUID> templateEntitySetIdMap = entitySetIdsByOrgId
+    private UUID getEntitySetId( UUID organizationId, AppName appName, CollectionTemplateName templateName ) {
+        Map<CollectionTemplateName, UUID> templateEntitySetIdMap = entitySetIdsByOrgId
                 .getOrDefault( appName, ImmutableMap.of() )
                 .getOrDefault( organizationId, ImmutableMap.of() );
 
@@ -265,7 +308,8 @@ public class ChronicleServiceImpl implements ChronicleService {
             ApiClient apiClient = prodApiClientCache.get( ApiClient.class );
             DataApi dataApi = apiClient.getDataApi();
 
-            UUID entitySetId = ensureEntitySetExists( organizationId, CHRONICLE_CORE, STUDIES );
+            UUID entitySetId = ensureEntitySetExists( organizationId, CHRONICLE_CORE,
+                    CollectionTemplateName.STUDIES );
 
             String jwtToken = auth0Client.getIdToken( username, password );
 
@@ -318,7 +362,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                     .flatMap( Collection::stream )
                     .filter( neighbor -> participantId
                             .equals( getFirstValueOrNull( neighbor.getNeighborDetails().orElse( Map.of() ),
-                                    PERSON_FQN ) ) )
+                                    PERSON_ID_FQN ) ) )
                     .map( neighbor -> getFirstUUIDOrNull( neighbor.getNeighborDetails().orElse( Map.of() ), ID_FQN ) )
                     .findFirst().orElse( null );
 
@@ -638,7 +682,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         logger.info( "Uploaded user metadata entries: participantId = {}", participantId );
     }
 
-    private UUID ensureEntitySetExists( UUID organizationId, String appName, String template ) {
+    private UUID ensureEntitySetExists( UUID organizationId, AppName appName, CollectionTemplateName template ) {
         return Preconditions.checkNotNull( getEntitySetId( organizationId, appName, template ),
                 appName + " does not exist in org " + organizationId );
     }
@@ -1316,8 +1360,8 @@ public class ChronicleServiceImpl implements ChronicleService {
     private Iterable<Map<String, Set<Object>>> getParticipantDataHelper(
             UUID organizationId,
             UUID participantEntityKeyId,
-            String edgeEntitySetName,
-            String sourceEntitySetName,
+            CollectionTemplateName edgeTemplateName,
+            CollectionTemplateName sourceTemplateName,
             String token ) {
 
         try {
@@ -1331,8 +1375,8 @@ public class ChronicleServiceImpl implements ChronicleService {
              */
 
             UUID participantESID = ensureEntitySetExists( organizationId, CHRONICLE_CORE, PARTICIPANTS );
-            UUID srcESID = ensureEntitySetExists( organizationId, DATA_COLLECTION, sourceEntitySetName );
-            UUID edgeESID = ensureEntitySetExists( organizationId, DATA_COLLECTION, edgeEntitySetName );
+            UUID srcESID = ensureEntitySetExists( organizationId, DATA_COLLECTION, sourceTemplateName );
+            UUID edgeESID = ensureEntitySetExists( organizationId, DATA_COLLECTION, edgeTemplateName );
 
             Map<UUID, EntitySet> entitySetsById = entitySetsApi.getEntitySetsById(
                     ImmutableSet.of( participantESID, srcESID, edgeESID )
@@ -1817,9 +1861,5 @@ public class ChronicleServiceImpl implements ChronicleService {
             logger.error( errorMsg, e );
             throw new RuntimeException( errorMsg );
         }
-    }
-
-    private static String getParticipantEntitySetName( UUID studyId ) {
-        return PARTICIPANTS_PREFIX.concat( studyId.toString() );
     }
 }
