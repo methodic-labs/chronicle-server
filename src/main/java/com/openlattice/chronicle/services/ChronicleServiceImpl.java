@@ -87,12 +87,12 @@ public class ChronicleServiceImpl implements ChronicleService {
     protected static final Logger logger = LoggerFactory.getLogger( ChronicleServiceImpl.class );
 
     // appName -> orgId -> templateName -> entitySetID
-    private ImmutableMap<String, Map<UUID, Map<String, UUID>>> entitySetIdsByOrgId;
+    private Map<String, Map<UUID, Map<String, UUID>>> entitySetIdsByOrgId;
 
     private final Set<String> systemAppPackageNames = Collections.synchronizedSet( new HashSet<>() );
 
-    private final ImmutableMap<UUID, PropertyType> propertyTypesById;
-    private final ImmutableMap<FullQualifiedName, UUID> propertyTypeIdsByFQN;
+    private final Map<UUID, PropertyType>      propertyTypesById;
+    private final Map<FullQualifiedName, UUID> propertyTypeIdsByFQN;
 
     private final UUID appsDictionaryESID;
 
@@ -108,7 +108,7 @@ public class ChronicleServiceImpl implements ChronicleService {
             Auth0Configuration auth0Configuration
     ) throws ExecutionException {
 
-        this.auth0Client = Auth0Delegate.fromConfig(auth0Configuration);
+        this.auth0Client = Auth0Delegate.fromConfig( auth0Configuration );
         this.username = chronicleConfiguration.getUser();
         this.password = chronicleConfiguration.getPassword();
 
@@ -158,6 +158,22 @@ public class ChronicleServiceImpl implements ChronicleService {
         appsDictionaryESID = entitySetsApi.getEntitySetId( USER_APPS_DICTIONARY );
 
         refreshUserAppsDictionary();
+    }
+
+    private String getFirstValueOrNull( Map<FullQualifiedName, Set<Object>> entity, FullQualifiedName fqn ) {
+        if ( entity.getOrDefault( fqn, Set.of() ).isEmpty() ) {
+            return null;
+        }
+        return entity.get( fqn ).iterator().next().toString();
+    }
+
+    private UUID getFirstUUIDOrNull( Map<FullQualifiedName, Set<Object>> entity, FullQualifiedName fqn ) {
+        String firstValue = getFirstValueOrNull( entity, fqn );
+        if ( firstValue == null ) {
+            return null;
+        }
+
+        return UUID.fromString( firstValue );
     }
 
     private void initializeEntitySets( AppApi appApi, CollectionsApi collectionsApi ) {
@@ -257,15 +273,16 @@ public class ChronicleServiceImpl implements ChronicleService {
                     .loadEntitySetData( entitySetId, FileType.json, jwtToken );
 
             return StreamUtil.stream( data )
-                    .filter( entry -> !entry.get( STRING_ID_FQN ).isEmpty() )
-                    .filter( entry -> entry.get( STRING_ID_FQN ).iterator().next().toString()
-                            .equals( studyId.toString() ) )
-                    .map( entry -> UUID.fromString( entry.get( ID_FQN ).iterator().next().toString() ) )
+                    .filter( entry -> studyId.toString()
+                            .equals( getFirstValueOrNull( Multimaps.asMap( entry ), STRING_ID_FQN ) ) )
+                    .map( entry -> getFirstUUIDOrNull( Multimaps.asMap( entry ), ID_FQN ) )
                     .findFirst().orElse( null );
 
         } catch ( Exception e ) {
-            String error = "failed to get EKID of study with studyId " + studyId + " in organization " + organizationId;
-            logger.error( error, e );
+            logger.error( "failed to get EKID of study with studyId {} in organization {}",
+                    studyId,
+                    organizationId,
+                    e );
             return null;
         }
     }
@@ -299,17 +316,17 @@ public class ChronicleServiceImpl implements ChronicleService {
                     .values()
                     .stream()
                     .flatMap( Collection::stream )
-                    .filter( neighbor -> neighbor.getNeighborId().isPresent() && neighbor.getNeighborDetails()
-                            .isPresent() )
-                    .filter( neighbor -> neighbor.getNeighborDetails().get().get( PERSON_ID_FQN ).iterator().next()
-                            .toString().equals( participantId.toString() ) )
-                    .map( neighbor -> neighbor.getNeighborId().get() )
+                    .filter( neighbor -> participantId
+                            .equals( getFirstValueOrNull( neighbor.getNeighborDetails().orElse( Map.of() ),
+                                    PERSON_FQN ) ) )
+                    .map( neighbor -> getFirstUUIDOrNull( neighbor.getNeighborDetails().orElse( Map.of() ), ID_FQN ) )
                     .findFirst().orElse( null );
 
         } catch ( Exception e ) {
-            String error = "failed to get EKID of participant " + participantId + " associated with study " + studyId
-                    + "in org " + organizationId;
-            logger.error( error, e );
+            logger.error( "failed to get EKID of participant = {}, study = {}, organization = {}",
+                    participantId,
+                    studyId,
+                    e );
             return null;
         }
     }
@@ -1044,11 +1061,10 @@ public class ChronicleServiceImpl implements ChronicleService {
                     .values()
                     .stream()
                     .flatMap( Collection::stream )
-                    .filter( neighbor -> neighbor.getNeighborId().isPresent() && neighbor.getNeighborDetails()
-                            .isPresent() )
-                    .filter( neighbor -> neighbor.getNeighborDetails().get().getOrDefault( STRING_ID_FQN, Set.of( "" ) )
-                            .iterator().next().toString().equals( datasourceId ) )
-                    .map( neighbor -> neighbor.getNeighborId().get() )
+                    .filter( neighbor -> datasourceId
+                            .equals( getFirstValueOrNull( neighbor.getNeighborDetails().orElse( Map.of() ),
+                                    STRING_ID_FQN ) ) )
+                    .map( neighbor -> getFirstUUIDOrNull( neighbor.getNeighborDetails().orElse( Map.of() ), ID_FQN ) )
                     .findFirst().orElse( null );
 
         } catch ( Exception e ) {
@@ -1558,9 +1574,9 @@ public class ChronicleServiceImpl implements ChronicleService {
 
             return neighborResults.getOrDefault( participantEKID, List.of() )
                     .stream()
-                    .filter( neighbor -> neighbor.getNeighborDetails().isPresent() )
-                    .filter( neighbor -> neighbor.getNeighborDetails().get().getOrDefault( STRING_ID_FQN, Set.of( "" ) )
-                            .iterator().next().toString().equals( studyId.toString() ) )
+                    .filter( neighbor -> studyId.toString()
+                            .equals( getFirstValueOrNull( neighbor.getNeighborDetails().orElse( Map.of() ),
+                                    STRING_ID_FQN ) ) )
                     .map( neighbor -> neighbor.getAssociationDetails()
                             .getOrDefault( STATUS_FQN, Set.of( ParticipationStatus.UNKNOWN.toString() ) ).iterator()
                             .next().toString() )
@@ -1614,10 +1630,9 @@ public class ChronicleServiceImpl implements ChronicleService {
 
                 neighbors.get( studyEKID )
                         .stream()
-                        .filter( neighbor -> neighbor.getNeighborDetails().isPresent() && neighbor.getNeighborId()
-                                .isPresent() )
-                        .filter( neighbor -> neighbor.getNeighborId().get().toString()
-                                .equals( questionnaireEKID.toString() ) )
+                        .filter( neighbor -> questionnaireEKID
+                                .equals( getFirstUUIDOrNull( neighbor.getNeighborDetails().orElse( Map.of() ),
+                                        ID_FQN ) ) )
                         .map( neighbor -> neighbor.getNeighborDetails().get() )
                         .findFirst() // If a study has multiple questionnaires, we are only interested in the one with a matching EKID
                         .ifPresent( questionnaire::setQuestionnaireDetails );

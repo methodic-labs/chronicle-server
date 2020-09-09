@@ -58,6 +58,10 @@ public class ChronicleStudyController implements ChronicleStudyApi {
 
     private final FullQualifiedName PERSON_ID_FQN = new FullQualifiedName( "nc.SubjectIdentification" );
 
+    private static final String RAW_DATA_PREFIX = "ChronicleData_";
+    private static final String PREPROCESSED_DATA_PREFIX = "ChroniclePreprocessedData_";
+    private static final String USAGE_DATA_PREFIX = "ChronicleAppUsageData_";
+
     @Inject
     private ChronicleService chronicleService;
 
@@ -80,7 +84,7 @@ public class ChronicleStudyController implements ChronicleStudyApi {
             path = ORGANIZATION_ID_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH + DATASOURCE_ID_PATH,
             method = RequestMethod.POST,
             consumes = MediaType.APPLICATION_JSON_VALUE )
-    public UUID enrollSourceV2(
+    public UUID enrollDataSourceInOrgStudy(
             @PathVariable( ORGANIZATION_ID ) UUID organizationId,
             @PathVariable( STUDY_ID ) UUID studyId,
             @PathVariable( PARTICIPANT_ID ) String participantId,
@@ -102,7 +106,6 @@ public class ChronicleStudyController implements ChronicleStudyApi {
         //  validate that this device belongs to this participant in this study
         //  look up in association entitySet between device and participant, and device and study to see if it exists?
         //  DataApi.getEntity(entitySetId :UUID, entityKeyId :UUID)
-        // TODO: Waiting on data model to exist, then ready to implement
         return chronicleService.isKnownDatasource( CAFE_ORG_ID, studyId, participantId, datasourceId );
     }
 
@@ -111,7 +114,7 @@ public class ChronicleStudyController implements ChronicleStudyApi {
             path = ORGANIZATION_ID_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH + DATASOURCE_ID_PATH + VALID,
             method = RequestMethod.GET,
             produces = MediaType.APPLICATION_JSON_VALUE )
-    public Boolean isKnownDataSourceV2(
+    public Boolean isKnownOrgStudyDataSource(
             @PathVariable( ORGANIZATION_ID ) UUID organizationId,
             @PathVariable( STUDY_ID ) UUID studyId,
             @PathVariable( PARTICIPANT_ID ) String participantId,
@@ -131,7 +134,6 @@ public class ChronicleStudyController implements ChronicleStudyApi {
         //  validate that this participant belongs in this study
         //  look up in association entitySet between study and participant if the participant is present
         //  DataApi.getEntity(entitySetId :UUID, entityKeyId :UUID)
-        // TODO: Waiting on data model to exist, then ready to implement
         return chronicleService.isKnownParticipant( organizationId, studyId, participantId );
     }
 
@@ -198,7 +200,7 @@ public class ChronicleStudyController implements ChronicleStudyApi {
             path = ORGANIZATION_ID_PATH + STUDY_ID_PATH + NOTIFICATIONS,
             method = RequestMethod.GET
     )
-    public Boolean isNotificationsEnabledV2(
+    public Boolean isOrgStudyNotificationsEnabled(
             @PathVariable( ORGANIZATION_ID ) UUID organizationId,
             @PathVariable( STUDY_ID ) UUID studyId ) {
         return chronicleService.isNotificationsEnabled( organizationId, studyId );
@@ -220,7 +222,7 @@ public class ChronicleStudyController implements ChronicleStudyApi {
             path = ORGANIZATION_ID_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH + ENROLLMENT_STATUS,
             method = RequestMethod.GET
     )
-    public ParticipationStatus getParticipationStatusV2(
+    public ParticipationStatus getParticipationStatus(
             @PathVariable( ORGANIZATION_ID ) UUID organizationId,
             @PathVariable( STUDY_ID ) UUID studyId,
             @PathVariable( PARTICIPANT_ID ) String participantId ) {
@@ -259,7 +261,7 @@ public class ChronicleStudyController implements ChronicleStudyApi {
                 participantEntityKeyId,
                 fileType );
 
-        String fileName = getParticipantDataFileName( "ChroniclePreprocessedData_",
+        String fileName = getParticipantDataFileName( PREPROCESSED_DATA_PREFIX,
                 organizationId,
                 studyId,
                 participantEntityKeyId );
@@ -299,7 +301,7 @@ public class ChronicleStudyController implements ChronicleStudyApi {
                 participantEntityKeyId,
                 fileType );
 
-        String fileName = getParticipantDataFileName( "ChronicleData_",
+        String fileName = getParticipantDataFileName( RAW_DATA_PREFIX,
                 organizationId,
                 studyId,
                 participantEntityKeyId );
@@ -337,7 +339,7 @@ public class ChronicleStudyController implements ChronicleStudyApi {
                 participantEntityKeyId,
                 fileType );
 
-        String fileName = getParticipantDataFileName( "ChronicleAppUsageData_",
+        String fileName = getParticipantDataFileName( USAGE_DATA_PREFIX,
                 organizationId,
                 studyId,
                 participantEntityKeyId );
@@ -391,7 +393,7 @@ public class ChronicleStudyController implements ChronicleStudyApi {
             method = RequestMethod.GET,
             produces = MediaType.APPLICATION_JSON_VALUE
     )
-    public Map<UUID, Map<FullQualifiedName, Set<Object>>> getStudyQuestionnairesV2(
+    public Map<UUID, Map<FullQualifiedName, Set<Object>>> getOrgStudyQuestionnaires(
             @PathVariable( ORGANIZATION_ID ) UUID organizationId,
             @PathVariable( STUDY_ID ) UUID studyId ) {
         return chronicleService.getStudyQuestionnaires( organizationId, studyId );
@@ -417,8 +419,8 @@ public class ChronicleStudyController implements ChronicleStudyApi {
             String dataSourceId,
             Optional<Datasource> datasource ) {
         //  allow to proceed only if the participant is in the study and the device has not been associated yet
-        final boolean knownParticipant = chronicleService.isKnownParticipant( organizationId, studyId, participantId );
-        final boolean knownDatasource = chronicleService
+        final boolean isKnownParticipant = chronicleService.isKnownParticipant( organizationId, studyId, participantId );
+        final boolean isKnownDatasource = chronicleService
                 .isKnownDatasource( organizationId, studyId, participantId, dataSourceId );
 
         logger.info(
@@ -427,13 +429,13 @@ public class ChronicleStudyController implements ChronicleStudyApi {
                 participantId,
                 dataSourceId
         );
-        logger.info( "isKnownParticipant {} = {}", participantId, knownParticipant );
-        logger.info( "isKnownDatasource {} = {}", dataSourceId, knownDatasource );
+        logger.info( "isKnownParticipant {} = {}", participantId, isKnownParticipant );
+        logger.info( "isKnownDatasource {} = {}", dataSourceId, isKnownDatasource );
 
-        if ( knownParticipant && !knownDatasource ) {
+        if ( isKnownParticipant && !isKnownDatasource ) {
             return chronicleService
                     .registerDatasource( organizationId, studyId, participantId, dataSourceId, datasource );
-        } else if ( knownParticipant ) {
+        } else if ( isKnownParticipant ) {
             return chronicleService.getDeviceEntityKeyId( organizationId, studyId, participantId, dataSourceId );
         } else {
             logger.error(
@@ -442,8 +444,8 @@ public class ChronicleStudyController implements ChronicleStudyApi {
                     studyId,
                     participantId,
                     dataSourceId,
-                    knownParticipant,
-                    knownDatasource );
+                    isKnownParticipant,
+                    isKnownDatasource );
             throw new AccessDeniedException( "Unable to enroll device." );
         }
     }
