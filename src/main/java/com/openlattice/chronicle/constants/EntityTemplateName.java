@@ -3,7 +3,7 @@ package com.openlattice.chronicle.constants;
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
  */
-public enum CollectionTemplateName {
+public enum EntityTemplateName {
     STUDIES( "studies" ),
     PARTICIPANTS( "participants" ),
     NOTIFICATION( "notification" ),
@@ -29,7 +29,7 @@ public enum CollectionTemplateName {
 
     private final String template;
 
-    CollectionTemplateName( String template ) {
+    EntityTemplateName( String template ) {
         this.template = template;
     }
 
