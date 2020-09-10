@@ -218,6 +218,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         return UUID.fromString( firstValue );
     }
 
+    @Scheduled (fixedRate = 15 * 60 * 1000) // 15 minutes interval
     private void initializeEntitySets( AppApi appApi, CollectionsApi collectionsApi ) {
 
         // get mapping appName -> appId
