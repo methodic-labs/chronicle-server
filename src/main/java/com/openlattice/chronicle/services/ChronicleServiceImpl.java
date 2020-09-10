@@ -33,7 +33,7 @@ import com.openlattice.auth0.Auth0Delegate;
 import com.openlattice.authentication.Auth0Configuration;
 import com.openlattice.authorization.securable.AbstractSecurableObject;
 import com.openlattice.chronicle.configuration.ChronicleConfiguration;
-import com.openlattice.chronicle.constants.AppName;
+import com.openlattice.chronicle.constants.AppComponent;
 import com.openlattice.chronicle.constants.EntityTemplateName;
 import com.openlattice.chronicle.constants.RecordType;
 import com.openlattice.chronicle.data.ChronicleAppsUsageDetails;
@@ -80,9 +80,9 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-import static com.openlattice.chronicle.constants.AppName.CHRONICLE_QUESTIONNAIRES;
-import static com.openlattice.chronicle.constants.AppName.CHRONICLE_CORE;
-import static com.openlattice.chronicle.constants.AppName.DATA_COLLECTION;
+import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE_QUESTIONNAIRES;
+import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE_CORE;
+import static com.openlattice.chronicle.constants.AppComponent.DATA_COLLECTION;
 import static com.openlattice.chronicle.constants.EntityTemplateName.STUDIES;
 import static com.openlattice.chronicle.constants.EntityTemplateName.PARTICIPANTS;
 import static com.openlattice.chronicle.constants.EntityTemplateName.NOTIFICATION;
@@ -129,7 +129,7 @@ public class ChronicleServiceImpl implements ChronicleService {
     protected static final Logger logger = LoggerFactory.getLogger( ChronicleServiceImpl.class );
 
     // appName -> orgId -> templateName -> entitySetID
-    private Map<AppName, Map<UUID, Map<EntityTemplateName, UUID>>> entitySetIdsByOrgId;
+    private Map<AppComponent, Map<UUID, Map<EntityTemplateName, UUID>>> entitySetIdsByOrgId;
 
     private final Set<String> systemAppPackageNames = Collections.synchronizedSet( new HashSet<>() );
 
@@ -222,15 +222,15 @@ public class ChronicleServiceImpl implements ChronicleService {
     private void initializeEntitySets( AppApi appApi, CollectionsApi collectionsApi ) {
 
         // get mapping appName -> appId
-        Map<AppName, UUID> appNameIdMap = Arrays.stream( AppName.values() )
-                .map( appName -> appApi.getAppByName( appName.toString() ) )
+        Map<AppComponent, UUID> appNameIdMap = Arrays.stream( AppComponent.values() )
+                .map( appComponent -> appApi.getAppByName( appComponent.toString() ) )
                 .collect( Collectors
-                        .toMap( entry -> AppName.valueOf( entry.getName() ), AbstractSecurableObject::getId ) );
+                        .toMap( entry -> AppComponent.valueOf( entry.getName() ), AbstractSecurableObject::getId ) );
 
-        Map<AppName, Map<UUID, Map<EntityTemplateName, UUID>>> entitySets = new HashMap<>();
+        Map<AppComponent, Map<UUID, Map<EntityTemplateName, UUID>>> entitySets = new HashMap<>();
 
         // get configs for each app
-        appNameIdMap.forEach( ( appName, appId ) -> {
+        appNameIdMap.forEach( ( appComponent, appId ) -> {
             List<UserAppConfig> configs = appApi.getAvailableAppConfigs( appId );
 
             Map<UUID, Map<EntityTemplateName, UUID>> orgEntitySetMap = new HashMap<>();
@@ -251,25 +251,25 @@ public class ChronicleServiceImpl implements ChronicleService {
                 orgEntitySetMap.put( userAppConfig.getOrganizationId(), templateNameEntitySetId );
             } );
 
-            entitySets.put( appName, orgEntitySetMap );
+            entitySets.put( appComponent, orgEntitySetMap );
         } );
 
         entitySetIdsByOrgId = ImmutableMap.copyOf( entitySets );
     }
 
-    private UUID getEntitySetId( UUID organizationId, AppName appName, EntityTemplateName templateName ) {
+    private UUID getEntitySetId( UUID organizationId, AppComponent appComponent, EntityTemplateName templateName ) {
 
         Map<EntityTemplateName, UUID> templateEntitySetIdMap = entitySetIdsByOrgId
-                .getOrDefault( appName, ImmutableMap.of() )
+                .getOrDefault( appComponent, ImmutableMap.of() )
                 .getOrDefault( organizationId, ImmutableMap.of() );
 
         if ( templateEntitySetIdMap.isEmpty() ) {
-            logger.error( "organization {} does not have app {} installed", organizationId, appName );
+            logger.error( "organization {} does not have app {} installed", organizationId, appComponent );
             throw new AccessDeniedException("app not installed for organization");
         }
 
         if ( !templateEntitySetIdMap.containsKey( templateName ) ) {
-            logger.error( "app {} does not have a template {} in its entityTypeCollection", appName, templateName );
+            logger.error( "app {} does not have a template {} in its entityTypeCollection", appComponent, templateName );
             throw new AccessDeniedException ("template not found in app");
         }
 
@@ -685,9 +685,9 @@ public class ChronicleServiceImpl implements ChronicleService {
         logger.info( "Uploaded user metadata entries: participantId = {}", participantId );
     }
 
-    private UUID ensureEntitySetExists( UUID organizationId, AppName appName, EntityTemplateName template ) {
-        return Preconditions.checkNotNull( getEntitySetId( organizationId, appName, template ),
-                appName + " does not exist in org " + organizationId );
+    private UUID ensureEntitySetExists( UUID organizationId, AppComponent appComponent, EntityTemplateName template ) {
+        return Preconditions.checkNotNull( getEntitySetId( organizationId, appComponent, template ),
+                appComponent + " does not exist in org " + organizationId );
     }
 
     private void createAppDataEntitiesAndAssociations(
