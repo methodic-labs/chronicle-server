@@ -27,6 +27,7 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.collect.*;
 import com.openlattice.ApiUtil;
+import com.openlattice.apps.App;
 import com.openlattice.apps.AppApi;
 import com.openlattice.apps.UserAppConfig;
 import com.openlattice.auth0.Auth0Delegate;
@@ -34,7 +35,7 @@ import com.openlattice.authentication.Auth0Configuration;
 import com.openlattice.authorization.securable.AbstractSecurableObject;
 import com.openlattice.chronicle.configuration.ChronicleConfiguration;
 import com.openlattice.chronicle.constants.AppComponent;
-import com.openlattice.chronicle.constants.EntityTemplateName;
+import com.openlattice.chronicle.constants.CollectionTemplateTypeName;
 import com.openlattice.chronicle.constants.RecordType;
 import com.openlattice.chronicle.data.ChronicleAppsUsageDetails;
 import com.openlattice.chronicle.data.ChronicleQuestionnaire;
@@ -44,8 +45,10 @@ import com.openlattice.chronicle.sources.AndroidDevice;
 import com.openlattice.chronicle.sources.Datasource;
 import com.openlattice.client.ApiClient;
 import com.openlattice.client.RetrofitFactory;
+import com.openlattice.collections.CollectionTemplateType;
 import com.openlattice.collections.CollectionsApi;
 import com.openlattice.collections.EntitySetCollection;
+import com.openlattice.collections.EntityTypeCollection;
 import com.openlattice.data.*;
 import com.openlattice.data.requests.FileType;
 import com.openlattice.data.requests.NeighborEntityDetails;
@@ -65,7 +68,6 @@ import org.apache.olingo.commons.api.edm.FullQualifiedName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.security.access.AccessDeniedException;
 
 import javax.annotation.Nonnull;
 import java.time.LocalDate;
@@ -81,26 +83,26 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE_QUESTIONNAIRES;
-import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE_CORE;
-import static com.openlattice.chronicle.constants.AppComponent.DATA_COLLECTION;
-import static com.openlattice.chronicle.constants.EntityTemplateName.STUDIES;
-import static com.openlattice.chronicle.constants.EntityTemplateName.PARTICIPANTS;
-import static com.openlattice.chronicle.constants.EntityTemplateName.NOTIFICATION;
-import static com.openlattice.chronicle.constants.EntityTemplateName.PART_OF;
-import static com.openlattice.chronicle.constants.EntityTemplateName.METADATA;
-import static com.openlattice.chronicle.constants.EntityTemplateName.HAS;
-import static com.openlattice.chronicle.constants.EntityTemplateName.PARTICIPATED_IN;
-import static com.openlattice.chronicle.constants.EntityTemplateName.QUESTION;
-import static com.openlattice.chronicle.constants.EntityTemplateName.USER_APPS;
-import static com.openlattice.chronicle.constants.EntityTemplateName.ANSWER;
-import static com.openlattice.chronicle.constants.EntityTemplateName.ADDRESSES;
-import static com.openlattice.chronicle.constants.EntityTemplateName.RESPONDS_WITH;
-import static com.openlattice.chronicle.constants.EntityTemplateName.APP_DATA;
-import static com.openlattice.chronicle.constants.EntityTemplateName.SURVEY;
-import static com.openlattice.chronicle.constants.EntityTemplateName.PREPROCESSED_DATA;
-import static com.openlattice.chronicle.constants.EntityTemplateName.DEVICE;
-import static com.openlattice.chronicle.constants.EntityTemplateName.USED_BY;
-import static com.openlattice.chronicle.constants.EntityTemplateName.RECORDED_BY;
+import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE;
+import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE_DATA_COLLECTION;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.STUDIES;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.PARTICIPANTS;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.NOTIFICATION;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.PART_OF;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.METADATA;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.HAS;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.PARTICIPATED_IN;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.QUESTION;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.USER_APPS;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.ANSWER;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.ADDRESSES;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.RESPONDS_WITH;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.APPDATA;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.SURVEY;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.PREPROCESSED_DATA;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.DEVICE;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.USED_BY;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.RECORDED_BY;
 import static com.openlattice.chronicle.constants.EdmConstants.COMPLETED_DATE_TIME_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.DATE_LOGGED_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.DATE_TIME_FQN;
@@ -116,7 +118,7 @@ import static com.openlattice.chronicle.constants.EdmConstants.STATUS_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.STRING_ID_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.TIMEZONE_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.TITLE_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.USER_APPS_DICTIONARY;
+import static com.openlattice.chronicle.constants.EdmConstants.CHRONICLE_APPLICATION_DICTIONARY;
 import static com.openlattice.chronicle.constants.EdmConstants.VALUES_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.VERSION_FQN;
 import static com.openlattice.chronicle.constants.OutputConstants.APP_PREFIX;
@@ -128,8 +130,10 @@ import static com.openlattice.edm.EdmConstants.ID_FQN;
 public class ChronicleServiceImpl implements ChronicleService {
     protected static final Logger logger = LoggerFactory.getLogger( ChronicleServiceImpl.class );
 
+    private final long ENTITY_SETS_REFRESH_INTERVAL = 15 * 60 * 1000; // 15 minutes
+
     // appName -> orgId -> templateName -> entitySetID
-    private Map<AppComponent, Map<UUID, Map<EntityTemplateName, UUID>>> entitySetIdsByOrgId;
+    private Map<AppComponent, Map<UUID, Map<CollectionTemplateTypeName, UUID>>> entitySetIdsByOrgId;
 
     private final Set<String> systemAppPackageNames = Collections.synchronizedSet( new HashSet<>() );
 
@@ -185,7 +189,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         EntitySetsApi entitySetsApi = prodApiClient.getEntitySetsApi();
         CollectionsApi collectionsApi = prodApiClient.getCollectionsApi();
 
-        initializeEntitySets( appApi, collectionsApi );
+        initializeEntitySets(  );
 
         // get propertyTypeId map
         Iterable<PropertyType> propertyTypes = edmApi.getPropertyTypes();
@@ -197,7 +201,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                 .stream()
                 .collect( ImmutableMap.toImmutableMap( PropertyType::getType, PropertyType::getId ) );
 
-        appsDictionaryESID = entitySetsApi.getEntitySetId( USER_APPS_DICTIONARY );
+        appsDictionaryESID = entitySetsApi.getEntitySetId( CHRONICLE_APPLICATION_DICTIONARY );
 
         refreshUserAppsDictionary();
     }
@@ -218,37 +222,56 @@ public class ChronicleServiceImpl implements ChronicleService {
         return UUID.fromString( firstValue );
     }
 
-    @Scheduled (fixedRate = 15 * 60 * 1000) // 15 minutes interval
-    private void initializeEntitySets( AppApi appApi, CollectionsApi collectionsApi ) {
+    @Scheduled (fixedRate = ENTITY_SETS_REFRESH_INTERVAL)
+    private void initializeEntitySets( ) throws ExecutionException {
 
-        // get mapping appName -> appId
-        Map<AppComponent, UUID> appNameIdMap = Arrays.stream( AppComponent.values() )
-                .map( appComponent -> appApi.getAppByName( appComponent.toString() ) )
-                .collect( Collectors
-                        .toMap( entry -> AppComponent.valueOf( entry.getName() ), AbstractSecurableObject::getId ) );
+        ApiClient prodApiClient = prodApiClientCache.get( ApiClient.class );
 
-        Map<AppComponent, Map<UUID, Map<EntityTemplateName, UUID>>> entitySets = new HashMap<>();
+        AppApi appApi = prodApiClient.getAppApi();
+        CollectionsApi collectionsApi = prodApiClient.getCollectionsApi();
+
+        // create a app -> appId mapping
+        Map<AppComponent, UUID> appNameIdMap = Maps.newHashMapWithExpectedSize( AppComponent.values().length );
+        for (AppComponent component : AppComponent.values()) {
+            App app = appApi.getAppByName( component.toString() );
+            appNameIdMap.put( component, app.getId() );
+        }
+
+        Map<AppComponent, Map<UUID, Map<CollectionTemplateTypeName, UUID>>> entitySets = new HashMap<>();
 
         // get configs for each app
         appNameIdMap.forEach( ( appComponent, appId ) -> {
             List<UserAppConfig> configs = appApi.getAvailableAppConfigs( appId );
 
-            Map<UUID, Map<EntityTemplateName, UUID>> orgEntitySetMap = new HashMap<>();
+            if (configs.isEmpty()) return;
+
+            // get EntityTypeCollection associated with app
+            EntitySetCollection entitySetCollection = collectionsApi.getEntitySetCollection( configs.get( 0 ).getEntitySetCollectionId() );
+            EntityTypeCollection entityTypeCollection = collectionsApi.getEntityTypeCollection( entitySetCollection.getEntityTypeCollectionId() );
+
+            // create mapping from templateTypeName -> templateTypeId
+            Map<String, UUID> templateTypeNameIdMap = entityTypeCollection
+                    .getTemplate()
+                    .stream()
+                    .collect( Collectors.toMap( CollectionTemplateType::getName, AbstractSecurableObject::getId ) );
+
+            // for each config map orgId -> templateTypeName -> ESID
+            Map<UUID, Map<CollectionTemplateTypeName, UUID>> orgEntitySetMap = new HashMap<>();
 
             configs.forEach( userAppConfig -> {
-                EntitySetCollection entitySetCollection = collectionsApi
-                        .getEntitySetCollection( userAppConfig.getEntitySetCollectionId() );
-                Map<UUID, UUID> template = entitySetCollection.getTemplate();
+                Map<UUID, UUID> templateTypeIdESIDMap = collectionsApi.getEntitySetCollection( userAppConfig.getEntitySetCollectionId() ).getTemplate();
 
-                Map<EntityTemplateName, UUID> templateNameEntitySetId = collectionsApi
-                        .getEntityTypeCollection( entitySetCollection.getEntityTypeCollectionId() )
-                        .getTemplate()
-                        .stream()
-                        .collect( Collectors
-                                .toMap( templateType -> EntityTemplateName.valueOf( templateType.getName() ),
-                                        templateType -> template.get( templateType.getId() ) ) );
+                // iterate over templateTypeName enums and create mapping templateTypeName -> entitySetId
+                Map<CollectionTemplateTypeName, UUID> templateTypeNameESIDMap = Maps.newHashMapWithExpectedSize( templateTypeIdESIDMap.size() );
 
-                orgEntitySetMap.put( userAppConfig.getOrganizationId(), templateNameEntitySetId );
+                for ( CollectionTemplateTypeName templateTypeName : CollectionTemplateTypeName.values()) {
+                    UUID templateTypeId = templateTypeNameIdMap.get( templateTypeName.toString() );
+
+                    if (templateTypeId == null) continue;
+
+                    templateTypeNameESIDMap.put( templateTypeName, templateTypeIdESIDMap.get( templateTypeId ) );
+                }
+                orgEntitySetMap.put( userAppConfig.getOrganizationId(), templateTypeNameESIDMap );
             } );
 
             entitySets.put( appComponent, orgEntitySetMap );
@@ -257,20 +280,18 @@ public class ChronicleServiceImpl implements ChronicleService {
         entitySetIdsByOrgId = ImmutableMap.copyOf( entitySets );
     }
 
-    private UUID getEntitySetId( UUID organizationId, AppComponent appComponent, EntityTemplateName templateName ) {
+    private UUID getEntitySetId( UUID organizationId, AppComponent appComponent, CollectionTemplateTypeName templateName ) {
 
-        Map<EntityTemplateName, UUID> templateEntitySetIdMap = entitySetIdsByOrgId
+        Map<CollectionTemplateTypeName, UUID> templateEntitySetIdMap = entitySetIdsByOrgId
                 .getOrDefault( appComponent, ImmutableMap.of() )
                 .getOrDefault( organizationId, ImmutableMap.of() );
 
         if ( templateEntitySetIdMap.isEmpty() ) {
             logger.error( "organization {} does not have app {} installed", organizationId, appComponent );
-            throw new AccessDeniedException("app not installed for organization");
         }
 
         if ( !templateEntitySetIdMap.containsKey( templateName ) ) {
             logger.error( "app {} does not have a template {} in its entityTypeCollection", appComponent, templateName );
-            throw new AccessDeniedException ("template not found in app");
         }
 
         return templateEntitySetIdMap.get( templateName );
@@ -311,8 +332,8 @@ public class ChronicleServiceImpl implements ChronicleService {
             ApiClient apiClient = prodApiClientCache.get( ApiClient.class );
             DataApi dataApi = apiClient.getDataApi();
 
-            UUID entitySetId = ensureEntitySetExists( organizationId, CHRONICLE_CORE,
-                    EntityTemplateName.STUDIES );
+            UUID entitySetId = ensureEntitySetExists( organizationId, CHRONICLE,
+                    CollectionTemplateTypeName.STUDIES );
 
             String jwtToken = auth0Client.getIdToken( username, password );
 
@@ -341,9 +362,9 @@ public class ChronicleServiceImpl implements ChronicleService {
             SearchApi searchApi = apiClient.getSearchApi();
 
             // get entity set ids
-            UUID studyESID = ensureEntitySetExists( organizationId, CHRONICLE_CORE, STUDIES );
-            UUID participantsESID = ensureEntitySetExists( organizationId, CHRONICLE_CORE, PARTICIPANTS );
-            UUID participatedInESID = ensureEntitySetExists( organizationId, CHRONICLE_CORE, PARTICIPATED_IN );
+            UUID studyESID = ensureEntitySetExists( organizationId, CHRONICLE, STUDIES );
+            UUID participantsESID = ensureEntitySetExists( organizationId, CHRONICLE, PARTICIPANTS );
+            UUID participatedInESID = ensureEntitySetExists( organizationId, CHRONICLE, PARTICIPATED_IN );
 
             // ensure study is valid
             UUID studyEKID = Preconditions
@@ -487,10 +508,10 @@ public class ChronicleServiceImpl implements ChronicleService {
             String deviceId ) {
 
         // entity set ids
-        UUID userAppsESID = ensureEntitySetExists( organizationId, DATA_COLLECTION, USER_APPS );
-        UUID usedByESID = ensureEntitySetExists( organizationId, DATA_COLLECTION, USED_BY );
-        UUID recordedByESID = ensureEntitySetExists( organizationId, DATA_COLLECTION, RECORDED_BY );
-        UUID devicesESID = ensureEntitySetExists( organizationId, DATA_COLLECTION, DEVICE );
+        UUID userAppsESID = ensureEntitySetExists( organizationId, CHRONICLE_DATA_COLLECTION, USER_APPS );
+        UUID usedByESID = ensureEntitySetExists( organizationId, CHRONICLE_DATA_COLLECTION, USED_BY );
+        UUID recordedByESID = ensureEntitySetExists( organizationId, CHRONICLE_DATA_COLLECTION, RECORDED_BY );
+        UUID devicesESID = ensureEntitySetExists( organizationId, CHRONICLE_DATA_COLLECTION, DEVICE );
 
         /*
          * Most of the data pushed by devices does not correspond to apps that were visible in the UI.
@@ -603,8 +624,8 @@ public class ChronicleServiceImpl implements ChronicleService {
             String participantId ) {
 
         // get entity sets
-        UUID metadataESID = ensureEntitySetExists( organizationId, CHRONICLE_CORE, METADATA );
-        UUID hasESID = ensureEntitySetExists( organizationId, CHRONICLE_CORE, HAS );
+        UUID metadataESID = ensureEntitySetExists( organizationId, CHRONICLE, METADATA );
+        UUID hasESID = ensureEntitySetExists( organizationId, CHRONICLE, HAS );
 
         // get all dates in new data batch
         Set<OffsetDateTime> pushedDateTimes = new HashSet<>();
@@ -685,7 +706,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         logger.info( "Uploaded user metadata entries: participantId = {}", participantId );
     }
 
-    private UUID ensureEntitySetExists( UUID organizationId, AppComponent appComponent, EntityTemplateName template ) {
+    private UUID ensureEntitySetExists( UUID organizationId, AppComponent appComponent, CollectionTemplateTypeName template ) {
         return Preconditions.checkNotNull( getEntitySetId( organizationId, appComponent, template ),
                 appComponent + " does not exist in org " + organizationId );
     }
@@ -700,9 +721,9 @@ public class ChronicleServiceImpl implements ChronicleService {
             UUID participantEntitySetId ) {
 
         // entity set ids
-        UUID appDataESID = ensureEntitySetExists( organizationId, DATA_COLLECTION, APP_DATA );
-        UUID recordedByESID = ensureEntitySetExists( organizationId, DATA_COLLECTION, RECORDED_BY );
-        UUID devicesESID = ensureEntitySetExists( organizationId, DATA_COLLECTION, DEVICE );
+        UUID appDataESID = ensureEntitySetExists( organizationId, CHRONICLE_DATA_COLLECTION, APPDATA );
+        UUID recordedByESID = ensureEntitySetExists( organizationId, CHRONICLE_DATA_COLLECTION, RECORDED_BY );
+        UUID devicesESID = ensureEntitySetExists( organizationId, CHRONICLE_DATA_COLLECTION, DEVICE );
 
         ListMultimap<UUID, Map<UUID, Set<Object>>> entities = ArrayListMultimap.create();
         ListMultimap<UUID, DataAssociation> associations = ArrayListMultimap.create();
@@ -770,7 +791,8 @@ public class ChronicleServiceImpl implements ChronicleService {
             }
 
             // get entity set ids
-            UUID usedByESID = Preconditions.checkNotNull( getEntitySetId( organizationId, DATA_COLLECTION, USED_BY ),
+            UUID usedByESID = Preconditions.checkNotNull( getEntitySetId( organizationId,
+                    CHRONICLE_DATA_COLLECTION, USED_BY ),
                     "usedBy entity does not exist" );
 
             // create association data
@@ -829,9 +851,9 @@ public class ChronicleServiceImpl implements ChronicleService {
                             "participant does not exist" );
 
             // get entity set ids
-            UUID participantsESID = ensureEntitySetExists( organizationId, CHRONICLE_CORE, PARTICIPANTS );
-            UUID userAppsESID = ensureEntitySetExists( organizationId, DATA_COLLECTION, USER_APPS );
-            UUID usedByESID = ensureEntitySetExists( organizationId, DATA_COLLECTION, USED_BY );
+            UUID participantsESID = ensureEntitySetExists( organizationId, CHRONICLE, PARTICIPANTS );
+            UUID userAppsESID = ensureEntitySetExists( organizationId, CHRONICLE_DATA_COLLECTION, USER_APPS );
+            UUID usedByESID = ensureEntitySetExists( organizationId, CHRONICLE_DATA_COLLECTION, USED_BY );
 
             // search participants to retrieve neighbors in user apps entity set
             Map<UUID, List<NeighborEntityDetails>> participantNeighbors = searchApi.executeFilteredEntityNeighborSearch(
@@ -909,7 +931,7 @@ public class ChronicleServiceImpl implements ChronicleService {
             return 0;
         }
 
-        UUID participantEntitySetId = ensureEntitySetExists( organizationId, CHRONICLE_CORE, PARTICIPANTS );
+        UUID participantEntitySetId = ensureEntitySetExists( organizationId, CHRONICLE, PARTICIPANTS );
         UUID deviceEntityKeyId = getDeviceEntityKeyId( organizationId, studyId, participantId, deviceId );
 
         createUserAppsEntitiesAndAssociations( dataApi,
@@ -956,15 +978,13 @@ public class ChronicleServiceImpl implements ChronicleService {
         try {
             ApiClient apiClient = prodApiClientCache.get( ApiClient.class );
             DataApi dataApi = apiClient.getDataApi();
-            ;
             DataIntegrationApi dataIntegrationApi = apiClient.getDataIntegrationApi();
-            ;
 
             // entity set ids
-            UUID devicesESID = ensureEntitySetExists( organizationId, DATA_COLLECTION, DEVICE );
-            UUID usedByESID = ensureEntitySetExists( organizationId, DATA_COLLECTION, USED_BY );
-            UUID studyESID = ensureEntitySetExists( organizationId, CHRONICLE_CORE, STUDIES );
-            UUID participantsESID = ensureEntitySetExists( organizationId, CHRONICLE_CORE, PARTICIPANTS );
+            UUID devicesESID = ensureEntitySetExists( organizationId, CHRONICLE_DATA_COLLECTION, DEVICE );
+            UUID usedByESID = ensureEntitySetExists( organizationId, CHRONICLE_DATA_COLLECTION, USED_BY );
+            UUID studyESID = ensureEntitySetExists( organizationId, CHRONICLE, STUDIES );
+            UUID participantsESID = ensureEntitySetExists( organizationId, CHRONICLE, PARTICIPANTS );
 
             // ensure study and participant exist
             UUID studyEKID = Preconditions
@@ -1029,9 +1049,9 @@ public class ChronicleServiceImpl implements ChronicleService {
             SearchApi searchApi = apiClient.getSearchApi();
 
             // get entity set ids
-            UUID studyESID = ensureEntitySetExists( organizationId, CHRONICLE_CORE, STUDIES );
-            UUID notificationESID = ensureEntitySetExists( organizationId, CHRONICLE_CORE, NOTIFICATION );
-            UUID partOfESID = ensureEntitySetExists( organizationId, CHRONICLE_CORE, PART_OF );
+            UUID studyESID = ensureEntitySetExists( organizationId, CHRONICLE, STUDIES );
+            UUID notificationESID = ensureEntitySetExists( organizationId, CHRONICLE, NOTIFICATION );
+            UUID partOfESID = ensureEntitySetExists( organizationId, CHRONICLE, PART_OF );
 
             // ensure study exists
             UUID studyEKID = Preconditions
@@ -1084,9 +1104,9 @@ public class ChronicleServiceImpl implements ChronicleService {
             SearchApi searchApi = apiClient.getSearchApi();
 
             // get entity set ids
-            UUID studyESID = ensureEntitySetExists( organizationId, CHRONICLE_CORE, STUDIES );
-            UUID usedByESID = ensureEntitySetExists( organizationId, DATA_COLLECTION, USED_BY );
-            UUID deviceESID = ensureEntitySetExists( organizationId, DATA_COLLECTION, DEVICE );
+            UUID studyESID = ensureEntitySetExists( organizationId, CHRONICLE, STUDIES );
+            UUID usedByESID = ensureEntitySetExists( organizationId, CHRONICLE_DATA_COLLECTION, USED_BY );
+            UUID deviceESID = ensureEntitySetExists( organizationId, CHRONICLE_DATA_COLLECTION, DEVICE );
 
             // check that study exists
             UUID studyEKID = Preconditions
@@ -1143,13 +1163,13 @@ public class ChronicleServiceImpl implements ChronicleService {
             DataApi userDataApi = userApiClient.getDataApi();
 
             // get required entity set ids
-            UUID studiesESID = ensureEntitySetExists( organizationId, CHRONICLE_CORE, STUDIES );
-            UUID participantsESID = ensureEntitySetExists( organizationId, CHRONICLE_CORE, PARTICIPANTS );
+            UUID studiesESID = ensureEntitySetExists( organizationId, CHRONICLE, STUDIES );
+            UUID participantsESID = ensureEntitySetExists( organizationId, CHRONICLE, PARTICIPANTS );
 
             // these entity set ids will be null if the respective app modules have not been installed for the organization
-            UUID appDataESID = getEntitySetId( organizationId, DATA_COLLECTION, APP_DATA );
-            UUID preprocessedDataESID = getEntitySetId( organizationId, DATA_COLLECTION, PREPROCESSED_DATA );
-            UUID devicesESID = getEntitySetId( organizationId, DATA_COLLECTION, DEVICE );
+            UUID appDataESID = getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, APPDATA );
+            UUID preprocessedDataESID = getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, PREPROCESSED_DATA );
+            UUID devicesESID = getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, DEVICE );
             UUID answersESID = getEntitySetId( organizationId, CHRONICLE_QUESTIONNAIRES, ANSWER );
 
             // ensure study exists
@@ -1363,8 +1383,8 @@ public class ChronicleServiceImpl implements ChronicleService {
     private Iterable<Map<String, Set<Object>>> getParticipantDataHelper(
             UUID organizationId,
             UUID participantEntityKeyId,
-            EntityTemplateName edgeTemplateName,
-            EntityTemplateName sourceTemplateName,
+            CollectionTemplateTypeName edgeTemplateName,
+            CollectionTemplateTypeName sourceTemplateName,
             String token ) {
 
         try {
@@ -1377,9 +1397,9 @@ public class ChronicleServiceImpl implements ChronicleService {
              * 1. get the relevant EntitySets
              */
 
-            UUID participantESID = ensureEntitySetExists( organizationId, CHRONICLE_CORE, PARTICIPANTS );
-            UUID srcESID = ensureEntitySetExists( organizationId, DATA_COLLECTION, sourceTemplateName );
-            UUID edgeESID = ensureEntitySetExists( organizationId, DATA_COLLECTION, edgeTemplateName );
+            UUID participantESID = ensureEntitySetExists( organizationId, CHRONICLE, PARTICIPANTS );
+            UUID srcESID = ensureEntitySetExists( organizationId, CHRONICLE_DATA_COLLECTION, sourceTemplateName );
+            UUID edgeESID = ensureEntitySetExists( organizationId, CHRONICLE_DATA_COLLECTION, edgeTemplateName );
 
             Map<UUID, EntitySet> entitySetsById = entitySetsApi.getEntitySetsById(
                     ImmutableSet.of( participantESID, srcESID, edgeESID )
@@ -1538,7 +1558,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                 organizationId,
                 participantEntityKeyId,
                 RECORDED_BY,
-                APP_DATA,
+                APPDATA,
                 token
         );
     }
@@ -1569,7 +1589,7 @@ public class ChronicleServiceImpl implements ChronicleService {
             ApiClient apiClient = prodApiClientCache.get( ApiClient.class );
             DataApi dataApi = apiClient.getDataApi();
 
-            UUID entitySetId = getEntitySetId( organizationId, CHRONICLE_CORE, PARTICIPANTS );
+            UUID entitySetId = getEntitySetId( organizationId, CHRONICLE, PARTICIPANTS );
             if ( entitySetId == null ) {
                 logger.error( "Unable to load participant EntitySet id." );
                 return ImmutableMap.of();
@@ -1599,9 +1619,9 @@ public class ChronicleServiceImpl implements ChronicleService {
             searchApi = apiClient.getSearchApi();
 
             // entity set ids
-            UUID studiesESID = ensureEntitySetExists( organizationId, CHRONICLE_CORE, STUDIES );
-            UUID participatedInESID = ensureEntitySetExists( organizationId, CHRONICLE_CORE, PARTICIPATED_IN );
-            UUID participantsESID = ensureEntitySetExists( organizationId, CHRONICLE_CORE, PARTICIPANTS );
+            UUID studiesESID = ensureEntitySetExists( organizationId, CHRONICLE, STUDIES );
+            UUID participatedInESID = ensureEntitySetExists( organizationId, CHRONICLE, PARTICIPATED_IN );
+            UUID participantsESID = ensureEntitySetExists( organizationId, CHRONICLE, PARTICIPANTS );
 
             // participant must exist
             UUID participantEKID = Preconditions
@@ -1656,8 +1676,8 @@ public class ChronicleServiceImpl implements ChronicleService {
 
             // entity set ids
             UUID questionnaireESID = ensureEntitySetExists( organizationId, CHRONICLE_QUESTIONNAIRES, SURVEY );
-            UUID studiesESID = ensureEntitySetExists( organizationId, CHRONICLE_CORE, STUDIES );
-            UUID partOfESID = ensureEntitySetExists( organizationId, CHRONICLE_CORE, PART_OF );
+            UUID studiesESID = ensureEntitySetExists( organizationId, CHRONICLE, STUDIES );
+            UUID partOfESID = ensureEntitySetExists( organizationId, CHRONICLE, PART_OF );
             UUID questionESID = ensureEntitySetExists( organizationId, CHRONICLE_QUESTIONNAIRES, QUESTION );
 
             // Get questionnaires that neighboring study
@@ -1751,8 +1771,8 @@ public class ChronicleServiceImpl implements ChronicleService {
 
             // entity set ids
             UUID questionnaireESID = ensureEntitySetExists( organizationId, CHRONICLE_QUESTIONNAIRES, SURVEY );
-            UUID studiesESID = ensureEntitySetExists( organizationId, CHRONICLE_CORE, STUDIES );
-            UUID partOfESID = ensureEntitySetExists( organizationId, CHRONICLE_CORE, PART_OF );
+            UUID studiesESID = ensureEntitySetExists( organizationId, CHRONICLE, STUDIES );
+            UUID partOfESID = ensureEntitySetExists( organizationId, CHRONICLE, PART_OF );
 
             // filtered search on questionnaires ES to get neighbors of study
             Map<UUID, List<NeighborEntityDetails>> neighbors = searchApi
@@ -1800,8 +1820,8 @@ public class ChronicleServiceImpl implements ChronicleService {
             dataApi = apiClient.getDataApi();
 
             // get entity set ids
-            UUID participantESID = ensureEntitySetExists( organizationId, CHRONICLE_CORE, PARTICIPANTS );
-            UUID answersESID = ensureEntitySetExists( organizationId, DATA_COLLECTION, ANSWER );
+            UUID participantESID = ensureEntitySetExists( organizationId, CHRONICLE, PARTICIPANTS );
+            UUID answersESID = ensureEntitySetExists( organizationId, CHRONICLE_DATA_COLLECTION, ANSWER );
             UUID respondsWithESID = ensureEntitySetExists( organizationId, CHRONICLE_QUESTIONNAIRES, RESPONDS_WITH );
             UUID addressesESID = ensureEntitySetExists( organizationId, CHRONICLE_QUESTIONNAIRES, ADDRESSES );
             UUID questionsESID = ensureEntitySetExists( organizationId, CHRONICLE_QUESTIONNAIRES, QUESTION );

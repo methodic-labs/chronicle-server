@@ -15,7 +15,7 @@ public class EdmConstants {
     }
 
     // entity set names
-    public static final String USER_APPS_DICTIONARY = "chronicle_application_dictionary";
+    public static final String CHRONICLE_APPLICATION_DICTIONARY = "chronicle_application_dictionary";
 
     // property types
     public static final FullQualifiedName COMPLETED_DATE_TIME_FQN = new FullQualifiedName( "date.completeddatetime" );
