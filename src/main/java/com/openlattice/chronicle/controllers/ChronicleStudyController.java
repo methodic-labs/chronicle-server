@@ -122,21 +122,6 @@ public class ChronicleStudyController implements ChronicleStudyApi {
         return chronicleService.isKnownDatasource( organizationId, studyId, participantId, datasourceId );
     }
 
-    @Override
-    @RequestMapping(
-            path = ORGANIZATION_ID_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH + VALID,
-            method = RequestMethod.GET,
-            produces = MediaType.APPLICATION_JSON_VALUE )
-    public Boolean isKnownParticipant(
-            @PathVariable( ORGANIZATION_ID ) UUID organizationId,
-            @PathVariable( STUDY_ID ) UUID studyId,
-            @PathVariable( PARTICIPANT_ID ) String participantId ) {
-        //  validate that this participant belongs in this study
-        //  look up in association entitySet between study and participant if the participant is present
-        //  DataApi.getEntity(entitySetId :UUID, entityKeyId :UUID)
-        return chronicleService.isKnownParticipant( organizationId, studyId, participantId );
-    }
-
     @RequestMapping(
             path = AUTHENTICATED + ORGANIZATION_ID_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH,
             method = RequestMethod.DELETE
@@ -222,7 +207,7 @@ public class ChronicleStudyController implements ChronicleStudyApi {
             path = ORGANIZATION_ID_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH + ENROLLMENT_STATUS,
             method = RequestMethod.GET
     )
-    public ParticipationStatus getParticipationStatus(
+    public ParticipationStatus getOrgStudyParticipationStatus(
             @PathVariable( ORGANIZATION_ID ) UUID organizationId,
             @PathVariable( STUDY_ID ) UUID studyId,
             @PathVariable( PARTICIPANT_ID ) String participantId ) {
