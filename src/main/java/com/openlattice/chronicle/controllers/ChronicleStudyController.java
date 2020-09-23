@@ -405,8 +405,7 @@ public class ChronicleStudyController implements ChronicleStudyApi {
             Optional<Datasource> datasource ) {
         //  allow to proceed only if the participant is in the study and the device has not been associated yet
         final boolean isKnownParticipant = chronicleService.isKnownParticipant( organizationId, studyId, participantId );
-        final boolean isKnownDatasource = chronicleService
-                .isKnownDatasource( organizationId, studyId, participantId, dataSourceId );
+        final UUID deviceEKID = chronicleService.getDeviceEntityKeyId( organizationId, studyId, participantId, dataSourceId );
 
         logger.info(
                 "Attempting to enroll source... study {}, participant {}, and datasource {} ",
@@ -415,13 +414,13 @@ public class ChronicleStudyController implements ChronicleStudyApi {
                 dataSourceId
         );
         logger.info( "isKnownParticipant {} = {}", participantId, isKnownParticipant );
-        logger.info( "isKnownDatasource {} = {}", dataSourceId, isKnownDatasource );
+        logger.info( "isKnownDatasource {} = {}", dataSourceId, deviceEKID != null );
 
-        if ( isKnownParticipant && !isKnownDatasource ) {
+        if ( isKnownParticipant && deviceEKID == null ) {
             return chronicleService
                     .registerDatasource( organizationId, studyId, participantId, dataSourceId, datasource );
         } else if ( isKnownParticipant ) {
-            return chronicleService.getDeviceEntityKeyId( organizationId, studyId, participantId, dataSourceId );
+            return deviceEKID;
         } else {
             logger.error(
                     "Unable to enroll device for orgId {} study {}, participant {}, and datasource {} due valid participant = {} or valid device = {}",
@@ -430,7 +429,7 @@ public class ChronicleStudyController implements ChronicleStudyApi {
                     participantId,
                     dataSourceId,
                     isKnownParticipant,
-                    isKnownDatasource );
+                    deviceEKID != null );
             throw new AccessDeniedException( "Unable to enroll device." );
         }
     }
