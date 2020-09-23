@@ -1104,22 +1104,22 @@ public class ChronicleServiceImpl implements ChronicleService {
             SearchApi searchApi = apiClient.getSearchApi();
 
             // get entity set ids
-            UUID studyESID = ensureEntitySetExists( organizationId, CHRONICLE, STUDIES );
+            UUID participantsESID = ensureEntitySetExists( organizationId, CHRONICLE, PARTICIPANTS );
             UUID usedByESID = ensureEntitySetExists( organizationId, CHRONICLE_DATA_COLLECTION, USED_BY );
             UUID deviceESID = ensureEntitySetExists( organizationId, CHRONICLE_DATA_COLLECTION, DEVICE );
 
-            // check that study exists
-            UUID studyEKID = Preconditions
-                    .checkNotNull( getStudyEntityKeyId( organizationId, studyId ), "study entity must exist" );
+            // check that participant exists
+            UUID participantEKID = Preconditions
+                    .checkNotNull( getParticipantEntityKeyId( organizationId, participantId, studyId ), "participant must exist" );
 
             // neighbor search on study to get devices associated with
             Map<UUID, List<NeighborEntityDetails>> neighbors = searchApi
                     .executeFilteredEntityNeighborSearch(
-                            studyESID,
+                            participantsESID,
                             new EntityNeighborsFilter(
-                                    ImmutableSet.of( studyEKID ),
+                                    ImmutableSet.of( participantEKID ),
                                     Optional.of( ImmutableSet.of( deviceESID ) ),
-                                    Optional.of( ImmutableSet.of( studyESID ) ),
+                                    Optional.of( ImmutableSet.of( participantsESID ) ),
                                     Optional.of( ImmutableSet.of( usedByESID ) )
                             )
                     );
@@ -1609,14 +1609,11 @@ public class ChronicleServiceImpl implements ChronicleService {
 
     @Override
     public ParticipationStatus getParticipationStatus( UUID organizationId, UUID studyId, String participantId ) {
-
-        EntitySetsApi entitySetsApi;
-        SearchApi searchApi;
+        logger.info( "getting participation status: orgId = {}, studyId = {}, participantId = {}", organizationId, studyId, participantId );
 
         try {
             ApiClient apiClient = prodApiClientCache.get( ApiClient.class );
-            entitySetsApi = apiClient.getEntitySetsApi();
-            searchApi = apiClient.getSearchApi();
+            SearchApi searchApi = apiClient.getSearchApi();
 
             // entity set ids
             UUID studiesESID = ensureEntitySetExists( organizationId, CHRONICLE, STUDIES );
