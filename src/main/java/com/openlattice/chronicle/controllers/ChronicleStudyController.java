@@ -109,19 +109,6 @@ public class ChronicleStudyController implements ChronicleStudyApi {
         return chronicleService.isKnownDatasource( CAFE_ORG_ID, studyId, participantId, datasourceId );
     }
 
-    @Override
-    @RequestMapping(
-            path = ORGANIZATION_ID_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH + DATASOURCE_ID_PATH + VALID,
-            method = RequestMethod.GET,
-            produces = MediaType.APPLICATION_JSON_VALUE )
-    public Boolean isKnownOrgStudyDataSource(
-            @PathVariable( ORGANIZATION_ID ) UUID organizationId,
-            @PathVariable( STUDY_ID ) UUID studyId,
-            @PathVariable( PARTICIPANT_ID ) String participantId,
-            @PathVariable( DATASOURCE_ID ) String datasourceId ) {
-        return chronicleService.isKnownDatasource( organizationId, studyId, participantId, datasourceId );
-    }
-
     @RequestMapping(
             path = AUTHENTICATED + ORGANIZATION_ID_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH,
             method = RequestMethod.DELETE
