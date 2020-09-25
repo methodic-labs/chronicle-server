@@ -20,6 +20,7 @@
 package com.openlattice.chronicle.controllers;
 
 import com.auth0.spring.security.api.authentication.JwtAuthentication;
+import com.codahale.metrics.annotation.Timed;
 import com.google.common.base.Optional;
 import com.openlattice.chronicle.ChronicleStudyApi;
 import com.openlattice.chronicle.constants.CustomMediaType;
@@ -60,10 +61,12 @@ public class ChronicleStudyController implements ChronicleStudyApi {
     private ChronicleService chronicleService;
 
     @Override
+    @Timed
     @RequestMapping(
             path = STUDY_ID_PATH + PARTICIPANT_ID_PATH + DATASOURCE_ID_PATH,
             method = RequestMethod.POST,
-            consumes = MediaType.APPLICATION_JSON_VALUE )
+            consumes = MediaType.APPLICATION_JSON_VALUE
+    )
     public UUID enrollSource(
             @PathVariable( STUDY_ID ) UUID studyId,
             @PathVariable( PARTICIPANT_ID ) String participantId,
@@ -100,10 +103,12 @@ public class ChronicleStudyController implements ChronicleStudyApi {
     }
 
     @Override
+    @Timed
     @RequestMapping(
             path = STUDY_ID_PATH + PARTICIPANT_ID_PATH + DATASOURCE_ID_PATH,
             method = RequestMethod.GET,
-            produces = MediaType.APPLICATION_JSON_VALUE )
+            produces = MediaType.APPLICATION_JSON_VALUE
+    )
     public Boolean isKnownDatasource(
             @PathVariable( STUDY_ID ) UUID studyId,
             @PathVariable( PARTICIPANT_ID ) String participantId,
@@ -116,10 +121,12 @@ public class ChronicleStudyController implements ChronicleStudyApi {
     }
 
     @Override
+    @Timed
     @RequestMapping(
             path = STUDY_ID_PATH + PARTICIPANT_ID_PATH,
             method = RequestMethod.GET,
-            produces = MediaType.APPLICATION_JSON_VALUE )
+            produces = MediaType.APPLICATION_JSON_VALUE
+    )
     public Boolean isKnownParticipant(
             @PathVariable( STUDY_ID ) UUID studyId,
             @PathVariable( PARTICIPANT_ID ) String participantId ) {
@@ -130,11 +137,12 @@ public class ChronicleStudyController implements ChronicleStudyApi {
         return chronicleService.isKnownParticipant( studyId, participantId );
     }
 
+    @Override
+    @Timed
     @RequestMapping(
             path = AUTHENTICATED + STUDY_ID_PATH + PARTICIPANT_ID_PATH,
             method = RequestMethod.DELETE
     )
-    @Override
     public Void deleteParticipantAndAllNeighbors(
             @PathVariable( STUDY_ID ) UUID studyId,
             @PathVariable( PARTICIPANT_ID ) String participantId,
@@ -147,6 +155,7 @@ public class ChronicleStudyController implements ChronicleStudyApi {
         return null;
     }
 
+    @Timed
     @RequestMapping(
             path = AUTHENTICATED + STUDY_ID_PATH,
             method = RequestMethod.DELETE
@@ -163,6 +172,7 @@ public class ChronicleStudyController implements ChronicleStudyApi {
         return null;
     }
 
+    @Timed
     @RequestMapping(
             path = PARTICIPANT_PATH + DATA_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH + APPS,
             method = RequestMethod.GET,
@@ -175,6 +185,7 @@ public class ChronicleStudyController implements ChronicleStudyApi {
         return chronicleService.getParticipantAppsUsageData( studyId, participantId, date );
     }
 
+    @Timed
     @RequestMapping(
             path = STUDY_ID_PATH + NOTIFICATIONS,
             method = RequestMethod.GET
@@ -184,17 +195,19 @@ public class ChronicleStudyController implements ChronicleStudyApi {
         return chronicleService.isNotificationsEnabled( studyId );
     }
 
+    @Override
+    @Timed
     @RequestMapping(
             path = STUDY_ID_PATH + PARTICIPANT_ID_PATH + ENROLLMENT_STATUS,
             method = RequestMethod.GET
     )
-    @Override
     public ParticipationStatus getParticipationStatus(
             @PathVariable( STUDY_ID ) UUID studyId,
             @PathVariable( PARTICIPANT_ID ) String participantId ) {
         return chronicleService.getParticipationStatus( studyId, participantId );
     }
 
+    @Timed
     @RequestMapping(
             path = PARTICIPANT_PATH + DATA_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH + APPS,
             method = RequestMethod.POST,
@@ -207,6 +220,7 @@ public class ChronicleStudyController implements ChronicleStudyApi {
         return chronicleService.updateAppsUsageAssociationData( studyId, participantId, associationDetails );
     }
 
+    @Timed
     @RequestMapping(
             path = AUTHENTICATED + PARTICIPANT_PATH + DATA_PATH + STUDY_ID_PATH + ENTITY_KEY_ID_PATH
                     + PREPROCESSED_PATH,
@@ -240,6 +254,7 @@ public class ChronicleStudyController implements ChronicleStudyApi {
 
     }
 
+    @Timed
     @RequestMapping(
             path = AUTHENTICATED + PARTICIPANT_PATH + DATA_PATH + STUDY_ID_PATH + ENTITY_KEY_ID_PATH,
             method = RequestMethod.GET,
@@ -270,6 +285,7 @@ public class ChronicleStudyController implements ChronicleStudyApi {
         return chronicleService.getAllParticipantData( studyId, participantEntityKeyId, token );
     }
 
+    @Timed
     @RequestMapping(
             path = AUTHENTICATED + PARTICIPANT_PATH + DATA_PATH + STUDY_ID_PATH + ENTITY_KEY_ID_PATH + USAGE_PATH,
             method = RequestMethod.GET,
@@ -291,12 +307,13 @@ public class ChronicleStudyController implements ChronicleStudyApi {
         return data;
     }
 
+    @Override
+    @Timed
     @RequestMapping(
             path = STUDY_ID_PATH + QUESTIONNAIRE + ENTITY_KEY_ID_PATH,
             method = RequestMethod.GET,
             produces = MediaType.APPLICATION_JSON_VALUE
     )
-    @Override
     public ChronicleQuestionnaire getChronicleQuestionnaire(
             @PathVariable( STUDY_ID ) UUID studyId,
             @PathVariable( ENTITY_KEY_ID ) UUID questionnaireEKID
@@ -304,12 +321,13 @@ public class ChronicleStudyController implements ChronicleStudyApi {
         return chronicleService.getQuestionnaire( studyId, questionnaireEKID );
     }
 
+    @Override
+    @Timed
     @RequestMapping(
             path = STUDY_ID_PATH + PARTICIPANT_ID_PATH + QUESTIONNAIRE,
             method = RequestMethod.POST,
             consumes = MediaType.APPLICATION_JSON_VALUE
     )
-    @Override
     public void submitQuestionnaire(
             @PathVariable( STUDY_ID ) UUID studyId,
             @PathVariable( PARTICIPANT_ID ) String participantId,
@@ -317,12 +335,13 @@ public class ChronicleStudyController implements ChronicleStudyApi {
         chronicleService.submitQuestionnaire( studyId, participantId, questionnaireResponses );
     }
 
+    @Override
+    @Timed
     @RequestMapping(
             path = STUDY_ID_PATH + QUESTIONNAIRES,
             method = RequestMethod.GET,
             produces = MediaType.APPLICATION_JSON_VALUE
     )
-    @Override
     public Map<UUID, Map<FullQualifiedName, Set<Object>>> getStudyQuestionnaires(
             @PathVariable( STUDY_ID ) UUID studyId
     ) {
