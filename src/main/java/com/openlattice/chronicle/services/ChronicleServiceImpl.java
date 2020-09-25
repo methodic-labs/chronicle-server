@@ -185,9 +185,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                 } );
 
         EdmApi edmApi = prodApiClient.getEdmApi();
-        AppApi appApi = prodApiClient.getAppApi();
         EntitySetsApi entitySetsApi = prodApiClient.getEntitySetsApi();
-        CollectionsApi collectionsApi = prodApiClient.getCollectionsApi();
 
         initializeEntitySets(  );
 
@@ -391,9 +389,10 @@ public class ChronicleServiceImpl implements ChronicleService {
                     .findFirst().orElse( null );
 
         } catch ( Exception e ) {
-            logger.error( "failed to get EKID of participant = {}, study = {}, organization = {}",
+            logger.error( "failed to get participant EKID: participantId == {}, study = {}, organizationId = {}",
                     participantId,
                     studyId,
+                    organizationId,
                     e );
             return null;
         }
@@ -698,7 +697,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                 UpdateType.PartialReplace );
 
         EntityDataKey dst = new EntityDataKey( metadataESID, metadataEntityKeyId );
-        EntityDataKey edge = new EntityDataKey( metadataESID, hasEntityKeyId );
+        EntityDataKey edge = new EntityDataKey( hasESID, hasEntityKeyId );
         EntityDataKey src = new EntityDataKey( participantEntitySetId, participantEntityKeyId );
         DataEdgeKey dataEdgeKey = new DataEdgeKey( src, dst, edge );
         dataApi.createEdges( Set.of( dataEdgeKey ) );
