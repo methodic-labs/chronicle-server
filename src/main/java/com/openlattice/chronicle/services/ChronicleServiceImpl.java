@@ -1331,7 +1331,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         String jwtToken;
 
         try {
-            ApiClient apiClient = intApiClientCache.get( ApiClient.class );
+            ApiClient apiClient = prodApiClientCache.get( ApiClient.class );
             dataApi = apiClient.getDataApi();
             jwtToken = auth0Client.getIdToken( username, password );
         } catch ( ExecutionException | Auth0Exception e ) {
