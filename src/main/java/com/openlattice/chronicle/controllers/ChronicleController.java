@@ -18,6 +18,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+import static com.openlattice.chronicle.constants.EdmConstants.CAFE_ORG_ID;
+
 @RestController
 @RequestMapping( ChronicleApi.CONTROLLER )
 public class ChronicleController implements ChronicleApi {
@@ -39,33 +41,23 @@ public class ChronicleController implements ChronicleApi {
             @PathVariable( PARTICIPANT_ID ) String participantId,
             @PathVariable( DATASOURCE_ID ) String datasourceId,
             @RequestBody List<SetMultimap<UUID, Object>> data ) {
-        //  allow to proceed only if the participant is in the study and the device is associated as well
-        //  TODO: finish exception logic
-        final boolean knownParticipant = chronicleService.isKnownParticipant( studyId, participantId );
-        final boolean knownDatasource = chronicleService.isKnownDatasource( studyId, participantId, datasourceId );
 
-        final ParticipationStatus status = chronicleService.getParticipationStatus( studyId, participantId );
-        if ( ParticipationStatus.NOT_ENROLLED.equals( status ) ) {
-            logger.warn( "participantId = {} is not enrolled, ignoring data upload", participantId );
-            return 0;
-        }
+        return uploadData( CAFE_ORG_ID, studyId, participantId, datasourceId, data );
+    }
 
-        if ( knownParticipant && knownDatasource ) {
-            return chronicleService.logData( studyId, participantId, datasourceId, data );
-        } else {
-            logger.error(
-                    "Unable to log information for study {}, participant {}, and datasource {} due valid participant = {} or valid device = {}",
-                    studyId,
-                    participantId,
-                    datasourceId,
-                    knownParticipant,
-                    knownDatasource );
-            if ( !knownParticipant ) {
-                throw new AccessDeniedException( "Unable to store uploaded data." );
-            }
+    @Override
+    @RequestMapping(
+            path = ORGANIZATION_ID_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH + DATASOURCE_ID_PATH,
+            method = RequestMethod.POST,
+            consumes = MediaType.APPLICATION_JSON_VALUE )
+    public Integer uploadOrgStudyParticipantData(
+            @PathVariable( ORGANIZATION_ID ) UUID organizationId,
+            @PathVariable( STUDY_ID ) UUID studyId,
+            @PathVariable( PARTICIPANT_ID ) String participantId,
+            @PathVariable( DATASOURCE_ID ) String datasourceId,
+            @RequestBody List<SetMultimap<UUID, Object>> data ) {
 
-            throw new StudyRegistrationNotFoundException( "Unable to store uploaded data." );
-        }
+        return uploadData( organizationId, studyId, participantId, datasourceId, data );
     }
 
     @Override
@@ -91,4 +83,40 @@ public class ChronicleController implements ChronicleApi {
         return true;
     }
 
+    private Integer uploadData(
+            UUID organizationId,
+            UUID studyId,
+            String participantId,
+            String dataSourceId,
+            List<SetMultimap<UUID, Object>> data ) {
+        //  allow to proceed only if the participant is in the study and the device is associated as well
+        final boolean isKnownParticipant = chronicleService
+                .isKnownParticipant( organizationId, studyId, participantId );
+        final boolean isKnownDatasource = chronicleService
+                .isKnownDatasource( organizationId, studyId, participantId, dataSourceId );
+
+        final ParticipationStatus status = chronicleService
+                .getParticipationStatus( organizationId, studyId, participantId );
+        if ( ParticipationStatus.NOT_ENROLLED.equals( status ) ) {
+            logger.warn( "participantId = {} is not enrolled, ignoring data upload", participantId );
+            return 0;
+        }
+
+        if ( isKnownParticipant && isKnownDatasource ) {
+            return chronicleService.logData( organizationId, studyId, participantId, dataSourceId, data );
+        }
+        logger.error(
+                "Unable to log information for study {}, participant {}, and datasource {} due valid participant = {} or valid device = {}",
+                studyId,
+                participantId,
+                dataSourceId,
+                isKnownDatasource,
+                isKnownParticipant );
+        if ( !isKnownParticipant ) {
+            throw new AccessDeniedException( "Unable to store uploaded data." );
+        }
+
+        throw new StudyRegistrationNotFoundException( "Unable to store uploaded data." );
+
+    }
 }

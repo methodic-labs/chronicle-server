@@ -46,6 +46,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+import static com.openlattice.chronicle.constants.EdmConstants.CAFE_ORG_ID;
+
 /**
  * @author Matthew Tamayo-Rios &lt;matthew@openlattice.com&gt;
  */
@@ -56,6 +58,10 @@ public class ChronicleStudyController implements ChronicleStudyApi {
     private static final Logger logger = LoggerFactory.getLogger( ChronicleStudyController.class );
 
     private final FullQualifiedName PERSON_ID_FQN = new FullQualifiedName( "nc.SubjectIdentification" );
+
+    private static final String RAW_DATA_PREFIX = "ChronicleData_";
+    private static final String PREPROCESSED_DATA_PREFIX = "ChroniclePreprocessedData_";
+    private static final String USAGE_DATA_PREFIX = "ChronicleAppUsageData_";
 
     @Inject
     private ChronicleService chronicleService;
@@ -72,34 +78,24 @@ public class ChronicleStudyController implements ChronicleStudyApi {
             @PathVariable( PARTICIPANT_ID ) String participantId,
             @PathVariable( DATASOURCE_ID ) String datasourceId,
             @RequestBody Optional<Datasource> datasource ) {
-        //  allow to proceed only if the participant is in the study and the device has not been associated yet
-        //  TODO: finish exception logic
-        final boolean knownParticipant = chronicleService.isKnownParticipant( studyId, participantId );
-        final boolean knownDatasource = chronicleService.isKnownDatasource( studyId, participantId, datasourceId );
 
-        logger.info(
-                "Attempting to enroll source... study {}, participant {}, and datasource {} ",
-                studyId,
-                participantId,
-                datasourceId
-        );
-        logger.info( "isKnownParticipant {} = {}", participantId, knownParticipant );
-        logger.info( "isKnownDatasource {} = {}", datasourceId, knownDatasource );
+        return enrollSource( CAFE_ORG_ID, studyId, participantId, datasourceId, datasource );
+    }
 
-        if ( knownParticipant && !knownDatasource ) {
-            return chronicleService.registerDatasource( studyId, participantId, datasourceId, datasource );
-        } else if ( knownParticipant && knownDatasource ) {
-            return chronicleService.getDeviceEntityKeyId( studyId, participantId, datasourceId );
-        } else {
-            logger.error(
-                    "Unable to enroll device for study {}, participant {}, and datasource {} due valid participant = {} or valid device = {}",
-                    studyId,
-                    participantId,
-                    datasourceId,
-                    knownParticipant,
-                    knownDatasource );
-            throw new AccessDeniedException( "Unable to enroll device." );
-        }
+    @Override
+    @Timed
+    @RequestMapping(
+            path = ORGANIZATION_ID_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH + DATASOURCE_ID_PATH,
+            method = RequestMethod.POST,
+            consumes = MediaType.APPLICATION_JSON_VALUE )
+    public UUID enrollDataSourceInOrgStudy(
+            @PathVariable( ORGANIZATION_ID ) UUID organizationId,
+            @PathVariable( STUDY_ID ) UUID studyId,
+            @PathVariable( PARTICIPANT_ID ) String participantId,
+            @PathVariable( DATASOURCE_ID ) String datasourceId,
+            @RequestBody Optional<Datasource> datasource ) {
+
+        return enrollSource( organizationId, studyId, participantId, datasourceId, datasource );
     }
 
     @Override
@@ -116,75 +112,61 @@ public class ChronicleStudyController implements ChronicleStudyApi {
         //  validate that this device belongs to this participant in this study
         //  look up in association entitySet between device and participant, and device and study to see if it exists?
         //  DataApi.getEntity(entitySetId :UUID, entityKeyId :UUID)
-        // TODO: Waiting on data model to exist, then ready to implement
-        return chronicleService.isKnownDatasource( studyId, participantId, datasourceId );
+        return chronicleService.isKnownDatasource( CAFE_ORG_ID, studyId, participantId, datasourceId );
     }
 
     @Override
     @Timed
     @RequestMapping(
-            path = STUDY_ID_PATH + PARTICIPANT_ID_PATH,
-            method = RequestMethod.GET,
-            produces = MediaType.APPLICATION_JSON_VALUE
-    )
-    public Boolean isKnownParticipant(
-            @PathVariable( STUDY_ID ) UUID studyId,
-            @PathVariable( PARTICIPANT_ID ) String participantId ) {
-        //  validate that this participant belongs in this study
-        //  look up in association entitySet between study and participant if the participant is present
-        //  DataApi.getEntity(entitySetId :UUID, entityKeyId :UUID)
-        // TODO: Waiting on data model to exist, then ready to implement
-        return chronicleService.isKnownParticipant( studyId, participantId );
-    }
-
-    @Override
-    @Timed
-    @RequestMapping(
-            path = AUTHENTICATED + STUDY_ID_PATH + PARTICIPANT_ID_PATH,
+            path = AUTHENTICATED + ORGANIZATION_ID_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH,
             method = RequestMethod.DELETE
     )
     public Void deleteParticipantAndAllNeighbors(
+            @PathVariable( ORGANIZATION_ID ) UUID organizationId,
             @PathVariable( STUDY_ID ) UUID studyId,
             @PathVariable( PARTICIPANT_ID ) String participantId,
             @RequestParam( TYPE ) DeleteType deleteType
     ) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String token = ( (JwtAuthentication) authentication ).getToken();
-        chronicleService.deleteParticipantAndAllNeighbors( studyId, participantId, deleteType, token );
+        chronicleService.deleteParticipantAndAllNeighbors( organizationId, studyId, participantId, deleteType, token );
 
         return null;
     }
 
     @Timed
     @RequestMapping(
-            path = AUTHENTICATED + STUDY_ID_PATH,
+            path = AUTHENTICATED + ORGANIZATION_ID_PATH + STUDY_ID_PATH,
             method = RequestMethod.DELETE
     )
     @ResponseStatus( HttpStatus.OK )
     public Void deleteStudyAndAllNeighbors(
+            @PathVariable( ORGANIZATION_ID ) UUID organizationId,
             @PathVariable( STUDY_ID ) UUID studyId,
             @RequestParam( TYPE ) DeleteType deleteType
     ) {
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String token = ( (JwtAuthentication) authentication ).getToken();
-        chronicleService.deleteStudyAndAllNeighbors( studyId, deleteType, token );
+        chronicleService.deleteStudyAndAllNeighbors( organizationId, studyId, deleteType, token );
         return null;
     }
 
     @Timed
     @RequestMapping(
-            path = PARTICIPANT_PATH + DATA_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH + APPS,
+            path = ORGANIZATION_ID_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH + APPS,
             method = RequestMethod.GET,
             produces = MediaType.APPLICATION_JSON_VALUE
     )
     public List<ChronicleAppsUsageDetails> getParticipantAppsUsageData(
+            @PathVariable( ORGANIZATION_ID ) UUID organizationId,
             @PathVariable( STUDY_ID ) UUID studyId,
             @PathVariable( PARTICIPANT_ID ) String participantId,
             @RequestParam( value = DATE ) String date ) {
-        return chronicleService.getParticipantAppsUsageData( studyId, participantId, date );
+        return chronicleService.getParticipantAppsUsageData( organizationId, studyId, participantId, date );
     }
 
+    @Override
     @Timed
     @RequestMapping(
             path = STUDY_ID_PATH + NOTIFICATIONS,
@@ -192,7 +174,19 @@ public class ChronicleStudyController implements ChronicleStudyApi {
     )
     public Boolean isNotificationsEnabled(
             @PathVariable( STUDY_ID ) UUID studyId ) {
-        return chronicleService.isNotificationsEnabled( studyId );
+        return chronicleService.isNotificationsEnabled( CAFE_ORG_ID, studyId );
+    }
+
+    @Override
+    @Timed
+    @RequestMapping(
+            path = ORGANIZATION_ID_PATH + STUDY_ID_PATH + NOTIFICATIONS,
+            method = RequestMethod.GET
+    )
+    public Boolean isOrgStudyNotificationsEnabled(
+            @PathVariable( ORGANIZATION_ID ) UUID organizationId,
+            @PathVariable( STUDY_ID ) UUID studyId ) {
+        return chronicleService.isNotificationsEnabled( organizationId, studyId );
     }
 
     @Override
@@ -204,71 +198,100 @@ public class ChronicleStudyController implements ChronicleStudyApi {
     public ParticipationStatus getParticipationStatus(
             @PathVariable( STUDY_ID ) UUID studyId,
             @PathVariable( PARTICIPANT_ID ) String participantId ) {
-        return chronicleService.getParticipationStatus( studyId, participantId );
+        return chronicleService.getParticipationStatus( CAFE_ORG_ID, studyId, participantId );
     }
 
+    @Override
     @Timed
     @RequestMapping(
-            path = PARTICIPANT_PATH + DATA_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH + APPS,
+            path = ORGANIZATION_ID_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH + ENROLLMENT_STATUS,
+            method = RequestMethod.GET
+    )
+    public ParticipationStatus getOrgStudyParticipationStatus(
+            @PathVariable( ORGANIZATION_ID ) UUID organizationId,
+            @PathVariable( STUDY_ID ) UUID studyId,
+            @PathVariable( PARTICIPANT_ID ) String participantId ) {
+        return chronicleService.getParticipationStatus( organizationId, studyId, participantId );
+    }
+
+    @RequestMapping(
+            path = ORGANIZATION_ID_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH + APPS,
             method = RequestMethod.POST,
             consumes = MediaType.APPLICATION_JSON_VALUE
     )
     public Integer updateAppsUsageAssociationData(
+            @PathVariable( ORGANIZATION_ID ) UUID organizationId,
             @PathVariable( STUDY_ID ) UUID studyId,
             @PathVariable( PARTICIPANT_ID ) String participantId,
             @RequestBody Map<UUID, Map<FullQualifiedName, Set<Object>>> associationDetails ) {
-        return chronicleService.updateAppsUsageAssociationData( studyId, participantId, associationDetails );
+        return chronicleService
+                .updateAppsUsageAssociationData( organizationId, studyId, participantId, associationDetails );
     }
 
     @Timed
     @RequestMapping(
-            path = AUTHENTICATED + PARTICIPANT_PATH + DATA_PATH + STUDY_ID_PATH + ENTITY_KEY_ID_PATH
+            path = AUTHENTICATED + PARTICIPANT_PATH + DATA_PATH + ORGANIZATION_ID_PATH + STUDY_ID_PATH
+                    + ENTITY_KEY_ID_PATH
                     + PREPROCESSED_PATH,
             method = RequestMethod.GET,
             produces = { MediaType.APPLICATION_JSON_VALUE, CustomMediaType.TEXT_CSV_VALUE }
     )
     public Iterable<Map<String, Set<Object>>> getAllPreprocessedParticipantData(
+            @PathVariable( ORGANIZATION_ID ) UUID organizationId,
             @PathVariable( STUDY_ID ) UUID studyId,
             @PathVariable( ENTITY_KEY_ID ) UUID participantEntityKeyId,
             @RequestParam( value = FILE_TYPE, required = false ) FileType fileType,
             HttpServletResponse response ) {
 
-        Iterable<Map<String, Set<Object>>> data = getAllPreprocessedParticipantData( studyId,
+        Iterable<Map<String, Set<Object>>> data = getAllPreprocessedParticipantData( organizationId, studyId,
                 participantEntityKeyId,
                 fileType );
 
-        String fileName = getParticipantDataFileName( "ChroniclePreprocessedData_", studyId, participantEntityKeyId );
+        String fileName = getParticipantDataFileName( PREPROCESSED_DATA_PREFIX,
+                organizationId,
+                studyId,
+                participantEntityKeyId );
         setContentDisposition( response, fileName, fileType );
         setDownloadContentType( response, fileType );
         return data;
     }
 
     public Iterable<Map<String, Set<Object>>> getAllPreprocessedParticipantData(
+            UUID organizationId,
             UUID studyId,
             UUID participantEntityKeyId,
             FileType fileType ) {
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String token = ( (JwtAuthentication) authentication ).getToken();
-        return chronicleService.getAllPreprocessedParticipantData( studyId, participantEntityKeyId, token );
+        return chronicleService
+                .getAllPreprocessedParticipantData( organizationId, studyId, participantEntityKeyId, token );
 
     }
 
     @Timed
     @RequestMapping(
-            path = AUTHENTICATED + PARTICIPANT_PATH + DATA_PATH + STUDY_ID_PATH + ENTITY_KEY_ID_PATH,
+            path = AUTHENTICATED + PARTICIPANT_PATH + DATA_PATH + ORGANIZATION_ID_PATH + STUDY_ID_PATH
+                    + ENTITY_KEY_ID_PATH,
             method = RequestMethod.GET,
             produces = { MediaType.APPLICATION_JSON_VALUE, CustomMediaType.TEXT_CSV_VALUE }
     )
     public Iterable<Map<String, Set<Object>>> getAllParticipantData(
+            @PathVariable( ORGANIZATION_ID ) UUID organizationId,
             @PathVariable( STUDY_ID ) UUID studyId,
             @PathVariable( ENTITY_KEY_ID ) UUID participantEntityKeyId,
             @RequestParam( value = FILE_TYPE, required = false ) FileType fileType,
             HttpServletResponse response ) {
 
-        Iterable<Map<String, Set<Object>>> data = getAllParticipantData( studyId, participantEntityKeyId, fileType );
+        Iterable<Map<String, Set<Object>>> data = getAllParticipantData( organizationId,
+                studyId,
+                participantEntityKeyId,
+                fileType );
 
-        String fileName = getParticipantDataFileName( "ChronicleData_", studyId, participantEntityKeyId );
+        String fileName = getParticipantDataFileName( RAW_DATA_PREFIX,
+                organizationId,
+                studyId,
+                participantEntityKeyId );
         setContentDisposition( response, fileName, fileType );
         setDownloadContentType( response, fileType );
         return data;
@@ -276,32 +299,38 @@ public class ChronicleStudyController implements ChronicleStudyApi {
 
     @Override
     public Iterable<Map<String, Set<Object>>> getAllParticipantData(
+            UUID organizationId,
             UUID studyId,
             UUID participantEntityKeyId,
             FileType fileType ) {
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String token = ( (JwtAuthentication) authentication ).getToken();
-        return chronicleService.getAllParticipantData( studyId, participantEntityKeyId, token );
+        return chronicleService.getAllParticipantData( organizationId, studyId, participantEntityKeyId, token );
     }
 
     @Timed
     @RequestMapping(
-            path = AUTHENTICATED + PARTICIPANT_PATH + DATA_PATH + STUDY_ID_PATH + ENTITY_KEY_ID_PATH + USAGE_PATH,
+            path = AUTHENTICATED + PARTICIPANT_PATH + DATA_PATH + ORGANIZATION_ID_PATH + STUDY_ID_PATH
+                    + ENTITY_KEY_ID_PATH + USAGE_PATH,
             method = RequestMethod.GET,
             produces = { MediaType.APPLICATION_JSON_VALUE, CustomMediaType.TEXT_CSV_VALUE }
     )
     public Iterable<Map<String, Set<Object>>> getAllParticipantAppsUsageData(
+            @PathVariable( ORGANIZATION_ID ) UUID organizationId,
             @PathVariable( STUDY_ID ) UUID studyId,
             @PathVariable( ENTITY_KEY_ID ) UUID participantEntityKeyId,
             @RequestParam( value = FILE_TYPE, required = false ) FileType fileType,
             HttpServletResponse response ) {
 
-        Iterable<Map<String, Set<Object>>> data = getAllParticipantAppsUsageData( studyId,
+        Iterable<Map<String, Set<Object>>> data = getAllParticipantAppsUsageData( organizationId, studyId,
                 participantEntityKeyId,
                 fileType );
 
-        String fileName = getParticipantDataFileName( "ChronicleAppUsageData_", studyId, participantEntityKeyId );
+        String fileName = getParticipantDataFileName( USAGE_DATA_PREFIX,
+                organizationId,
+                studyId,
+                participantEntityKeyId );
         setContentDisposition( response, fileName, fileType );
         setDownloadContentType( response, fileType );
         return data;
@@ -310,29 +339,31 @@ public class ChronicleStudyController implements ChronicleStudyApi {
     @Override
     @Timed
     @RequestMapping(
-            path = STUDY_ID_PATH + QUESTIONNAIRE + ENTITY_KEY_ID_PATH,
+            path = ORGANIZATION_ID_PATH + STUDY_ID_PATH + QUESTIONNAIRE + ENTITY_KEY_ID_PATH,
             method = RequestMethod.GET,
             produces = MediaType.APPLICATION_JSON_VALUE
     )
     public ChronicleQuestionnaire getChronicleQuestionnaire(
+            @PathVariable( ORGANIZATION_ID ) UUID organizationId,
             @PathVariable( STUDY_ID ) UUID studyId,
             @PathVariable( ENTITY_KEY_ID ) UUID questionnaireEKID
     ) {
-        return chronicleService.getQuestionnaire( studyId, questionnaireEKID );
+        return chronicleService.getQuestionnaire( organizationId, studyId, questionnaireEKID );
     }
 
     @Override
     @Timed
     @RequestMapping(
-            path = STUDY_ID_PATH + PARTICIPANT_ID_PATH + QUESTIONNAIRE,
+            path = ORGANIZATION_ID_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH + QUESTIONNAIRE,
             method = RequestMethod.POST,
             consumes = MediaType.APPLICATION_JSON_VALUE
     )
     public void submitQuestionnaire(
+            @PathVariable( ORGANIZATION_ID ) UUID organizationId,
             @PathVariable( STUDY_ID ) UUID studyId,
             @PathVariable( PARTICIPANT_ID ) String participantId,
             @RequestBody Map<UUID, Map<FullQualifiedName, Set<Object>>> questionnaireResponses ) {
-        chronicleService.submitQuestionnaire( studyId, participantId, questionnaireResponses );
+        chronicleService.submitQuestionnaire( organizationId, studyId, participantId, questionnaireResponses );
     }
 
     @Override
@@ -343,25 +374,80 @@ public class ChronicleStudyController implements ChronicleStudyApi {
             produces = MediaType.APPLICATION_JSON_VALUE
     )
     public Map<UUID, Map<FullQualifiedName, Set<Object>>> getStudyQuestionnaires(
-            @PathVariable( STUDY_ID ) UUID studyId
-    ) {
-        return chronicleService.getStudyQuestionnaires( studyId );
+            @PathVariable( STUDY_ID ) UUID studyId ) {
+        return chronicleService.getStudyQuestionnaires( CAFE_ORG_ID, studyId );
+    }
+
+    @Override
+    @Timed
+    @RequestMapping(
+            path = ORGANIZATION_ID_PATH + STUDY_ID_PATH + QUESTIONNAIRES,
+            method = RequestMethod.GET,
+            produces = MediaType.APPLICATION_JSON_VALUE
+    )
+    public Map<UUID, Map<FullQualifiedName, Set<Object>>> getOrgStudyQuestionnaires(
+            @PathVariable( ORGANIZATION_ID ) UUID organizationId,
+            @PathVariable( STUDY_ID ) UUID studyId ) {
+        return chronicleService.getStudyQuestionnaires( organizationId, studyId );
     }
 
     public Iterable<Map<String, Set<Object>>> getAllParticipantAppsUsageData(
+            UUID organizationId,
             UUID studyId,
             UUID participantEntityKeyId,
             FileType fileType ) {
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String token = ( (JwtAuthentication) authentication ).getToken();
-        return chronicleService.getAllParticipantAppsUsageData( studyId, participantEntityKeyId, token );
+        return chronicleService
+                .getAllParticipantAppsUsageData( organizationId, studyId, participantEntityKeyId, token );
 
     }
 
-    private String getParticipantDataFileName( String fileNamePrefix, UUID studyId, UUID participantEntityKeyId ) {
+    private UUID enrollSource(
+            UUID organizationId,
+            UUID studyId,
+            String participantId,
+            String dataSourceId,
+            Optional<Datasource> datasource ) {
+        //  allow to proceed only if the participant is in the study and the device has not been associated yet
+        final boolean isKnownParticipant = chronicleService.isKnownParticipant( organizationId, studyId, participantId );
+        final UUID deviceEKID = chronicleService.getDeviceEntityKeyId( organizationId, studyId, participantId, dataSourceId );
+
+        logger.info(
+                "Attempting to enroll source... study {}, participant {}, and datasource {} ",
+                studyId,
+                participantId,
+                dataSourceId
+        );
+        logger.info( "isKnownParticipant {} = {}", participantId, isKnownParticipant );
+        logger.info( "isKnownDatasource {} = {}", dataSourceId, deviceEKID != null );
+
+        if ( isKnownParticipant && deviceEKID == null ) {
+            return chronicleService
+                    .registerDatasource( organizationId, studyId, participantId, dataSourceId, datasource );
+        } else if ( isKnownParticipant ) {
+            return deviceEKID;
+        } else {
+            logger.error(
+                    "Unable to enroll device for orgId {} study {}, participant {}, and datasource {} due valid participant = {} or valid device = {}",
+                    organizationId,
+                    studyId,
+                    participantId,
+                    dataSourceId,
+                    isKnownParticipant,
+                    deviceEKID != null );
+            throw new AccessDeniedException( "Unable to enroll device." );
+        }
+    }
+
+    private String getParticipantDataFileName(
+            String fileNamePrefix,
+            UUID organizationId,
+            UUID studyId,
+            UUID participantEntityKeyId ) {
         String participantId = chronicleService
-                .getParticipantEntity( studyId, participantEntityKeyId )
+                .getParticipantEntity( organizationId, studyId, participantEntityKeyId )
                 .get( PERSON_ID_FQN )
                 .stream()
                 .findFirst()
