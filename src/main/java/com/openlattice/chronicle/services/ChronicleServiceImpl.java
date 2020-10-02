@@ -82,7 +82,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE_QUESTIONNAIRES;
+import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE_SURVEYS;
 import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE;
 import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE_DATA_COLLECTION;
 import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.STUDIES;
@@ -1169,7 +1169,7 @@ public class ChronicleServiceImpl implements ChronicleService {
             UUID appDataESID = getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, APPDATA );
             UUID preprocessedDataESID = getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, PREPROCESSED_DATA );
             UUID devicesESID = getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, DEVICE );
-            UUID answersESID = getEntitySetId( organizationId, CHRONICLE_QUESTIONNAIRES, ANSWER );
+            UUID answersESID = getEntitySetId( organizationId, CHRONICLE_SURVEYS, ANSWER );
 
             // ensure study exists
             UUID studyEntityKeyId = Preconditions
@@ -1671,10 +1671,10 @@ public class ChronicleServiceImpl implements ChronicleService {
             SearchApi searchApi = apiClient.getSearchApi();
 
             // entity set ids
-            UUID questionnaireESID = ensureEntitySetExists( organizationId, CHRONICLE_QUESTIONNAIRES, SURVEY );
+            UUID questionnaireESID = ensureEntitySetExists( organizationId, CHRONICLE_SURVEYS, SURVEY );
             UUID studiesESID = ensureEntitySetExists( organizationId, CHRONICLE, STUDIES );
             UUID partOfESID = ensureEntitySetExists( organizationId, CHRONICLE, PART_OF );
-            UUID questionESID = ensureEntitySetExists( organizationId, CHRONICLE_QUESTIONNAIRES, QUESTION );
+            UUID questionESID = ensureEntitySetExists( organizationId, CHRONICLE_SURVEYS, QUESTION );
 
             // Get questionnaires that neighboring study
             Map<UUID, List<NeighborEntityDetails>> neighbors = searchApi.executeFilteredEntityNeighborSearch(
@@ -1766,7 +1766,7 @@ public class ChronicleServiceImpl implements ChronicleService {
             SearchApi searchApi = apiClient.getSearchApi();
 
             // entity set ids
-            UUID questionnaireESID = ensureEntitySetExists( organizationId, CHRONICLE_QUESTIONNAIRES, SURVEY );
+            UUID questionnaireESID = ensureEntitySetExists( organizationId, CHRONICLE_SURVEYS, SURVEY );
             UUID studiesESID = ensureEntitySetExists( organizationId, CHRONICLE, STUDIES );
             UUID partOfESID = ensureEntitySetExists( organizationId, CHRONICLE, PART_OF );
 
@@ -1818,9 +1818,9 @@ public class ChronicleServiceImpl implements ChronicleService {
             // get entity set ids
             UUID participantESID = ensureEntitySetExists( organizationId, CHRONICLE, PARTICIPANTS );
             UUID answersESID = ensureEntitySetExists( organizationId, CHRONICLE_DATA_COLLECTION, ANSWER );
-            UUID respondsWithESID = ensureEntitySetExists( organizationId, CHRONICLE_QUESTIONNAIRES, RESPONDS_WITH );
-            UUID addressesESID = ensureEntitySetExists( organizationId, CHRONICLE_QUESTIONNAIRES, ADDRESSES );
-            UUID questionsESID = ensureEntitySetExists( organizationId, CHRONICLE_QUESTIONNAIRES, QUESTION );
+            UUID respondsWithESID = ensureEntitySetExists( organizationId, CHRONICLE_SURVEYS, RESPONDS_WITH );
+            UUID addressesESID = ensureEntitySetExists( organizationId, CHRONICLE_SURVEYS, ADDRESSES );
+            UUID questionsESID = ensureEntitySetExists( organizationId, CHRONICLE_SURVEYS, QUESTION );
 
             // participant must be valid
             UUID participantEKID = Preconditions
