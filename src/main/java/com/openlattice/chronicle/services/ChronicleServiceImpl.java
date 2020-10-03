@@ -130,6 +130,9 @@ public class ChronicleServiceImpl implements ChronicleService {
     // studyId -> study EKID
     private final Map<UUID, UUID> studies = new HashMap<>();
 
+    // ids of entities in chronicle_user_apps entity set
+    private final Set<UUID> userAppsEntityKeyIds = Collections.synchronizedSet( new HashSet<>() );
+
     private final Set<String> systemAppPackageNames         = Collections.synchronizedSet( new HashSet<>() );
     private final Set<UUID>   notificationEnabledStudyEKIDs = new HashSet<>();
 
@@ -197,6 +200,7 @@ public class ChronicleServiceImpl implements ChronicleService {
 
         refreshStudyInformation();
         refreshUserAppsDictionary();
+        refreshUserAppsEntityIds();
     }
 
     private UUID reserveEntityKeyId(
@@ -403,9 +407,11 @@ public class ChronicleServiceImpl implements ChronicleService {
                 userAppEntityData.put( propertyTypeIdsByFQN.get( TITLE_FQN ), Sets.newHashSet( appName ) );
 
                 UUID userAppEntityKeyId = reserveUserAppEntityKeyId( userAppEntityData, dataIntegrationApi );
-                dataApi.updateEntitiesInEntitySet( entitySetIdMap.get( CHRONICLE_USER_APPS ),
-                        ImmutableMap.of( userAppEntityKeyId, userAppEntityData ),
-                        UpdateType.Merge );
+                if (!userAppsEntityKeyIds.contains( userAppEntityKeyId )) {
+                    dataApi.updateEntitiesInEntitySet( entitySetIdMap.get( CHRONICLE_USER_APPS ),
+                            ImmutableMap.of( userAppEntityKeyId, userAppEntityData ),
+                            UpdateType.Merge );
+                }
 
                 // association: chronicle_user_apps => chronicle_recorded_by => chronicle_device
                 Map<UUID, Set<Object>> recordedByEntityData = new HashMap<>();
@@ -1142,6 +1148,33 @@ public class ChronicleServiceImpl implements ChronicleService {
             }
         }
         return result;
+    }
+
+    @Scheduled (fixedRate = 6000)
+    public void refreshUserAppsEntityIds() {
+        logger.info( "refreshing chronicle_user_apps entity ids" );
+
+        try {
+            ApiClient apiClient = prodApiClientCache.get( ApiClient.class );
+            DataApi dataApi = apiClient.getDataApi();
+            String jwtToken = auth0Client.getIdToken( username, password );
+
+            // load entities from chronicle_user_apps
+            Iterable<SetMultimap<FullQualifiedName, Object>> data = dataApi
+                    .loadEntitySetData( entitySetIdMap.get( CHRONICLE_USER_APPS ), FileType.json, jwtToken );
+
+            // get entity key ids
+            Set<UUID> entityIds = StreamUtil.stream( data )
+                    .map( entry -> UUID.fromString(  entry.get( ID_FQN ).iterator().next().toString() ))
+                    .collect( Collectors.toSet() );
+
+            userAppsEntityKeyIds.addAll( entityIds );
+            
+            logger.info( "loaded {} entity ids from chronicle_user_apps", entityIds.size() );
+        } catch ( Exception e ) {
+            logger.error( "error loading entity ids from chronicle_user_apps" );
+        }
+
     }
 
     @Scheduled( fixedRate = 60000 )
