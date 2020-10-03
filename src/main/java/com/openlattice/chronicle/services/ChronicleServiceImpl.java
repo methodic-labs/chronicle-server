@@ -1152,7 +1152,7 @@ public class ChronicleServiceImpl implements ChronicleService {
 
     @Scheduled (fixedRate = 60000)
     public void refreshUserAppsEntityIds() {
-        logger.info( "refreshing chronicle_user_apps entity ids" );
+        logger.info( "refreshing chronicle_user_apps entity key ids" );
 
         try {
             ApiClient apiClient = prodApiClientCache.get( ApiClient.class );
@@ -1170,9 +1170,9 @@ public class ChronicleServiceImpl implements ChronicleService {
 
             userAppsEntityKeyIds.addAll( entityIds );
 
-            logger.info( "loaded {} entity ids from chronicle_user_apps", entityIds.size() );
+            logger.info( "loaded {} entity key ids from chronicle_user_apps", entityIds.size() );
         } catch ( Exception e ) {
-            logger.error( "error loading entity ids from chronicle_user_apps" );
+            logger.error( "error loading entity key ids from chronicle_user_apps" );
         }
 
     }
