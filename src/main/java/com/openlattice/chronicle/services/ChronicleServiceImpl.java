@@ -1165,7 +1165,7 @@ public class ChronicleServiceImpl implements ChronicleService {
 
             // get entity key ids
             Set<UUID> entityIds = StreamUtil.stream( data )
-                    .map( entry -> UUID.fromString(  entry.get( ID_FQN ).iterator().next().toString() ))
+                    .map( entry -> UUID.fromString( entry.get( ID_FQN ).iterator().next().toString() ) )
                     .collect( Collectors.toSet() );
 
             userAppsEntityKeyIds.addAll( entityIds );
