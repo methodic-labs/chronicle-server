@@ -408,7 +408,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                 userAppEntityData.put( propertyTypeIdsByFQN.get( TITLE_FQN ), Sets.newHashSet( appName ) );
 
                 UUID userAppEntityKeyId = reserveUserAppEntityKeyId( userAppEntityData, dataIntegrationApi );
-                if (!userAppsFullNameValues.contains( appPackageName )) {
+                if ( !userAppsFullNameValues.contains( appPackageName ) ) {
                     dataApi.updateEntitiesInEntitySet( entitySetIdMap.get( CHRONICLE_USER_APPS ),
                             ImmutableMap.of( userAppEntityKeyId, userAppEntityData ),
                             UpdateType.Merge );
@@ -1151,7 +1151,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         return result;
     }
 
-    @Scheduled (fixedRate = 60000)
+    @Scheduled( fixedRate = 60000 )
     public void refreshUserAppsFullNameValues() {
         logger.info( "refreshing chronicle_user_apps fullnames" );
 
@@ -1163,7 +1163,9 @@ public class ChronicleServiceImpl implements ChronicleService {
             Iterable<SetMultimap<FullQualifiedName, Object>> data = dataApi
                     .loadSelectedEntitySetData(
                             entitySetIdMap.get( CHRONICLE_USER_APPS ),
-                            new EntitySetSelection(  Optional.of( Set.of(propertyTypeIdsByFQN.get( FULL_NAME_FQN )) )),
+                            new EntitySetSelection(
+                                    Optional.of( Set.of( propertyTypeIdsByFQN.get( FULL_NAME_FQN ) ) )
+                            ),
                             FileType.json
                     );
 
