@@ -40,6 +40,7 @@ import com.openlattice.chronicle.sources.Datasource;
 import com.openlattice.client.ApiClient;
 import com.openlattice.client.RetrofitFactory;
 import com.openlattice.data.*;
+import com.openlattice.data.requests.EntitySetSelection;
 import com.openlattice.data.requests.FileType;
 import com.openlattice.data.requests.NeighborEntityDetails;
 import com.openlattice.data.requests.NeighborEntityIds;
@@ -131,7 +132,7 @@ public class ChronicleServiceImpl implements ChronicleService {
     private final Map<UUID, UUID> studies = new HashMap<>();
 
     // ids of entities in chronicle_user_apps entity set
-    private final Set<UUID> userAppsEntityKeyIds = Collections.synchronizedSet( new HashSet<>() );
+    private final Set<String> userAppsFullNameValues = Collections.synchronizedSet( new HashSet<>() );
 
     private final Set<String> systemAppPackageNames         = Collections.synchronizedSet( new HashSet<>() );
     private final Set<UUID>   notificationEnabledStudyEKIDs = new HashSet<>();
@@ -200,7 +201,7 @@ public class ChronicleServiceImpl implements ChronicleService {
 
         refreshStudyInformation();
         refreshUserAppsDictionary();
-        refreshUserAppsEntityIds();
+        refreshUserAppsFullNameValues();
     }
 
     private UUID reserveEntityKeyId(
@@ -407,7 +408,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                 userAppEntityData.put( propertyTypeIdsByFQN.get( TITLE_FQN ), Sets.newHashSet( appName ) );
 
                 UUID userAppEntityKeyId = reserveUserAppEntityKeyId( userAppEntityData, dataIntegrationApi );
-                if (!userAppsEntityKeyIds.contains( userAppEntityKeyId )) {
+                if ( !userAppsFullNameValues.contains( appPackageName ) ) {
                     dataApi.updateEntitiesInEntitySet( entitySetIdMap.get( CHRONICLE_USER_APPS ),
                             ImmutableMap.of( userAppEntityKeyId, userAppEntityData ),
                             UpdateType.Merge );
@@ -1150,29 +1151,34 @@ public class ChronicleServiceImpl implements ChronicleService {
         return result;
     }
 
-    @Scheduled (fixedRate = 60000)
-    public void refreshUserAppsEntityIds() {
-        logger.info( "refreshing chronicle_user_apps entity key ids" );
+    @Scheduled( fixedRate = 60000 )
+    public void refreshUserAppsFullNameValues() {
+        logger.info( "refreshing chronicle_user_apps fullnames" );
 
         try {
             ApiClient apiClient = prodApiClientCache.get( ApiClient.class );
             DataApi dataApi = apiClient.getDataApi();
-            String jwtToken = auth0Client.getIdToken( username, password );
 
             // load entities from chronicle_user_apps
             Iterable<SetMultimap<FullQualifiedName, Object>> data = dataApi
-                    .loadEntitySetData( entitySetIdMap.get( CHRONICLE_USER_APPS ), FileType.json, jwtToken );
+                    .loadSelectedEntitySetData(
+                            entitySetIdMap.get( CHRONICLE_USER_APPS ),
+                            new EntitySetSelection(
+                                    Optional.of( Set.of( propertyTypeIdsByFQN.get( FULL_NAME_FQN ) ) )
+                            ),
+                            FileType.json
+                    );
 
             // get entity key ids
-            Set<UUID> entityIds = StreamUtil.stream( data )
-                    .map( entry -> UUID.fromString( entry.get( ID_FQN ).iterator().next().toString() ) )
+            Set<String> fullNames = StreamUtil.stream( data )
+                    .map( entry -> entry.get( FULL_NAME_FQN ).iterator().next().toString() )
                     .collect( Collectors.toSet() );
 
-            userAppsEntityKeyIds.addAll( entityIds );
+            userAppsFullNameValues.addAll( fullNames );
 
-            logger.info( "loaded {} entity key ids from chronicle_user_apps", entityIds.size() );
+            logger.info( "loaded {} fullnames from chronicle_user_apps", fullNames.size() );
         } catch ( Exception e ) {
-            logger.error( "error loading entity key ids from chronicle_user_apps" );
+            logger.error( "error loading fullnames from chronicle_user_apps" );
         }
 
     }
