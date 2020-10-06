@@ -477,7 +477,7 @@ public class ChronicleServiceImpl implements ChronicleService {
             UUID participantEntitySetId,
             UUID participantEntityKeyId,
             String participantId,
-            String studyId
+            UUID studyId
     ) {
 
         /*
