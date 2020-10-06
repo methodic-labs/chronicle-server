@@ -476,7 +476,9 @@ public class ChronicleServiceImpl implements ChronicleService {
             List<SetMultimap<UUID, Object>> data,
             UUID participantEntitySetId,
             UUID participantEntityKeyId,
-            String participantId ) {
+            String participantId,
+            String studyId
+    ) {
 
         /*
          * Creates or adds to an existing metadata entity, with general statistics (at this moment mostly datetimes)
@@ -532,9 +534,11 @@ public class ChronicleServiceImpl implements ChronicleService {
         // error means there is no metadata yet.
         Map<FullQualifiedName, Set<Object>> entity = new HashMap<>();
         try {
-            entity = dataApi
-                    .getEntity( entitySetIdMap.get( METADATA_ENTITY_SET_NAME ), metadataEntityKeyId );
-        } catch ( RhizomeRetrofitCallException e ) {}
+            entity = dataApi.getEntity( entitySetIdMap.get( METADATA_ENTITY_SET_NAME ), metadataEntityKeyId );
+        }
+        catch ( Exception e ) {
+            logger.error( "study = {} participant = {}", studyId, participantId, e );
+        }
 
         metadataEntityData.put( propertyTypeIdsByFQN.get( START_DATE_TIME_FQN ),
                 entity.getOrDefault( START_DATE_TIME_FQN, Set.of( firstDateTime ) ) );
@@ -792,12 +796,16 @@ public class ChronicleServiceImpl implements ChronicleService {
                 participantId,
                 participantEntityKeyId,
                 participantEntitySetId );
-        updateParticipantMetadata( dataApi,
+        updateParticipantMetadata(
+                dataApi,
                 dataIntegrationApi,
                 data,
                 participantEntitySetId,
                 participantEntityKeyId,
-                participantId );
+                participantId,
+                studyId
+        );
+
         //  TODO:s Make sure to return any errors??? Currently void method.
         return data.size();
     }
