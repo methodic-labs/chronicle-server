@@ -1151,6 +1151,14 @@ public class ChronicleServiceImpl implements ChronicleService {
         return result;
     }
 
+    private String getFirstValueOrNull( SetMultimap <FullQualifiedName, Object> entity, FullQualifiedName fqn ) {
+        if ( entity.get( fqn ).isEmpty() ) {
+            return null;
+        }
+
+        return entity.get( fqn ).iterator().next().toString();
+    }
+
     @Scheduled( fixedRate = 60000 )
     public void refreshUserAppsFullNameValues() {
         logger.info( "refreshing chronicle_user_apps fullnames" );
@@ -1171,7 +1179,7 @@ public class ChronicleServiceImpl implements ChronicleService {
 
             // get entity key ids
             Set<String> fullNames = StreamUtil.stream( data )
-                    .map( entry -> entry.get( FULL_NAME_FQN ).iterator().next().toString() )
+                    .map( entry -> getFirstValueOrNull( entry, FULL_NAME_FQN ) )
                     .collect( Collectors.toSet() );
 
             userAppsFullNameValues.addAll( fullNames );
