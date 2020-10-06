@@ -536,8 +536,14 @@ public class ChronicleServiceImpl implements ChronicleService {
         try {
             entity = dataApi.getEntity( entitySetIdMap.get( METADATA_ENTITY_SET_NAME ), metadataEntityKeyId );
         }
-        catch ( Exception e ) {
-            logger.error( "study = {} participant = {}", studyId, participantId, e );
+        catch ( Exception exception ) {
+            logger.error(
+                    "failure while getting metadata entity {} - study = {} participant = {}",
+                    metadataEntityKeyId,
+                    studyId,
+                    participantId,
+                    exception
+            );
         }
 
         metadataEntityData.put( propertyTypeIdsByFQN.get( START_DATE_TIME_FQN ),
