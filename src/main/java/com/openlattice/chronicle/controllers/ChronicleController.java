@@ -1,5 +1,6 @@
 package com.openlattice.chronicle.controllers;
 
+import com.codahale.metrics.annotation.Timed;
 import com.google.common.collect.SetMultimap;
 import com.openlattice.chronicle.ChronicleApi;
 import com.openlattice.chronicle.data.ParticipationStatus;
@@ -27,6 +28,7 @@ public class ChronicleController implements ChronicleApi {
     private ChronicleService chronicleService;
 
     @Override
+    @Timed
     @RequestMapping(
             path = STUDY_ID_PATH + PARTICIPANT_ID_PATH + DATASOURCE_ID_PATH,
             method = RequestMethod.POST,
@@ -66,6 +68,7 @@ public class ChronicleController implements ChronicleApi {
     }
 
     @Override
+    @Timed
     @RequestMapping(
             path = EDM_PATH,
             method = RequestMethod.POST,
@@ -75,10 +78,10 @@ public class ChronicleController implements ChronicleApi {
         return chronicleService.getPropertyTypeIds( propertyTypeFqns );
     }
 
-    @RequestMapping(
-            path = STATUS_PATH,
-            method = RequestMethod.GET )
-    @Override public Boolean isRunning() {
+    @Override
+    @Timed
+    @RequestMapping( path = STATUS_PATH, method = RequestMethod.GET )
+    public Boolean isRunning() {
         //TODO: Ensure connectivity with OpenLattice backend.
         return true;
     }
