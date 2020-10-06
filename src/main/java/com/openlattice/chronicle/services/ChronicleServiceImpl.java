@@ -1152,11 +1152,9 @@ public class ChronicleServiceImpl implements ChronicleService {
     }
 
     private String getFirstValueOrNull( SetMultimap <FullQualifiedName, Object> entity, FullQualifiedName fqn ) {
-        if ( entity.get( fqn ).isEmpty() ) {
-            return null;
-        }
+        Object value = Iterables.getFirst( entity.get( fqn ), null );
 
-        return entity.get( fqn ).iterator().next().toString();
+        return value == null ? null : value.toString();
     }
 
     @Scheduled( fixedRate = 60000 )
