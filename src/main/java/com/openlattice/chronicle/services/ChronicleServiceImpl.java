@@ -1180,6 +1180,7 @@ public class ChronicleServiceImpl implements ChronicleService {
             // get entity key ids
             Set<String> fullNames = StreamUtil.stream( data )
                     .map( entry -> getFirstValueOrNull( entry, FULL_NAME_FQN ) )
+                    .filter( Objects::nonNull )
                     .collect( Collectors.toSet() );
 
             userAppsFullNameValues.addAll( fullNames );
