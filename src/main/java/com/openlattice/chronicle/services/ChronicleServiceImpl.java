@@ -50,7 +50,6 @@ import com.openlattice.edm.EntitySet;
 import com.openlattice.edm.set.EntitySetPropertyMetadata;
 import com.openlattice.edm.type.PropertyType;
 import com.openlattice.entitysets.EntitySetsApi;
-import com.openlattice.retrofit.RhizomeRetrofitCallException;
 import com.openlattice.search.SearchApi;
 import com.openlattice.search.requests.EntityNeighborsFilter;
 import com.openlattice.search.requests.SearchTerm;
@@ -322,8 +321,10 @@ public class ChronicleServiceImpl implements ChronicleService {
                         ImmutableList.of(
                                 propertyTypeIdsByFQN.get( DATE_LOGGED_FQN ),
                                 propertyTypeIdsByFQN.get( STRING_ID_FQN ),
-                                propertyTypeIdsByFQN.get( FULL_NAME_FQN ) ),
-                        data )
+                                propertyTypeIdsByFQN.get( FULL_NAME_FQN )
+                        ),
+                        data
+                )
 
         );
     }
@@ -509,8 +510,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         Map<FullQualifiedName, Set<Object>> entity = new HashMap<>();
         try {
             entity = dataApi.getEntity( entitySetIdMap.get( METADATA_ENTITY_SET_NAME ), metadataEntityKeyId );
-        }
-        catch ( Exception exception ) {
+        } catch ( Exception exception ) {
             logger.error(
                     "failure while getting metadata entity {} - study = {} participant = {}",
                     metadataEntityKeyId,
@@ -1259,7 +1259,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         return result;
     }
 
-    private String getFirstValueOrNull( SetMultimap <FullQualifiedName, Object> entity, FullQualifiedName fqn ) {
+    private String getFirstValueOrNull( SetMultimap<FullQualifiedName, Object> entity, FullQualifiedName fqn ) {
         Object value = Iterables.getFirst( entity.get( fqn ), null );
 
         return value == null ? null : value.toString();
