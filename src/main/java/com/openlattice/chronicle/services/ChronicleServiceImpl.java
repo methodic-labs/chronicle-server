@@ -1178,7 +1178,7 @@ public class ChronicleServiceImpl implements ChronicleService {
 
             logger.info( "loaded {} fullnames from chronicle_user_apps", fullNames.size() );
         } catch ( Exception e ) {
-            logger.error( "error loading fullnames from chronicle_user_apps" );
+            logger.error( "error loading fullnames from chronicle_user_apps", e );
         }
 
     }
