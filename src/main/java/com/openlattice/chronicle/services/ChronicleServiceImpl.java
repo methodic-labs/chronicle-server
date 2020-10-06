@@ -464,7 +464,9 @@ public class ChronicleServiceImpl implements ChronicleService {
             Map<EntityKey, UUID> entityKeyIdMap,
             UUID participantEntitySetId,
             UUID participantEntityKeyId,
-            String participantId ) {
+            String participantId,
+            UUID studyId
+    ) {
 
         /*
          * Creates or adds to an existing metadata entity, with general statistics (at this moment mostly datetimes)
@@ -506,9 +508,17 @@ public class ChronicleServiceImpl implements ChronicleService {
         // error means there is no metadata yet.
         Map<FullQualifiedName, Set<Object>> entity = new HashMap<>();
         try {
-            entity = dataApi
-                    .getEntity( entitySetIdMap.get( METADATA_ENTITY_SET_NAME ), metadataEntityKeyId );
-        } catch ( RhizomeRetrofitCallException e ) {}
+            entity = dataApi.getEntity( entitySetIdMap.get( METADATA_ENTITY_SET_NAME ), metadataEntityKeyId );
+        }
+        catch ( Exception exception ) {
+            logger.error(
+                    "failure while getting metadata entity {} - study = {} participant = {}",
+                    metadataEntityKeyId,
+                    studyId,
+                    participantId,
+                    exception
+            );
+        }
 
         metadataEntityData.put( propertyTypeIdsByFQN.get( START_DATE_TIME_FQN ),
                 entity.getOrDefault( START_DATE_TIME_FQN, Set.of( firstDateTime ) ) );
@@ -892,7 +902,10 @@ public class ChronicleServiceImpl implements ChronicleService {
                 entityKeyIdMap,
                 participantEntitySetId,
                 participantEntityKeyId,
-                participantId );
+                participantId,
+                studyId
+        );
+
         //  TODO:s Make sure to return any errors??? Currently void method.
         return data.size();
     }
@@ -1246,6 +1259,12 @@ public class ChronicleServiceImpl implements ChronicleService {
         return result;
     }
 
+    private String getFirstValueOrNull( SetMultimap <FullQualifiedName, Object> entity, FullQualifiedName fqn ) {
+        Object value = Iterables.getFirst( entity.get( fqn ), null );
+
+        return value == null ? null : value.toString();
+    }
+
     @Scheduled( fixedRate = 60000 )
     public void refreshUserAppsFullNameValues() {
         logger.info( "refreshing chronicle_user_apps fullnames" );
@@ -1266,14 +1285,15 @@ public class ChronicleServiceImpl implements ChronicleService {
 
             // get entity key ids
             Set<String> fullNames = StreamUtil.stream( data )
-                    .map( entry -> entry.get( FULL_NAME_FQN ).iterator().next().toString() )
+                    .map( entry -> getFirstValueOrNull( entry, FULL_NAME_FQN ) )
+                    .filter( Objects::nonNull )
                     .collect( Collectors.toSet() );
 
             userAppsFullNameValues.addAll( fullNames );
 
             logger.info( "loaded {} fullnames from chronicle_user_apps", fullNames.size() );
         } catch ( Exception e ) {
-            logger.error( "error loading fullnames from chronicle_user_apps" );
+            logger.error( "error loading fullnames from chronicle_user_apps", e );
         }
 
     }
