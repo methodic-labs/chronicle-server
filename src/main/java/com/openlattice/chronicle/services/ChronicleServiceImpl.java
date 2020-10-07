@@ -474,8 +474,9 @@ public class ChronicleServiceImpl implements ChronicleService {
         stopwatch.stop();
         logger.info( "createUserAppsEntitiesAndAssociations took {} seconds", stopwatch.elapsed(TimeUnit.SECONDS) );
         logger.info(
-                "created {} entities in chronicle_user_apps - study {} participant {}",
+                "created {} entities in {} - study {} participant {}",
                 numAppsUploaded,
+                CHRONICLE_USER_APPS,
                 studyId,
                 participantId
         );
@@ -636,8 +637,9 @@ public class ChronicleServiceImpl implements ChronicleService {
         stopwatch.stop();
         logger.info( "createAppDataEntitiesAndAssociations took {} seconds", stopwatch.elapsed(TimeUnit.SECONDS) );
         logger.info(
-                "created {} entities in chronicle_app_data - study {} participant {}",
+                "created {} entities in {} - study {} participant {}",
                 entities.size(),
+                DATA_ENTITY_SET_NAME,
                 studyId,
                 participantId
         );
