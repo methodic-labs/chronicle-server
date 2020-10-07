@@ -277,6 +277,9 @@ public class ChronicleServiceImpl implements ChronicleService {
 
     // return an OffsetDateTime with time 00:00
     private String getMidnightDateTime( String dateTime ) {
+        if ( dateTime == null )
+            return null;
+
         return OffsetDateTime
                 .parse( dateTime )
                 .withHour( 0 )
@@ -385,6 +388,8 @@ public class ChronicleServiceImpl implements ChronicleService {
                 }
 
                 String dateLogged = getMidnightDateTime( getFirstValueOrNullByUUID( appEntity, DATE_LOGGED_FQN ) );
+                if ( dateLogged == null )
+                    continue;
 
                 // create entity in chronicle_user_apps
                 Map<UUID, Set<Object>> userAppEntityData = new HashMap<>();
@@ -766,22 +771,18 @@ public class ChronicleServiceImpl implements ChronicleService {
 
         // step 1: create entity keys used in createUserAppsEntitiesAndAssociations fn
         for ( SetMultimap<UUID, Object> entity : data ) {
-            String appPackageName, appName;
-            appPackageName = appName = getFirstValueOrNullByUUID( entity, FULL_NAME_FQN );
-
-            if ( entity.containsKey( propertyTypeIdsByFQN.get( TITLE_FQN ) ) ) {
-                appName = getFirstValueOrNullByUUID( entity, TITLE_FQN );
-            }
+            String appPackageName = getFirstValueOrNullByUUID( entity, FULL_NAME_FQN );
+            String dateLogged = getMidnightDateTime( getFirstValueOrNullByUUID( entity, DATE_LOGGED_FQN ) );
+            if ( dateLogged == null || appPackageName == null )
+                continue;
 
             // user apps entity key
-            entityData.put( propertyTypeIdsByFQN.get( FULL_NAME_FQN ), Sets.newHashSet( appPackageName ) );
-            entityData.put( propertyTypeIdsByFQN.get( TITLE_FQN ), Sets.newHashSet( appName ) );
+            entityData.put( propertyTypeIdsByFQN.get( FULL_NAME_FQN ), ImmutableSet.of( appPackageName ) );
 
             EntityKey userAppEK = getUserAppsEntityKey( entityData );
             entityKeys.add( userAppEK );
 
             // recordedby entity key
-            String dateLogged = getMidnightDateTime( getFirstValueOrNullByUUID( entity, DATE_LOGGED_FQN ) );
             entityData.put( propertyTypeIdsByFQN.get( DATE_LOGGED_FQN ), ImmutableSet.of( dateLogged ) );
             entityData.put( propertyTypeIdsByFQN.get( STRING_ID_FQN ), ImmutableSet.of( deviceId ) );
             entityData.put( propertyTypeIdsByFQN.get( FULL_NAME_FQN ), ImmutableSet.of( appPackageName ) );
