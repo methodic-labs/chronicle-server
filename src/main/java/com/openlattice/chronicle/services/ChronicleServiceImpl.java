@@ -279,14 +279,7 @@ public class ChronicleServiceImpl implements ChronicleService {
     }
 
     // unique for user + app + date
-    private EntityKey getUsedByEntityKey(
-            Map<UUID, Set<Object>> entityData,
-            String appPackageName,
-            String participantId ) {
-
-        Map<UUID, Set<Object>> data = new HashMap<>( entityData );
-        data.put( propertyTypeIdsByFQN.get( FULL_NAME_FQN ), ImmutableSet.of( appPackageName ) );
-        data.put( propertyTypeIdsByFQN.get( PERSON_ID_FQN ), ImmutableSet.of( participantId ) );
+    private EntityKey getUsedByEntityKey( Map<UUID, Set<Object>> entityData ) {
 
         return new EntityKey(
                 entitySetIdMap.get( USED_BY_ENTITY_SET_NAME ),
@@ -296,16 +289,13 @@ public class ChronicleServiceImpl implements ChronicleService {
                                 propertyTypeIdsByFQN.get( DATE_TIME_FQN ),
                                 propertyTypeIdsByFQN.get( PERSON_ID_FQN )
                         ),
-                        data
+                        entityData
                 )
         );
     }
 
     // unique for app + device + date
-    private EntityKey getRecordedByEntityKey( Map<UUID, Set<Object>> entityData, String appPackageName ) {
-
-        Map<UUID, Set<Object>> data = new HashMap<>( entityData );
-        data.put( propertyTypeIdsByFQN.get( FULL_NAME_FQN ), Sets.newHashSet( appPackageName ) );
+    private EntityKey getRecordedByEntityKey( Map<UUID, Set<Object>> entityData ) {
 
         return new EntityKey(
                 entitySetIdMap.get( RECORDED_BY_ENTITY_SET_NAME ),
@@ -315,7 +305,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                                 propertyTypeIdsByFQN.get( STRING_ID_FQN ),
                                 propertyTypeIdsByFQN.get( FULL_NAME_FQN )
                         ),
-                        data
+                        entityData
                 )
 
         );
@@ -345,6 +335,68 @@ public class ChronicleServiceImpl implements ChronicleService {
                 ApiUtil.generateDefaultEntityId( ImmutableList.of( propertyTypeIdsByFQN.get( OL_ID_FQN ) ), entityData )
         );
     }
+
+    // HELPER FUNCTIONS: create entities used to generate IntegrationApi entityKeyIds
+
+    private Map<UUID, Set<Object>> getUsedByEntity (SetMultimap<UUID, Object> data, String participantId) {
+        Map<UUID, Set<Object>> entity = new HashMap<>();
+
+        String dateLogged = getMidnightDateTime( getFirstValueOrNullByUUID( data, DATE_LOGGED_FQN ) );
+        String appPackageName = getFirstValueOrNullByUUID( data, FULL_NAME_FQN );
+
+        entity.put( propertyTypeIdsByFQN.get( DATE_TIME_FQN ), ImmutableSet.of( dateLogged ) );
+        entity.put( propertyTypeIdsByFQN.get( FULL_NAME_FQN ), ImmutableSet.of( appPackageName ) );
+        entity.put( propertyTypeIdsByFQN.get( PERSON_ID_FQN ), ImmutableSet.of( participantId ) );
+
+        return entity;
+    }
+
+    private Map<UUID, Set<Object>> getRecordedByEntity(SetMultimap<UUID, Object> data, String deviceId) {
+        Map<UUID, Set<Object>> entity = new HashMap<>();
+
+        String dateLogged = getMidnightDateTime( getFirstValueOrNullByUUID( data, DATE_LOGGED_FQN ) );
+        String appPackageName = getFirstValueOrNullByUUID( data, FULL_NAME_FQN );
+
+        entity.put( propertyTypeIdsByFQN.get( FULL_NAME_FQN ), ImmutableSet.of(appPackageName) );
+        entity.put( propertyTypeIdsByFQN.get(  DATE_LOGGED_FQN ), ImmutableSet.of(dateLogged) );
+        entity.put( propertyTypeIdsByFQN.get( STRING_ID_FQN ), ImmutableSet.of(deviceId));
+
+        return entity;
+    }
+
+    private Map<UUID, Set<Object>> getHasEntity (List<SetMultimap<UUID, Object>> data) {
+        Map<UUID, Set<Object>> entity = new HashMap<>();
+
+        Set<OffsetDateTime> pushedDateTimes = getDateTimeValuesFromDeviceData( data );
+        if (!pushedDateTimes.isEmpty()) {
+            String firstDateTime = pushedDateTimes
+                    .stream()
+                    .min( OffsetDateTime::compareTo )
+                    .orElse( null )
+                    .toString();
+            entity.put( propertyTypeIdsByFQN.get( OL_ID_FQN ), Set.of( firstDateTime ) );
+        }
+        return entity;
+    }
+
+    private Map<UUID, Set<Object>> getMetadataEntity (UUID participantEKID) {
+        Map<UUID, Set<Object>> entity = new HashMap<>();
+        entity.put( propertyTypeIdsByFQN.get( OL_ID_FQN ), Set.of( participantEKID ) );
+
+        return entity;
+    }
+
+    // TODO: Add TITLE_FQN when writing data
+    private Map<UUID, Set<Object>> getUserAppsEntity(SetMultimap<UUID, Object> data) {
+
+        Map<UUID, Set<Object>> entity = new HashMap<>();
+
+        String appPackageName = getFirstValueOrNullByUUID( data, FULL_NAME_FQN );
+        entity.put( propertyTypeIdsByFQN.get( FULL_NAME_FQN ), ImmutableSet.of( appPackageName ) );
+
+        return entity;
+    }
+
 
     private void createUserAppsEntitiesAndAssociations(
             DataApi dataApi,
@@ -381,31 +433,31 @@ public class ChronicleServiceImpl implements ChronicleService {
                     continue;
 
                 // create entity in chronicle_user_apps
-                Map<UUID, Set<Object>> userAppEntityData = new HashMap<>();
-                userAppEntityData.put( propertyTypeIdsByFQN.get( FULL_NAME_FQN ), ImmutableSet.of( appPackageName ) );
-                userAppEntityData.put( propertyTypeIdsByFQN.get( TITLE_FQN ), ImmutableSet.of( appName ) );
-
+                Map<UUID, Set<Object>> userAppEntityData = getUserAppsEntity( appEntity );
                 EntityKey userAppEK = getUserAppsEntityKey( userAppEntityData );
+
                 UUID userAppEntityKeyId = entityKeyIdMap.getOrDefault( userAppEK, null );
                 if ( userAppEntityKeyId == null )
                     continue;
 
                 if ( !userAppsFullNameValues.contains( appPackageName ) ) {
+                    // TITLE_FQN is not used to generate entityKeyId but needs to be stored
+                    userAppEntityData.put( propertyTypeIdsByFQN.get( TITLE_FQN ), ImmutableSet.of( appName ) );
                     dataApi.updateEntitiesInEntitySet( entitySetIdMap.get( CHRONICLE_USER_APPS ),
                             ImmutableMap.of( userAppEntityKeyId, userAppEntityData ),
                             UpdateType.Merge );
                 }
 
                 // association: chronicle_user_apps => chronicle_recorded_by => chronicle_device
-                Map<UUID, Set<Object>> recordedByEntityData = new HashMap<>();
-                recordedByEntityData.put( propertyTypeIdsByFQN.get( DATE_LOGGED_FQN ), ImmutableSet.of( dateLogged ) );
-                recordedByEntityData.put( propertyTypeIdsByFQN.get( STRING_ID_FQN ), ImmutableSet.of( deviceId ) );
+                Map<UUID, Set<Object>> recordedByEntityData = getRecordedByEntity( appEntity, deviceId );
+                EntityKey recordedByEK = getRecordedByEntityKey( recordedByEntityData );
 
-                EntityKey recordedByEK = getRecordedByEntityKey( recordedByEntityData, appPackageName );
                 UUID recordedByEntityKeyId = entityKeyIdMap.getOrDefault( recordedByEK, null );
                 if ( recordedByEntityKeyId == null )
                     continue;
 
+                // FULL_NAME_FQN is used to generate EKID but shouldn't be stored
+                recordedByEntityData.remove( propertyTypeIdsByFQN.get( FULL_NAME_FQN ) );
                 dataApi.updateEntitiesInEntitySet(
                         entitySetIdMap.get( RECORDED_BY_ENTITY_SET_NAME ),
                         ImmutableMap.of( recordedByEntityKeyId, recordedByEntityData ),
@@ -425,14 +477,16 @@ public class ChronicleServiceImpl implements ChronicleService {
                 dataEdgeKeys.add( new DataEdgeKey( src, dst, edge ) );
 
                 // association: chronicle_user_apps => chronicle_used_by => chronicle_participants_{studyId}
-                Map<UUID, Set<Object>> usedByEntityData = new HashMap<>();
-                usedByEntityData.put( propertyTypeIdsByFQN.get( DATE_TIME_FQN ), ImmutableSet.of( dateLogged ) );
+                Map<UUID, Set<Object>> usedByEntityData = getUsedByEntity( appEntity, participantId );
+                EntityKey usedByEK = getUsedByEntityKey( usedByEntityData );
 
-                EntityKey usedByEK = getUsedByEntityKey( usedByEntityData, appPackageName, participantId );
                 UUID usedByEntityKeyId = entityKeyIdMap.getOrDefault( usedByEK, null );
                 if ( usedByEntityKeyId == null )
                     continue;
 
+                // FULL_NAME_FQN and PERSON_ID_FQN are used to generate EKID but shouldn't be stored
+                usedByEntityData.remove( propertyTypeIdsByFQN.get( PERSON_ID_FQN ) );
+                usedByEntityData.remove( propertyTypeIdsByFQN.get( FULL_NAME_FQN ) );
                 dataApi.updateEntitiesInEntitySet(
                         entitySetIdMap.get( USED_BY_ENTITY_SET_NAME ),
                         ImmutableMap.of( usedByEntityKeyId, usedByEntityData ),
@@ -493,10 +547,9 @@ public class ChronicleServiceImpl implements ChronicleService {
                         .format( DateTimeFormatter.ISO_DATE_TIME ) )
                 .collect( Collectors.toSet() );
 
-        Map<UUID, Set<Object>> metadataEntityData = new HashMap<>();
-        metadataEntityData.put( propertyTypeIdsByFQN.get( OL_ID_FQN ), Set.of( participantEntityKeyId ) );
-
+        Map<UUID, Set<Object>> metadataEntityData = getMetadataEntity( participantEntityKeyId );
         EntityKey metadataEK = getMetadataEntityKey( metadataEntityData );
+
         UUID metadataEntityKeyId = entityKeyIdMap.get( metadataEK );
 
         // verify if there is already an entry of metadata for participant
@@ -524,12 +577,10 @@ public class ChronicleServiceImpl implements ChronicleService {
                 ImmutableMap.of( metadataEntityKeyId, metadataEntityData ),
                 UpdateType.PartialReplace );
 
-        Map<UUID, Set<Object>> hasEntityData = new HashMap<>();
-        hasEntityData.put( propertyTypeIdsByFQN.get( OL_ID_FQN ), Set.of( firstDateTime ) );
-
+        Map<UUID, Set<Object>> hasEntityData = getHasEntity( data );
         EntityKey hasEK = getHasEntityKey( hasEntityData );
-        UUID hasEntityKeyId = entityKeyIdMap.get( hasEK );
 
+        UUID hasEntityKeyId = entityKeyIdMap.get( hasEK );
         dataApi.updateEntitiesInEntitySet( entitySetIdMap.get( HAS_ENTITY_SET_NAME ),
                 ImmutableMap.of( hasEntityKeyId, hasEntityData ),
                 UpdateType.PartialReplace );
@@ -760,54 +811,34 @@ public class ChronicleServiceImpl implements ChronicleService {
 
         // step 1: create entity keys used in createUserAppsEntitiesAndAssociations fn
         for ( SetMultimap<UUID, Object> entity : data ) {
-            String appPackageName = getFirstValueOrNullByUUID( entity, FULL_NAME_FQN );
-            String dateLogged = getMidnightDateTime( getFirstValueOrNullByUUID( entity, DATE_LOGGED_FQN ) );
-            if ( dateLogged == null || appPackageName == null )
-                continue;
 
             // user apps entity key
-            entityData.put( propertyTypeIdsByFQN.get( FULL_NAME_FQN ), ImmutableSet.of( appPackageName ) );
-
+            entityData = getUserAppsEntity( entity );
             EntityKey userAppEK = getUserAppsEntityKey( entityData );
             entityKeys.add( userAppEK );
 
             // recordedby entity key
-            entityData.put( propertyTypeIdsByFQN.get( DATE_LOGGED_FQN ), ImmutableSet.of( dateLogged ) );
-            entityData.put( propertyTypeIdsByFQN.get( STRING_ID_FQN ), ImmutableSet.of( deviceId ) );
-            entityData.put( propertyTypeIdsByFQN.get( FULL_NAME_FQN ), ImmutableSet.of( appPackageName ) );
-
-            EntityKey recordedByEK = getRecordedByEntityKey( entityData, appPackageName );
+            entityData = getRecordedByEntity(  entity, deviceId );
+            EntityKey recordedByEK = getRecordedByEntityKey( entityData );
             entityKeys.add( recordedByEK );
 
             // used_by entity key
-            entityData.put( propertyTypeIdsByFQN.get( DATE_TIME_FQN ), ImmutableSet.of( dateLogged ) );
-            entityData.put( propertyTypeIdsByFQN.get( FULL_NAME_FQN ), ImmutableSet.of( appPackageName ) );
-            entityData.put( propertyTypeIdsByFQN.get( PERSON_ID_FQN ), ImmutableSet.of( participantId ) );
-
-            EntityKey usedByEK = getUsedByEntityKey( entityData, appPackageName, participantId );
+            entityData = getUsedByEntity( entity, participantId );
+            EntityKey usedByEK = getUsedByEntityKey( entityData );
             entityKeys.add( usedByEK );
         }
 
         // step 2: entity keys for updateParticipantMetadata fn
 
         // metadata entity key
-        entityData.put( propertyTypeIdsByFQN.get( OL_ID_FQN ), Set.of( participantEKID ) );
+        entityData = getMetadataEntity( participantEKID );
         EntityKey metadataEK = getMetadataEntityKey( entityData );
         entityKeys.add( metadataEK );
 
         // has entity key
-        Set<OffsetDateTime> dateTimes = getDateTimeValuesFromDeviceData( data );
-        if ( !dateTimes.isEmpty() ) {
-            String firstDateTime = dateTimes
-                    .stream()
-                    .min( OffsetDateTime::compareTo )
-                    .orElse( null )
-                    .toString();
-            entityData.put( propertyTypeIdsByFQN.get( OL_ID_FQN ), Set.of( firstDateTime ) );
-
-            EntityKey hasEntityKey = getHasEntityKey( entityData );
-            entityKeys.add( hasEntityKey );
-        }
+        entityData = getHasEntity( data );
+        EntityKey hasEntityKey = getHasEntityKey( entityData );
+        entityKeys.add( hasEntityKey );
 
         return entityKeys;
     }
