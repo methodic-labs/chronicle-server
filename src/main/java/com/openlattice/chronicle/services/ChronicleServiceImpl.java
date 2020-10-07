@@ -165,7 +165,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                     @Override
                     public ApiClient load( Class<?> key ) throws Exception {
 
-                        String jwtToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImNocm9uaWNsZUBvcGVubGF0dGljZS5jb20iLCJlbWFpbF92ZXJpZmllZCI6ZmFsc2UsInVzZXJfaWQiOiJhdXRoMHw1YWU5MDI2YzA0ZWIwYjI0M2YxZDJiYjYiLCJhcHBfbWV0YWRhdGEiOnsicm9sZXMiOlsiQXV0aGVudGljYXRlZFVzZXIiXSwiYWN0aXZhdGVkIjoiYWN0aXZhdGVkIn0sIm5pY2tuYW1lIjoiY2hyb25pY2xlIiwicm9sZXMiOlsiQXV0aGVudGljYXRlZFVzZXIiXSwiaXNzIjoiaHR0cHM6Ly9vcGVubGF0dGljZS5hdXRoMC5jb20vIiwic3ViIjoiYXV0aDB8NWFlOTAyNmMwNGViMGIyNDNmMWQyYmI2IiwiYXVkIjoibzhZMlUyemI1SXdvMDFqZHhNTjFXMmFpTjhQeHdWamgiLCJpYXQiOjE2MDIwMzY3NTQsImV4cCI6MTYwMjA3Mjc1NH0.aQLZoAj8dYW3GY0EH9DHTMmM1KKkTmMCCsBlG3lWnDs";
+                        String jwtToken = auth0Client.getIdToken( username, password );
                         return new ApiClient( RetrofitFactory.Environment.PRODUCTION, () -> jwtToken );
                     }
                 } );
@@ -179,7 +179,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                     @Override
                     public ApiClient load( Class<?> key ) throws Exception {
 
-                        String jwtToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImNocm9uaWNsZUBvcGVubGF0dGljZS5jb20iLCJlbWFpbF92ZXJpZmllZCI6ZmFsc2UsInVzZXJfaWQiOiJhdXRoMHw1YWU5MDI2YzA0ZWIwYjI0M2YxZDJiYjYiLCJhcHBfbWV0YWRhdGEiOnsicm9sZXMiOlsiQXV0aGVudGljYXRlZFVzZXIiXSwiYWN0aXZhdGVkIjoiYWN0aXZhdGVkIn0sIm5pY2tuYW1lIjoiY2hyb25pY2xlIiwicm9sZXMiOlsiQXV0aGVudGljYXRlZFVzZXIiXSwiaXNzIjoiaHR0cHM6Ly9vcGVubGF0dGljZS5hdXRoMC5jb20vIiwic3ViIjoiYXV0aDB8NWFlOTAyNmMwNGViMGIyNDNmMWQyYmI2IiwiYXVkIjoibzhZMlUyemI1SXdvMDFqZHhNTjFXMmFpTjhQeHdWamgiLCJpYXQiOjE2MDIwMzY3NTQsImV4cCI6MTYwMjA3Mjc1NH0.aQLZoAj8dYW3GY0EH9DHTMmM1KKkTmMCCsBlG3lWnDs";
+                        String jwtToken = auth0Client.getIdToken( username, password );
                         return new ApiClient( RetrofitFactory.Environment.PROD_INTEGRATION, () -> jwtToken );
                     }
                 } );
