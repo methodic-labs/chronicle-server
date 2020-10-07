@@ -203,30 +203,19 @@ public class ChronicleServiceImpl implements ChronicleService {
         refreshUserAppsFullNameValues();
     }
 
-    private UUID reserveEntityKeyId(
-            UUID entitySetId,
-            List<UUID> keyPropertyTypeIds,
-            Map<UUID, Set<Object>> data,
-            DataIntegrationApi dataIntegrationApi ) {
-
-        ImmutableSet<EntityKey> entityKeys = ImmutableSet.of( new EntityKey(
-                entitySetId,
-                ApiUtil.generateDefaultEntityId( keyPropertyTypeIds, data )
-        ) );
-
-        return dataIntegrationApi.getEntityKeyIds( entityKeys ).iterator().next();
-    }
-
     private UUID reserveDeviceEntityKeyId(
             Map<UUID, Set<Object>> data,
             DataIntegrationApi dataIntegrationApi ) {
 
-        return reserveEntityKeyId(
+        EntityKey entityKey = new EntityKey(
                 entitySetIdMap.get( DEVICES_ENTITY_SET_NAME ),
-                ImmutableList.of( propertyTypeIdsByFQN.get( STRING_ID_FQN ) ),
-                data,
-                dataIntegrationApi
+                ApiUtil.generateDefaultEntityId(
+                        ImmutableList.of(propertyTypeIdsByFQN.get( STRING_ID_FQN )),
+                        data
+                )
         );
+
+        return dataIntegrationApi.getEntityKeyIds( ImmutableSet.of(entityKey) ).iterator().next();
     }
 
     private UUID getStudyEntityKeyId( UUID studyId ) {
