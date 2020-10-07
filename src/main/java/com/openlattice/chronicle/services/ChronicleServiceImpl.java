@@ -210,12 +210,12 @@ public class ChronicleServiceImpl implements ChronicleService {
         EntityKey entityKey = new EntityKey(
                 entitySetIdMap.get( DEVICES_ENTITY_SET_NAME ),
                 ApiUtil.generateDefaultEntityId(
-                        ImmutableList.of(propertyTypeIdsByFQN.get( STRING_ID_FQN )),
+                        ImmutableList.of( propertyTypeIdsByFQN.get( STRING_ID_FQN ) ),
                         data
                 )
         );
 
-        return dataIntegrationApi.getEntityKeyIds( ImmutableSet.of(entityKey) ).iterator().next();
+        return dataIntegrationApi.getEntityKeyIds( ImmutableSet.of( entityKey ) ).iterator().next();
     }
 
     private UUID getStudyEntityKeyId( UUID studyId ) {
@@ -338,7 +338,7 @@ public class ChronicleServiceImpl implements ChronicleService {
 
     // HELPER FUNCTIONS: create entities used to generate IntegrationApi entityKeyIds
 
-    private Map<UUID, Set<Object>> getUsedByEntity (SetMultimap<UUID, Object> data, String participantId) {
+    private Map<UUID, Set<Object>> getUsedByEntity( SetMultimap<UUID, Object> data, String participantId ) {
         Map<UUID, Set<Object>> entity = new HashMap<>();
 
         String dateLogged = getMidnightDateTime( getFirstValueOrNullByUUID( data, DATE_LOGGED_FQN ) );
@@ -351,24 +351,24 @@ public class ChronicleServiceImpl implements ChronicleService {
         return entity;
     }
 
-    private Map<UUID, Set<Object>> getRecordedByEntity(SetMultimap<UUID, Object> data, String deviceId) {
+    private Map<UUID, Set<Object>> getRecordedByEntity( SetMultimap<UUID, Object> data, String deviceId ) {
         Map<UUID, Set<Object>> entity = new HashMap<>();
 
         String dateLogged = getMidnightDateTime( getFirstValueOrNullByUUID( data, DATE_LOGGED_FQN ) );
         String appPackageName = getFirstValueOrNullByUUID( data, FULL_NAME_FQN );
 
-        entity.put( propertyTypeIdsByFQN.get( FULL_NAME_FQN ), ImmutableSet.of(appPackageName) );
-        entity.put( propertyTypeIdsByFQN.get(  DATE_LOGGED_FQN ), ImmutableSet.of(dateLogged) );
-        entity.put( propertyTypeIdsByFQN.get( STRING_ID_FQN ), ImmutableSet.of(deviceId));
+        entity.put( propertyTypeIdsByFQN.get( FULL_NAME_FQN ), ImmutableSet.of( appPackageName ) );
+        entity.put( propertyTypeIdsByFQN.get( DATE_LOGGED_FQN ), ImmutableSet.of( dateLogged ) );
+        entity.put( propertyTypeIdsByFQN.get( STRING_ID_FQN ), ImmutableSet.of( deviceId ) );
 
         return entity;
     }
 
-    private Map<UUID, Set<Object>> getHasEntity (List<SetMultimap<UUID, Object>> data) {
+    private Map<UUID, Set<Object>> getHasEntity( List<SetMultimap<UUID, Object>> data ) {
         Map<UUID, Set<Object>> entity = new HashMap<>();
 
         Set<OffsetDateTime> pushedDateTimes = getDateTimeValuesFromDeviceData( data );
-        if (!pushedDateTimes.isEmpty()) {
+        if ( !pushedDateTimes.isEmpty() ) {
             String firstDateTime = pushedDateTimes
                     .stream()
                     .min( OffsetDateTime::compareTo )
@@ -379,7 +379,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         return entity;
     }
 
-    private Map<UUID, Set<Object>> getMetadataEntity (UUID participantEKID) {
+    private Map<UUID, Set<Object>> getMetadataEntity( UUID participantEKID ) {
         Map<UUID, Set<Object>> entity = new HashMap<>();
         entity.put( propertyTypeIdsByFQN.get( OL_ID_FQN ), Set.of( participantEKID ) );
 
@@ -387,7 +387,7 @@ public class ChronicleServiceImpl implements ChronicleService {
     }
 
     // TODO: Add TITLE_FQN when writing data
-    private Map<UUID, Set<Object>> getUserAppsEntity(SetMultimap<UUID, Object> data) {
+    private Map<UUID, Set<Object>> getUserAppsEntity( SetMultimap<UUID, Object> data ) {
 
         Map<UUID, Set<Object>> entity = new HashMap<>();
 
@@ -396,7 +396,6 @@ public class ChronicleServiceImpl implements ChronicleService {
 
         return entity;
     }
-
 
     private void createUserAppsEntitiesAndAssociations(
             DataApi dataApi,
@@ -818,7 +817,7 @@ public class ChronicleServiceImpl implements ChronicleService {
             entityKeys.add( userAppEK );
 
             // recordedby entity key
-            entityData = getRecordedByEntity(  entity, deviceId );
+            entityData = getRecordedByEntity( entity, deviceId );
             EntityKey recordedByEK = getRecordedByEntityKey( entityData );
             entityKeys.add( recordedByEK );
 
