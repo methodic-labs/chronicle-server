@@ -22,6 +22,7 @@ package com.openlattice.chronicle.services;
 import com.auth0.exception.Auth0Exception;
 import com.dataloom.streams.StreamUtil;
 import com.google.common.base.Preconditions;
+import com.google.common.base.Stopwatch;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -164,7 +165,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                     @Override
                     public ApiClient load( Class<?> key ) throws Exception {
 
-                        String jwtToken = auth0Client.getIdToken( username, password );
+                        String jwtToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImNocm9uaWNsZUBvcGVubGF0dGljZS5jb20iLCJlbWFpbF92ZXJpZmllZCI6ZmFsc2UsInVzZXJfaWQiOiJhdXRoMHw1YWU5MDI2YzA0ZWIwYjI0M2YxZDJiYjYiLCJhcHBfbWV0YWRhdGEiOnsicm9sZXMiOlsiQXV0aGVudGljYXRlZFVzZXIiXSwiYWN0aXZhdGVkIjoiYWN0aXZhdGVkIn0sIm5pY2tuYW1lIjoiY2hyb25pY2xlIiwicm9sZXMiOlsiQXV0aGVudGljYXRlZFVzZXIiXSwiaXNzIjoiaHR0cHM6Ly9vcGVubGF0dGljZS5hdXRoMC5jb20vIiwic3ViIjoiYXV0aDB8NWFlOTAyNmMwNGViMGIyNDNmMWQyYmI2IiwiYXVkIjoibzhZMlUyemI1SXdvMDFqZHhNTjFXMmFpTjhQeHdWamgiLCJpYXQiOjE2MDIwMzY3NTQsImV4cCI6MTYwMjA3Mjc1NH0.aQLZoAj8dYW3GY0EH9DHTMmM1KKkTmMCCsBlG3lWnDs";
                         return new ApiClient( RetrofitFactory.Environment.PRODUCTION, () -> jwtToken );
                     }
                 } );
@@ -178,7 +179,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                     @Override
                     public ApiClient load( Class<?> key ) throws Exception {
 
-                        String jwtToken = auth0Client.getIdToken( username, password );
+                        String jwtToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImNocm9uaWNsZUBvcGVubGF0dGljZS5jb20iLCJlbWFpbF92ZXJpZmllZCI6ZmFsc2UsInVzZXJfaWQiOiJhdXRoMHw1YWU5MDI2YzA0ZWIwYjI0M2YxZDJiYjYiLCJhcHBfbWV0YWRhdGEiOnsicm9sZXMiOlsiQXV0aGVudGljYXRlZFVzZXIiXSwiYWN0aXZhdGVkIjoiYWN0aXZhdGVkIn0sIm5pY2tuYW1lIjoiY2hyb25pY2xlIiwicm9sZXMiOlsiQXV0aGVudGljYXRlZFVzZXIiXSwiaXNzIjoiaHR0cHM6Ly9vcGVubGF0dGljZS5hdXRoMC5jb20vIiwic3ViIjoiYXV0aDB8NWFlOTAyNmMwNGViMGIyNDNmMWQyYmI2IiwiYXVkIjoibzhZMlUyemI1SXdvMDFqZHhNTjFXMmFpTjhQeHdWamgiLCJpYXQiOjE2MDIwMzY3NTQsImV4cCI6MTYwMjA3Mjc1NH0.aQLZoAj8dYW3GY0EH9DHTMmM1KKkTmMCCsBlG3lWnDs";
                         return new ApiClient( RetrofitFactory.Environment.PROD_INTEGRATION, () -> jwtToken );
                     }
                 } );
@@ -375,12 +376,15 @@ public class ChronicleServiceImpl implements ChronicleService {
             UUID participantEntitySetId,
             UUID participantEntityKeyId,
             String participantId,
-            String deviceId ) {
+            String deviceId,
+            UUID studyId
+    ) {
+
+        Stopwatch stopwatch = Stopwatch.createStarted();
 
         /*
          * Most of the data pushed by devices does not correspond to apps that were visible in the UI.
          * Here we will only record the apps that exist in the chronicle user apps dictionary
-         *
          */
 
         int numAppsUploaded = 0;
@@ -467,7 +471,14 @@ public class ChronicleServiceImpl implements ChronicleService {
             }
         }
 
-        logger.info( "Uploaded user apps entries: size = {}, participantId = {}", numAppsUploaded, participantId );
+        stopwatch.stop();
+        logger.info( "createUserAppsEntitiesAndAssociations took {} seconds", stopwatch.elapsed(TimeUnit.SECONDS) );
+        logger.info(
+                "created {} entities in chronicle_user_apps - study {} participant {}",
+                numAppsUploaded,
+                studyId,
+                participantId
+        );
     }
 
     private void updateParticipantMetadata(
@@ -479,6 +490,7 @@ public class ChronicleServiceImpl implements ChronicleService {
             String participantId,
             UUID studyId
     ) {
+        Stopwatch stopwatch = Stopwatch.createStarted();
 
         /*
          * Creates or adds to an existing metadata entity, with general statistics (at this moment mostly datetimes)
@@ -569,7 +581,9 @@ public class ChronicleServiceImpl implements ChronicleService {
         DataEdgeKey dataEdgeKey = new DataEdgeKey( src, dst, edge );
         dataApi.createEdges( Set.of( dataEdgeKey ) );
 
-        logger.info( "Uploaded user metadata entries: participantId = {}", participantId );
+        stopwatch.stop();
+        logger.info( "updateParticipantMetadata took {} seconds", stopwatch.elapsed(TimeUnit.SECONDS) );
+        logger.info( "updated participant metadata - study {} participant {}", studyId, participantId );
     }
 
     private void createAppDataEntitiesAndAssociations(
@@ -578,8 +592,11 @@ public class ChronicleServiceImpl implements ChronicleService {
             UUID deviceEntityKeyId,
             String participantId,
             UUID participantEntityKeyId,
-            UUID participantEntitySetId ) {
+            UUID participantEntitySetId,
+            UUID studyId
+    ) {
 
+        Stopwatch stopwatch = Stopwatch.createStarted();
         ListMultimap<UUID, Map<UUID, Set<Object>>> entities = ArrayListMultimap.create();
         ListMultimap<UUID, DataAssociation> associations = ArrayListMultimap.create();
 
@@ -616,8 +633,14 @@ public class ChronicleServiceImpl implements ChronicleService {
         DataGraph dataGraph = new DataGraph( entities, associations );
         dataApi.createEntityAndAssociationData( dataGraph );
 
-        logger.info( "Uploaded data to chronicle_app_data: size: {},  participantId = {}",
-                data.size(), participantId );
+        stopwatch.stop();
+        logger.info( "createAppDataEntitiesAndAssociations took {} seconds", stopwatch.elapsed(TimeUnit.SECONDS) );
+        logger.info(
+                "created {} entities in chronicle_app_data - study {} participant {}",
+                entities.size(),
+                studyId,
+                participantId
+        );
     }
 
     // update chronicle_user_apps -> chronicle_used_by -> chronicle_participants_{studyID} associations when apps usage survey is submitted
@@ -762,6 +785,8 @@ public class ChronicleServiceImpl implements ChronicleService {
 
         DataApi dataApi;
         DataIntegrationApi dataIntegrationApi;
+        Stopwatch stopwatch = Stopwatch.createStarted();
+
         try {
             ApiClient apiClient = intApiClientCache.get( ApiClient.class );
             dataApi = apiClient.getDataApi();
@@ -795,13 +820,19 @@ public class ChronicleServiceImpl implements ChronicleService {
                 participantEntitySetId,
                 participantEntityKeyId,
                 participantId,
-                deviceId );
+                deviceId,
+                studyId
+        );
+
         createAppDataEntitiesAndAssociations( dataApi,
                 data,
                 deviceEntityKeyId,
                 participantId,
                 participantEntityKeyId,
-                participantEntitySetId );
+                participantEntitySetId,
+                studyId
+        );
+
         updateParticipantMetadata(
                 dataApi,
                 dataIntegrationApi,
@@ -811,6 +842,9 @@ public class ChronicleServiceImpl implements ChronicleService {
                 participantId,
                 studyId
         );
+
+        stopwatch.stop();
+        logger.info( "logData took {} seconds", stopwatch.elapsed(TimeUnit.SECONDS) );
 
         //  TODO:s Make sure to return any errors??? Currently void method.
         return data.size();
