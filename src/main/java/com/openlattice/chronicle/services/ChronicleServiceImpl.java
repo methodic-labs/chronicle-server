@@ -619,7 +619,7 @@ public class ChronicleServiceImpl implements ChronicleService {
             String dateLogged = getMidnightDateTime( getFirstValueOrNullByUUID( appEntity, DATE_LOGGED_FQN ) );
 
             if ( systemAppPackageNames.contains( appPackageName ) || dateLogged == null )
-                continue; // empty map
+                continue; // 'system' app
 
             if ( appEntity.containsKey( propertyTypeIdsByFQN.get( TITLE_FQN ) ) ) {
                 appName = getFirstValueOrNullByUUID( appEntity, TITLE_FQN );
