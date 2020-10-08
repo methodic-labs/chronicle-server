@@ -158,7 +158,6 @@ public class ChronicleServiceImpl implements ChronicleService {
         this.username = chronicleConfiguration.getUser();
         this.password = chronicleConfiguration.getPassword();
 
-        String jwtToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFsZm9uY2VAb3BlbmxhdHRpY2UuY29tIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsImFwcF9tZXRhZGF0YSI6eyJyb2xlcyI6WyJBdXRoZW50aWNhdGVkVXNlciJdLCJhY3RpdmF0ZWQiOiJhY3RpdmF0ZWQifSwibmlja25hbWUiOiJhbGZvbmNlIiwicm9sZXMiOlsiQXV0aGVudGljYXRlZFVzZXIiXSwidXNlcl9pZCI6Imdvb2dsZS1vYXV0aDJ8MTA4NDgwMjY1Nzc4NjQ0OTYxNTU0IiwiaXNzIjoiaHR0cHM6Ly9vcGVubGF0dGljZS5hdXRoMC5jb20vIiwic3ViIjoiZ29vZ2xlLW9hdXRoMnwxMDg0ODAyNjU3Nzg2NDQ5NjE1NTQiLCJhdWQiOiJLVHpneXhzNktCY0pIQjg3MmVTTWUyY3BUSHpoeFM5OSIsImlhdCI6MTYwMjA5MjU2NSwiZXhwIjoxNjAyMTc4OTY1fQ.EBoFQ9QYXKtkhXad2HL05Pl1uQLHMYyjNsrIM8HBCGs";
         prodApiClientCache = CacheBuilder
                 .newBuilder()
                 .expireAfterWrite( 10, TimeUnit.HOURS )
@@ -166,8 +165,8 @@ public class ChronicleServiceImpl implements ChronicleService {
                     @Override
                     public ApiClient load( Class<?> key ) throws Exception {
 
-                        // String jwtToken = auth0Client.getIdToken( username, password );
-                        return new ApiClient( RetrofitFactory.Environment.LOCAL, () -> jwtToken );
+                        String jwtToken = auth0Client.getIdToken( username, password );
+                        return new ApiClient( RetrofitFactory.Environment.PRODUCTION, () -> jwtToken );
                     }
                 } );
 
@@ -180,8 +179,8 @@ public class ChronicleServiceImpl implements ChronicleService {
                     @Override
                     public ApiClient load( Class<?> key ) throws Exception {
 
-                        // String jwtToken = auth0Client.getIdToken( username, password );
-                        return new ApiClient( RetrofitFactory.Environment.LOCAL, () -> jwtToken );
+                        String jwtToken = auth0Client.getIdToken( username, password );
+                        return new ApiClient( RetrofitFactory.Environment.PROD_INTEGRATION, () -> jwtToken );
                     }
                 } );
 
@@ -510,6 +509,7 @@ public class ChronicleServiceImpl implements ChronicleService {
 
     private Map<EntityKey, UUID> getEntityKeyIdMap(
             DataIntegrationApi integrationApi,
+            Set<Triple<EntityKey, EntityKey, EntityKey>> edgesByEntityKey,
             Set<EntityKey> entityKeys,
             UUID participantESID,
             UUID deviceEKID,
@@ -520,6 +520,12 @@ public class ChronicleServiceImpl implements ChronicleService {
         Map<EntityKey, UUID> entityKeyIdMap = Maps.newHashMap();
 
         Set<EntityKey> orderedEntityKeys = Sets.newLinkedHashSet( entityKeys );
+        edgesByEntityKey.forEach(triple -> {
+            orderedEntityKeys.add( triple.getMiddle() );
+            orderedEntityKeys.add( triple.getLeft() );
+            orderedEntityKeys.add( triple.getRight() );
+        });
+
         List<UUID> entityKeyIds = integrationApi.getEntityKeyIds( orderedEntityKeys );
 
         List<EntityKey> entityKeyList = new ArrayList<>( orderedEntityKeys );
@@ -659,7 +665,11 @@ public class ChronicleServiceImpl implements ChronicleService {
             edgesByEntityKey.addAll( metadata.getRight() );
         }
 
+        DataGraph dataGraph = new DataGraph( appDataEntities, appDataAssociations );
+        dataApi.createEntityAndAssociationData( dataGraph );
+
         Map<EntityKey, UUID> entityKeyIdMap = getEntityKeyIdMap( dataIntegrationApi,
+                edgesByEntityKey,
                 entitiesByEntityKey.keySet(),
                 participantESID,
                 deviceEKID,
@@ -676,12 +686,6 @@ public class ChronicleServiceImpl implements ChronicleService {
 
         Set<DataEdgeKey> dataEdgeKeys = getDataEdgeKeysFromEntityKeys( edgesByEntityKey, entityKeyIdMap );
         dataApi.createEdges( dataEdgeKeys );
-
-        DataGraph dataGraph = new DataGraph( appDataEntities, appDataAssociations );
-        dataApi.createEntityAndAssociationData( dataGraph );
-
-        logger.info( "Uploaded data to chronicle_app_data: size: {},  participantId = {}",
-                data.size(), participantId );
     }
 
     // update chronicle_user_apps -> chronicle_used_by -> chronicle_participants_{studyID} associations when apps usage survey is submitted
