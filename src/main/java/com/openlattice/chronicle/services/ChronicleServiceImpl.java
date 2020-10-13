@@ -22,6 +22,7 @@ package com.openlattice.chronicle.services;
 import com.auth0.exception.Auth0Exception;
 import com.dataloom.streams.StreamUtil;
 import com.google.common.base.Preconditions;
+import com.google.common.base.Stopwatch;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -58,11 +59,11 @@ import com.openlattice.edm.EntitySet;
 import com.openlattice.edm.set.EntitySetPropertyMetadata;
 import com.openlattice.edm.type.PropertyType;
 import com.openlattice.entitysets.EntitySetsApi;
-import com.openlattice.retrofit.RhizomeRetrofitCallException;
 import com.openlattice.search.SearchApi;
 import com.openlattice.search.requests.EntityNeighborsFilter;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.lang3.tuple.Triple;
 import org.apache.olingo.commons.api.edm.EdmPrimitiveTypeKind;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
 import org.slf4j.Logger;
@@ -136,6 +137,9 @@ public class ChronicleServiceImpl implements ChronicleService {
     private Map<AppComponent, Map<UUID, Map<CollectionTemplateTypeName, UUID>>> entitySetIdsByOrgId;
 
     private final Set<String> systemAppPackageNames = Collections.synchronizedSet( new HashSet<>() );
+
+    // ids of entities in chronicle_user_apps entity set
+    private final Set<String> userAppsFullNameValues = Collections.synchronizedSet( new HashSet<>() );
 
     private final Map<UUID, PropertyType>      propertyTypesById;
     private final Map<FullQualifiedName, UUID> propertyTypeIdsByFQN;
@@ -398,370 +402,14 @@ public class ChronicleServiceImpl implements ChronicleService {
         }
     }
 
-    // return an OffsetDateTime with time 00:00
-    private String getMidnightDateTime( String dateTime ) {
-        return OffsetDateTime
-                .parse( dateTime )
-                .withHour( 0 )
-                .withMinute( 0 )
-                .withSecond( 0 )
-                .withNano( 0 )
-                .toString();
-    }
-
-    // unique for user + app + date
-    private UUID reserveUsedByEntityKeyId(
-            UUID usedByESID,
-            Map<UUID, Set<Object>> entityData,
-            String appPackageName,
-            String participantId,
-            DataIntegrationApi dataIntegrationApi ) {
-
-        // UUID usedByESID = Preconditions.checkNotNull( getEntitySetId(  ) )
-        Map<UUID, Set<Object>> data = new HashMap<>( entityData );
-        data.put( propertyTypeIdsByFQN.get( FULL_NAME_FQN ), ImmutableSet.of( appPackageName ) );
-        data.put( propertyTypeIdsByFQN.get( PERSON_ID_FQN ), Sets.newHashSet( participantId ) );
-
-        return reserveEntityKeyId(
-                usedByESID,
-                ImmutableList.of(
-                        propertyTypeIdsByFQN.get( FULL_NAME_FQN ),
-                        propertyTypeIdsByFQN.get( DATE_TIME_FQN ),
-                        propertyTypeIdsByFQN.get( PERSON_ID_FQN )
-                ),
-                data,
-                dataIntegrationApi
-        );
-    }
-
-    // unique for app + device + date
-    private UUID reserveRecordedByEntityKeyId(
-            UUID recordedByESID,
-            Map<UUID, Set<Object>> recordedByEntity,
-            String appPackageName,
-            DataIntegrationApi dataIntegrationApi ) {
-
-        Map<UUID, Set<Object>> data = new HashMap<>( recordedByEntity );
-        data.put( propertyTypeIdsByFQN.get( FULL_NAME_FQN ), Sets.newHashSet( appPackageName ) );
-
-        return reserveEntityKeyId(
-                recordedByESID,
-                ImmutableList.of(
-                        propertyTypeIdsByFQN.get( DATE_LOGGED_FQN ),
-                        propertyTypeIdsByFQN.get( STRING_ID_FQN ),
-                        propertyTypeIdsByFQN.get( FULL_NAME_FQN )
-                ),
-                data,
-                dataIntegrationApi
-        );
-    }
-
-    private UUID reserveUserAppEntityKeyId(
-            UUID entitySetId,
-            Map<UUID, Set<Object>> entityData,
-            DataIntegrationApi dataIntegrationApi ) {
-
-        return reserveEntityKeyId(
-                entitySetId,
-                ImmutableList.of( propertyTypeIdsByFQN.get( FULL_NAME_FQN ) ),
-                entityData,
-                dataIntegrationApi
-        );
-    }
-
-    private UUID reserveMetadataEntityKeyId(
-            UUID entitySetId,
-            Map<UUID, Set<Object>> entityData,
-            DataIntegrationApi dataIntegrationApi ) {
-
-        return reserveEntityKeyId(
-                entitySetId,
-                ImmutableList.of( propertyTypeIdsByFQN.get( OL_ID_FQN ) ),
-                entityData,
-                dataIntegrationApi
-        );
-    }
-
-    private UUID reserveHasEntityKeyId(
-            UUID entitySetId,
-            Map<UUID, Set<Object>> entityData,
-            DataIntegrationApi dataIntegrationApi ) {
-
-        return reserveEntityKeyId(
-                entitySetId,
-                ImmutableList.of( propertyTypeIdsByFQN.get( OL_ID_FQN ) ),
-                entityData,
-                dataIntegrationApi
-        );
-    }
-
-    private void createUserAppsEntitiesAndAssociations(
-            DataApi dataApi,
-            DataIntegrationApi dataIntegrationApi,
-            List<SetMultimap<UUID, Object>> data,
-            UUID organizationId,
-            UUID deviceEntityKeyId,
-            UUID participantEntitySetId,
-            UUID participantEntityKeyId,
-            String participantId,
-            String deviceId ) {
-
-        // entity set ids
-        UUID userAppsESID = ensureEntitySetExists( organizationId, CHRONICLE_DATA_COLLECTION, USER_APPS );
-        UUID usedByESID = ensureEntitySetExists( organizationId, CHRONICLE_DATA_COLLECTION, USED_BY );
-        UUID recordedByESID = ensureEntitySetExists( organizationId, CHRONICLE_DATA_COLLECTION, RECORDED_BY );
-        UUID devicesESID = ensureEntitySetExists( organizationId, CHRONICLE_DATA_COLLECTION, DEVICE );
-
-        /*
-         * Most of the data pushed by devices does not correspond to apps that were visible in the UI.
-         * Here we will only record the apps that exist in the chronicle user apps dictionary
-         *
-         */
-
-        int numAppsUploaded = 0;
-        for ( SetMultimap<UUID, Object> appEntity : data ) {
-            try {
-                Set<DataEdgeKey> dataEdgeKeys = new HashSet<>();
-
-                String appPackageName, appName;
-                appPackageName = appName = appEntity.get( propertyTypeIdsByFQN.get( FULL_NAME_FQN ) ).iterator().next()
-                        .toString();
-                if ( systemAppPackageNames.contains( appPackageName ) )
-                    continue; // a 'system' app
-
-                if ( appEntity.containsKey( propertyTypeIdsByFQN.get( TITLE_FQN ) ) ) {
-                    appName = appEntity.get( propertyTypeIdsByFQN.get( TITLE_FQN ) ).iterator().next().toString();
-                }
-
-                String dateLogged = getMidnightDateTime( appEntity.get( propertyTypeIdsByFQN.get( DATE_LOGGED_FQN ) )
-                        .iterator().next()
-                        .toString() );
-
-                // create entity in chronicle_user_apps
-                Map<UUID, Set<Object>> userAppEntityData = new HashMap<>();
-                userAppEntityData.put( propertyTypeIdsByFQN.get( FULL_NAME_FQN ), Sets.newHashSet( appPackageName ) );
-                userAppEntityData.put( propertyTypeIdsByFQN.get( TITLE_FQN ), Sets.newHashSet( appName ) );
-
-                UUID userAppEntityKeyId = reserveUserAppEntityKeyId( userAppsESID,
-                        userAppEntityData,
-                        dataIntegrationApi );
-                dataApi.updateEntitiesInEntitySet( userAppsESID,
-                        ImmutableMap.of( userAppEntityKeyId, userAppEntityData ),
-                        UpdateType.Merge );
-
-                // association: chronicle_user_apps => chronicle_recorded_by => chronicle_device
-                Map<UUID, Set<Object>> recordedByEntityData = new HashMap<>();
-                recordedByEntityData.put( propertyTypeIdsByFQN.get( DATE_LOGGED_FQN ), ImmutableSet.of( dateLogged ) );
-                recordedByEntityData.put( propertyTypeIdsByFQN.get( STRING_ID_FQN ), ImmutableSet.of( deviceId ) );
-
-                UUID recordedByEntityKeyId = reserveRecordedByEntityKeyId(
-                        recordedByESID,
-                        recordedByEntityData,
-                        appPackageName,
-                        dataIntegrationApi
-                );
-                dataApi.updateEntitiesInEntitySet(
-                        recordedByESID,
-                        ImmutableMap.of( recordedByEntityKeyId, recordedByEntityData ),
-                        UpdateType.Merge
-                );
-
-                EntityDataKey src = new EntityDataKey( userAppsESID, userAppEntityKeyId );
-                EntityDataKey dst = new EntityDataKey(
-                        devicesESID,
-                        deviceEntityKeyId
-                );
-                EntityDataKey edge = new EntityDataKey(
-                        recordedByESID,
-                        recordedByEntityKeyId
-                );
-
-                dataEdgeKeys.add( new DataEdgeKey( src, dst, edge ) );
-
-                // association: chronicle_user_apps => chronicle_used_by => chronicle_participants_{studyId}
-                Map<UUID, Set<Object>> usedByEntityData = new HashMap<>();
-                usedByEntityData.put( propertyTypeIdsByFQN.get( DATE_TIME_FQN ), ImmutableSet.of( dateLogged ) );
-
-                UUID usedByEntityKeyId = reserveUsedByEntityKeyId(
-                        usedByESID,
-                        usedByEntityData,
-                        appPackageName,
-                        participantId,
-                        dataIntegrationApi );
-                dataApi.updateEntitiesInEntitySet(
-                        usedByESID,
-                        ImmutableMap.of( usedByEntityKeyId, usedByEntityData ),
-                        UpdateType.Merge
-                );
-
-                dst = new EntityDataKey( participantEntitySetId, participantEntityKeyId );
-                edge = new EntityDataKey( usedByESID, usedByEntityKeyId );
-                dataEdgeKeys.add( new DataEdgeKey( src, dst, edge ) );
-                dataApi.createEdges( dataEdgeKeys );
-
-                numAppsUploaded++;
-            } catch ( Exception exception ) {
-                logger.error( "Error logging entry {}", appEntity, exception );
-            }
-        }
-
-        logger.info( "Uploaded user apps entries: size = {}, participantId = {}", numAppsUploaded, participantId );
-    }
-
     /*
      * Creates or adds to an existing metadata entity, with general statistics (at this moment mostly datetimes)
      * about the data collection.
      */
 
-    private void updateParticipantMetadata(
-            DataApi dataApi,
-            DataIntegrationApi dataIntegrationApi,
-            List<SetMultimap<UUID, Object>> data,
-            UUID organizationId,
-            UUID participantEntitySetId,
-            UUID participantEntityKeyId,
-            String participantId ) {
-
-        // get entity sets
-        UUID metadataESID = ensureEntitySetExists( organizationId, CHRONICLE, METADATA );
-        UUID hasESID = ensureEntitySetExists( organizationId, CHRONICLE, HAS );
-
-        // get all dates in new data batch
-        Set<OffsetDateTime> pushedDateTimes = new HashSet<>();
-
-        data.forEach(
-                entity -> {
-                    // most date properties in the entity are of length 1
-                    for ( Object date : entity.get( propertyTypeIdsByFQN.get( DATE_LOGGED_FQN ) ) ) {
-                        OffsetDateTime parsedDateTime = OffsetDateTime
-                                .parse( date.toString() );
-
-                        // filter out problematic entities with dates in the sixties
-                        if ( parsedDateTime.isAfter( MINIMUM_DATE ) ) {
-                            pushedDateTimes.add( parsedDateTime );
-                        }
-                    }
-                }
-        );
-
-        if ( pushedDateTimes.size() == 0 ) {
-            return;
-        }
-
-        String firstDateTime = pushedDateTimes
-                .stream()
-                .min( OffsetDateTime::compareTo )
-                .orElse( null )
-                .toString();
-
-        String lastDateTime = pushedDateTimes
-                .stream()
-                .max( OffsetDateTime::compareTo )
-                .orElse( null )
-                .toString();
-
-        Set<Object> uniqueDates = pushedDateTimes
-                .stream()
-                .map( dt -> dt
-                        .truncatedTo( ChronoUnit.DAYS )
-                        .format( DateTimeFormatter.ISO_DATE_TIME ) )
-                .collect( Collectors.toSet() );
-
-        Map<UUID, Set<Object>> metadataEntityData = new HashMap<>();
-        metadataEntityData.put( propertyTypeIdsByFQN.get( OL_ID_FQN ), Set.of( participantEntityKeyId ) );
-        UUID metadataEntityKeyId = reserveMetadataEntityKeyId( metadataESID, metadataEntityData, dataIntegrationApi );
-
-        // verify if there is already an entry of metadata for participant
-        // error means there is no metadata yet.
-        Map<FullQualifiedName, Set<Object>> entity = new HashMap<>();
-        try {
-            entity = dataApi
-                    .getEntity( metadataESID, metadataEntityKeyId );
-        } catch ( RhizomeRetrofitCallException e ) {}
-
-        metadataEntityData.put( propertyTypeIdsByFQN.get( START_DATE_TIME_FQN ),
-                entity.getOrDefault( START_DATE_TIME_FQN, Set.of( firstDateTime ) ) );
-        metadataEntityData.put( propertyTypeIdsByFQN.get( END_DATE_TIME_FQN ), Set.of( lastDateTime ) );
-        uniqueDates.addAll( entity.getOrDefault( RECORDED_DATE_TIME_FQN, Set.of() ) );
-        metadataEntityData.put( propertyTypeIdsByFQN.get( RECORDED_DATE_TIME_FQN ), uniqueDates );
-
-        dataApi.updateEntitiesInEntitySet( metadataESID,
-                ImmutableMap.of( metadataEntityKeyId, metadataEntityData ),
-                UpdateType.PartialReplace );
-
-        Map<UUID, Set<Object>> hasEntityData = new HashMap<>();
-        hasEntityData.put( propertyTypeIdsByFQN.get( OL_ID_FQN ), Set.of( firstDateTime ) );
-        UUID hasEntityKeyId = reserveHasEntityKeyId( hasESID, metadataEntityData, dataIntegrationApi );
-        dataApi.updateEntitiesInEntitySet( hasESID,
-                ImmutableMap.of( hasEntityKeyId, hasEntityData ),
-                UpdateType.PartialReplace );
-
-        EntityDataKey dst = new EntityDataKey( metadataESID, metadataEntityKeyId );
-        EntityDataKey edge = new EntityDataKey( hasESID, hasEntityKeyId );
-        EntityDataKey src = new EntityDataKey( participantEntitySetId, participantEntityKeyId );
-        DataEdgeKey dataEdgeKey = new DataEdgeKey( src, dst, edge );
-        dataApi.createEdges( Set.of( dataEdgeKey ) );
-
-        logger.info( "Uploaded user metadata entries: participantId = {}", participantId );
-    }
-
     private UUID ensureEntitySetExists( UUID organizationId, AppComponent appComponent, CollectionTemplateTypeName template ) {
         return Preconditions.checkNotNull( getEntitySetId( organizationId, appComponent, template ),
                 appComponent + " does not exist in org " + organizationId );
-    }
-
-    private void createAppDataEntitiesAndAssociations(
-            DataApi dataApi,
-            List<SetMultimap<UUID, Object>> data,
-            UUID organizationId,
-            UUID deviceEntityKeyId,
-            String participantId,
-            UUID participantEntityKeyId,
-            UUID participantEntitySetId ) {
-
-        // entity set ids
-        UUID appDataESID = ensureEntitySetExists( organizationId, CHRONICLE_DATA_COLLECTION, APPDATA );
-        UUID recordedByESID = ensureEntitySetExists( organizationId, CHRONICLE_DATA_COLLECTION, RECORDED_BY );
-        UUID devicesESID = ensureEntitySetExists( organizationId, CHRONICLE_DATA_COLLECTION, DEVICE );
-
-        ListMultimap<UUID, Map<UUID, Set<Object>>> entities = ArrayListMultimap.create();
-        ListMultimap<UUID, DataAssociation> associations = ArrayListMultimap.create();
-
-        OffsetDateTime timeStamp = OffsetDateTime.now();
-
-        for ( int i = 0; i < data.size(); i++ ) {
-            entities.put( appDataESID, Multimaps.asMap( data.get( i ) ) );
-
-            Map<UUID, Set<Object>> recordedByEntity = ImmutableMap
-                    .of( propertyTypeIdsByFQN.get( DATE_LOGGED_FQN ), Sets.newHashSet( timeStamp ) );
-
-            associations.put( recordedByESID, new DataAssociation(
-                    appDataESID,
-                    Optional.of( i ),
-                    Optional.empty(),
-                    devicesESID,
-                    Optional.empty(),
-                    Optional.of( deviceEntityKeyId ),
-                    recordedByEntity
-            ) );
-
-            associations.put( recordedByESID, new DataAssociation(
-                    appDataESID,
-                    Optional.of( i ),
-                    Optional.empty(),
-                    participantEntitySetId,
-                    Optional.empty(),
-                    Optional.of( participantEntityKeyId ),
-                    recordedByEntity
-            ) );
-
-        }
-
-        DataGraph dataGraph = new DataGraph( entities, associations );
-        dataApi.createEntityAndAssociationData( dataGraph );
-
-        logger.info( "Uploaded data to chronicle_app_data: size: {},  participantId = {}",
-                data.size(), participantId );
     }
 
     // update chronicle_user_apps -> chronicle_used_by -> chronicle_participants_{studyID} associations when apps usage survey is submitted
@@ -895,8 +543,473 @@ public class ChronicleServiceImpl implements ChronicleService {
         }
 
     }
+    // return an OffsetDateTime with time 00:00
+    private String getMidnightDateTime( String dateTime ) {
+        if ( dateTime == null )
+            return null;
 
-    //  TODO: add in throws exception!
+        return OffsetDateTime
+                .parse( dateTime )
+                .withHour( 0 )
+                .withMinute( 0 )
+                .withSecond( 0 )
+                .withNano( 0 )
+                .toString();
+    }
+
+    // unique for user + app + date
+    private EntityKey getUsedByEntityKey( UUID usedByESID, Map<UUID, Set<Object>> entityData ) {
+
+        return new EntityKey(
+                usedByESID,
+                ApiUtil.generateDefaultEntityId(
+                        ImmutableList.of(
+                                propertyTypeIdsByFQN.get( FULL_NAME_FQN ),
+                                propertyTypeIdsByFQN.get( DATE_TIME_FQN ),
+                                propertyTypeIdsByFQN.get( PERSON_ID_FQN )
+                        ),
+                        entityData
+                )
+        );
+    }
+
+    // unique for app + device + date
+    private EntityKey getRecordedByEntityKey( UUID recordedByESID, Map<UUID, Set<Object>> entityData ) {
+
+        return new EntityKey(
+                recordedByESID,
+                ApiUtil.generateDefaultEntityId(
+                        ImmutableList.of(
+                                propertyTypeIdsByFQN.get( DATE_LOGGED_FQN ),
+                                propertyTypeIdsByFQN.get( STRING_ID_FQN ),
+                                propertyTypeIdsByFQN.get( FULL_NAME_FQN )
+                        ),
+                        entityData
+                )
+
+        );
+    }
+
+    private EntityKey getUserAppsEntityKey( UUID userAppsESID, Map<UUID, Set<Object>> entityData ) {
+
+        return new EntityKey(
+                userAppsESID,
+                ApiUtil.generateDefaultEntityId( ImmutableList.of( propertyTypeIdsByFQN.get( FULL_NAME_FQN ) ),
+                        entityData )
+        );
+    }
+
+    private EntityKey getMetadataEntityKey( UUID metadataESID, Map<UUID, Set<Object>> entityData ) {
+
+        return new EntityKey(
+                metadataESID,
+                ApiUtil.generateDefaultEntityId( ImmutableList.of( propertyTypeIdsByFQN.get( OL_ID_FQN ) ), entityData )
+        );
+    }
+
+    private EntityKey getHasEntityKey( UUID hasESID, Map<UUID, Set<Object>> entityData ) {
+
+        return new EntityKey(
+                hasESID,
+                ApiUtil.generateDefaultEntityId( ImmutableList.of( propertyTypeIdsByFQN.get( OL_ID_FQN ) ), entityData )
+        );
+    }
+
+    // HELPER METHODS: logData
+    private Map<UUID, Set<Object>> getUsedByEntity( String appPackageName, String dateLogged, String participantId ) {
+        Map<UUID, Set<Object>> entity = new HashMap<>();
+
+        entity.put( propertyTypeIdsByFQN.get( DATE_TIME_FQN ), ImmutableSet.of( dateLogged ) );
+        entity.put( propertyTypeIdsByFQN.get( FULL_NAME_FQN ), ImmutableSet.of( appPackageName ) );
+        entity.put( propertyTypeIdsByFQN.get( PERSON_ID_FQN ), ImmutableSet.of( participantId ) );
+
+        return entity;
+    }
+
+    private Map<UUID, Set<Object>> getRecordedByEntity( String deviceId, String appPackageName, String dateLogged ) {
+        Map<UUID, Set<Object>> entity = new HashMap<>();
+
+        entity.put( propertyTypeIdsByFQN.get( FULL_NAME_FQN ), ImmutableSet.of( appPackageName ) );
+        entity.put( propertyTypeIdsByFQN.get( DATE_LOGGED_FQN ), ImmutableSet.of( dateLogged ) );
+        entity.put( propertyTypeIdsByFQN.get( STRING_ID_FQN ), ImmutableSet.of( deviceId ) );
+
+        return entity;
+    }
+
+    private Map<UUID, Set<Object>> getHasEntity( String firstDateTime ) {
+        Map<UUID, Set<Object>> entity = Maps.newHashMap();
+        entity.put( propertyTypeIdsByFQN.get( OL_ID_FQN ), Set.of( firstDateTime ) );
+
+        return entity;
+    }
+
+    private Map<UUID, Set<Object>> getMetadataEntity( UUID participantEKID ) {
+        Map<UUID, Set<Object>> entity = Maps.newHashMap();
+        entity.put( propertyTypeIdsByFQN.get( OL_ID_FQN ), Set.of( participantEKID ) );
+
+        return entity;
+    }
+
+    private Map<UUID, Set<Object>> getUserAppsEntity( String appPackageName, String appName ) {
+
+        Map<UUID, Set<Object>> entity = new HashMap<>();
+
+        entity.put( propertyTypeIdsByFQN.get( FULL_NAME_FQN ), ImmutableSet.of( appPackageName ) );
+        entity.put( propertyTypeIdsByFQN.get( TITLE_FQN ), ImmutableSet.of( appName ) );
+
+        return entity;
+    }
+
+    private EntityKey getDeviceEntityKey( UUID devicesESID, String deviceId ) {
+        return new EntityKey(
+                devicesESID,
+                deviceId
+        );
+    }
+
+    private EntityKey getParticipantEntityKey( UUID participantESID, String participantId ) {
+        return new EntityKey(
+                participantESID,
+                participantId
+        );
+    }
+
+    private Set<OffsetDateTime> getDateTimeValuesFromDeviceData( List<SetMultimap<UUID, Object>> data ) {
+        Set<OffsetDateTime> dateTimes = new HashSet<>();
+        data.forEach(
+                entity -> {
+                    // most date properties in the entity are of length 1
+                    for ( Object date : entity.get( propertyTypeIdsByFQN.get( DATE_LOGGED_FQN ) ) ) {
+                        OffsetDateTime parsedDateTime = OffsetDateTime
+                                .parse( date.toString() );
+
+                        // filter out problematic entities with dates in the sixties
+                        if ( parsedDateTime.isAfter( MINIMUM_DATE ) ) {
+                            dateTimes.add( parsedDateTime );
+                        }
+                    }
+                }
+        );
+        return dateTimes;
+    }
+
+    private Pair<Map<EntityKey, Map<UUID, Set<Object>>>, Set<Triple<EntityKey, EntityKey, EntityKey>>> getMetadataEntitiesAndEdges(
+            DataApi dataApi,
+            DataIntegrationApi integrationApi,
+            List<SetMultimap<UUID, Object>> data,
+            UUID organizationId,
+            UUID studyId,
+            UUID participantESID,
+            UUID participantEKID,
+            String participantId
+    ) {
+        // entity set ids
+        UUID metadataESID = ensureEntitySetExists( organizationId, CHRONICLE, METADATA );
+        UUID hasESID = ensureEntitySetExists( organizationId, CHRONICLE, HAS );
+
+        Map<EntityKey, Map<UUID, Set<Object>>> entitiesByEntityKey = Maps.newHashMap();
+        Set<Triple<EntityKey, EntityKey, EntityKey>> edgesByEntityKey = Sets.newHashSet();
+
+        // get all dates in new data batch
+        Set<OffsetDateTime> pushedDateTimes = getDateTimeValuesFromDeviceData( data );
+        if ( pushedDateTimes.size() == 0 ) {
+            return null;
+        }
+
+        String firstDateTime = pushedDateTimes
+                .stream()
+                .min( OffsetDateTime::compareTo )
+                .orElse( null )
+                .toString();
+
+        String lastDateTime = pushedDateTimes
+                .stream()
+                .max( OffsetDateTime::compareTo )
+                .orElse( null )
+                .toString();
+
+        Set<Object> uniqueDates = pushedDateTimes
+                .stream()
+                .map( dt -> dt
+                        .truncatedTo( ChronoUnit.DAYS )
+                        .format( DateTimeFormatter.ISO_DATE_TIME ) )
+                .collect( Collectors.toSet() );
+
+        Map<UUID, Set<Object>> metadataEntityData = getMetadataEntity( participantEKID );
+        EntityKey metadataEK = getMetadataEntityKey( metadataESID, metadataEntityData );
+
+        // verify if there is already an entry of metadata for participant
+        // error means there is no metadata yet.
+        UUID metadataEntityKeyId = integrationApi.getEntityKeyIds( ImmutableSet.of( metadataEK ) ).iterator().next();
+        Map<FullQualifiedName, Set<Object>> entity = new HashMap<>();
+        try {
+            entity = dataApi.getEntity( metadataESID, metadataEntityKeyId );
+        } catch ( Exception exception ) {
+            logger.error(
+                    "failure while getting metadata entity {} - study = {} participant = {}",
+                    metadataEntityKeyId,
+                    studyId,
+                    participantId,
+                    exception
+            );
+        }
+        metadataEntityData.put( propertyTypeIdsByFQN.get( START_DATE_TIME_FQN ),
+                entity.getOrDefault( START_DATE_TIME_FQN, Set.of( firstDateTime ) ) );
+        metadataEntityData.put( propertyTypeIdsByFQN.get( END_DATE_TIME_FQN ), Set.of( lastDateTime ) );
+        uniqueDates.addAll( entity.getOrDefault( RECORDED_DATE_TIME_FQN, Set.of() ) );
+        metadataEntityData.put( propertyTypeIdsByFQN.get( RECORDED_DATE_TIME_FQN ), uniqueDates );
+
+        entitiesByEntityKey.put( metadataEK, metadataEntityData );
+
+        Map<UUID, Set<Object>> hasEntityData = getHasEntity( firstDateTime );
+        EntityKey hasEK = getHasEntityKey( hasESID, hasEntityData );
+        entitiesByEntityKey.put( hasEK, hasEntityData );
+
+        EntityKey participantEK = getParticipantEntityKey( participantESID, participantId );
+
+        // association: participant  => has => metadata
+        edgesByEntityKey.add( Triple.of( participantEK, hasEK, metadataEK ) );
+
+        return Pair.of( entitiesByEntityKey, edgesByEntityKey );
+    }
+
+    private String getFirstValueOrNullByUUID( SetMultimap<UUID, Object> entity, FullQualifiedName fqn ) {
+        UUID fqnId = propertyTypeIdsByFQN.get( fqn );
+        Object value = Iterables.getFirst( entity.get( fqnId ), null );
+
+        return value == null ? null : value.toString();
+    }
+
+    private Map<EntityKey, UUID> getEntityKeyIdMap(
+            DataIntegrationApi integrationApi,
+            Set<Triple<EntityKey, EntityKey, EntityKey>> edgesByEntityKey,
+            Set<EntityKey> entityKeys,
+            UUID participantESID,
+            UUID devicesESID,
+            UUID deviceEKID,
+            UUID participantEKID,
+            String participantId,
+            String deviceId
+    ) {
+        Map<EntityKey, UUID> entityKeyIdMap = Maps.newHashMap();
+
+        Set<EntityKey> orderedEntityKeys = Sets.newLinkedHashSet( entityKeys );
+        edgesByEntityKey.forEach(triple -> {
+            orderedEntityKeys.add( triple.getMiddle() );
+            orderedEntityKeys.add( triple.getLeft() );
+            orderedEntityKeys.add( triple.getRight() );
+        });
+
+        List<UUID> entityKeyIds = integrationApi.getEntityKeyIds( orderedEntityKeys );
+
+        List<EntityKey> entityKeyList = new ArrayList<>( orderedEntityKeys );
+        for ( int i = 0; i < orderedEntityKeys.size(); ++i ) {
+            entityKeyIdMap.put( entityKeyList.get( i ), entityKeyIds.get( i ) );
+        }
+
+        // others
+        EntityKey participantEK = getParticipantEntityKey( participantESID, participantId );
+        entityKeyIdMap.put( participantEK, participantEKID );
+
+        EntityKey deviceEK = getDeviceEntityKey( devicesESID, deviceId );
+        entityKeyIdMap.put( deviceEK, deviceEKID );
+
+        return entityKeyIdMap;
+    }
+
+    // group entities by entity set id
+    private Map<UUID, Map<UUID, Map<UUID, Set<Object>>>> groupEntitiesByEntitySetId(
+            Map<EntityKey, Map<UUID, Set<Object>>> entitiesByEntityKey,
+            Map<EntityKey, UUID> entityKeyIdMap
+    ) {
+        Map<UUID, Map<UUID, Map<UUID, Set<Object>>>> entityKeysByEntitySet = Maps.newHashMap();
+
+        entitiesByEntityKey.forEach( ( entityKey, entity ) -> {
+            UUID entitySetId = entityKey.getEntitySetId();
+            UUID entityKeyId = entityKeyIdMap.get( entityKey );
+
+            Map<UUID, Map<UUID, Set<Object>>> mappedEntity = entityKeysByEntitySet
+                    .getOrDefault( entitySetId, Maps.newHashMap() );
+            mappedEntity.put( entityKeyId, entity );
+
+            entityKeysByEntitySet.put( entitySetId, mappedEntity );
+        } );
+
+        return entityKeysByEntitySet;
+    }
+
+    private Set<DataEdgeKey> getDataEdgeKeysFromEntityKeys(
+            Set<Triple<EntityKey, EntityKey, EntityKey>> edgesByEntityKey,
+            Map<EntityKey, UUID> entityKeyIdMap
+    ) {
+        return StreamUtil.stream( edgesByEntityKey )
+                .map( triple -> {
+                    UUID srcEKID = entityKeyIdMap.get( triple.getLeft() );
+                    UUID edgeEKID = entityKeyIdMap.get( triple.getMiddle() );
+                    UUID dstEKID = entityKeyIdMap.get( triple.getRight() );
+
+                    UUID srcESID = triple.getLeft().getEntitySetId();
+                    UUID edgeESID = triple.getMiddle().getEntitySetId();
+                    UUID dstESID = triple.getRight().getEntitySetId();
+
+                    EntityDataKey src = new EntityDataKey( srcESID, srcEKID );
+                    EntityDataKey edge = new EntityDataKey( edgeESID, edgeEKID );
+                    EntityDataKey dst = new EntityDataKey( dstESID, dstEKID );
+
+                    return new DataEdgeKey( src, dst, edge );
+                } )
+                .collect( Collectors.toSet() );
+    }
+
+    private ListMultimap<UUID, DataAssociation> getAppDataAssociations(
+            UUID deviceEntityKeyId,
+            UUID participantEntityKeyId,
+            UUID appDataESID,
+            UUID devicesESID,
+            UUID recordedByESID,
+            UUID participantEntitySetId,
+            OffsetDateTime timeStamp,
+            int index
+    ) {
+        ListMultimap<UUID, DataAssociation> associations = ArrayListMultimap.create();
+
+        Map<UUID, Set<Object>> recordedByEntity = ImmutableMap
+                .of( propertyTypeIdsByFQN.get( DATE_LOGGED_FQN ), Sets.newHashSet( timeStamp ) );
+
+        associations.put( recordedByESID, new DataAssociation(
+                appDataESID,
+                Optional.of( index ),
+                Optional.empty(),
+                devicesESID,
+                Optional.empty(),
+                Optional.of( deviceEntityKeyId ),
+                recordedByEntity
+        ) );
+
+        associations.put( recordedByESID, new DataAssociation(
+                appDataESID,
+                Optional.of( index ),
+                Optional.empty(),
+                participantEntitySetId,
+                Optional.empty(),
+                Optional.of( participantEntityKeyId ),
+                recordedByEntity
+        ) );
+        return associations;
+    }
+
+    // create entities and edges
+    private void createEntitiesAndAssociations(
+            DataApi dataApi,
+            DataIntegrationApi dataIntegrationApi,
+            List<SetMultimap<UUID, Object>> data,
+            UUID organizationId,
+            UUID studyId,
+            UUID deviceEKID,
+            String participantId,
+            String deviceId,
+            UUID participantEKID,
+            UUID participantESID
+    ) {
+        // entity set ids
+        UUID appDataESID = ensureEntitySetExists( organizationId, CHRONICLE_DATA_COLLECTION, APPDATA );
+        UUID recordedByESID = ensureEntitySetExists( organizationId, CHRONICLE_DATA_COLLECTION, RECORDED_BY );
+        UUID devicesESID = ensureEntitySetExists( organizationId, CHRONICLE_DATA_COLLECTION, DEVICE );
+        UUID usedByESID = ensureEntitySetExists( organizationId, CHRONICLE_DATA_COLLECTION, USED_BY );
+        UUID userAppsESID = ensureEntitySetExists( organizationId, CHRONICLE_DATA_COLLECTION, USER_APPS );
+
+        ListMultimap<UUID, Map<UUID, Set<Object>>> appDataEntities = ArrayListMultimap.create();
+        ListMultimap<UUID, DataAssociation> appDataAssociations = ArrayListMultimap.create();
+
+        Map<EntityKey, Map<UUID, Set<Object>>> entitiesByEntityKey = Maps.newHashMap();
+        Set<Triple<EntityKey, EntityKey, EntityKey>> edgesByEntityKey = Sets.newHashSet();
+
+        OffsetDateTime timeStamp = OffsetDateTime.now();
+
+        for ( int i = 0; i < data.size(); i++ ) {
+            SetMultimap<UUID, Object> appEntity = data.get( i );
+            appDataEntities.put( appDataESID, Multimaps.asMap( appEntity ) );
+
+            appDataAssociations
+                    .putAll( getAppDataAssociations( deviceEKID, participantEKID, appDataESID, devicesESID, recordedByESID, participantESID, timeStamp, i ) );
+
+            String appPackageName, appName;
+            appPackageName = appName = getFirstValueOrNullByUUID( appEntity, FULL_NAME_FQN );
+            String dateLogged = getMidnightDateTime( getFirstValueOrNullByUUID( appEntity, DATE_LOGGED_FQN ) );
+
+            if ( systemAppPackageNames.contains( appPackageName ) || dateLogged == null )
+                continue; // 'system' app
+
+            if ( appEntity.containsKey( propertyTypeIdsByFQN.get( TITLE_FQN ) ) ) {
+                appName = getFirstValueOrNullByUUID( appEntity, TITLE_FQN );
+            }
+
+            // association 1: user apps => recorded by => device
+            Map<UUID, Set<Object>> userAppEntityData = getUserAppsEntity( appPackageName, appName );
+            EntityKey userAppEK = getUserAppsEntityKey( userAppsESID, userAppEntityData );
+            if ( !userAppsFullNameValues.contains( appPackageName ) ) {
+                entitiesByEntityKey.put( userAppEK, userAppEntityData );
+            }
+
+            Map<UUID, Set<Object>> recordedByEntityData = getRecordedByEntity( deviceId, appPackageName, dateLogged );
+            EntityKey recordedByEK = getRecordedByEntityKey( recordedByESID, recordedByEntityData );
+            recordedByEntityData.remove( propertyTypeIdsByFQN
+                    .get( FULL_NAME_FQN ) );   // FULL_NAME_FQN is used to generate EKID but shouldn't be stored
+            entitiesByEntityKey.put( recordedByEK, recordedByEntityData );
+
+            EntityKey deviceEK = getDeviceEntityKey( devicesESID, deviceId );
+            edgesByEntityKey.add( Triple.of( userAppEK, recordedByEK, deviceEK ) );
+
+            // association 2: user apps => used by => participant
+            Map<UUID, Set<Object>> usedByEntityData = getUsedByEntity( appPackageName, dateLogged, participantId );
+            EntityKey usedByEK = getUsedByEntityKey( usedByESID, usedByEntityData );
+            usedByEntityData.remove( propertyTypeIdsByFQN.get( FULL_NAME_FQN ) ); // FULL_NAME_FQN shouldn't be stored
+            usedByEntityData.remove( propertyTypeIdsByFQN.get( PERSON_ID_FQN ) ); // PERSON_ID_FQN shouldn't be stored
+            entitiesByEntityKey.put( usedByEK, usedByEntityData );
+
+            EntityKey participantEK = getParticipantEntityKey( participantESID, participantId );
+            edgesByEntityKey.add( Triple.of( userAppEK, usedByEK, participantEK ) );
+        }
+        Pair<Map<EntityKey, Map<UUID, Set<Object>>>, Set<Triple<EntityKey, EntityKey, EntityKey>>> metadata = getMetadataEntitiesAndEdges(
+                dataApi,
+                dataIntegrationApi,
+                data,
+                organizationId,
+                studyId,
+                participantESID,
+                participantEKID,
+                participantId
+        );
+        if ( metadata != null ) {
+            entitiesByEntityKey.putAll( metadata.getLeft() );
+            edgesByEntityKey.addAll( metadata.getRight() );
+        }
+
+        DataGraph dataGraph = new DataGraph( appDataEntities, appDataAssociations );
+        dataApi.createEntityAndAssociationData( dataGraph );
+
+        Map<EntityKey, UUID> entityKeyIdMap = getEntityKeyIdMap( dataIntegrationApi,
+                edgesByEntityKey,
+                entitiesByEntityKey.keySet(),
+                participantESID,
+                devicesESID,
+                deviceEKID,
+                participantEKID,
+                participantId,
+                deviceId
+        );
+
+        Map<UUID, Map<UUID, Map<UUID, Set<Object>>>> entitiesByESID = groupEntitiesByEntitySetId( entitiesByEntityKey,
+                entityKeyIdMap );
+        entitiesByESID.forEach( ( entitySetId, entities ) -> {
+            dataApi.updateEntitiesInEntitySet( entitySetId, entities, UpdateType.PartialReplace );
+        } );
+
+        Set<DataEdgeKey> dataEdgeKeys = getDataEdgeKeysFromEntityKeys( edgesByEntityKey, entityKeyIdMap );
+        dataApi.createEdges( dataEdgeKeys );
+    }
+
+
     @Override
     public Integer logData(
             UUID organizationId,
@@ -905,58 +1018,76 @@ public class ChronicleServiceImpl implements ChronicleService {
             String deviceId,
             List<SetMultimap<UUID, Object>> data ) {
 
-        DataApi dataApi;
-        DataIntegrationApi dataIntegrationApi;
-        try {
-            ApiClient apiClient = intApiClientCache.get( ApiClient.class );
-            dataApi = apiClient.getDataApi();
-            dataIntegrationApi = apiClient.getDataIntegrationApi();
-        } catch ( ExecutionException e ) {
-            logger.error( "Unable to load apis." );
-            return 0;
-        }
+        Stopwatch stopwatch = Stopwatch.createStarted();
 
-        UUID participantEntityKeyId = getParticipantEntityKeyId( organizationId, participantId, studyId );
-        if ( participantEntityKeyId == null ) {
-            logger.error( "Unable to retrieve participantEntityKeyId, studyId = {}, participantId = {}",
-                    studyId,
-                    participantId );
-            return 0;
-        }
-
-        ParticipationStatus status = getParticipationStatus( organizationId, studyId, participantId );
-        if ( ParticipationStatus.NOT_ENROLLED.equals( status ) ) {
-            logger.warn( "participantId = {} is not enrolled, ignoring data upload", participantId );
-            return 0;
-        }
-
-        UUID participantEntitySetId = ensureEntitySetExists( organizationId, CHRONICLE, PARTICIPANTS );
-        UUID deviceEntityKeyId = getDeviceEntityKeyId( organizationId, studyId, participantId, deviceId );
-
-        createUserAppsEntitiesAndAssociations( dataApi,
-                dataIntegrationApi,
-                data,
-                organizationId,
-                deviceEntityKeyId,
-                participantEntitySetId,
-                participantEntityKeyId,
+        logger.info( "attempting to log data: studyId = {}, participantId = {}, deviceId = {}",
+                studyId,
                 participantId,
                 deviceId );
-        createAppDataEntitiesAndAssociations( dataApi,
-                data,
-                organizationId,
-                deviceEntityKeyId,
+        try {
+
+            ApiClient apiClient = intApiClientCache.get( ApiClient.class );
+            DataApi dataApi = apiClient.getDataApi();
+            DataIntegrationApi dataIntegrationApi = apiClient.getDataIntegrationApi();
+
+            UUID participantEntityKeyId = getParticipantEntityKeyId( organizationId, participantId, studyId );
+            if ( participantEntityKeyId == null ) {
+                logger.error( "Unable to retrieve participantEntityKeyId, studyId = {}, participantId = {}",
+                        studyId,
+                        participantId );
+                return 0;
+            }
+
+            ParticipationStatus status = getParticipationStatus( organizationId, studyId, participantId );
+            if ( ParticipationStatus.NOT_ENROLLED.equals( status ) ) {
+                logger.warn( "participantId = {} is not enrolled, ignoring data upload", participantId );
+                return 0;
+            }
+
+            UUID deviceEntityKeyId = getDeviceEntityKeyId( organizationId, studyId, participantId, deviceId );
+            if ( deviceEntityKeyId == null ) {
+                logger.error(
+                        "deviceId not found, ignoring data upload: studyId = {}, participantId = {}, deviceId = {} ",
+                        studyId,
+                        participantId,
+                        deviceId );
+                return 0;
+            }
+
+            UUID participantEntitySetId = ensureEntitySetExists( organizationId, CHRONICLE, PARTICIPANTS );
+
+            createEntitiesAndAssociations(
+                    dataApi,
+                    dataIntegrationApi,
+                    data,
+                    organizationId,
+                    studyId,
+                    deviceEntityKeyId,
+                    participantId,
+                    deviceId,
+                    participantEntityKeyId,
+                    participantEntitySetId
+            );
+
+        } catch ( Exception exception ) {
+            logger.error( "error logging data: studyId = {}, participantId = {}, deviceId = {}",
+                    studyId,
+                    participantId,
+                    deviceId,
+                    exception
+            );
+            return 0;
+        }
+
+        stopwatch.stop();
+        logger.info( "logging {} entries took {} seconds: studyId = {}, participantId = {}, deviceId = {}",
+                data.size(),
+                stopwatch.elapsed( TimeUnit.SECONDS ),
+                studyId,
                 participantId,
-                participantEntityKeyId,
-                participantEntitySetId );
-        updateParticipantMetadata( dataApi,
-                dataIntegrationApi,
-                data,
-                organizationId,
-                participantEntitySetId,
-                participantEntityKeyId,
-                participantId );
-        //  TODO:s Make sure to return any errors??? Currently void method.
+                deviceId
+        );
+
         return data.size();
     }
 
