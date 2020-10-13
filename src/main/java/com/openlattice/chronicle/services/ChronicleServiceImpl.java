@@ -132,6 +132,9 @@ public class ChronicleServiceImpl implements ChronicleService {
 
     private final long ENTITY_SETS_REFRESH_INTERVAL = 15 * 60 * 1000; // 15 minutes
 
+    // orgId -> participantId -> EKID
+    private final Map<UUID, Map<String, UUID>> studyParticipants = Maps.newHashMap();
+
     // appName -> orgId -> templateName -> entitySetID
     private Map<AppComponent, Map<UUID, Map<CollectionTemplateTypeName, UUID>>> entitySetIdsByOrgId;
 
@@ -202,6 +205,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         appsDictionaryESID = entitySetsApi.getEntitySetId( CHRONICLE_APPLICATION_DICTIONARY );
 
         refreshUserAppsDictionary();
+        refreshStudyParticipants();
     }
 
     private String getFirstValueOrNull( Map<FullQualifiedName, Set<Object>> entity, FullQualifiedName fqn ) {
@@ -353,49 +357,10 @@ public class ChronicleServiceImpl implements ChronicleService {
         }
     }
 
-    private UUID getParticipantEntityKeyId( UUID organizationId, String participantId, UUID studyId ) {
-        try {
-            // load api
-            ApiClient apiClient = prodApiClientCache.get( ApiClient.class );
-            SearchApi searchApi = apiClient.getSearchApi();
+    private UUID getParticipantEntityKeyId( UUID organizationId, String participantId ) {
+        Map<String, UUID> participantsById = studyParticipants.getOrDefault( organizationId, Map.of());
 
-            // get entity set ids
-            UUID studyESID = ensureEntitySetExists( organizationId, CHRONICLE, STUDIES );
-            UUID participantsESID = ensureEntitySetExists( organizationId, CHRONICLE, PARTICIPANTS );
-            UUID participatedInESID = ensureEntitySetExists( organizationId, CHRONICLE, PARTICIPATED_IN );
-
-            // ensure study is valid
-            UUID studyEKID = Preconditions
-                    .checkNotNull( getStudyEntityKeyId( organizationId, studyId ), "study must exist" );
-
-            Map<UUID, List<NeighborEntityDetails>> neighbors = searchApi.executeFilteredEntityNeighborSearch(
-                    studyESID,
-                    new EntityNeighborsFilter(
-                            ImmutableSet.of( studyEKID ),
-                            Optional.of( Set.of( participantsESID ) ),
-                            Optional.of( ImmutableSet.of() ),
-                            Optional.of( ImmutableSet.of( participatedInESID ) )
-                    )
-            );
-
-            return neighbors
-                    .values()
-                    .stream()
-                    .flatMap( Collection::stream )
-                    .filter( neighbor -> participantId
-                            .equals( getFirstValueOrNull( neighbor.getNeighborDetails().orElse( Map.of() ),
-                                    PERSON_ID_FQN ) ) )
-                    .map( neighbor -> getFirstUUIDOrNull( neighbor.getNeighborDetails().orElse( Map.of() ), ID_FQN ) )
-                    .findFirst().orElse( null );
-
-        } catch ( Exception e ) {
-            logger.error( "failed to get participant EKID: participantId == {}, study = {}, organizationId = {}",
-                    participantId,
-                    studyId,
-                    organizationId,
-                    e );
-            return null;
-        }
+        return participantsById.getOrDefault( participantId, null);
     }
 
     // return an OffsetDateTime with time 00:00
@@ -846,7 +811,7 @@ public class ChronicleServiceImpl implements ChronicleService {
 
             // participant must exist
             UUID participantEKID = Preconditions
-                    .checkNotNull( getParticipantEntityKeyId( organizationId, participantId, studyId ),
+                    .checkNotNull( getParticipantEntityKeyId( organizationId, participantId ),
                             "participant does not exist" );
 
             // get entity set ids
@@ -916,7 +881,7 @@ public class ChronicleServiceImpl implements ChronicleService {
             return 0;
         }
 
-        UUID participantEntityKeyId = getParticipantEntityKeyId( organizationId, participantId, studyId );
+        UUID participantEntityKeyId = getParticipantEntityKeyId( organizationId, participantId );
         if ( participantEntityKeyId == null ) {
             logger.error( "Unable to retrieve participantEntityKeyId, studyId = {}, participantId = {}",
                     studyId,
@@ -989,7 +954,7 @@ public class ChronicleServiceImpl implements ChronicleService {
             UUID studyEKID = Preconditions
                     .checkNotNull( getStudyEntityKeyId( organizationId, studyId ), "study must exist" );
             UUID participantEKID = Preconditions
-                    .checkNotNull( getParticipantEntityKeyId( organizationId, participantId, studyId ) );
+                    .checkNotNull( getParticipantEntityKeyId( organizationId, participantId ) );
 
             // device entity data
             Map<UUID, Set<Object>> deviceData = new HashMap<>();
@@ -1109,7 +1074,7 @@ public class ChronicleServiceImpl implements ChronicleService {
 
             // check that participant exists
             UUID participantEKID = Preconditions
-                    .checkNotNull( getParticipantEntityKeyId( organizationId, participantId, studyId ), "participant must exist" );
+                    .checkNotNull( getParticipantEntityKeyId( organizationId, participantId ), "participant must exist" );
 
             // neighbor search on study to get devices associated with
             Map<UUID, List<NeighborEntityDetails>> neighbors = searchApi
@@ -1179,7 +1144,7 @@ public class ChronicleServiceImpl implements ChronicleService {
             Set<UUID> participantsToRemove = new HashSet<>();
             if ( participantId.isPresent() ) {
                 // if participantId: add to set
-                UUID participantEntityKeyId = getParticipantEntityKeyId( organizationId, participantId.get(), studyId );
+                UUID participantEntityKeyId = getParticipantEntityKeyId( organizationId, participantId.get() );
                 if ( participantEntityKeyId == null ) {
                     throw new Exception(
                             "unable to delete participant " + participantId + ": participant does not exist." );
@@ -1304,7 +1269,7 @@ public class ChronicleServiceImpl implements ChronicleService {
 
     @Override
     public boolean isKnownParticipant( UUID organizationId, UUID studyId, String participantId ) {
-        return getParticipantEntityKeyId( organizationId, participantId, studyId ) != null;
+        return getParticipantEntityKeyId( organizationId, participantId ) != null;
     }
 
     @Override
@@ -1322,6 +1287,44 @@ public class ChronicleServiceImpl implements ChronicleService {
                 .of( fqn.getFullQualifiedNameAsString(),
                         edmApi.getPropertyTypeId( fqn.getNamespace(), fqn.getName() ) ) )
                 .collect( Collectors.toMap( pair -> pair.getLeft(), pair -> pair.getRight() ) );
+    }
+
+    @Scheduled (fixedRate = 60000)
+    public void refreshStudyParticipants() {
+        logger.info( "fetching study participants ");
+
+        try {
+            ApiClient apiClient = prodApiClientCache.get( ApiClient.class );
+            DataApi dataApi = apiClient.getDataApi();
+
+            String jwtToken = auth0Client.getIdToken( username, password );
+            Map<UUID, Map<String, UUID>> result = Maps.newHashMap();
+
+            Map<UUID, Map<CollectionTemplateTypeName, UUID>> orgEntitySets = entitySetIdsByOrgId.getOrDefault( CHRONICLE, Map.of() );
+            orgEntitySets.forEach((orgId, templateTypeESIDMap) -> {
+
+                // load participant entities for each org
+                Iterable<SetMultimap<FullQualifiedName, Object>> entities = dataApi
+                        .loadEntitySetData(
+                                templateTypeESIDMap.get( PARTICIPANTS ),
+                                FileType.json,
+                                jwtToken
+                        );
+
+                Map<String, UUID> participants = StreamUtil.stream(entities)
+                        .filter(entity -> !entity.get( PERSON_ID_FQN).isEmpty())
+                        .map(Multimaps::asMap)
+                        .collect(Collectors.toMap(entity -> getFirstValueOrNull(entity, PERSON_ID_FQN), entity -> getFirstUUIDOrNull(entity, ID_FQN)));
+
+                result.put(orgId, participants);
+            });
+
+            studyParticipants.putAll(result);
+
+            logger.info( "fetched {} participants", result.values().stream().mapToLong(map -> map.values().size() ).sum());
+        } catch (Exception e) {
+            logger.error("caught exception while refreshing participants cache", e);
+        }
     }
 
     @Scheduled( fixedRate = 60000 )
@@ -1621,7 +1624,7 @@ public class ChronicleServiceImpl implements ChronicleService {
 
             // participant must exist
             UUID participantEKID = Preconditions
-                    .checkNotNull( getParticipantEntityKeyId( organizationId, participantId, studyId ),
+                    .checkNotNull( getParticipantEntityKeyId( organizationId, participantId ),
                             "participant not found" );
 
             // filtered search on participants to get associated study entities
@@ -1824,7 +1827,7 @@ public class ChronicleServiceImpl implements ChronicleService {
 
             // participant must be valid
             UUID participantEKID = Preconditions
-                    .checkNotNull( getParticipantEntityKeyId( organizationId, participantId, studyId ),
+                    .checkNotNull( getParticipantEntityKeyId( organizationId, participantId ),
                             "participant not found" );
 
             ListMultimap<UUID, Map<UUID, Set<Object>>> entities = ArrayListMultimap.create();
