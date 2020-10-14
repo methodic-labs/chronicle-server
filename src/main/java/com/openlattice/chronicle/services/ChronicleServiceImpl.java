@@ -84,56 +84,17 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE_SURVEYS;
-import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE;
-import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE_DATA_COLLECTION;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.STUDIES;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.PARTICIPANTS;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.NOTIFICATION;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.PART_OF;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.METADATA;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.HAS;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.PARTICIPATED_IN;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.QUESTION;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.USER_APPS;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.ANSWER;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.ADDRESSES;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.RESPONDS_WITH;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.APPDATA;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.SURVEY;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.PREPROCESSED_DATA;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.DEVICE;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.USED_BY;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.RECORDED_BY;
-import static com.openlattice.chronicle.constants.EdmConstants.COMPLETED_DATE_TIME_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.DATE_LOGGED_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.DATE_TIME_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.END_DATE_TIME_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.FULL_NAME_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.MODEL_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.OL_ID_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.PERSON_ID_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.RECORDED_DATE_TIME_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.RECORD_TYPE_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.START_DATE_TIME_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.STATUS_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.STRING_ID_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.TIMEZONE_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.TITLE_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.CHRONICLE_APPLICATION_DICTIONARY;
-import static com.openlattice.chronicle.constants.EdmConstants.VALUES_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.VERSION_FQN;
-import static com.openlattice.chronicle.constants.OutputConstants.APP_PREFIX;
-import static com.openlattice.chronicle.constants.OutputConstants.DEFAULT_TIMEZONE;
-import static com.openlattice.chronicle.constants.OutputConstants.MINIMUM_DATE;
-import static com.openlattice.chronicle.constants.OutputConstants.USER_PREFIX;
+import static com.openlattice.chronicle.constants.AppComponent.*;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.*;
+import static com.openlattice.chronicle.constants.EdmConstants.*;
+import static com.openlattice.chronicle.constants.OutputConstants.*;
 import static com.openlattice.edm.EdmConstants.ID_FQN;
 
 public class ChronicleServiceImpl implements ChronicleService {
     protected static final Logger logger = LoggerFactory.getLogger( ChronicleServiceImpl.class );
 
     private final long ENTITY_SETS_REFRESH_INTERVAL = 15 * 60 * 1000; // 15 minutes
-    private final long STUDY_INFO_REFRESH_INTERVAL = 60 * 1000; // 1 minute
+    private final long STUDY_INFO_REFRESH_INTERVAL  = 60 * 1000; // 1 minute
 
     // orgId -> studyId -> participantId -> EKID
     private final Map<UUID, Map<UUID, Map<String, UUID>>> studyParticipantsByOrg = Maps.newHashMap();
@@ -149,7 +110,7 @@ public class ChronicleServiceImpl implements ChronicleService {
 
     private final Set<String> systemAppPackageNames = Collections.synchronizedSet( new HashSet<>() );
 
-    private final Map<UUID, PropertyType> propertyTypesById;
+    private final Map<UUID, PropertyType>      propertyTypesById;
     private final Map<FullQualifiedName, UUID> propertyTypeIdsByFQN;
 
     private final UUID appsDictionaryESID;
@@ -354,7 +315,8 @@ public class ChronicleServiceImpl implements ChronicleService {
     }
 
     private UUID getParticipantEntityKeyId( UUID organizationId, UUID studyId, String participantId ) {
-        Map<UUID, Map<String, UUID>> studyParticipants = studyParticipantsByOrg.getOrDefault( organizationId, Map.of() );
+        Map<UUID, Map<String, UUID>> studyParticipants = studyParticipantsByOrg
+                .getOrDefault( organizationId, Map.of() );
 
         return studyParticipants.getOrDefault( studyId, Map.of() ).getOrDefault( participantId, null );
     }
@@ -1256,7 +1218,8 @@ public class ChronicleServiceImpl implements ChronicleService {
             // sync user
             principalApi.syncCallingUser();
 
-            Map<UUID, Map<UUID, Map<String, UUID>>> allParticipants = Maps.newHashMap(); // orgId -> studyId -> participantId -> participantEKID
+            Map<UUID, Map<UUID, Map<String, UUID>>> allParticipants = Maps
+                    .newHashMap(); // orgId -> studyId -> participantId -> participantEKID
             Map<UUID, Map<UUID, UUID>> studyEntityKeyIds = Maps.newHashMap(); // orgId -> studyId -> studyEKID
             Map<UUID, Map<String, UUID>> deviceEntityKeyIds = Maps.newHashMap(); // orgId -> deviceId -> deviceEKID
 
@@ -1265,45 +1228,53 @@ public class ChronicleServiceImpl implements ChronicleService {
 
             orgEntitySets.forEach( ( orgId, templateTypeESIDMap ) -> {
 
-                Map<UUID, UUID> studyIds = Maps.newHashMap(); // studyEKID -> studyId (for lookup when processing neighbors)
+                Map<UUID, UUID> studyIds = Maps
+                        .newHashMap(); // studyEKID -> studyId (for lookup when processing neighbors)
 
                 // entity set ids
                 UUID studiesESID = templateTypeESIDMap.getOrDefault( STUDIES, null );
                 UUID participantsESID = templateTypeESIDMap.getOrDefault( PARTICIPANTS, null );
-                UUID participatedInESID = templateTypeESIDMap.getOrDefault ( PARTICIPATED_IN, null );
-                UUID usedByESID = entitySetIdsByOrgId.getOrDefault( CHRONICLE_DATA_COLLECTION, Map.of() ).getOrDefault( orgId, Map.of() ).getOrDefault( USED_BY, null );
-                UUID deviceESID = entitySetIdsByOrgId.getOrDefault( CHRONICLE_DATA_COLLECTION, Map.of() ).getOrDefault( orgId, Map.of() ).getOrDefault( DEVICE, null );
+                UUID participatedInESID = templateTypeESIDMap.getOrDefault( PARTICIPATED_IN, null );
+                UUID usedByESID = entitySetIdsByOrgId.getOrDefault( CHRONICLE_DATA_COLLECTION, Map.of() )
+                        .getOrDefault( orgId, Map.of() ).getOrDefault( USED_BY, null );
+                UUID deviceESID = entitySetIdsByOrgId.getOrDefault( CHRONICLE_DATA_COLLECTION, Map.of() )
+                        .getOrDefault( orgId, Map.of() ).getOrDefault( DEVICE, null );
 
-                if ( studiesESID == null || participantsESID == null ) return;
+                if ( studiesESID == null || participantsESID == null )
+                    return;
 
                 Iterable<SetMultimap<FullQualifiedName, Object>> studyEntities = dataApi
                         .loadSelectedEntitySetData(
                                 studiesESID,
                                 new EntitySetSelection(
-                                       Optional.of( ImmutableSet.of(
-                                               propertyTypeIdsByFQN.get(  STRING_ID_FQN )
-                                       ) )
+                                        Optional.of( ImmutableSet.of(
+                                                propertyTypeIdsByFQN.get( STRING_ID_FQN )
+                                        ) )
                                 ),
                                 FileType.json
                         );
 
                 // map studyIds -> studyEKIDs
-                StreamUtil.stream( studyEntities).map( Multimaps::asMap ).forEach((entity) -> {
+                StreamUtil.stream( studyEntities ).map( Multimaps::asMap ).forEach( ( entity ) -> {
                     UUID studyEKID = getFirstUUIDOrNull( entity, ID_FQN );
                     UUID studyId = getFirstUUIDOrNull( entity, STRING_ID_FQN );
-                    if (studyId == null ) return;
+                    if ( studyId == null )
+                        return;
 
                     Map<UUID, UUID> mappedEntities = studyEntityKeyIds.getOrDefault( orgId, Maps.newHashMap() );
                     mappedEntities.put( studyId, studyEKID );
                     studyEntityKeyIds.put( orgId, mappedEntities );
                     studyIds.put( studyEKID, studyId );
-                });
+                } );
 
                 // get study neighbors constrained by used_by and participated_in associations
-                Set<UUID> edgeESIDS = Sets.newHashSet( participatedInESID, usedByESID ).stream().filter( Objects::nonNull ).collect(
-                        Collectors.toSet());
-                Set<UUID> srcESIDS = Sets.newHashSet( deviceESID, participantsESID ).stream().filter( Objects::nonNull ).collect(
-                        Collectors.toSet());
+                Set<UUID> edgeESIDS = Sets.newHashSet( participatedInESID, usedByESID )
+                        .stream().filter( Objects::nonNull )
+                        .collect( Collectors.toSet() );
+
+                Set<UUID> srcESIDS = Sets.newHashSet( deviceESID, participantsESID )
+                        .stream().filter( Objects::nonNull )
+                        .collect( Collectors.toSet() );
 
                 Map<UUID, List<NeighborEntityDetails>> studyNeighbors = searchApi.executeFilteredEntityNeighborSearch(
                         studiesESID,
@@ -1316,35 +1287,41 @@ public class ChronicleServiceImpl implements ChronicleService {
                 );
 
                 // process neighbors
-                Map<UUID, Map<String, UUID>> participantsByStudy = Maps.newHashMap(); // studyId -> participantId -> EKID
-                studyNeighbors.forEach(( studyEKID, neighbors ) -> {
+                Map<UUID, Map<String, UUID>> participantsByStudy = Maps
+                        .newHashMap(); // studyId -> participantId -> EKID
+                studyNeighbors.forEach( ( studyEKID, neighbors ) -> {
                     UUID studyId = studyIds.get( studyEKID );
 
                     neighbors.forEach( neighbor -> {
-                        if ( neighbor.getAssociationEntitySet().getId().equals(  usedByESID )) {
-                            String deviceId = getFirstValueOrNull( neighbor.getNeighborDetails().get(), STRING_ID_FQN);
-                            if ( deviceId == null ) return;
+                        if ( neighbor.getAssociationEntitySet().getId().equals( usedByESID ) ) {
+                            String deviceId = getFirstValueOrNull( neighbor.getNeighborDetails().get(), STRING_ID_FQN );
+                            if ( deviceId == null )
+                                return;
 
                             UUID deviceEKID = neighbor.getNeighborId().get();
 
-                            Map<String, UUID> deviceEntities = deviceEntityKeyIds.getOrDefault( orgId, Maps.newHashMap() );
+                            Map<String, UUID> deviceEntities = deviceEntityKeyIds
+                                    .getOrDefault( orgId, Maps.newHashMap() );
                             deviceEntities.put( deviceId, deviceEKID );
 
                             deviceEntityKeyIds.put( orgId, deviceEntities );
                         } else {
                             // edge: participatedIn
-                            String participantId = getFirstValueOrNull( neighbor.getNeighborDetails().get(), PERSON_ID_FQN );
-                            if (participantId == null) return;
+                            String participantId = getFirstValueOrNull( neighbor.getNeighborDetails().get(),
+                                    PERSON_ID_FQN );
+                            if ( participantId == null )
+                                return;
 
                             UUID participantEKID = neighbor.getNeighborId().get();
 
-                            Map<String, UUID> participants = participantsByStudy.getOrDefault( studyId, Maps.newHashMap() );
+                            Map<String, UUID> participants = participantsByStudy
+                                    .getOrDefault( studyId, Maps.newHashMap() );
                             participants.put( participantId, participantEKID );
 
                             participantsByStudy.put( studyId, participants );
                         }
                     } );
-                });
+                } );
 
                 allParticipants.put( orgId, participantsByStudy );
 
@@ -1354,9 +1331,13 @@ public class ChronicleServiceImpl implements ChronicleService {
             this.deviceEntityKeyIdsByOrg.putAll( deviceEntityKeyIds );
             this.studyEntityKeyIdsByOrg.putAll( studyEntityKeyIds );
 
-            logger.info( "loaded {} study EKIDS", studyEntityKeyIdsByOrg.values().stream().mapToLong( map -> map.values().size() ).sum() );
-            logger.info( "loaded {} device EKIDS", deviceEntityKeyIdsByOrg.values().stream().mapToLong( map -> map.values().size() ).sum() );
-            logger.info( "loaded {} participants", studyParticipantsByOrg.values().stream().flatMap( map -> map.values().stream() ).mapToLong( map -> map.values().size() ).sum() );
+            logger.info( "loaded {} study EKIDS",
+                    studyEntityKeyIdsByOrg.values().stream().mapToLong( map -> map.values().size() ).sum() );
+            logger.info( "loaded {} device EKIDS",
+                    deviceEntityKeyIdsByOrg.values().stream().mapToLong( map -> map.values().size() ).sum() );
+            logger.info( "loaded {} participants",
+                    studyParticipantsByOrg.values().stream().flatMap( map -> map.values().stream() )
+                            .mapToLong( map -> map.values().size() ).sum() );
 
         } catch ( Exception e ) {
             logger.error( "caught exception while refreshing study information", e );
