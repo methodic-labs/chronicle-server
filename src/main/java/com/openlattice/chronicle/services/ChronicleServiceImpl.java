@@ -84,10 +84,10 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE_SURVEYS;	import static com.openlattice.chronicle.constants.AppComponent.*;
-import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE;	import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.*;
-import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE_DATA_COLLECTION;	import static com.openlattice.chronicle.constants.EdmConstants.*;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.STUDIES;	import static com.openlattice.chronicle.constants.OutputConstants.*;
+import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE_SURVEYS;
+import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE;
+import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE_DATA_COLLECTION;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.STUDIES;
 import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.PARTICIPANTS;
 import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.NOTIFICATION;
 import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.PART_OF;
