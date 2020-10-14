@@ -6,7 +6,7 @@ package com.openlattice.chronicle.constants;
 public enum AppComponent {
     CHRONICLE("chronicle"),
     CHRONICLE_DATA_COLLECTION("chronicle_data_collection"),
-    CHRONICLE_QUESTIONNAIRES("chronicle_questionnaires");
+    CHRONICLE_SURVEYS("chronicle_surveys");
 
     private final String component;
 
