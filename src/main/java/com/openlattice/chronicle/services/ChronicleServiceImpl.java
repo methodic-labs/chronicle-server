@@ -1763,7 +1763,7 @@ public class ChronicleServiceImpl implements ChronicleService {
                         studyId,
                         CHRONICLE_SURVEYS.toString(),
                         organizationId );
-                return null;
+                return ImmutableMap.of();
             }
 
             // check if study is valid
