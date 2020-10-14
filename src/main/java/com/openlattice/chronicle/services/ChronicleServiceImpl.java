@@ -1869,6 +1869,15 @@ public class ChronicleServiceImpl implements ChronicleService {
         try {
             logger.info( "Retrieving questionnaires for study :{}", studyId );
 
+            // If an organization does not have the chronicle_surveys app installed, exit early
+            if ( !entitySetIdsByOrgId.get( CHRONICLE_SURVEYS ).containsKey( organizationId ) ) {
+                logger.warn( "No questionnaires found for study {}. {} is not installed on organization with id {}. ",
+                        studyId,
+                        CHRONICLE_SURVEYS.toString(),
+                        organizationId );
+                return ImmutableMap.of();
+            }
+
             // check if study is valid
             UUID studyEntityKeyId = Preconditions
                     .checkNotNull( getStudyEntityKeyId( organizationId, studyId ), "invalid studyId: " + studyId );
