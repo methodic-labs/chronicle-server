@@ -50,6 +50,7 @@ import com.openlattice.collections.CollectionsApi;
 import com.openlattice.collections.EntitySetCollection;
 import com.openlattice.collections.EntityTypeCollection;
 import com.openlattice.data.*;
+import com.openlattice.data.requests.EntitySetSelection;
 import com.openlattice.data.requests.FileType;
 import com.openlattice.data.requests.NeighborEntityDetails;
 import com.openlattice.data.requests.NeighborEntityIds;
@@ -131,13 +132,17 @@ public class ChronicleServiceImpl implements ChronicleService {
     protected static final Logger logger = LoggerFactory.getLogger( ChronicleServiceImpl.class );
 
     private final long ENTITY_SETS_REFRESH_INTERVAL = 15 * 60 * 1000; // 15 minutes
+    private final long USER_APPS_REFRESH_INTERVAL   = 60 * 1000; // 1 minute
 
     // appName -> orgId -> templateName -> entitySetID
     private Map<AppComponent, Map<UUID, Map<CollectionTemplateTypeName, UUID>>> entitySetIdsByOrgId;
 
+    // app fullName -> { org1, org2, org3 }
+    private final Map<String, Set<UUID>> userAppsFullNameValues = Maps.newHashMap();
+
     private final Set<String> systemAppPackageNames = Collections.synchronizedSet( new HashSet<>() );
 
-    private final Map<UUID, PropertyType>      propertyTypesById;
+    private final Map<UUID, PropertyType> propertyTypesById;
     private final Map<FullQualifiedName, UUID> propertyTypeIdsByFQN;
 
     private final UUID appsDictionaryESID;
@@ -187,7 +192,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         EdmApi edmApi = prodApiClient.getEdmApi();
         EntitySetsApi entitySetsApi = prodApiClient.getEntitySetsApi();
 
-        initializeEntitySets(  );
+        initializeEntitySets();
 
         // get propertyTypeId map
         Iterable<PropertyType> propertyTypes = edmApi.getPropertyTypes();
@@ -202,6 +207,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         appsDictionaryESID = entitySetsApi.getEntitySetId( CHRONICLE_APPLICATION_DICTIONARY );
 
         refreshUserAppsDictionary();
+        refreshUserAppsFullNameValues();
     }
 
     private String getFirstValueOrNull( Map<FullQualifiedName, Set<Object>> entity, FullQualifiedName fqn ) {
@@ -220,8 +226,8 @@ public class ChronicleServiceImpl implements ChronicleService {
         return UUID.fromString( firstValue );
     }
 
-    @Scheduled (fixedRate = ENTITY_SETS_REFRESH_INTERVAL)
-    private void initializeEntitySets( ) throws ExecutionException {
+    @Scheduled( fixedRate = ENTITY_SETS_REFRESH_INTERVAL )
+    private void initializeEntitySets() throws ExecutionException {
 
         ApiClient prodApiClient = prodApiClientCache.get( ApiClient.class );
 
@@ -230,7 +236,7 @@ public class ChronicleServiceImpl implements ChronicleService {
 
         // create a app -> appId mapping
         Map<AppComponent, UUID> appNameIdMap = Maps.newHashMapWithExpectedSize( AppComponent.values().length );
-        for (AppComponent component : AppComponent.values()) {
+        for ( AppComponent component : AppComponent.values() ) {
             App app = appApi.getAppByName( component.toString() );
             appNameIdMap.put( component, app.getId() );
         }
@@ -241,11 +247,14 @@ public class ChronicleServiceImpl implements ChronicleService {
         appNameIdMap.forEach( ( appComponent, appId ) -> {
             List<UserAppConfig> configs = appApi.getAvailableAppConfigs( appId );
 
-            if (configs.isEmpty()) return;
+            if ( configs.isEmpty() )
+                return;
 
             // get EntityTypeCollection associated with app
-            EntitySetCollection entitySetCollection = collectionsApi.getEntitySetCollection( configs.get( 0 ).getEntitySetCollectionId() );
-            EntityTypeCollection entityTypeCollection = collectionsApi.getEntityTypeCollection( entitySetCollection.getEntityTypeCollectionId() );
+            EntitySetCollection entitySetCollection = collectionsApi
+                    .getEntitySetCollection( configs.get( 0 ).getEntitySetCollectionId() );
+            EntityTypeCollection entityTypeCollection = collectionsApi
+                    .getEntityTypeCollection( entitySetCollection.getEntityTypeCollectionId() );
 
             // create mapping from templateTypeName -> templateTypeId
             Map<String, UUID> templateTypeNameIdMap = entityTypeCollection
@@ -257,15 +266,18 @@ public class ChronicleServiceImpl implements ChronicleService {
             Map<UUID, Map<CollectionTemplateTypeName, UUID>> orgEntitySetMap = new HashMap<>();
 
             configs.forEach( userAppConfig -> {
-                Map<UUID, UUID> templateTypeIdESIDMap = collectionsApi.getEntitySetCollection( userAppConfig.getEntitySetCollectionId() ).getTemplate();
+                Map<UUID, UUID> templateTypeIdESIDMap = collectionsApi
+                        .getEntitySetCollection( userAppConfig.getEntitySetCollectionId() ).getTemplate();
 
                 // iterate over templateTypeName enums and create mapping templateTypeName -> entitySetId
-                Map<CollectionTemplateTypeName, UUID> templateTypeNameESIDMap = Maps.newHashMapWithExpectedSize( templateTypeIdESIDMap.size() );
+                Map<CollectionTemplateTypeName, UUID> templateTypeNameESIDMap = Maps
+                        .newHashMapWithExpectedSize( templateTypeIdESIDMap.size() );
 
-                for ( CollectionTemplateTypeName templateTypeName : CollectionTemplateTypeName.values()) {
+                for ( CollectionTemplateTypeName templateTypeName : CollectionTemplateTypeName.values() ) {
                     UUID templateTypeId = templateTypeNameIdMap.get( templateTypeName.toString() );
 
-                    if (templateTypeId == null) continue;
+                    if ( templateTypeId == null )
+                        continue;
 
                     templateTypeNameESIDMap.put( templateTypeName, templateTypeIdESIDMap.get( templateTypeId ) );
                 }
@@ -278,7 +290,10 @@ public class ChronicleServiceImpl implements ChronicleService {
         entitySetIdsByOrgId = ImmutableMap.copyOf( entitySets );
     }
 
-    private UUID getEntitySetId( UUID organizationId, AppComponent appComponent, CollectionTemplateTypeName templateName ) {
+    private UUID getEntitySetId(
+            UUID organizationId,
+            AppComponent appComponent,
+            CollectionTemplateTypeName templateName ) {
 
         Map<CollectionTemplateTypeName, UUID> templateEntitySetIdMap = entitySetIdsByOrgId
                 .getOrDefault( appComponent, ImmutableMap.of() )
@@ -289,7 +304,9 @@ public class ChronicleServiceImpl implements ChronicleService {
         }
 
         if ( !templateEntitySetIdMap.containsKey( templateName ) ) {
-            logger.error( "app {} does not have a template {} in its entityTypeCollection", appComponent, templateName );
+            logger.error( "app {} does not have a template {} in its entityTypeCollection",
+                    appComponent,
+                    templateName );
         }
 
         return templateEntitySetIdMap.get( templateName );
@@ -705,7 +722,10 @@ public class ChronicleServiceImpl implements ChronicleService {
         logger.info( "Uploaded user metadata entries: participantId = {}", participantId );
     }
 
-    private UUID ensureEntitySetExists( UUID organizationId, AppComponent appComponent, CollectionTemplateTypeName template ) {
+    private UUID ensureEntitySetExists(
+            UUID organizationId,
+            AppComponent appComponent,
+            CollectionTemplateTypeName template ) {
         return Preconditions.checkNotNull( getEntitySetId( organizationId, appComponent, template ),
                 appComponent + " does not exist in org " + organizationId );
     }
@@ -1109,7 +1129,8 @@ public class ChronicleServiceImpl implements ChronicleService {
 
             // check that participant exists
             UUID participantEKID = Preconditions
-                    .checkNotNull( getParticipantEntityKeyId( organizationId, participantId, studyId ), "participant must exist" );
+                    .checkNotNull( getParticipantEntityKeyId( organizationId, participantId, studyId ),
+                            "participant must exist" );
 
             // neighbor search on study to get devices associated with
             Map<UUID, List<NeighborEntityDetails>> neighbors = searchApi
@@ -1322,6 +1343,51 @@ public class ChronicleServiceImpl implements ChronicleService {
                 .of( fqn.getFullQualifiedNameAsString(),
                         edmApi.getPropertyTypeId( fqn.getNamespace(), fqn.getName() ) ) )
                 .collect( Collectors.toMap( pair -> pair.getLeft(), pair -> pair.getRight() ) );
+    }
+
+    @Scheduled( fixedRate = USER_APPS_REFRESH_INTERVAL )
+    public void refreshUserAppsFullNameValues() {
+        logger.info( "refreshing user apps fullname values" );
+
+        try {
+            ApiClient apiClient = prodApiClientCache.get( ApiClient.class );
+            DataApi dataApi = apiClient.getDataApi();
+
+            Map<String, Set<UUID>> fullNamesMap = Maps.newHashMap(); // fullName -> { org1, org2, org3 }
+
+            Map<UUID, Map<CollectionTemplateTypeName, UUID>> orgEntitySets = entitySetIdsByOrgId
+                    .getOrDefault( CHRONICLE_DATA_COLLECTION, Map.of() );
+
+            orgEntitySets.forEach( ( orgId, templateTypeESIDMap ) -> {
+                // load entities from entity set
+                Iterable<SetMultimap<FullQualifiedName, Object>> data = dataApi
+                        .loadSelectedEntitySetData(
+                                templateTypeESIDMap.get( USER_APPS ),
+                                new EntitySetSelection(
+                                        Optional.of( ImmutableSet.of( propertyTypeIdsByFQN.get( FULL_NAME_FQN ) ) )
+                                ),
+                                FileType.json
+                        );
+
+                // map fullNames -> set of orgIds
+                StreamUtil.stream( data )
+                        .map( entity -> getFirstValueOrNull( Multimaps.asMap( entity ), FULL_NAME_FQN ) )
+                        .filter( Objects::nonNull )
+                        .forEach( fullName -> {
+                            Set<UUID> organizations = fullNamesMap.getOrDefault( fullName, Sets.newHashSet() );
+                            organizations.add( orgId );
+
+                            fullNamesMap.put( fullName, organizations );
+                        } );
+
+            } );
+
+            userAppsFullNameValues.putAll( fullNamesMap );
+
+            logger.info( "loaded {} fullnames from user apps entity sets", fullNamesMap.keySet().size() );
+        } catch ( Exception e ) {
+            logger.info( "error loading fullnames from user_apps entity sets" );
+        }
     }
 
     @Scheduled( fixedRate = 60000 )
@@ -1608,7 +1674,10 @@ public class ChronicleServiceImpl implements ChronicleService {
 
     @Override
     public ParticipationStatus getParticipationStatus( UUID organizationId, UUID studyId, String participantId ) {
-        logger.info( "getting participation status: orgId = {}, studyId = {}, participantId = {}", organizationId, studyId, participantId );
+        logger.info( "getting participation status: orgId = {}, studyId = {}, participantId = {}",
+                organizationId,
+                studyId,
+                participantId );
 
         try {
             ApiClient apiClient = prodApiClientCache.get( ApiClient.class );
