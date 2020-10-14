@@ -138,7 +138,7 @@ public class ChronicleServiceImpl implements ChronicleService {
     private Map<AppComponent, Map<UUID, Map<CollectionTemplateTypeName, UUID>>> entitySetIdsByOrgId;
 
     // app fullName -> { org1, org2, org3 }
-    private final Map<String, Set<UUID>> userAppsFullNameValues = Maps.newHashMap();
+    private final Map<String, Set<UUID>> userAppsFullNameValues = Maps.newLinkedHashMap();
 
     private final Set<String> systemAppPackageNames = Collections.synchronizedSet( new HashSet<>() );
 
@@ -1353,7 +1353,7 @@ public class ChronicleServiceImpl implements ChronicleService {
             ApiClient apiClient = prodApiClientCache.get( ApiClient.class );
             DataApi dataApi = apiClient.getDataApi();
 
-            Map<String, Set<UUID>> fullNamesMap = Maps.newHashMap(); // fullName -> { org1, org2, org3 }
+            Map<String, Set<UUID>> fullNamesMap = Maps.newLinkedHashMap(); // fullName -> { org1, org2, org3 }
 
             Map<UUID, Map<CollectionTemplateTypeName, UUID>> orgEntitySets = entitySetIdsByOrgId
                     .getOrDefault( CHRONICLE_DATA_COLLECTION, Map.of() );
@@ -1386,7 +1386,7 @@ public class ChronicleServiceImpl implements ChronicleService {
 
             logger.info( "loaded {} fullnames from user apps entity sets", fullNamesMap.keySet().size() );
         } catch ( Exception e ) {
-            logger.info( "error loading fullnames from user_apps entity sets" );
+            logger.info( "error loading fullnames from user_apps entity sets", e );
         }
     }
 
