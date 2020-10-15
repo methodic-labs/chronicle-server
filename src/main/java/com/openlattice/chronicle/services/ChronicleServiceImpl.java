@@ -133,6 +133,7 @@ public class ChronicleServiceImpl implements ChronicleService {
     protected static final Logger logger = LoggerFactory.getLogger( ChronicleServiceImpl.class );
 
     private final long ENTITY_SETS_REFRESH_INTERVAL = 15 * 60 * 1000; // 15 minutes
+    private final long USER_APPS_REFRESH_INTERVAL   = 60 * 1000; // 1 minute
     private final long STUDY_INFO_REFRESH_INTERVAL  = 60 * 1000; // 1 minute
 
     // orgId -> studyId -> participantId -> EKID
@@ -147,9 +148,12 @@ public class ChronicleServiceImpl implements ChronicleService {
     // appName -> orgId -> templateName -> entitySetID
     private Map<AppComponent, Map<UUID, Map<CollectionTemplateTypeName, UUID>>> entitySetIdsByOrgId;
 
+    // app fullName -> { org1, org2, org3 }
+    private final Map<String, Set<UUID>> userAppsFullNameValues = Maps.newLinkedHashMap();
+
     private final Set<String> systemAppPackageNames = Collections.synchronizedSet( new HashSet<>() );
 
-    private final Map<UUID, PropertyType>      propertyTypesById;
+    private final Map<UUID, PropertyType> propertyTypesById;
     private final Map<FullQualifiedName, UUID> propertyTypeIdsByFQN;
 
     private final UUID appsDictionaryESID;
@@ -214,6 +218,7 @@ public class ChronicleServiceImpl implements ChronicleService {
         appsDictionaryESID = entitySetsApi.getEntitySetId( CHRONICLE_APPLICATION_DICTIONARY );
 
         refreshUserAppsDictionary();
+        refreshUserAppsFullNameValues();
         refreshStudyInformation();
     }
 
@@ -1242,6 +1247,51 @@ public class ChronicleServiceImpl implements ChronicleService {
                 .of( fqn.getFullQualifiedNameAsString(),
                         edmApi.getPropertyTypeId( fqn.getNamespace(), fqn.getName() ) ) )
                 .collect( Collectors.toMap( pair -> pair.getLeft(), pair -> pair.getRight() ) );
+    }
+
+    @Scheduled( fixedRate = USER_APPS_REFRESH_INTERVAL )
+    public void refreshUserAppsFullNameValues() {
+        logger.info( "refreshing user apps fullname values" );
+
+        try {
+            ApiClient apiClient = prodApiClientCache.get( ApiClient.class );
+            DataApi dataApi = apiClient.getDataApi();
+
+            Map<String, Set<UUID>> fullNamesMap = Maps.newLinkedHashMap(); // fullName -> { org1, org2, org3 }
+
+            Map<UUID, Map<CollectionTemplateTypeName, UUID>> orgEntitySets = entitySetIdsByOrgId
+                    .getOrDefault( CHRONICLE_DATA_COLLECTION, Map.of() );
+
+            orgEntitySets.forEach( ( orgId, templateTypeESIDMap ) -> {
+                // load entities from entity set
+                Iterable<SetMultimap<FullQualifiedName, Object>> data = dataApi
+                        .loadSelectedEntitySetData(
+                                templateTypeESIDMap.get( USER_APPS ),
+                                new EntitySetSelection(
+                                        Optional.of( ImmutableSet.of( propertyTypeIdsByFQN.get( FULL_NAME_FQN ) ) )
+                                ),
+                                FileType.json
+                        );
+
+                // map fullNames -> set of orgIds
+                StreamUtil.stream( data )
+                        .map( entity -> getFirstValueOrNull( Multimaps.asMap( entity ), FULL_NAME_FQN ) )
+                        .filter( Objects::nonNull )
+                        .forEach( fullName -> {
+                            Set<UUID> organizations = fullNamesMap.getOrDefault( fullName, Sets.newHashSet() );
+                            organizations.add( orgId );
+
+                            fullNamesMap.put( fullName, organizations );
+                        } );
+
+            } );
+
+            userAppsFullNameValues.putAll( fullNamesMap );
+
+            logger.info( "loaded {} fullnames from user apps entity sets", fullNamesMap.keySet().size() );
+        } catch ( Exception e ) {
+            logger.info( "error loading fullnames from user_apps entity sets", e );
+        }
     }
 
     @Scheduled( fixedRate = STUDY_INFO_REFRESH_INTERVAL )
