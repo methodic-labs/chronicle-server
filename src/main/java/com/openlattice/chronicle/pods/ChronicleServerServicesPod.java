@@ -28,13 +28,25 @@ import com.openlattice.auth0.Auth0TokenProvider;
 import com.openlattice.auth0.AwsAuth0TokenProvider;
 import com.openlattice.authentication.Auth0Configuration;
 import com.openlattice.chronicle.configuration.ChronicleConfiguration;
-import com.openlattice.chronicle.services.ChronicleService;
-import com.openlattice.chronicle.services.ChronicleServiceImpl;
+import com.openlattice.chronicle.services.ApiCacheManager;
+import com.openlattice.chronicle.services.CommonTasksManager;
+import com.openlattice.chronicle.services.EdmCacheManager;
+import com.openlattice.chronicle.services.ScheduledTasksManager;
+import com.openlattice.chronicle.services.delete.DataDeletionManagerImpl;
+import com.openlattice.chronicle.services.download.DataDownloadManager;
+import com.openlattice.chronicle.services.download.DataDownloadManagerImpl;
+import com.openlattice.chronicle.services.enrollment.EnrollmentManager;
+import com.openlattice.chronicle.services.enrollment.EnrollmentManagerImpl;
+import com.openlattice.chronicle.services.surveys.SurveysManager;
+import com.openlattice.chronicle.services.surveys.SurveysManagerImpl;
+import com.openlattice.chronicle.services.upload.AppDataUploadManager;
+import com.openlattice.chronicle.services.upload.AppDataUploadManagerImpl;
 import com.openlattice.data.serializers.FullQualifiedNameJacksonSerializer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 
+import javax.imageio.IIOException;
 import javax.inject.Inject;
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
@@ -69,7 +81,51 @@ public class ChronicleServerServicesPod {
     }
 
     @Bean
-    public ChronicleService chronicleService() throws IOException, ExecutionException {
-        return new ChronicleServiceImpl( getChronicleConfiguration(), auth0Configuration );
+    public ApiCacheManager apiCacheManager () throws ExecutionException, IOException {
+        return new ApiCacheManager( getChronicleConfiguration(), auth0Configuration );
+    }
+
+    @Bean
+    public EdmCacheManager edmCacheManager () throws IOException, ExecutionException {
+        return new EdmCacheManager( apiCacheManager() );
+    }
+
+    @Bean
+    public ScheduledTasksManager scheduledTasksManager() throws IOException, ExecutionException  {
+        return new ScheduledTasksManager( apiCacheManager (), edmCacheManager() );
+    }
+
+    @Bean
+    public CommonTasksManager commonTasksManager () throws IOException, ExecutionException {
+        return new CommonTasksManager(apiCacheManager(), edmCacheManager(), scheduledTasksManager());
+    }
+
+    @Bean
+    public DataDeletionManagerImpl dataDeletionManager () throws IOException, ExecutionException {
+        return new DataDeletionManagerImpl( apiCacheManager(), commonTasksManager());
+    }
+
+    @Bean
+    public DataDownloadManager dataDownloadManager () throws IOException, ExecutionException {
+        return new DataDownloadManagerImpl( commonTasksManager());
+    }
+
+    @Bean
+    public EnrollmentManager enrollmentManager () throws IOException, ExecutionException{
+        return new EnrollmentManagerImpl( apiCacheManager(), commonTasksManager(), scheduledTasksManager());
+    }
+
+    @Bean
+    public AppDataUploadManager appDataUploadManager () throws IOException, ExecutionException {
+        return new AppDataUploadManagerImpl(apiCacheManager(),
+                scheduledTasksManager(),
+                commonTasksManager(),
+                enrollmentManager()
+        );
+    }
+
+    @Bean
+    public SurveysManager surveysManager () throws IOException, ExecutionException {
+        return new SurveysManagerImpl( apiCacheManager(), enrollmentManager(), commonTasksManager(), scheduledTasksManager() );
     }
 }

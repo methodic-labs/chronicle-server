@@ -3,13 +3,9 @@ package com.openlattice.chronicle.controllers;
 import com.codahale.metrics.annotation.Timed;
 import com.google.common.collect.SetMultimap;
 import com.openlattice.chronicle.ChronicleApi;
-import com.openlattice.chronicle.data.ParticipationStatus;
-import com.openlattice.chronicle.services.ChronicleService;
-import com.openlattice.chronicle.util.ChronicleServerExceptionHandler.StudyRegistrationNotFoundException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.openlattice.chronicle.services.enrollment.EnrollmentManager;
+import com.openlattice.chronicle.services.upload.AppDataUploadManager;
 import org.springframework.http.MediaType;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.*;
 
 import javax.inject.Inject;
@@ -18,16 +14,15 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-import static com.openlattice.chronicle.constants.EdmConstants.CAFE_ORG_ID;
-
 @RestController
 @RequestMapping( ChronicleApi.CONTROLLER )
 public class ChronicleController implements ChronicleApi {
 
-    private static final Logger logger = LoggerFactory.getLogger( ChronicleController.class );
+    @Inject
+    private AppDataUploadManager dataUploadManager;
 
     @Inject
-    private ChronicleService chronicleService;
+    private EnrollmentManager enrollmentManager;
 
     @Override
     @Timed
@@ -42,22 +37,7 @@ public class ChronicleController implements ChronicleApi {
             @PathVariable( DATASOURCE_ID ) String datasourceId,
             @RequestBody List<SetMultimap<UUID, Object>> data ) {
 
-        return uploadData( CAFE_ORG_ID, studyId, participantId, datasourceId, data );
-    }
-
-    @Override
-    @RequestMapping(
-            path = ORGANIZATION_ID_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH + DATASOURCE_ID_PATH,
-            method = RequestMethod.POST,
-            consumes = MediaType.APPLICATION_JSON_VALUE )
-    public Integer uploadOrgStudyParticipantData(
-            @PathVariable( ORGANIZATION_ID ) UUID organizationId,
-            @PathVariable( STUDY_ID ) UUID studyId,
-            @PathVariable( PARTICIPANT_ID ) String participantId,
-            @PathVariable( DATASOURCE_ID ) String datasourceId,
-            @RequestBody List<SetMultimap<UUID, Object>> data ) {
-
-        return uploadData( organizationId, studyId, participantId, datasourceId, data );
+        return dataUploadManager.logData( null, studyId, participantId, datasourceId, data );
     }
 
     @Override
@@ -69,7 +49,7 @@ public class ChronicleController implements ChronicleApi {
             produces = MediaType.APPLICATION_JSON_VALUE
     )
     public Map<String, UUID> getPropertyTypeIds( @RequestBody Set<String> propertyTypeFqns ) {
-        return chronicleService.getPropertyTypeIds( propertyTypeFqns );
+        return enrollmentManager.getPropertyTypeIds( propertyTypeFqns );
     }
 
     @Override
@@ -81,42 +61,5 @@ public class ChronicleController implements ChronicleApi {
     public Boolean isRunning() {
         //TODO: Ensure connectivity with OpenLattice backend.
         return true;
-    }
-
-    private Integer uploadData(
-            UUID organizationId,
-            UUID studyId,
-            String participantId,
-            String dataSourceId,
-            List<SetMultimap<UUID, Object>> data ) {
-        //  allow to proceed only if the participant is in the study and the device is associated as well
-        final boolean isKnownParticipant = chronicleService
-                .isKnownParticipant( organizationId, studyId, participantId );
-        final boolean isKnownDatasource = chronicleService
-                .isKnownDatasource( organizationId, studyId, participantId, dataSourceId );
-
-        final ParticipationStatus status = chronicleService
-                .getParticipationStatus( organizationId, studyId, participantId );
-        if ( ParticipationStatus.NOT_ENROLLED.equals( status ) ) {
-            logger.warn( "participantId = {} is not enrolled, ignoring data upload", participantId );
-            return 0;
-        }
-
-        if ( isKnownParticipant && isKnownDatasource ) {
-            return chronicleService.logData( organizationId, studyId, participantId, dataSourceId, data );
-        }
-        logger.error(
-                "Unable to log information for study {}, participant {}, and datasource {} due valid participant = {} or valid device = {}",
-                studyId,
-                participantId,
-                dataSourceId,
-                isKnownDatasource,
-                isKnownParticipant );
-        if ( !isKnownParticipant ) {
-            throw new AccessDeniedException( "Unable to store uploaded data." );
-        }
-
-        throw new StudyRegistrationNotFoundException( "Unable to store uploaded data." );
-
     }
 }

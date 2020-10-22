@@ -3,7 +3,6 @@ package com.openlattice.chronicle.constants;
 import com.google.common.collect.ImmutableSet;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
 
-import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -15,7 +14,46 @@ public class EdmConstants {
     }
 
     // entity set names
-    public static final String CHRONICLE_APPLICATION_DICTIONARY = "chronicle_application_dictionary";
+    public static final String APPS_DICTIONARY_ES   = "chronicle_application_dictionary";
+    public static final String ADDRESSES_ES         = "chronicle_addresses";
+    public static final String ANSWERS_ES           = "chronicle_answers";
+    public static final String USER_APPS_ES         = "chronicle_user_apps";
+    public static final String DATA_ES              = "chronicle_app_data";
+    public static final String DEVICES_ES           = "chronicle_device";
+    public static final String HAS_ES               = "chronicle_has";
+    public static final String METADATA_ES          = "chronicle_metadata";
+    public static final String NOTIFICATION_ES      = "chronicle_notifications";
+    public static final String PARTICIPANTS_PREFIX  = "chronicle_participants_";
+    public static final String PARTICIPATED_IN_ES   = "chronicle_participated_in";
+    public static final String PART_OF_ES           = "chronicle_partof";
+    public static final String PREPROCESSED_DATA_ES = "chronicle_preprocessed_app_data";
+    public static final String QUESTIONNAIRE_ES     = "chronicle_questionnaires";
+    public static final String QUESTIONS_ES         = "chronicle_questions";
+    public static final String RECORDED_BY_ES       = "chronicle_recorded_by";
+    public static final String RESPONDS_WITH_ES     = "chronicle_respondswith";
+    public static final String STUDY_ES             = "chronicle_study";
+    public static final String USED_BY_ES           = "chronicle_used_by";
+
+    public static final ImmutableSet<String> ENTITY_SET_NAMES = ImmutableSet.of(
+            ADDRESSES_ES,
+            ANSWERS_ES,
+            APPS_DICTIONARY_ES,
+            USER_APPS_ES,
+            DATA_ES,
+            DEVICES_ES,
+            HAS_ES,
+            METADATA_ES,
+            NOTIFICATION_ES,
+            PARTICIPATED_IN_ES,
+            PART_OF_ES,
+            PREPROCESSED_DATA_ES,
+            QUESTIONNAIRE_ES,
+            QUESTIONS_ES,
+            RECORDED_BY_ES,
+            RESPONDS_WITH_ES,
+            STUDY_ES,
+            USED_BY_ES
+    );
 
     // property types
     public static final FullQualifiedName COMPLETED_DATE_TIME_FQN = new FullQualifiedName( "date.completeddatetime" );
