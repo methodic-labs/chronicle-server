@@ -14,7 +14,6 @@ import com.openlattice.client.ApiClient;
 import com.openlattice.data.*;
 import com.openlattice.data.requests.NeighborEntityDetails;
 import com.openlattice.edm.EdmApi;
-import com.openlattice.entitysets.EntitySetsApi;
 import com.openlattice.search.SearchApi;
 import com.openlattice.search.requests.EntityNeighborsFilter;
 import org.apache.commons.lang3.tuple.Pair;
@@ -28,7 +27,6 @@ import java.time.OffsetDateTime;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE;
 import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE_DATA_COLLECTION;
@@ -50,6 +48,7 @@ import static com.openlattice.chronicle.constants.EdmConstants.*;
 import static com.openlattice.chronicle.util.ChronicleServerUtil.checkNotNullUUIDs;
 import static com.openlattice.chronicle.util.ChronicleServerUtil.getFirstUUIDOrNull;
 import static com.openlattice.edm.EdmConstants.ID_FQN;
+import static java.util.Map.entry;
 
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
@@ -524,7 +523,7 @@ public class SurveysManagerImpl implements SurveysManager {
         Map<UUID, Set<Object>> entity = Maps.newHashMap();
 
         entity.put( commonTasksManager.getPropertyTypeId( OL_ID_FQN ), ImmutableSet.of( participantId ) );
-        entity.put( commonTasksManager.getPropertyTypeId ( DATE_TIME_FQN ), ImmutableSet.of( dateTime ) );
+        entity.put( commonTasksManager.getPropertyTypeId( DATE_TIME_FQN ), ImmutableSet.of( dateTime ) );
         entity.put( commonTasksManager.getPropertyTypeId( STRING_ID_FQN ), ImmutableSet.of( studyId ) );
 
         return entity;
@@ -620,7 +619,7 @@ public class SurveysManagerImpl implements SurveysManager {
         return entityKeyIdMap;
     }
 
-    private ListMultimap<UUID, DataAssociation> getTimeUseDiaryAssociations(
+    private ListMultimap<UUID, DataAssociation> getDataAssociations(
             Map<FullQualifiedName, Set<Object>> entity,
             Map<EntityKey, UUID> entityKeyIdMap,
             Map<String, UUID> entitySetIdMap,
@@ -638,7 +637,7 @@ public class SurveysManagerImpl implements SurveysManager {
 
         UUID questionEKID = entityKeyIdMap.get( questionEK );
 
-        // answer -> registeredfor -> timepoint
+        // answer -> registeredfor -> timerange
         Map<UUID, Set<Object>> registeredForEntity = getRegisteredForEntity( dateTime );
         associations.put( entitySetIdMap.get( REGISTERED_FOR_ES ), new DataAssociation(
                 entitySetIdMap.get( ANSWERS_ES ),
@@ -762,7 +761,8 @@ public class SurveysManagerImpl implements SurveysManager {
         EntityKey respondsWithEK = getEntityKey( respondsWithSubmissionEntity,
                 entitySetIdMap.get( RESPONDS_WITH_ES ),
                 ImmutableList.of( OL_ID_FQN, DATE_TIME_FQN, STRING_ID_FQN ) );
-        respondsWithSubmissionEntity.remove( commonTasksManager.getPropertyTypeId( STRING_ID_FQN ) ); // shouldn't be stored
+        respondsWithSubmissionEntity
+                .remove( commonTasksManager.getPropertyTypeId( STRING_ID_FQN ) ); // shouldn't be stored
         entitiesByEK.put( respondsWithEK, respondsWithSubmissionEntity );
 
         edgesByEntityKey.add( Triple.of( participantEK, respondsWithEK, submissionEK ) );
@@ -833,20 +833,20 @@ public class SurveysManagerImpl implements SurveysManager {
                 .getEntitySetId( orgId, CHRONICLE_SURVEYS, REGISTERED_FOR, REGISTERED_FOR_ES );
         UUID partOfESID = commonTasksManager.getEntitySetId( orgId, CHRONICLE, PART_OF, PART_OF_ES );
 
-        return Stream.of(new Object[][] {
-                { PARTICIPANTS_PREFIX, participantsESID },
-                { ANSWERS_ES, answersESID },
-                { SUBMISSION_ES, submissionESID },
-                { TIMERANGE_ES, timeRangeESID },
-                { QUESTIONS_ES, questionESID },
-                { QUESTIONNAIRE_ES, questionnaireESID },
-                { STUDY_ES, studyESID },
-                { RESPONDS_WITH_ES, respondsWithESID },
-                { ADDRESSES_ES, addressesESID },
-                { PARTICIPATED_IN_ES, participatedInESID },
-                { REGISTERED_FOR_ES, registeredForESID },
-                { PART_OF_ES, partOfESID }
-        }).collect( Collectors.toMap(data -> (String) data[0], data -> (UUID) data[1]) );
+        return Map.ofEntries(
+                entry( PARTICIPANTS_PREFIX, participantsESID ),
+                entry( ANSWERS_ES, answersESID ),
+                entry( SUBMISSION_ES, submissionESID ),
+                entry( TIMERANGE_ES, timeRangeESID ),
+                entry( QUESTIONS_ES, questionESID ),
+                entry( QUESTIONNAIRE_ES, questionnaireESID ),
+                entry( STUDY_ES, studyESID ),
+                entry( RESPONDS_WITH_ES, respondsWithESID ),
+                entry( ADDRESSES_ES, addressesESID ),
+                entry( PARTICIPATED_IN_ES, participatedInESID ),
+                entry( REGISTERED_FOR_ES, registeredForESID ),
+                entry( PART_OF_ES, partOfESID )
+        );
     }
 
     @Override
@@ -871,7 +871,7 @@ public class SurveysManagerImpl implements SurveysManager {
             UUID studyEKID = Preconditions
                     .checkNotNull( commonTasksManager.getStudyEntityKeyId( orgId, studyId ), "study not found" );
 
-            // create entity set look up map
+            // create entitySetId look up map
             Map<String, UUID> entitySetIdMap = createEntitySetIdMap( orgId, studyId );
 
             ListMultimap<UUID, Map<UUID, Set<Object>>> entities = ArrayListMultimap.create();
@@ -911,7 +911,7 @@ public class SurveysManagerImpl implements SurveysManager {
             for ( int i = 0; i < surveyData.size(); ++i ) {
                 Map<FullQualifiedName, Set<Object>> entity = surveyData.get( i );
 
-                associations.putAll( getTimeUseDiaryAssociations( entity,
+                associations.putAll( getDataAssociations( entity,
                         entityKeyIdMap,
                         entitySetIdMap,
                         participantEKID,
