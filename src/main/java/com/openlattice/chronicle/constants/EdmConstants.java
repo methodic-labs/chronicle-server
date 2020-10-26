@@ -30,8 +30,11 @@ public class EdmConstants {
     public static final String QUESTIONNAIRE_ES     = "chronicle_questionnaires";
     public static final String QUESTIONS_ES         = "chronicle_questions";
     public static final String RECORDED_BY_ES       = "chronicle_recorded_by";
+    public static final String REGISTERED_FOR_ES    = "chronicle_registered_for";
     public static final String RESPONDS_WITH_ES     = "chronicle_respondswith";
     public static final String STUDY_ES             = "chronicle_study";
+    public static final String SUBMISSION_ES        = "chronicle_submission";
+    public static final String TIMERANGE_ES         = "chronicle_timerange";
     public static final String USED_BY_ES           = "chronicle_used_by";
 
     public static final ImmutableSet<String> ENTITY_SET_NAMES = ImmutableSet.of(
@@ -50,8 +53,11 @@ public class EdmConstants {
             QUESTIONNAIRE_ES,
             QUESTIONS_ES,
             RECORDED_BY_ES,
+            REGISTERED_FOR_ES,
             RESPONDS_WITH_ES,
             STUDY_ES,
+            SUBMISSION_ES,
+            TIMERANGE_ES,
             USED_BY_ES
     );
 

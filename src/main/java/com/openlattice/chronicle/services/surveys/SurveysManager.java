@@ -32,4 +32,5 @@ public interface SurveysManager {
 
     List<ChronicleAppsUsageDetails> getParticipantAppsUsageData (UUID organizationId, UUID studyId, String participantId, String date);
 
+    void submitTimeUseDiarySurvey( UUID organizationId, UUID studyId, String participantId, List<Map<FullQualifiedName, Set<Object>>> surveyData );
 }
