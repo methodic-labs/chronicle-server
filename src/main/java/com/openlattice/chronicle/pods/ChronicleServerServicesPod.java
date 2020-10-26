@@ -46,7 +46,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 
-import javax.imageio.IIOException;
 import javax.inject.Inject;
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
@@ -81,43 +80,43 @@ public class ChronicleServerServicesPod {
     }
 
     @Bean
-    public ApiCacheManager apiCacheManager () throws ExecutionException, IOException {
+    public ApiCacheManager apiCacheManager() throws IOException {
         return new ApiCacheManager( getChronicleConfiguration(), auth0Configuration );
     }
 
     @Bean
-    public EdmCacheManager edmCacheManager () throws IOException, ExecutionException {
+    public EdmCacheManager edmCacheManager() throws IOException, ExecutionException {
         return new EdmCacheManager( apiCacheManager() );
     }
 
     @Bean
-    public ScheduledTasksManager scheduledTasksManager() throws IOException, ExecutionException  {
-        return new ScheduledTasksManager( apiCacheManager (), edmCacheManager() );
+    public ScheduledTasksManager scheduledTasksManager() throws IOException, ExecutionException {
+        return new ScheduledTasksManager( apiCacheManager(), edmCacheManager() );
     }
 
     @Bean
-    public CommonTasksManager commonTasksManager () throws IOException, ExecutionException {
-        return new CommonTasksManager(apiCacheManager(), edmCacheManager(), scheduledTasksManager());
+    public CommonTasksManager commonTasksManager() throws IOException, ExecutionException {
+        return new CommonTasksManager( apiCacheManager(), edmCacheManager(), scheduledTasksManager() );
     }
 
     @Bean
-    public DataDeletionManagerImpl dataDeletionManager () throws IOException, ExecutionException {
-        return new DataDeletionManagerImpl( apiCacheManager(), commonTasksManager());
+    public DataDeletionManagerImpl dataDeletionManager() throws IOException, ExecutionException {
+        return new DataDeletionManagerImpl( apiCacheManager(), commonTasksManager() );
     }
 
     @Bean
-    public DataDownloadManager dataDownloadManager () throws IOException, ExecutionException {
-        return new DataDownloadManagerImpl( commonTasksManager());
+    public DataDownloadManager dataDownloadManager() throws IOException, ExecutionException {
+        return new DataDownloadManagerImpl( commonTasksManager() );
     }
 
     @Bean
-    public EnrollmentManager enrollmentManager () throws IOException, ExecutionException{
-        return new EnrollmentManagerImpl( apiCacheManager(), commonTasksManager(), scheduledTasksManager());
+    public EnrollmentManager enrollmentManager() throws IOException, ExecutionException {
+        return new EnrollmentManagerImpl( apiCacheManager(), commonTasksManager(), scheduledTasksManager() );
     }
 
     @Bean
-    public AppDataUploadManager appDataUploadManager () throws IOException, ExecutionException {
-        return new AppDataUploadManagerImpl(apiCacheManager(),
+    public AppDataUploadManager appDataUploadManager() throws IOException, ExecutionException {
+        return new AppDataUploadManagerImpl( apiCacheManager(),
                 scheduledTasksManager(),
                 commonTasksManager(),
                 enrollmentManager()
@@ -125,7 +124,10 @@ public class ChronicleServerServicesPod {
     }
 
     @Bean
-    public SurveysManager surveysManager () throws IOException, ExecutionException {
-        return new SurveysManagerImpl( apiCacheManager(), enrollmentManager(), commonTasksManager(), scheduledTasksManager() );
+    public SurveysManager surveysManager() throws IOException, ExecutionException {
+        return new SurveysManagerImpl( apiCacheManager(),
+                enrollmentManager(),
+                commonTasksManager(),
+                scheduledTasksManager() );
     }
 }
