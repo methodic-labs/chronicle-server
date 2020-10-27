@@ -97,7 +97,6 @@ println "Using java args for running ${projectName}: Xms=" + CS_XMS + ",Xmx=" + 
 applicationDefaultJvmArgs = [CS_XMS, CS_XMX, "-server", GC, PARALLEL]
 sourceCompatibility = JavaVersion.VERSION_11
 targetCompatibility = JavaVersion.VERSION_11
-a
 
 spotbugs {
     reportLevel = 'high'
