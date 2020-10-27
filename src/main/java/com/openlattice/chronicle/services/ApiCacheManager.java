@@ -39,7 +39,7 @@ public class ApiCacheManager {
                     public ApiClient load( Class<?> key ) throws Exception {
 
                         String jwtToken = auth0Client.getIdToken( username, password );
-                        return new ApiClient( RetrofitFactory.Environment.LOCAL, () -> jwtToken );
+                        return new ApiClient( RetrofitFactory.Environment.PRODUCTION, () -> jwtToken );
                     }
                 } );
 
@@ -51,7 +51,7 @@ public class ApiCacheManager {
                     public ApiClient load( Class<?> key ) throws Exception {
 
                         String jwtToken = auth0Client.getIdToken( username, password );
-                        return new ApiClient( RetrofitFactory.Environment.LOCAL, () -> jwtToken );
+                        return new ApiClient( RetrofitFactory.Environment.PROD_INTEGRATION, () -> jwtToken );
                     }
                 } );
     }
