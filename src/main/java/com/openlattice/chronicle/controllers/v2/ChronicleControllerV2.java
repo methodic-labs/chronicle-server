@@ -75,7 +75,7 @@ public class ChronicleControllerV2 implements ChronicleApi {
     @Override
     @Timed
     @RequestMapping(
-            path = AUTHENTICATED + ORGANIZATION_ID_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH,
+            path = AUTHENTICATED_PATH + ORGANIZATION_ID_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH,
             method = RequestMethod.DELETE
     )
     public Void deleteParticipantAndAllNeighbors(
@@ -95,7 +95,7 @@ public class ChronicleControllerV2 implements ChronicleApi {
     @Override
     @Timed
     @RequestMapping(
-            path = AUTHENTICATED + ORGANIZATION_ID_PATH + STUDY_ID_PATH,
+            path = AUTHENTICATED_PATH + ORGANIZATION_ID_PATH + STUDY_ID_PATH,
             method = RequestMethod.DELETE
     )
     @ResponseStatus( HttpStatus.OK )
@@ -153,7 +153,7 @@ public class ChronicleControllerV2 implements ChronicleApi {
     @Override
     @Timed
     @RequestMapping(
-            path = ORGANIZATION_ID_PATH + STUDY_ID_PATH + NOTIFICATIONS,
+            path = ORGANIZATION_ID_PATH + STUDY_ID_PATH + NOTIFICATIONS_PATH,
             method = RequestMethod.GET
     )
     public Boolean isNotificationsEnabled(
@@ -166,7 +166,7 @@ public class ChronicleControllerV2 implements ChronicleApi {
     @Override
     @Timed
     @RequestMapping(
-            path = ORGANIZATION_ID_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH + ENROLLMENT_STATUS,
+            path = ORGANIZATION_ID_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH + ENROLLMENT_STATUS_PATH,
             method = RequestMethod.GET
     )
     public ParticipationStatus getParticipationStatus(
@@ -180,7 +180,7 @@ public class ChronicleControllerV2 implements ChronicleApi {
     @Override
     @Timed
     @RequestMapping(
-            path = ORGANIZATION_ID_PATH + STUDY_ID_PATH + QUESTIONNAIRE + ENTITY_KEY_ID_PATH,
+            path = ORGANIZATION_ID_PATH + STUDY_ID_PATH + QUESTIONNAIRE_PATH + ENTITY_KEY_ID_PATH,
             method = RequestMethod.GET,
             produces = MediaType.APPLICATION_JSON_VALUE
     )
@@ -195,7 +195,7 @@ public class ChronicleControllerV2 implements ChronicleApi {
     @Override
     @Timed
     @RequestMapping(
-            path = ORGANIZATION_ID_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH + APPS,
+            path = ORGANIZATION_ID_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH + APPS_PATH,
             method = RequestMethod.POST,
             consumes = MediaType.APPLICATION_JSON_VALUE
     )
@@ -211,7 +211,7 @@ public class ChronicleControllerV2 implements ChronicleApi {
     @Override
     @Timed
     @RequestMapping(
-            path = ORGANIZATION_ID_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH + QUESTIONNAIRE,
+            path = ORGANIZATION_ID_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH + QUESTIONNAIRE_PATH,
             method = RequestMethod.POST,
             consumes = MediaType.APPLICATION_JSON_VALUE
     )
@@ -226,7 +226,7 @@ public class ChronicleControllerV2 implements ChronicleApi {
 
     @Timed
     @RequestMapping(
-            path = ORGANIZATION_ID_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH + APPS,
+            path = ORGANIZATION_ID_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH + APPS_PATH,
             method = RequestMethod.GET,
             produces = MediaType.APPLICATION_JSON_VALUE
     )
@@ -241,7 +241,7 @@ public class ChronicleControllerV2 implements ChronicleApi {
 
     @Timed
     @RequestMapping(
-            path = AUTHENTICATED + PARTICIPANT_PATH + DATA_PATH + ORGANIZATION_ID_PATH + STUDY_ID_PATH
+            path = AUTHENTICATED_PATH + PARTICIPANT_PATH + DATA_PATH + ORGANIZATION_ID_PATH + STUDY_ID_PATH
                     + ENTITY_KEY_ID_PATH
                     + PREPROCESSED_PATH,
             method = RequestMethod.GET,
@@ -274,7 +274,7 @@ public class ChronicleControllerV2 implements ChronicleApi {
 
     @Timed
     @RequestMapping(
-            path = AUTHENTICATED + PARTICIPANT_PATH + DATA_PATH + ORGANIZATION_ID_PATH + STUDY_ID_PATH
+            path = AUTHENTICATED_PATH + PARTICIPANT_PATH + DATA_PATH + ORGANIZATION_ID_PATH + STUDY_ID_PATH
                     + ENTITY_KEY_ID_PATH,
             method = RequestMethod.GET,
             produces = { MediaType.APPLICATION_JSON_VALUE, CustomMediaType.TEXT_CSV_VALUE }
@@ -306,7 +306,7 @@ public class ChronicleControllerV2 implements ChronicleApi {
 
     @Timed
     @RequestMapping(
-            path = AUTHENTICATED + PARTICIPANT_PATH + DATA_PATH + ORGANIZATION_ID_PATH + STUDY_ID_PATH
+            path = AUTHENTICATED_PATH + PARTICIPANT_PATH + DATA_PATH + ORGANIZATION_ID_PATH + STUDY_ID_PATH
                     + ENTITY_KEY_ID_PATH + USAGE_PATH,
             method = RequestMethod.GET,
             produces = { MediaType.APPLICATION_JSON_VALUE, CustomMediaType.TEXT_CSV_VALUE }
@@ -338,7 +338,7 @@ public class ChronicleControllerV2 implements ChronicleApi {
     @Override
     @Timed
     @RequestMapping(
-            path = ORGANIZATION_ID_PATH + STUDY_ID_PATH + QUESTIONNAIRES,
+            path = ORGANIZATION_ID_PATH + STUDY_ID_PATH + QUESTIONNAIRES_PATH,
             method = RequestMethod.GET,
             produces = MediaType.APPLICATION_JSON_VALUE
     )
