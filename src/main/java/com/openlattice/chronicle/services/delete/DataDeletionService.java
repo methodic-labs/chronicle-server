@@ -40,13 +40,13 @@ import static com.openlattice.edm.EdmConstants.ID_FQN;
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
  */
-public class DataDeletionManagerImpl implements DataDeletionManager {
-    protected static final Logger logger = LoggerFactory.getLogger( DataDeletionManagerImpl.class );
+public class DataDeletionService implements DataDeletionManager {
+    protected static final Logger logger = LoggerFactory.getLogger( DataDeletionService.class );
 
     private final ApiCacheManager    apiCacheManager;
     private final CommonTasksManager commonTasksManager;
 
-    public DataDeletionManagerImpl( ApiCacheManager apiCacheManager, CommonTasksManager commonTasksManager ) {
+    public DataDeletionService( ApiCacheManager apiCacheManager, CommonTasksManager commonTasksManager ) {
         this.apiCacheManager = apiCacheManager;
         this.commonTasksManager = commonTasksManager;
 

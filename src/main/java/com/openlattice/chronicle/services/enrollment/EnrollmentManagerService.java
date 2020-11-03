@@ -51,14 +51,14 @@ import static com.openlattice.chronicle.util.ChronicleServerUtil.getFirstValueOr
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
  */
-public class EnrollmentManagerImpl implements EnrollmentManager {
-    protected static final Logger logger = LoggerFactory.getLogger( EnrollmentManagerImpl.class );
+public class EnrollmentManagerService implements EnrollmentManager {
+    protected static final Logger logger = LoggerFactory.getLogger( EnrollmentManagerService.class );
 
     private final ApiCacheManager       apiCacheManager;
     private final CommonTasksManager    commonTasksManager;
     private final ScheduledTasksManager scheduledTasksManager;
 
-    public EnrollmentManagerImpl(
+    public EnrollmentManagerService(
             ApiCacheManager apiCacheManager,
             CommonTasksManager commonTasksManager,
             ScheduledTasksManager scheduledTasksManager ) {

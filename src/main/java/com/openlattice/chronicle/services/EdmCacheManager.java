@@ -20,9 +20,9 @@ import static com.openlattice.chronicle.constants.EdmConstants.ENTITY_SET_NAMES;
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
  */
 public class EdmCacheManager {
-    public final Map<UUID, PropertyType>      propertyTypesById    = Maps.newHashMap();
-    public final Map<String, UUID>            entitySetIdMap       = Maps.newHashMap();
-    public final Map<FullQualifiedName, UUID> propertyTypeIdsByFQN = Maps.newHashMap();
+    private final Map<UUID, PropertyType>      propertyTypesById    = Maps.newHashMap();
+    private final Map<String, UUID>            entitySetIdMap       = Maps.newHashMap();
+    private final Map<FullQualifiedName, UUID> propertyTypeIdsByFQN = Maps.newHashMap();
 
     public EdmCacheManager( ApiCacheManager apiCacheManager ) throws ExecutionException {
         // apiCacheManager
@@ -43,5 +43,17 @@ public class EdmCacheManager {
                 .values()
                 .stream()
                 .collect( ImmutableMap.toImmutableMap( PropertyType::getType, PropertyType::getId ) ) );
+    }
+
+    public Map<UUID, PropertyType> getPropertyTypesById() {
+        return this.propertyTypesById;
+    }
+
+    public Map<String, UUID> getEntitySetIdMap () {
+        return this.entitySetIdMap;
+    }
+
+    public Map<FullQualifiedName, UUID> getPropertyTypeIdsByFQN () {
+        return this.propertyTypeIdsByFQN;
     }
 }

@@ -36,7 +36,7 @@ public class CommonTasksManager {
 
     public UUID getPropertyTypeId( FullQualifiedName fqn ) {
 
-        return edmCacheManager.propertyTypeIdsByFQN.get( fqn );
+        return edmCacheManager.getPropertyTypeIdsByFQN().get( fqn );
     }
 
     public UUID getEntitySetId(
@@ -47,7 +47,7 @@ public class CommonTasksManager {
     ) {
 
         if ( organizationId == null ) {
-            return edmCacheManager.entitySetIdMap.getOrDefault( entitySetName, null );
+            return edmCacheManager.getEntitySetIdMap().getOrDefault( entitySetName, null );
         }
 
         Map<CollectionTemplateTypeName, UUID> templateEntitySetIdMap = scheduledTasksManager.entitySetIdsByOrgId
@@ -56,12 +56,14 @@ public class CommonTasksManager {
 
         if ( templateEntitySetIdMap.isEmpty() ) {
             logger.error( "organization {} does not have app {} installed", organizationId, appComponent );
+            return null;
         }
 
         if ( !templateEntitySetIdMap.containsKey( templateName ) ) {
             logger.error( "app {} does not have a template {} in its entityTypeCollection",
                     appComponent,
                     templateName );
+            return null;
         }
 
         return templateEntitySetIdMap.get( templateName );

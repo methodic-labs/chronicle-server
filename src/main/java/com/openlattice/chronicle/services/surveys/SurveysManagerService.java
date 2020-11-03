@@ -58,15 +58,15 @@ import static com.openlattice.edm.EdmConstants.ID_FQN;
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
  */
-public class SurveysManagerImpl implements SurveysManager {
-    protected static final Logger logger = LoggerFactory.getLogger( SurveysManagerImpl.class );
+public class SurveysManagerService implements SurveysManager {
+    protected static final Logger logger = LoggerFactory.getLogger( SurveysManagerService.class );
 
     private final ApiCacheManager       apiCacheManager;
     private final EnrollmentManager     enrollmentManager;
     private final CommonTasksManager    commonTasksManager;
     private final ScheduledTasksManager scheduledTasksManager;
 
-    public SurveysManagerImpl(
+    public SurveysManagerService(
             ApiCacheManager apiCacheManager,
             EnrollmentManager enrollmentManager,
             CommonTasksManager commonTasksManager,

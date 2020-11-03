@@ -48,12 +48,12 @@ import static com.openlattice.edm.EdmConstants.ID_FQN;
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
  */
-public class DataDownloadManagerImpl implements DataDownloadManager {
-    protected static final Logger logger = LoggerFactory.getLogger( DataDownloadManagerImpl.class );
+public class DataDownloadService implements DataDownloadManager {
+    protected static final Logger logger = LoggerFactory.getLogger( DataDownloadService.class );
 
     private final CommonTasksManager commonTasksManager;
 
-    public DataDownloadManagerImpl( CommonTasksManager commonTasksManager ) {
+    public DataDownloadService( CommonTasksManager commonTasksManager ) {
         this.commonTasksManager = commonTasksManager;
     }
 

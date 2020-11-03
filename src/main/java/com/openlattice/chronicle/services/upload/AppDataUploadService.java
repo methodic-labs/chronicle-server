@@ -56,15 +56,15 @@ import static com.openlattice.chronicle.util.ChronicleServerUtil.checkNotNullUUI
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
  */
-public class AppDataUploadManagerImpl implements AppDataUploadManager {
-    protected final Logger logger = LoggerFactory.getLogger( AppDataUploadManagerImpl.class );
+public class AppDataUploadService implements AppDataUploadManager {
+    protected final Logger logger = LoggerFactory.getLogger( AppDataUploadService.class );
 
     private final CommonTasksManager    commonTasksManager;
     private final ScheduledTasksManager scheduledTasksManager;
     private final EnrollmentManager     enrollmentManager;
     private final ApiCacheManager       apiCacheManager;
 
-    public AppDataUploadManagerImpl(
+    public AppDataUploadService(
             ApiCacheManager apiCacheManager,
             ScheduledTasksManager scheduledTasksManager,
             CommonTasksManager commonTasksManager,
