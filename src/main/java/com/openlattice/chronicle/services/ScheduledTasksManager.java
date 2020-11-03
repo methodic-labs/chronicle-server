@@ -232,7 +232,6 @@ public class ScheduledTasksManager {
 
             } );
 
-            this.systemAppPackageNames.clear();
             this.systemAppPackageNames.addAll( systemAppPackageNames );
 
             logger.info( "Loaded {} items into the system apps cache", systemAppPackageNames.size() );

@@ -37,7 +37,7 @@ public class ChronicleController implements ChronicleApi {
             @PathVariable( DATASOURCE_ID ) String datasourceId,
             @RequestBody List<SetMultimap<UUID, Object>> data ) {
 
-        return dataUploadManager.logData( null, studyId, participantId, datasourceId, data );
+        return dataUploadManager.upload( null, studyId, participantId, datasourceId, data );
     }
 
     @Override

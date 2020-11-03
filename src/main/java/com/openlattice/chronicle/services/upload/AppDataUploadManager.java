@@ -10,7 +10,7 @@ import java.util.UUID;
  */
 public interface AppDataUploadManager {
 
-    Integer logData(
+    Integer upload(
             UUID organizationId,
             UUID studyId,
             String participantId,

@@ -116,7 +116,8 @@ public class ChronicleServerServicesPod {
 
     @Bean
     public AppDataUploadManager appDataUploadManager() throws IOException, ExecutionException {
-        return new AppDataUploadManagerImpl( apiCacheManager(),
+        return new AppDataUploadManagerImpl(
+                apiCacheManager(),
                 scheduledTasksManager(),
                 commonTasksManager(),
                 enrollmentManager()
@@ -125,9 +126,11 @@ public class ChronicleServerServicesPod {
 
     @Bean
     public SurveysManager surveysManager() throws IOException, ExecutionException {
-        return new SurveysManagerImpl( apiCacheManager(),
+        return new SurveysManagerImpl(
+                apiCacheManager(),
                 enrollmentManager(),
                 commonTasksManager(),
-                scheduledTasksManager() );
+                scheduledTasksManager()
+        );
     }
 }

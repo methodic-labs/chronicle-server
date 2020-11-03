@@ -46,8 +46,9 @@ public class CommonTasksManager {
             String entitySetName
     ) {
 
-        if ( organizationId == null )
+        if ( organizationId == null ) {
             return edmCacheManager.entitySetIdMap.getOrDefault( entitySetName, null );
+        }
 
         Map<CollectionTemplateTypeName, UUID> templateEntitySetIdMap = scheduledTasksManager.entitySetIdsByOrgId
                 .getOrDefault( appComponent, ImmutableMap.of() )
@@ -73,7 +74,7 @@ public class CommonTasksManager {
                 EntitySetsApi entitySetsApi = apiClient.getEntitySetsApi();
 
                 return entitySetsApi.getEntitySetId( getParticipantEntitySetName( studyId ) );
-            } catch ( ExecutionException e ) {
+            } catch ( Exception e ) {
                 logger.error( " unable to load apis" );
             }
         }

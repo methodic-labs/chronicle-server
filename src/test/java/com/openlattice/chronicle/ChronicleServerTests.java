@@ -179,7 +179,7 @@ public class ChronicleServerTests {
 //         partialEntry.removeAll( fullNamePTID );
 //         data.add( partialEntry );
 //
-//         chronicleService.logData( STUDY_ID, PARTICIPANT3, DEVICE3, data );
+//         chronicleService.upload( STUDY_ID, PARTICIPANT3, DEVICE3, data );
 //
 //         // only 1 entry will be written to chronicle_user_apps and related associations
 //         Assert.assertEquals(1, getParticipantNeighbors( participant3EntityKeyId, STUDY_ID ).size() );
@@ -203,7 +203,7 @@ public class ChronicleServerTests {
 //         partialEntry.put( recordTypePTID, "Move to background" );
 //         data.add( partialEntry );
 //
-//         chronicleService.logData( STUDY_ID, PARTICIPANT3, DEVICE3, data );
+//         chronicleService.upload( STUDY_ID, PARTICIPANT3, DEVICE3, data );
 //
 //         Assert.assertEquals( 1, getParticipantNeighbors( participant3EntityKeyId, STUDY_ID ).size() );
 //         Assert.assertEquals( 1, getDeviceNeighbors( device3EntityKeyId ).size() );
@@ -236,7 +236,7 @@ public class ChronicleServerTests {
 //         anotherItem.put( fullNamePTID, YOUTUBE.getLeft() );
 //         data.add( anotherItem );
 //
-//         chronicleService.logData( STUDY_ID, PARTICIPANT1, DEVICE1, data );
+//         chronicleService.upload( STUDY_ID, PARTICIPANT1, DEVICE1, data );
 //
 //         List<NeighborEntityDetails> participantNeighbors = getParticipantNeighbors( participant1EntityKeyId, STUDY_ID );
 //         Assert.assertEquals( 2,  participantNeighbors.size());
@@ -262,7 +262,7 @@ public class ChronicleServerTests {
 //             data.add( item );
 //
 //         }
-//         chronicleService.logData( STUDY_ID, PARTICIPANT1, DEVICE1, data );
+//         chronicleService.upload( STUDY_ID, PARTICIPANT1, DEVICE1, data );
 //         Assert.assertEquals( 0, getParticipantNeighbors( participant3EntityKeyId, STUDY_ID ).size());
 //         Assert.assertEquals( 0, getDeviceNeighbors(device1EntityKeyId ).size() );
 //
@@ -282,7 +282,7 @@ public class ChronicleServerTests {
 //         );
 //         data.add( item );
 //
-//         Assert.assertEquals( 0, chronicleService.logData( STUDY_ID, UN_ENROLLED_PARTICIPANT, DEVICE1, data ).intValue());
+//         Assert.assertEquals( 0, chronicleService.upload( STUDY_ID, UN_ENROLLED_PARTICIPANT, DEVICE1, data ).intValue());
 //     }
 //
 //     @Test
@@ -311,7 +311,7 @@ public class ChronicleServerTests {
 //         anotherItem.put( dateLoggedPTID, createDateTime( 13, 5, 2, 1 ).toString() );
 //         data.add( anotherItem );
 //
-//         chronicleService.logData( STUDY_ID, PARTICIPANT1, DEVICE1, data );
+//         chronicleService.upload( STUDY_ID, PARTICIPANT1, DEVICE1, data );
 //
 //         Assert.assertEquals( 2,  getParticipantNeighbors( participant1EntityKeyId, STUDY_ID ).size() );
 //     }
@@ -354,7 +354,7 @@ public class ChronicleServerTests {
 //             ) );
 //         }
 //
-//         Assert.assertEquals( chronicleService.logData( STUDY_ID, PARTICIPANT1, DEVICE1, data ).intValue(),  testApps.size());
+//         Assert.assertEquals( chronicleService.upload( STUDY_ID, PARTICIPANT1, DEVICE1, data ).intValue(),  testApps.size());
 //
 //         List<ChronicleAppsUsageDetails> appsUsageDetails = chronicleService
 //                 .getParticipantAppsUsageData( STUDY_ID, PARTICIPANT1 );
@@ -391,7 +391,7 @@ public class ChronicleServerTests {
 //             ) );
 //         }
 //
-//         chronicleService.logData( STUDY_ID, PARTICIPANT1, DEVICE1, data );
+//         chronicleService.upload( STUDY_ID, PARTICIPANT1, DEVICE1, data );
 //
 //         // 1: get the associations and update them with ol.user property
 //         Map<UUID, Map<FullQualifiedName, Set<Object>>> associations = getUserAppsAssociationDetails( STUDY_ID,

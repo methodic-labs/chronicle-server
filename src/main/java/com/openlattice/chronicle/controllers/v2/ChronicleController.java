@@ -14,7 +14,6 @@ import com.openlattice.chronicle.services.surveys.SurveysManager;
 import com.openlattice.chronicle.services.upload.AppDataUploadManager;
 import com.openlattice.chronicle.sources.Datasource;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -36,7 +35,7 @@ import static com.openlattice.chronicle.util.ChronicleServerUtil.setDownloadCont
  */
 @RestController
 @RequestMapping( ChronicleApi.CONTROLLER )
-public class ChronicleControllerV2 implements ChronicleApi {
+public class ChronicleController implements ChronicleApi {
 
     private static final String RAW_DATA_PREFIX          = "ChronicleData_";
     private static final String PREPROCESSED_DATA_PREFIX = "ChroniclePreprocessedData_";
@@ -84,8 +83,8 @@ public class ChronicleControllerV2 implements ChronicleApi {
             @PathVariable( PARTICIPANT_ID ) String participantId,
             @RequestParam( TYPE ) DeleteType deleteType
     ) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String token = ( (JwtAuthentication) authentication ).getToken();
+
+        String token = getTokenFromContext();
         dataDeletionManager
                 .deleteParticipantAndAllNeighbors( organizationId, studyId, participantId, deleteType, token );
 
@@ -98,56 +97,16 @@ public class ChronicleControllerV2 implements ChronicleApi {
             path = AUTHENTICATED_PATH + ORGANIZATION_ID_PATH + STUDY_ID_PATH,
             method = RequestMethod.DELETE
     )
-    @ResponseStatus( HttpStatus.OK )
     public Void deleteStudyAndAllNeighbors(
             @PathVariable( ORGANIZATION_ID ) UUID organizationId,
             @PathVariable( STUDY_ID ) UUID studyId,
             @RequestParam( TYPE ) DeleteType deleteType
     ) {
 
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String token = ( (JwtAuthentication) authentication ).getToken();
+        String token = getTokenFromContext();
         dataDeletionManager.deleteStudyAndAllNeighbors( organizationId, studyId, deleteType, token );
 
         return null;
-    }
-
-    @Override
-    public Iterable<Map<String, Set<Object>>> getAllParticipantAppsUsageData(
-            UUID organizationId, UUID studyId, UUID participantEntityKeyId, FileType fileType ) {
-
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String token = ( (JwtAuthentication) authentication ).getToken();
-
-        return dataDownloadManager
-                .getAllParticipantAppsUsageData( organizationId, studyId, participantEntityKeyId, token );
-    }
-
-    @Override
-    public Iterable<Map<String, Set<Object>>> getAllParticipantData(
-            UUID organizationId,
-            UUID studyId,
-            UUID participantEntityKeyId,
-            FileType fileType ) {
-
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String token = ( (JwtAuthentication) authentication ).getToken();
-
-        return dataDownloadManager.getAllParticipantData( organizationId, studyId, participantEntityKeyId, token );
-    }
-
-    @Override
-    public Iterable<Map<String, Set<Object>>> getAllPreprocessedParticipantData(
-            UUID organizationId,
-            UUID studyId,
-            UUID participantEntityKeyId,
-            FileType fileType ) {
-
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String token = ( (JwtAuthentication) authentication ).getToken();
-
-        return dataDownloadManager
-                .getAllPreprocessedParticipantData( organizationId, studyId, participantEntityKeyId, token );
     }
 
     @Override
@@ -239,6 +198,19 @@ public class ChronicleControllerV2 implements ChronicleApi {
         return surveysManager.getParticipantAppsUsageData( organizationId, studyId, participantId, date );
     }
 
+    @Override
+    public Iterable<Map<String, Set<Object>>> getAllPreprocessedParticipantData(
+            UUID organizationId,
+            UUID studyId,
+            UUID participantEntityKeyId,
+            FileType fileType ) {
+
+        String token = getTokenFromContext();
+
+        return dataDownloadManager
+                .getAllPreprocessedParticipantData( organizationId, studyId, participantEntityKeyId, token );
+    }
+
     @Timed
     @RequestMapping(
             path = AUTHENTICATED_PATH + PARTICIPANT_PATH + DATA_PATH + ORGANIZATION_ID_PATH + STUDY_ID_PATH
@@ -272,6 +244,19 @@ public class ChronicleControllerV2 implements ChronicleApi {
         return data;
     }
 
+    @Override
+    public Iterable<Map<String, Set<Object>>> getAllParticipantData(
+            UUID organizationId,
+            UUID studyId,
+            UUID participantEntityKeyId,
+            FileType fileType ) {
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String token = ( (JwtAuthentication) authentication ).getToken();
+
+        return dataDownloadManager.getAllParticipantData( organizationId, studyId, participantEntityKeyId, token );
+    }
+
     @Timed
     @RequestMapping(
             path = AUTHENTICATED_PATH + PARTICIPANT_PATH + DATA_PATH + ORGANIZATION_ID_PATH + STUDY_ID_PATH
@@ -302,6 +287,17 @@ public class ChronicleControllerV2 implements ChronicleApi {
         setContentDisposition( response, fileName, fileType );
         setDownloadContentType( response, fileType );
         return data;
+    }
+
+    @Override
+    public Iterable<Map<String, Set<Object>>> getAllParticipantAppsUsageData(
+            UUID organizationId, UUID studyId, UUID participantEntityKeyId, FileType fileType ) {
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String token = ( (JwtAuthentication) authentication ).getToken();
+
+        return dataDownloadManager
+                .getAllParticipantAppsUsageData( organizationId, studyId, participantEntityKeyId, token );
     }
 
     @Timed
@@ -362,7 +358,7 @@ public class ChronicleControllerV2 implements ChronicleApi {
             @PathVariable( DATASOURCE_ID ) String datasourceId,
             @RequestBody List<SetMultimap<UUID, Object>> data ) {
 
-        return dataUploadManager.logData( organizationId, studyId, participantId, datasourceId, data );
+        return dataUploadManager.upload( organizationId, studyId, participantId, datasourceId, data );
     }
 
     @Override
@@ -387,5 +383,11 @@ public class ChronicleControllerV2 implements ChronicleApi {
 
         //TODO: Ensure connectivity with OpenLattice backend.
         return true;
+    }
+
+    // controller helper methods
+    private String getTokenFromContext() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        return (( JwtAuthentication) authentication).getToken();
     }
 }

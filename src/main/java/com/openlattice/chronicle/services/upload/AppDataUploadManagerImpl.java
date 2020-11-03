@@ -150,7 +150,7 @@ public class AppDataUploadManagerImpl implements AppDataUploadManager {
         );
     }
 
-    // HELPER METHODS: logData
+    // HELPER METHODS: upload
     private Map<UUID, Set<Object>> getUsedByEntity( String appPackageName, String dateLogged, String participantId ) {
         Map<UUID, Set<Object>> entity = new HashMap<>();
 
@@ -570,7 +570,7 @@ public class AppDataUploadManagerImpl implements AppDataUploadManager {
     }
 
     @Override
-    public Integer logData(
+    public Integer upload(
             UUID organizationId,
             UUID studyId,
             String participantId,
