@@ -117,17 +117,8 @@ public class DataDeletionService implements DataDeletionManager {
             // Be super careful here that the mapping is one-to-one:
             // don't delete neighbors that might have other neighbors/participants
 
-            Set<UUID> srcNeighborSetIds = new HashSet<>(), dstNeighborSetIds = Sets.newHashSet();
-
-            if ( devicesESID != null )
-                srcNeighborSetIds.add( devicesESID );
-            if ( appDataESID != null )
-                srcNeighborSetIds.add( appDataESID );
-            if ( preprocessedDataESID != null )
-                srcNeighborSetIds.add( preprocessedDataESID );
-
-            if ( answersESID != null )
-                dstNeighborSetIds.add( answersESID );
+            Set<UUID> srcNeighborSetIds = ImmutableSet.of( devicesESID, appDataESID, preprocessedDataESID);
+            Set<UUID> dstNeighborSetIds = ImmutableSet.of( answersESID);
 
             Map<UUID, Set<UUID>> toDeleteEntitySetIdEntityKeyId = Maps.newHashMap();
 
@@ -151,7 +142,7 @@ public class DataDeletionService implements DataDeletionManager {
                                 );
 
                         if ( participantNeighbors.size() == 0 ) {
-                            logger.debug( "Attempt to remove participant without data." );
+                            logger.info( "Attempt to remove participant without data." );
                         }
 
                         // fill Map<entitySetId, Set<entityKeyId>>

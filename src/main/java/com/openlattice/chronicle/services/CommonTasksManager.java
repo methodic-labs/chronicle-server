@@ -36,7 +36,7 @@ public class CommonTasksManager {
 
     public UUID getPropertyTypeId( FullQualifiedName fqn ) {
 
-        return edmCacheManager.getPropertyTypeIdsByFQN().get( fqn );
+        return edmCacheManager.getPropertyTypeId( fqn );
     }
 
     public UUID getEntitySetId(
@@ -47,10 +47,10 @@ public class CommonTasksManager {
     ) {
 
         if ( organizationId == null ) {
-            return edmCacheManager.getEntitySetIdMap().getOrDefault( entitySetName, null );
+            return edmCacheManager.getHistoricalEntitySetId( entitySetName );
         }
 
-        Map<CollectionTemplateTypeName, UUID> templateEntitySetIdMap = scheduledTasksManager.entitySetIdsByOrgId
+        Map<CollectionTemplateTypeName, UUID> templateEntitySetIdMap = scheduledTasksManager.getEntitySetIdsByOrgId()
                 .getOrDefault( appComponent, ImmutableMap.of() )
                 .getOrDefault( organizationId, ImmutableMap.of() );
 
@@ -80,7 +80,7 @@ public class CommonTasksManager {
                 logger.error( " unable to load apis" );
             }
         }
-        return scheduledTasksManager.entitySetIdsByOrgId
+        return scheduledTasksManager.getEntitySetIdsByOrgId()
                 .getOrDefault( CHRONICLE, ImmutableMap.of() )
                 .getOrDefault( organizationId, ImmutableMap.of() )
                 .getOrDefault( CollectionTemplateTypeName.PARTICIPANTS, null );
@@ -88,22 +88,22 @@ public class CommonTasksManager {
 
     public UUID getParticipantEntityKeyId( UUID organizationId, UUID studyId, String participantId ) {
         if ( organizationId != null ) {
-            Map<UUID, Map<String, UUID>> participants = scheduledTasksManager.studyParticipantsByOrg
+            Map<UUID, Map<String, UUID>> participants = scheduledTasksManager.getStudyParticipantsByOrg()
                     .getOrDefault( organizationId, Map.of() );
 
             return participants.getOrDefault( studyId, Map.of() ).getOrDefault( participantId, null );
         }
 
-        return scheduledTasksManager.studyParticipants.getOrDefault( studyId, Map.of() )
+        return scheduledTasksManager.getStudyParticipants().getOrDefault( studyId, Map.of() )
                 .getOrDefault( participantId, null );
     }
 
     public UUID getStudyEntityKeyId( UUID organizationId, UUID studyId ) {
         if ( organizationId != null ) {
-            return scheduledTasksManager.studyEntityKeyIdsByOrg.getOrDefault( organizationId, Map.of() )
+            return scheduledTasksManager.getStudyEntityKeyIdsByOrg().getOrDefault( organizationId, Map.of() )
                     .getOrDefault( studyId, null );
         }
-        return scheduledTasksManager.studyEKIDById.getOrDefault( studyId, null );
+        return scheduledTasksManager.getStudyEKIDById().getOrDefault( studyId, null );
     }
 
 }

@@ -437,10 +437,10 @@ public class AppDataUploadService implements AppDataUploadManager {
 
     private boolean hasUserAppPackageName( UUID organizationId, String packageName ) {
         if ( organizationId != null ) {
-            return scheduledTasksManager.userAppsFullNamesByOrg.getOrDefault( packageName, ImmutableSet.of() )
+            return scheduledTasksManager.getUserAppsFullNamesByOrg().getOrDefault( packageName, ImmutableSet.of() )
                     .contains( organizationId );
         }
-        return scheduledTasksManager.userAppsFullNameValues.contains( packageName );
+        return scheduledTasksManager.getUserAppsFullNameValues().contains( packageName );
     }
 
     // create entities and edges
@@ -494,7 +494,7 @@ public class AppDataUploadService implements AppDataUploadManager {
             appPackageName = appName = getFirstValueOrNullByUUID( appEntity, FULL_NAME_FQN );
             String dateLogged = getMidnightDateTime( getFirstValueOrNullByUUID( appEntity, DATE_LOGGED_FQN ) );
 
-            if ( scheduledTasksManager.systemAppPackageNames.contains( appPackageName ) || dateLogged == null )
+            if ( scheduledTasksManager.getSystemAppPackageNames().contains( appPackageName ) || dateLogged == null )
                 continue; // 'system' app
 
             if ( appEntity.containsKey( commonTasksManager.getPropertyTypeId( TITLE_FQN ) ) ) {

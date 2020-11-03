@@ -45,15 +45,11 @@ public class EdmCacheManager {
                 .collect( ImmutableMap.toImmutableMap( PropertyType::getType, PropertyType::getId ) ) );
     }
 
-    public Map<UUID, PropertyType> getPropertyTypesById() {
-        return this.propertyTypesById;
+    public UUID getPropertyTypeId( FullQualifiedName fqn ) {
+        return this.propertyTypeIdsByFQN.get( fqn );
     }
 
-    public Map<String, UUID> getEntitySetIdMap () {
-        return this.entitySetIdMap;
-    }
-
-    public Map<FullQualifiedName, UUID> getPropertyTypeIdsByFQN () {
-        return this.propertyTypeIdsByFQN;
+    public UUID getHistoricalEntitySetId( String entitySetName ) {
+        return this.entitySetIdMap.getOrDefault( entitySetName, null );
     }
 }

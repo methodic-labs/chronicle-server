@@ -218,11 +218,11 @@ public class EnrollmentManagerService implements EnrollmentManager {
                 datasourceId );
 
         if ( organizationId != null ) {
-            return scheduledTasksManager.deviceIdsByOrg.getOrDefault( organizationId, Map.of() )
+            return scheduledTasksManager.getDeviceIdsByOrg().getOrDefault( organizationId, Map.of() )
                     .getOrDefault( datasourceId, null );
         }
 
-        return scheduledTasksManager.deviceIdsByEKID.getOrDefault( datasourceId, null );
+        return scheduledTasksManager.getDeviceIdsByEKID().getOrDefault( datasourceId, null );
     }
 
     @Override
