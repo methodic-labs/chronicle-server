@@ -4,6 +4,7 @@ import com.dataloom.streams.StreamUtil;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.*;
 import com.openlattice.ApiUtil;
+import com.openlattice.chronicle.data.EntitiesAndEdges;
 import com.openlattice.chronicle.data.ParticipationStatus;
 import com.openlattice.chronicle.services.ApiCacheManager;
 import com.openlattice.chronicle.services.ScheduledTasksManager;
@@ -11,7 +12,6 @@ import com.openlattice.chronicle.services.edm.EdmCacheManager;
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager;
 import com.openlattice.client.ApiClient;
 import com.openlattice.data.*;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
 import org.slf4j.Logger;
@@ -229,7 +229,7 @@ public class AppDataUploadService implements AppDataUploadManager {
         return dateTimes;
     }
 
-    private Pair<Map<EntityKey, Map<UUID, Set<Object>>>, Set<Triple<EntityKey, EntityKey, EntityKey>>> getMetadataEntitiesAndEdges(
+    private EntitiesAndEdges getMetadataEntitiesAndEdges(
             DataApi dataApi,
             DataIntegrationApi integrationApi,
             List<SetMultimap<UUID, Object>> data,
@@ -308,7 +308,7 @@ public class AppDataUploadService implements AppDataUploadManager {
         // association: participant  => has => metadata
         edgesByEntityKey.add( Triple.of( participantEK, hasEK, metadataEK ) );
 
-        return Pair.of( entitiesByEntityKey, edgesByEntityKey );
+        return new EntitiesAndEdges( entitiesByEntityKey, edgesByEntityKey );
     }
 
     private String getFirstValueOrNull( SetMultimap<UUID, Object> entity, FullQualifiedName fqn ) {
@@ -495,8 +495,9 @@ public class AppDataUploadService implements AppDataUploadManager {
             appPackageName = appName = getFirstValueOrNull( appEntity, FULL_NAME_FQN );
             String dateLogged = getMidnightDateTime( getFirstValueOrNull( appEntity, DATE_LOGGED_FQN ) );
 
-            if ( scheduledTasksManager.getSystemAppPackageNames().contains( appPackageName ) || dateLogged == null )
+            if ( scheduledTasksManager.getSystemAppPackageNames().contains( appPackageName ) || dateLogged == null ) {
                 continue; // 'system' app
+            }
 
             if ( appEntity.containsKey( edmCacheManager.getPropertyTypeId( TITLE_FQN ) ) ) {
                 appName = getFirstValueOrNull( appEntity, TITLE_FQN );
@@ -531,7 +532,7 @@ public class AppDataUploadService implements AppDataUploadManager {
             EntityKey participantEK = getParticipantEntityKey( participantESID, participantId );
             edgesByEntityKey.add( Triple.of( userAppEK, usedByEK, participantEK ) );
         }
-        Pair<Map<EntityKey, Map<UUID, Set<Object>>>, Set<Triple<EntityKey, EntityKey, EntityKey>>> metadata = getMetadataEntitiesAndEdges(
+        EntitiesAndEdges metadata = getMetadataEntitiesAndEdges(
                 dataApi,
                 dataIntegrationApi,
                 data,
@@ -542,8 +543,8 @@ public class AppDataUploadService implements AppDataUploadManager {
                 participantId
         );
         if ( metadata != null ) {
-            entitiesByEntityKey.putAll( metadata.getLeft() );
-            edgesByEntityKey.addAll( metadata.getRight() );
+            entitiesByEntityKey.putAll( metadata.getEntityByEntityKey() );
+            edgesByEntityKey.addAll( metadata.getEdgeEntityKeys() );
         }
 
         DataGraph dataGraph = new DataGraph( appDataEntities, appDataAssociations );
