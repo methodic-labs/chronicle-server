@@ -1,9 +1,11 @@
 package com.openlattice.chronicle.services.download;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.openlattice.chronicle.services.CommonTasksManager;
+import com.openlattice.chronicle.services.edm.EdmCacheService;
 import com.openlattice.client.ApiClient;
 import com.openlattice.client.RetrofitFactory;
 import com.openlattice.data.requests.NeighborEntityDetails;
@@ -23,9 +25,7 @@ import org.slf4j.LoggerFactory;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.*;
-import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE_DATA_COLLECTION;
 import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.APPDATA;
@@ -52,9 +52,11 @@ public class DataDownloadService implements DataDownloadManager {
     protected static final Logger logger = LoggerFactory.getLogger( DataDownloadService.class );
 
     private final CommonTasksManager commonTasksManager;
+    private final EdmCacheService    edmCacheService;
 
-    public DataDownloadService( CommonTasksManager commonTasksManager ) {
+    public DataDownloadService( CommonTasksManager commonTasksManager, EdmCacheService edmCacheService ) {
         this.commonTasksManager = commonTasksManager;
+        this.edmCacheService = edmCacheService;
     }
 
     private Iterable<Map<String, Set<Object>>> getParticipantDataHelper(
@@ -89,10 +91,6 @@ public class DataDownloadService implements DataDownloadManager {
              * 2. get all PropertyTypes and set up maps for easy lookups
              */
 
-            Map<UUID, PropertyType> propertyTypesById = StreamSupport
-                    .stream( edmApi.getPropertyTypes().spliterator(), false )
-                    .collect( Collectors.toMap( PropertyType::getId, Function.identity() ) );
-
             Map<UUID, Map<UUID, EntitySetPropertyMetadata>> meta =
                     entitySetsApi.getPropertyMetadataForEntitySets( Set.of( sourceES.getId(), edgeES.getId() ) );
 
@@ -106,13 +104,13 @@ public class DataDownloadService implements DataDownloadManager {
             Set<FullQualifiedName> sourceKeys = edmApi.getEntityType( sourceES.getEntityTypeId() )
                     .getKey()
                     .stream()
-                    .map( propertyTypeId -> propertyTypesById.get( propertyTypeId ).getType() )
+                    .map( propertyTypeId -> edmCacheService.getPropertyType( propertyTypeId ).getType() )
                     .collect( Collectors.toSet() );
 
             Set<FullQualifiedName> edgeKeys = edmApi.getEntityType( edgeES.getEntityTypeId() )
                     .getKey()
                     .stream()
-                    .map( propertyTypeId -> propertyTypesById.get( propertyTypeId ).getType() )
+                    .map( propertyTypeId -> edmCacheService.getPropertyType( propertyTypeId ).getType() )
                     .collect( Collectors.toSet() );
 
             /*
@@ -134,7 +132,7 @@ public class DataDownloadService implements DataDownloadManager {
              */
 
             return participantNeighbors
-                    .getOrDefault( participantEntityKeyId, List.of() )
+                    .getOrDefault( participantEntityKeyId, ImmutableList.of() )
                     .stream()
                     .filter( neighbor -> neighbor.getNeighborDetails().isPresent() )
                     .map( neighbor -> {
@@ -156,9 +154,7 @@ public class DataDownloadService implements DataDownloadManager {
                                 .filter( entry -> !sourceKeys.contains( entry.getKey() ) )
                                 .forEach( entry -> {
                                     Set<Object> values = entry.getValue();
-                                    PropertyType propertyType = propertyTypesById.get(
-                                            commonTasksManager.getPropertyTypeId( entry.getKey() )
-                                    );
+                                    PropertyType propertyType = edmCacheService.getPropertyType( entry.getKey() );
                                     String propertyTitle = sourceMeta.get( propertyType.getId() ).getTitle();
                                     if ( propertyType.getDatatype() == EdmPrimitiveTypeKind.DateTimeOffset ) {
                                         Set<Object> dateTimeValues = values
@@ -189,7 +185,7 @@ public class DataDownloadService implements DataDownloadManager {
                                 .stream()
                                 .filter( entry -> !edgeKeys.contains( entry.getKey() ) )
                                 .forEach( entry -> {
-                                    UUID propertyTypeId = commonTasksManager.getPropertyTypeId( entry.getKey() );
+                                    UUID propertyTypeId = edmCacheService.getPropertyTypeId( entry.getKey() );
                                     String propertyTitle = edgeMeta.get( propertyTypeId ).getTitle();
                                     cleanEntityData.put( USER_PREFIX + propertyTitle, entry.getValue() );
                                 } );

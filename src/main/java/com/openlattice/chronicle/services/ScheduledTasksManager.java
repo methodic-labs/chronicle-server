@@ -7,6 +7,7 @@ import com.openlattice.apps.AppApi;
 import com.openlattice.apps.UserAppConfig;
 import com.openlattice.authorization.securable.AbstractSecurableObject;
 import com.openlattice.chronicle.constants.*;
+import com.openlattice.chronicle.services.edm.EdmCacheService;
 import com.openlattice.client.ApiClient;
 import com.openlattice.collections.CollectionTemplateType;
 import com.openlattice.collections.CollectionsApi;
@@ -136,13 +137,13 @@ public class ScheduledTasksManager {
     private final Set<String> systemAppPackageNames = Sets.newHashSet();
 
     private final ApiCacheManager apiCacheManager;
-    private final EdmCacheManager edmCacheManager;
+    private final EdmCacheService edmCacheService;
 
     public ScheduledTasksManager(
             ApiCacheManager apiCacheManager,
-            EdmCacheManager edmCacheManager ) throws ExecutionException {
+            EdmCacheService edmCacheService ) throws ExecutionException {
         this.apiCacheManager = apiCacheManager;
-        this.edmCacheManager = edmCacheManager;
+        this.edmCacheService = edmCacheService;
 
         syncCallingUser();
         initializeEntitySets();
@@ -164,7 +165,7 @@ public class ScheduledTasksManager {
                 .loadSelectedEntitySetData(
                         entitySetId,
                         new EntitySetSelection(
-                                Optional.of( fqns.stream().map( edmCacheManager::getPropertyTypeId ).collect(
+                                Optional.of( fqns.stream().map( edmCacheService::getPropertyTypeId ).collect(
                                         Collectors.toSet() ) )
                         ),
                         FileType.json
@@ -257,7 +258,7 @@ public class ScheduledTasksManager {
 
             Iterable<SetMultimap<FullQualifiedName, Object>> entitySetData = getEntitySetData(
                     dataApi,
-                    edmCacheManager.getHistoricalEntitySetId( APPS_DICTIONARY_ES ),
+                    edmCacheService.getHistoricalEntitySetId( APPS_DICTIONARY_ES ),
                     ImmutableSet.of( FULL_NAME_FQN, RECORD_TYPE_FQN)
             );
             logger.info(
@@ -296,7 +297,7 @@ public class ScheduledTasksManager {
             // load entities from chronicle_user_apps
             Iterable<SetMultimap<FullQualifiedName, Object>> data = getEntitySetData(
                     dataApi,
-                    edmCacheManager.getHistoricalEntitySetId( USER_APPS_ES ),
+                    edmCacheService.getHistoricalEntitySetId( USER_APPS_ES ),
                     ImmutableSet.of( FULL_NAME_FQN )
             );
 
@@ -477,8 +478,8 @@ public class ScheduledTasksManager {
                     .newHashMap(); // studyID -> participantId -> participantEKID
 
             // entity set ids
-            UUID participatedInESID = edmCacheManager.getHistoricalEntitySetId( PARTICIPATED_IN_ES );
-            UUID studiesESID = edmCacheManager.getHistoricalEntitySetId( STUDY_ES );
+            UUID participatedInESID = edmCacheService.getHistoricalEntitySetId( PARTICIPATED_IN_ES );
+            UUID studiesESID = edmCacheService.getHistoricalEntitySetId( STUDY_ES );
 
             // get study entities
             Iterable<SetMultimap<FullQualifiedName, Object>> studyEntities = getEntitySetData(
@@ -577,7 +578,7 @@ public class ScheduledTasksManager {
             DataApi dataApi = apiClient.getDataApi();
 
             Map<String, UUID> deviceIdsByEKID = getDeviceIdsByEKID( dataApi,
-                    edmCacheManager.getHistoricalEntitySetId( DEVICES_ES ) );
+                    edmCacheService.getHistoricalEntitySetId( DEVICES_ES ) );
 
             this.deviceIdsByEKID.putAll( deviceIdsByEKID );
 

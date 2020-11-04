@@ -30,15 +30,15 @@ import com.openlattice.authentication.Auth0Configuration;
 import com.openlattice.chronicle.configuration.ChronicleConfiguration;
 import com.openlattice.chronicle.services.ApiCacheManager;
 import com.openlattice.chronicle.services.CommonTasksManager;
-import com.openlattice.chronicle.services.EdmCacheManager;
+import com.openlattice.chronicle.services.edm.EdmCacheService;
 import com.openlattice.chronicle.services.ScheduledTasksManager;
 import com.openlattice.chronicle.services.delete.DataDeletionService;
 import com.openlattice.chronicle.services.download.DataDownloadManager;
 import com.openlattice.chronicle.services.download.DataDownloadService;
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager;
-import com.openlattice.chronicle.services.enrollment.EnrollmentManagerService;
+import com.openlattice.chronicle.services.enrollment.EnrollmentService;
 import com.openlattice.chronicle.services.surveys.SurveysManager;
-import com.openlattice.chronicle.services.surveys.SurveysManagerService;
+import com.openlattice.chronicle.services.surveys.SurveysService;
 import com.openlattice.chronicle.services.upload.AppDataUploadManager;
 import com.openlattice.chronicle.services.upload.AppDataUploadService;
 import com.openlattice.data.serializers.FullQualifiedNameJacksonSerializer;
@@ -85,8 +85,8 @@ public class ChronicleServerServicesPod {
     }
 
     @Bean
-    public EdmCacheManager edmCacheManager() throws IOException, ExecutionException {
-        return new EdmCacheManager( apiCacheManager() );
+    public EdmCacheService edmCacheManager() throws IOException, ExecutionException {
+        return new EdmCacheService( apiCacheManager() );
     }
 
     @Bean
@@ -106,18 +106,19 @@ public class ChronicleServerServicesPod {
 
     @Bean
     public DataDownloadManager dataDownloadManager() throws IOException, ExecutionException {
-        return new DataDownloadService( commonTasksManager() );
+        return new DataDownloadService( commonTasksManager(), edmCacheManager() );
     }
 
     @Bean
     public EnrollmentManager enrollmentManager() throws IOException, ExecutionException {
-        return new EnrollmentManagerService( apiCacheManager(), commonTasksManager(), scheduledTasksManager() );
+        return new EnrollmentService( apiCacheManager(), edmCacheManager(), commonTasksManager(), scheduledTasksManager() );
     }
 
     @Bean
     public AppDataUploadManager appDataUploadManager() throws IOException, ExecutionException {
         return new AppDataUploadService(
                 apiCacheManager(),
+                edmCacheManager(),
                 scheduledTasksManager(),
                 commonTasksManager(),
                 enrollmentManager()
@@ -126,8 +127,9 @@ public class ChronicleServerServicesPod {
 
     @Bean
     public SurveysManager surveysManager() throws IOException, ExecutionException {
-        return new SurveysManagerService(
+        return new SurveysService(
                 apiCacheManager(),
+                edmCacheManager(),
                 enrollmentManager(),
                 commonTasksManager(),
                 scheduledTasksManager()

@@ -7,6 +7,7 @@ import com.openlattice.ApiUtil;
 import com.openlattice.chronicle.data.ParticipationStatus;
 import com.openlattice.chronicle.services.ApiCacheManager;
 import com.openlattice.chronicle.services.CommonTasksManager;
+import com.openlattice.chronicle.services.edm.EdmCacheService;
 import com.openlattice.chronicle.services.ScheduledTasksManager;
 import com.openlattice.chronicle.sources.AndroidDevice;
 import com.openlattice.chronicle.sources.Datasource;
@@ -51,20 +52,24 @@ import static com.openlattice.chronicle.util.ChronicleServerUtil.getFirstValueOr
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
  */
-public class EnrollmentManagerService implements EnrollmentManager {
-    protected static final Logger logger = LoggerFactory.getLogger( EnrollmentManagerService.class );
+public class EnrollmentService implements EnrollmentManager {
+    protected static final Logger logger = LoggerFactory.getLogger( EnrollmentService.class );
 
     private final ApiCacheManager       apiCacheManager;
     private final CommonTasksManager    commonTasksManager;
     private final ScheduledTasksManager scheduledTasksManager;
+    private final EdmCacheService       edmCacheService;
 
-    public EnrollmentManagerService(
+    public EnrollmentService(
             ApiCacheManager apiCacheManager,
+            EdmCacheService edmCacheService,
             CommonTasksManager commonTasksManager,
             ScheduledTasksManager scheduledTasksManager ) {
-        this.apiCacheManager = apiCacheManager;
+
+        this.edmCacheService = edmCacheService;
         this.commonTasksManager = commonTasksManager;
         this.scheduledTasksManager = scheduledTasksManager;
+        this.apiCacheManager = apiCacheManager;
     }
 
     private UUID reserveDeviceEntityKeyId(
@@ -75,7 +80,7 @@ public class EnrollmentManagerService implements EnrollmentManager {
         EntityKey entityKey = new EntityKey(
                 deviceEntitySetId,
                 ApiUtil.generateDefaultEntityId(
-                        ImmutableList.of( commonTasksManager.getPropertyTypeId( STRING_ID_FQN ) ),
+                        ImmutableList.of( edmCacheService.getPropertyTypeId( STRING_ID_FQN ) ),
                         data
                 )
         );
@@ -115,13 +120,13 @@ public class EnrollmentManagerService implements EnrollmentManager {
 
             // device entity data
             Map<UUID, Set<Object>> deviceData = new HashMap<>();
-            deviceData.put( commonTasksManager.getPropertyTypeId( STRING_ID_FQN ), Sets.newHashSet( datasourceId ) );
+            deviceData.put( edmCacheService.getPropertyTypeId( STRING_ID_FQN ), Sets.newHashSet( datasourceId ) );
 
             if ( datasource.isPresent() && AndroidDevice.class.isAssignableFrom( datasource.get().getClass() ) ) {
                 AndroidDevice device = (AndroidDevice) datasource.get();
                 deviceData
-                        .put( commonTasksManager.getPropertyTypeId( MODEL_FQN ), Sets.newHashSet( device.getModel() ) );
-                deviceData.put( commonTasksManager.getPropertyTypeId( VERSION_FQN ),
+                        .put( edmCacheService.getPropertyTypeId( MODEL_FQN ), Sets.newHashSet( device.getModel() ) );
+                deviceData.put( edmCacheService.getPropertyTypeId( VERSION_FQN ),
                         Sets.newHashSet( device.getOsVersion() ) );
             }
 
@@ -144,7 +149,7 @@ public class EnrollmentManagerService implements EnrollmentManager {
             ListMultimap<UUID, DataEdge> associations = ArrayListMultimap.create();
 
             Map<UUID, Set<Object>> usedByEntity = ImmutableMap
-                    .of( commonTasksManager.getPropertyTypeId( STRING_ID_FQN ), Sets.newHashSet( UUID.randomUUID() ) );
+                    .of( edmCacheService.getPropertyTypeId( STRING_ID_FQN ), Sets.newHashSet( UUID.randomUUID() ) );
 
             associations.put( usedByESID, new DataEdge( deviceEDK, participantEDK, usedByEntity ) );
             associations.put( usedByESID, new DataEdge( deviceEDK, studyEDK, usedByEntity ) );
@@ -181,21 +186,18 @@ public class EnrollmentManagerService implements EnrollmentManager {
         logger.info( "isKnownParticipant {} = {}", participantId, isKnownParticipant );
         logger.info( "isKnownDatasource {} = {}", datasourceId, deviceEKID != null );
 
-        if ( isKnownParticipant && deviceEKID == null ) {
-            return registerDatasourceHelper( organizationId, studyId, participantId, datasourceId, datasource );
-        } else if ( isKnownParticipant ) {
-            return deviceEKID;
-        } else {
-            logger.error(
-                    "Unable to enroll device for orgId {} study {}, participant {}, and datasource {} due valid participant = {} or valid device = {}",
+        if ( !isKnownParticipant ) {
+            logger.error( "unknown participant: {} when enrolling: orgId = {}, studyId = {}, datasourceId = {}",
+                    participantId,
                     organizationId,
                     studyId,
-                    participantId,
-                    datasourceId,
-                    isKnownParticipant,
-                    deviceEKID != null );
-            throw new AccessDeniedException( "Unable to enroll device." );
+                    datasourceId );
+            throw new AccessDeniedException( "unable to enroll device" );
         }
+        if ( deviceEKID != null ) {
+            return deviceEKID;
+        }
+        return registerDatasourceHelper( organizationId, studyId, participantId, datasourceId, datasource );
     }
 
     @Override
@@ -246,18 +248,30 @@ public class EnrollmentManagerService implements EnrollmentManager {
 
             UUID entitySetId = commonTasksManager.getParticipantEntitySetId( organizationId, studyId );
             if ( entitySetId == null ) {
-                logger.error( "Unable to load participant EntitySet id." );
+                logger.error( "Unable to ge participant ESID: orgId = {}, studyId = {}, participantEKID = {}",
+                        organizationId,
+                        studyId,
+                        participantEntityKeyId );
                 return ImmutableMap.of();
             }
             Map<FullQualifiedName, Set<Object>> entity = dataApi.getEntity( entitySetId, participantEntityKeyId );
             if ( entity == null ) {
-                logger.error( "Unable to get participant entity." );
+                logger.error(
+                        "Unable to get participant entity: orgId  = {}, studyId = {} participantEKID = {}, participantESID = {}",
+                        organizationId,
+                        studyId,
+                        participantEntityKeyId,
+                        entitySetId );
                 return ImmutableMap.of();
             }
             return entity;
 
         } catch ( ExecutionException e ) {
-            logger.error( "Unable to get participant entity.", e );
+            logger.error( "Unable to get participant entity: orgId = {}, studyId={}, participantEKID = {} ",
+                    organizationId,
+                    studyId,
+                    participantEntityKeyId,
+                    e );
             return ImmutableMap.of();
         }
     }
@@ -286,7 +300,10 @@ public class EnrollmentManagerService implements EnrollmentManager {
             UUID participantEKID = Preconditions
                     .checkNotNull( commonTasksManager
                                     .getParticipantEntityKeyId( organizationId, studyId, participantId ),
-                            "participant not found" );
+                            "participant not found: orgId = %s, studyId = %s, participantId = %s",
+                            organizationId,
+                            studyId,
+                            participantId );
 
             // filtered search on participants to get associated study entities
             Map<UUID, List<NeighborEntityDetails>> neighborResults = searchApi.executeFilteredEntityNeighborSearch(
@@ -336,7 +353,7 @@ public class EnrollmentManagerService implements EnrollmentManager {
             // ensure study exists
             UUID studyEKID = Preconditions
                     .checkNotNull( commonTasksManager.getStudyEntityKeyId( organizationId, studyId ),
-                            "study entity must exist" );
+                            "study does not exist: orgId=%s, studyId=%s", organizationId, studyId);
 
             Map<UUID, List<NeighborEntityDetails>> neighbors = searchApi
                     .executeFilteredEntityNeighborSearch(
@@ -359,8 +376,8 @@ public class EnrollmentManagerService implements EnrollmentManager {
                     .values()
                     .stream()
                     .flatMap( Collection::stream )
-                    .anyMatch( neighbor -> neighbor.getAssociationDetails().getOrDefault( OL_ID_FQN, Set.of( "" ) )
-                            .iterator().next().toString().equals( studyId.toString() ) );
+                    .map( NeighborEntityDetails::getAssociationDetails )
+                    .anyMatch( neighbor -> studyId.toString().equals( getFirstValueOrNull( neighbor, OL_ID_FQN ) ));
 
         } catch ( Exception e ) {
             String error =
@@ -368,22 +385,5 @@ public class EnrollmentManagerService implements EnrollmentManager {
             logger.error( error, e );
             throw new RuntimeException( error );
         }
-    }
-
-    @Override
-    public Map<String, UUID> getPropertyTypeIds( Set<String> propertyTypeFqns ) {
-        EdmApi edmApi;
-        try {
-            ApiClient apiClient = apiCacheManager.prodApiClientCache.get( ApiClient.class );
-            edmApi = apiClient.getEdmApi();
-        } catch ( ExecutionException e ) {
-            logger.error( "Unable to load EdmApi" );
-            return ImmutableMap.of();
-        }
-
-        return propertyTypeFqns.stream().map( FullQualifiedName::new ).map( fqn -> Pair
-                .of( fqn.getFullQualifiedNameAsString(),
-                        edmApi.getPropertyTypeId( fqn.getNamespace(), fqn.getName() ) ) )
-                .collect( Collectors.toMap( Pair::getLeft, Pair::getRight ) );
     }
 }

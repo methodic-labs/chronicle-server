@@ -7,6 +7,7 @@ import com.openlattice.chronicle.data.ChronicleQuestionnaire;
 import com.openlattice.chronicle.services.ApiCacheManager;
 import com.openlattice.chronicle.services.CommonTasksManager;
 import com.openlattice.chronicle.services.ScheduledTasksManager;
+import com.openlattice.chronicle.services.edm.EdmCacheService;
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager;
 import com.openlattice.client.ApiClient;
 import com.openlattice.data.DataApi;
@@ -14,7 +15,6 @@ import com.openlattice.data.DataAssociation;
 import com.openlattice.data.DataGraph;
 import com.openlattice.data.UpdateType;
 import com.openlattice.data.requests.NeighborEntityDetails;
-import com.openlattice.edm.EdmApi;
 import com.openlattice.search.SearchApi;
 import com.openlattice.search.requests.EntityNeighborsFilter;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
@@ -58,19 +58,23 @@ import static com.openlattice.edm.EdmConstants.ID_FQN;
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
  */
-public class SurveysManagerService implements SurveysManager {
-    protected static final Logger logger = LoggerFactory.getLogger( SurveysManagerService.class );
+public class SurveysService implements SurveysManager {
+    protected static final Logger logger = LoggerFactory.getLogger( SurveysService.class );
 
     private final ApiCacheManager       apiCacheManager;
     private final EnrollmentManager     enrollmentManager;
     private final CommonTasksManager    commonTasksManager;
     private final ScheduledTasksManager scheduledTasksManager;
+    private final EdmCacheService       edmCacheService;
 
-    public SurveysManagerService(
+    public SurveysService(
             ApiCacheManager apiCacheManager,
+            EdmCacheService edmCacheService,
             EnrollmentManager enrollmentManager,
             CommonTasksManager commonTasksManager,
             ScheduledTasksManager scheduledTasksManager ) {
+
+        this.edmCacheService = edmCacheService;
         this.apiCacheManager = apiCacheManager;
         this.enrollmentManager = enrollmentManager;
         this.commonTasksManager = commonTasksManager;
@@ -108,63 +112,65 @@ public class SurveysManagerService implements SurveysManager {
             Map<UUID, List<NeighborEntityDetails>> neighbors = searchApi.executeFilteredEntityNeighborSearch(
                     studiesESID,
                     new EntityNeighborsFilter(
-                            Set.of( studyEKID ),
-                            Optional.of( Set.of( questionnaireESID ) ),
-                            Optional.of( Set.of( studiesESID ) ),
-                            Optional.of( Set.of( partOfESID ) )
+                            ImmutableSet.of( studyEKID ),
+                            Optional.of( ImmutableSet.of( questionnaireESID ) ),
+                            Optional.of( ImmutableSet.of( studiesESID ) ),
+                            Optional.of( ImmutableSet.of( partOfESID ) )
                     )
             );
 
-            // find questionnaire entity matching given entity key id
-            if ( neighbors.containsKey( studyEKID ) ) {
-                ChronicleQuestionnaire questionnaire = new ChronicleQuestionnaire();
-
-                neighbors.get( studyEKID )
-                        .stream()
-                        .filter( neighbor -> questionnaireEKID
-                                .equals( getFirstUUIDOrNull( neighbor.getNeighborDetails().orElse( Map.of() ),
-                                        ID_FQN ) ) )
-                        .map( neighbor -> neighbor.getNeighborDetails().get() )
-                        .findFirst() // If a study has multiple questionnaires, we are only interested in the one with a matching EKID
-                        .ifPresent( questionnaire::setQuestionnaireDetails );
-
-                if ( questionnaire.getQuestionnaireDetails() == null ) {
-                    logger.info( "questionnaire does not exist - studyId: {}, questionnaireEKID: {}, neighbors: {}",
-                            studyId,
-                            questionnaireEKID,
-                            neighbors.size() );
-                    throw new IllegalArgumentException(
-                            "questionnaire does not exist, studyId: " + studyId + "questionnaire EKID = "
-                                    + questionnaireEKID );
-                }
-                logger.info( "retrieved questionnaire: {}", questionnaire.getQuestionnaireDetails().toString() );
-
-                // get questions neighboring questionnaire
-                neighbors = searchApi.executeFilteredEntityNeighborSearch(
-                        questionnaireESID,
-                        new EntityNeighborsFilter(
-                                Set.of( questionnaireEKID ),
-                                Optional.of( Set.of( questionESID ) ),
-                                Optional.of( Set.of( questionnaireESID ) ),
-                                Optional.of( Set.of( partOfESID ) )
-                        )
-                );
-
-                List<Map<FullQualifiedName, Set<Object>>> questions = neighbors
-                        .getOrDefault( questionnaireEKID, List.of() )
-                        .stream()
-                        .filter( neighbor -> neighbor.getNeighborDetails().isPresent() )
-                        .map( neighbor -> neighbor.getNeighborDetails().get() )
-                        .collect( Collectors.toList() );
-
-                questionnaire.setQuestions( questions );
-
-                logger.info( "retrieved {} questions associated with questionnaire {}",
-                        questions.size(),
-                        questionnaireEKID );
-
-                return questionnaire;
+            if ( !neighbors.containsKey( studyEKID ) ) {
+                throw new IllegalArgumentException( "questionnaire not found" );
             }
+
+            // find questionnaire entity matching given entity key id
+            ChronicleQuestionnaire questionnaire = new ChronicleQuestionnaire();
+
+            neighbors.get( studyEKID )
+                    .stream()
+                    .filter( neighbor -> questionnaireEKID
+                            .equals( getFirstUUIDOrNull( neighbor.getNeighborDetails().orElse( Map.of() ),
+                                    ID_FQN ) ) )
+                    .map( neighbor -> neighbor.getNeighborDetails().get() )
+                    .findFirst() // If a study has multiple questionnaires, we are only interested in the one with a matching EKID
+                    .ifPresent( questionnaire::setQuestionnaireDetails );
+
+            if ( questionnaire.getQuestionnaireDetails() == null ) {
+                logger.info( "questionnaire does not exist - studyId: {}, questionnaireEKID: {}, neighbors: {}",
+                        studyId,
+                        questionnaireEKID,
+                        neighbors.size() );
+                throw new IllegalArgumentException(
+                        "questionnaire does not exist, studyId: " + studyId + "questionnaire EKID = "
+                                + questionnaireEKID );
+            }
+            logger.info( "retrieved questionnaire: {}", questionnaire.getQuestionnaireDetails().toString() );
+
+            // get questions neighboring questionnaire
+            neighbors = searchApi.executeFilteredEntityNeighborSearch(
+                    questionnaireESID,
+                    new EntityNeighborsFilter(
+                            ImmutableSet.of( questionnaireEKID ),
+                            Optional.of( ImmutableSet.of( questionESID ) ),
+                            Optional.of( ImmutableSet.of( questionnaireESID ) ),
+                            Optional.of( ImmutableSet.of( partOfESID ) )
+                    )
+            );
+
+            List<Map<FullQualifiedName, Set<Object>>> questions = neighbors
+                    .getOrDefault( questionnaireEKID, List.of() )
+                    .stream()
+                    .filter( neighbor -> neighbor.getNeighborDetails().isPresent() )
+                    .map( neighbor -> neighbor.getNeighborDetails().get() )
+                    .collect( Collectors.toList() );
+
+            questionnaire.setQuestions( questions );
+
+            logger.info( "retrieved {} questions associated with questionnaire {}",
+                    questions.size(),
+                    questionnaireEKID );
+
+            return questionnaire;
 
         } catch ( Exception e ) {
             // catch all errors encountered during execution
@@ -173,12 +179,6 @@ public class SurveysManagerService implements SurveysManager {
                     questionnaireEKID );
             throw new RuntimeException( "questionnaire not found" );
         }
-
-        /*
-         * IF we get to this point, the requested questionnaire was not found. We shouldn't return null since
-         * the caller would get an "ok" response. Instead send an error response.
-         */
-        throw new IllegalArgumentException( "questionnaire not found" );
     }
 
     @Override
@@ -188,7 +188,8 @@ public class SurveysManagerService implements SurveysManager {
             logger.info( "Retrieving questionnaires for study :{}", studyId );
 
             // If an organization does not have the chronicle_surveys app installed, exit early
-            if ( scheduledTasksManager.getEntitySetIdsByOrgId().get( CHRONICLE_SURVEYS ).containsKey( organizationId ) ) {
+            if ( scheduledTasksManager.getEntitySetIdsByOrgId().get( CHRONICLE_SURVEYS )
+                    .containsKey( organizationId ) ) {
                 logger.warn( "No questionnaires found for study {}. {} is not installed on organization with id {}. ",
                         studyId,
                         CHRONICLE_SURVEYS.toString(),
@@ -229,11 +230,11 @@ public class SurveysManagerService implements SurveysManager {
             List<NeighborEntityDetails> studyQuestionnaires = neighbors.getOrDefault( studyEntityKeyId, List.of() );
             Map<UUID, Map<FullQualifiedName, Set<Object>>> result = studyQuestionnaires
                     .stream()
-                    .filter( neighbor -> neighbor.getNeighborId().isPresent() && neighbor.getNeighborDetails()
-                            .isPresent() )
+                    .filter( neighbor -> neighbor.getNeighborDetails().isPresent() )
+                    .map( neighbor -> neighbor.getNeighborDetails().get() )
                     .collect( Collectors.toMap(
-                            neighbor -> neighbor.getNeighborId().get(),
-                            neighbor -> neighbor.getNeighborDetails().get()
+                            neighbor -> getFirstUUIDOrNull( neighbor, ID_FQN ),
+                            neighbor -> neighbor
                     ) );
 
             logger.info( "found {} questionnaires for study {}", result.size(), studyId );
@@ -290,13 +291,13 @@ public class SurveysManagerService implements SurveysManager {
                 UUID questionEntityKeyId = questionEntityKeyIds.get( i );
 
                 Map<UUID, Set<Object>> answerEntity = ImmutableMap.of(
-                        commonTasksManager.getPropertyTypeId( VALUES_FQN ),
+                        edmCacheService.getPropertyTypeId( VALUES_FQN ),
                         questionnaireResponses.get( questionEntityKeyId ).get( VALUES_FQN ) );
                 entities.put( answersESID, answerEntity );
 
                 // 1. create participant -> respondsWith -> answer association
                 Map<UUID, Set<Object>> respondsWithEntity = ImmutableMap.of(
-                        commonTasksManager.getPropertyTypeId( DATE_TIME_FQN ),
+                        edmCacheService.getPropertyTypeId( DATE_TIME_FQN ),
                         ImmutableSet.of( dateTime )
                 );
                 associations.put( respondsWithESID, new DataAssociation(
@@ -311,7 +312,7 @@ public class SurveysManagerService implements SurveysManager {
 
                 // 2. create answer -> addresses -> question association
                 Map<UUID, Set<Object>> addressesEntity = ImmutableMap.of(
-                        commonTasksManager.getPropertyTypeId( COMPLETED_DATE_TIME_FQN ),
+                        edmCacheService.getPropertyTypeId( COMPLETED_DATE_TIME_FQN ),
                         ImmutableSet.of( dateTime )
                 );
                 associations.put( addressesESID, new DataAssociation(
@@ -345,11 +346,9 @@ public class SurveysManagerService implements SurveysManager {
         logger.info( "submitting app usage survey: participantId = {}, studyId = {}", participantId, studyId );
 
         DataApi dataApi;
-        EdmApi edmApi;
         try {
             ApiClient apiClient = apiCacheManager.prodApiClientCache.get( ApiClient.class );
             dataApi = apiClient.getDataApi();
-            edmApi = apiClient.getEdmApi();
 
             // participant must exist
             boolean isKnownParticipant = enrollmentManager.isKnownParticipant( organizationId, studyId, participantId );
@@ -367,8 +366,7 @@ public class SurveysManagerService implements SurveysManager {
                     .forEach( ( entityKeyId, entity ) -> {
                         associationData.put( entityKeyId, new HashMap<>() );
                         entity.forEach( ( propertyTypeFQN, data ) -> {
-                            UUID propertyTypeId = edmApi.getPropertyTypeId( propertyTypeFQN.getNamespace(),
-                                    propertyTypeFQN.getName() );
+                            UUID propertyTypeId = edmCacheService.getPropertyTypeId( propertyTypeFQN );
                             associationData.get( entityKeyId ).put( propertyTypeId, data );
                         } );
                     } );

@@ -9,6 +9,7 @@ import com.openlattice.chronicle.constants.*;
 import com.openlattice.chronicle.data.*;
 import com.openlattice.chronicle.services.delete.DataDeletionManager;
 import com.openlattice.chronicle.services.download.DataDownloadManager;
+import com.openlattice.chronicle.services.edm.EdmCacheManager;
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager;
 import com.openlattice.chronicle.services.surveys.SurveysManager;
 import com.openlattice.chronicle.services.upload.AppDataUploadManager;
@@ -55,6 +56,9 @@ public class ChronicleController implements ChronicleApi {
 
     @Inject
     private SurveysManager surveysManager;
+
+    @Inject
+    private EdmCacheManager edmCacheManager;
 
     @Override
     @Timed
@@ -370,7 +374,7 @@ public class ChronicleController implements ChronicleApi {
             produces = MediaType.APPLICATION_JSON_VALUE
     )
     public Map<String, UUID> getPropertyTypeIds( Set<String> propertyTypeFqns ) {
-        return enrollmentManager.getPropertyTypeIds( propertyTypeFqns );
+        return edmCacheManager.getPropertyTypeIds( propertyTypeFqns );
     }
 
     @Override

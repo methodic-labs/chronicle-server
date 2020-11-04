@@ -1,10 +1,7 @@
 package com.openlattice.chronicle.services.delete;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Maps;
-import com.google.common.collect.SetMultimap;
-import com.google.common.collect.Sets;
+import com.google.common.collect.*;
 import com.openlattice.chronicle.data.DeleteType;
 import com.openlattice.chronicle.services.ApiCacheManager;
 import com.openlattice.chronicle.services.CommonTasksManager;
@@ -147,7 +144,7 @@ public class DataDeletionService implements DataDeletionManager {
 
                         // fill Map<entitySetId, Set<entityKeyId>>
                         participantNeighbors
-                                .getOrDefault( participantEntityKeyId, Map.of() )
+                                .getOrDefault( participantEntityKeyId, ImmutableMap.of() )
                                 .forEach( ( edgeEntitySetId, edgeNeighbor ) -> {
                                     edgeNeighbor.forEach( ( neighborEntitySetId, neighborEntityIds ) -> {
                                         toDeleteEntitySetIdEntityKeyId.get( neighborEntitySetId )
@@ -159,32 +156,34 @@ public class DataDeletionService implements DataDeletionManager {
 
             // delete all neighbors
             // outside app configs context, only chronicle super user can delete neighbors
+            DataApi deleteApi = organizationId == null ? chronicleDataApi : userDataApi;
             toDeleteEntitySetIdEntityKeyId
                     .forEach(
-                            ( entitySetId, entityKeyId ) -> ( organizationId == null ? chronicleDataApi : userDataApi )
+                            ( entitySetId, entityKeyId ) -> deleteApi
                                     .deleteEntities( entitySetId, entityKeyId, deleteType )
                     );
 
             // delete participants
-            Integer deleted = userDataApi.deleteEntities( participantsESID, participantsToRemove, deleteType );
+            int deleted = userDataApi.deleteEntities( participantsESID, participantsToRemove, deleteType );
             logger.info( "Deleted {} entities for participant {}.", deleted, participantId );
 
             // delete study if no participantId is specified
-            if ( participantId.isEmpty() ) {
-                // delete participant entity set if no app configs context
-                if ( organizationId == null ) {
-                    userEntitySetsApi.deleteEntitySet( participantsESID );
-                    logger.info( "Deleted participant dataset for study {}.", studyId );
-                }
-                userDataApi.deleteEntities( studiesESID,
-                        ImmutableSet.of( studyEntityKeyId ),
-                        deleteType );
+            if ( participantId.isPresent() ) {
+                return;
+            }
 
-                if ( organizationId == null ) {
-                    logger.info( "Deleted study {} from global studies dataset.", studyId );
-                } else {
-                    logger.info( "deleted study {} from org {}", studyId, organizationId );
-                }
+            userDataApi.deleteEntities( studiesESID,
+                    ImmutableSet.of( studyEntityKeyId ),
+                    deleteType );
+
+            if (organizationId == null) {
+                logger.info( "Deleted study {} from global studies dataset", studyId );
+
+                userEntitySetsApi.deleteEntitySet( participantsESID );
+                logger.info( "Deleted study {} from global studies dataset.", studyId );
+
+            } else {
+                logger.info( "Deleted study {} from org {}", studyId, organizationId );
             }
 
         } catch ( Exception e ) {

@@ -35,7 +35,4 @@ public interface EnrollmentManager {
     ParticipationStatus getParticipationStatus( UUID organizationId, UUID studyId, String participantId );
 
     boolean isNotificationsEnabled( UUID organizationId, UUID studyId );
-
-    Map<String, UUID> getPropertyTypeIds( Set<String> propertyTypeFqns );
-
 }

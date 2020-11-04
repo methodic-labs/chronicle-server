@@ -2,15 +2,14 @@ package com.openlattice.chronicle.services;
 
 import com.google.common.collect.ImmutableMap;
 import com.openlattice.chronicle.constants.*;
+import com.openlattice.chronicle.services.edm.EdmCacheService;
 import com.openlattice.client.ApiClient;
 import com.openlattice.entitysets.EntitySetsApi;
-import org.apache.olingo.commons.api.edm.FullQualifiedName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ExecutionException;
 
 import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE;
 import static com.openlattice.chronicle.util.ChronicleServerUtil.getParticipantEntitySetName;
@@ -21,22 +20,17 @@ import static com.openlattice.chronicle.util.ChronicleServerUtil.getParticipantE
 public class CommonTasksManager {
     protected static final Logger logger = LoggerFactory.getLogger( CommonTasksManager.class );
 
-    private final ApiCacheManager apiCacheManager;
-    private final EdmCacheManager edmCacheManager;
+    private final ApiCacheManager       apiCacheManager;
+    private final EdmCacheService       edmCacheService;
     private final ScheduledTasksManager scheduledTasksManager;
 
     public CommonTasksManager(
             ApiCacheManager apiCacheManager,
-            EdmCacheManager edmCacheManager,
+            EdmCacheService edmCacheService,
             ScheduledTasksManager scheduledTasksManager ) {
         this.apiCacheManager = apiCacheManager;
-        this.edmCacheManager = edmCacheManager;
+        this.edmCacheService = edmCacheService;
         this.scheduledTasksManager = scheduledTasksManager;
-    }
-
-    public UUID getPropertyTypeId( FullQualifiedName fqn ) {
-
-        return edmCacheManager.getPropertyTypeId( fqn );
     }
 
     public UUID getEntitySetId(
@@ -47,7 +41,7 @@ public class CommonTasksManager {
     ) {
 
         if ( organizationId == null ) {
-            return edmCacheManager.getHistoricalEntitySetId( entitySetName );
+            return edmCacheService.getHistoricalEntitySetId( entitySetName );
         }
 
         Map<CollectionTemplateTypeName, UUID> templateEntitySetIdMap = scheduledTasksManager.getEntitySetIdsByOrgId()
