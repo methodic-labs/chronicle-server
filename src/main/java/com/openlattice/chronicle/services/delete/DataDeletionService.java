@@ -136,7 +136,7 @@ public class DataDeletionService implements DataDeletionManager {
                                 .executeFilteredEntityNeighborIdsSearch(
                                         participantsESID,
                                         new EntityNeighborsFilter(
-                                                Set.of( participantEntityKeyId ),
+                                                ImmutableSet.of( participantEntityKeyId ),
                                                 Optional.of( srcNeighborSetIds ),
                                                 Optional.of( dstNeighborSetIds ),
                                                 Optional.empty()

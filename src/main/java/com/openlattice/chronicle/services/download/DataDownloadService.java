@@ -117,7 +117,7 @@ public class DataDownloadService implements DataDownloadManager {
             Map<UUID, List<NeighborEntityDetails>> participantNeighbors = searchApi.executeFilteredEntityNeighborSearch(
                     participantsES.getId(),
                     new EntityNeighborsFilter(
-                            Set.of( participantEntityKeyId ),
+                            ImmutableSet.of( participantEntityKeyId ),
                             Optional.of( ImmutableSet.of( sourceES.getId() ) ),
                             Optional.of( ImmutableSet.of( participantsES.getId() ) ),
                             Optional.of( ImmutableSet.of( edgeES.getId() ) )

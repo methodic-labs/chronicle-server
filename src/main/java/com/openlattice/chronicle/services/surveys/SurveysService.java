@@ -215,10 +215,10 @@ public class SurveysService implements SurveysManager {
                     .executeFilteredEntityNeighborSearch(
                             studiesESID,
                             new EntityNeighborsFilter(
-                                    Set.of( studyEntityKeyId ),
-                                    Optional.of( Set.of( questionnaireESID ) ),
-                                    Optional.of( Set.of( studiesESID ) ),
-                                    Optional.of( Set.of( partOfESID ) )
+                                    ImmutableSet.of( studyEntityKeyId ),
+                                    Optional.of( ImmutableSet.of( questionnaireESID ) ),
+                                    Optional.of( ImmutableSet.of( studiesESID ) ),
+                                    Optional.of( ImmutableSet.of( partOfESID ) )
                             )
                     );
 
