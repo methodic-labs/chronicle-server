@@ -1,7 +1,6 @@
 package com.openlattice.chronicle.services.enrollment;
 
 import com.google.common.base.Optional;
-import com.google.common.base.Preconditions;
 import com.google.common.collect.*;
 import com.openlattice.ApiUtil;
 import com.openlattice.chronicle.data.ParticipationStatus;
@@ -23,6 +22,7 @@ import org.springframework.security.access.AccessDeniedException;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 
+import static com.google.common.base.Preconditions.checkNotNull;
 import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE;
 import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE_DATA_COLLECTION;
 import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.DEVICE;
@@ -104,11 +104,9 @@ public class EnrollmentService implements EnrollmentManager {
             checkNotNullUUIDs( Sets.newHashSet( usedByESID, studyESID, participantsESID, devicesESID ) );
 
             // ensure study and participant exist
-            UUID studyEKID = Preconditions
-                    .checkNotNull( getStudyEntityKeyId( organizationId, studyId ),
+            UUID studyEKID = checkNotNull( getStudyEntityKeyId( organizationId, studyId ),
                             "study must exist" );
-            UUID participantEKID = Preconditions
-                    .checkNotNull( getParticipantEntityKeyId( organizationId, studyId, participantId ) );
+            UUID participantEKID = checkNotNull( getParticipantEntityKeyId( organizationId, studyId, participantId ) );
 
             // device entity data
             Map<UUID, Set<Object>> deviceData = new HashMap<>();
@@ -179,7 +177,7 @@ public class EnrollmentService implements EnrollmentManager {
         logger.info( "isKnownDatasource {} = {}", datasourceId, deviceEKID != null );
 
         if ( !isKnownParticipant ) {
-            logger.error( "unknown participant: {} when enrolling: orgId = {}, studyId = {}, datasourceId = {}",
+            logger.error( "unable to enroll. unknown participant argument :participant = {}, orgId = {}, studyId = {}, datasourceId = {}",
                     participantId,
                     organizationId,
                     studyId,
@@ -289,8 +287,7 @@ public class EnrollmentService implements EnrollmentManager {
             checkNotNullUUIDs( Sets.newHashSet( studiesESID, participatedInESID, participantsESID ) );
 
             // participant must exist
-            UUID participantEKID = Preconditions
-                    .checkNotNull( getParticipantEntityKeyId( organizationId, studyId, participantId ),
+            UUID participantEKID = checkNotNull( getParticipantEntityKeyId( organizationId, studyId, participantId ),
                             "participant not found: orgId = %s, studyId = %s, participantId = %s",
                             organizationId,
                             studyId,
@@ -342,8 +339,7 @@ public class EnrollmentService implements EnrollmentManager {
             UUID partOfESID = edmCacheManager.getEntitySetId( organizationId, CHRONICLE, PART_OF, PART_OF_ES );
 
             // ensure study exists
-            UUID studyEKID = Preconditions
-                    .checkNotNull( getStudyEntityKeyId( organizationId, studyId ),
+            UUID studyEKID = checkNotNull( getStudyEntityKeyId( organizationId, studyId ),
                             "study does not exist: orgId=%s, studyId=%s", organizationId, studyId );
 
             Map<UUID, List<NeighborEntityDetails>> neighbors = searchApi

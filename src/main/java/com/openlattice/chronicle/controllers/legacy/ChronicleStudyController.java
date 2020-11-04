@@ -17,7 +17,7 @@
  * You can contact the owner of the copyright at support@openlattice.com
  */
 
-package com.openlattice.chronicle.controllers;
+package com.openlattice.chronicle.controllers.legacy;
 
 import com.auth0.spring.security.api.authentication.JwtAuthentication;
 import com.codahale.metrics.annotation.Timed;
@@ -56,21 +56,8 @@ import static com.openlattice.chronicle.util.ChronicleServerUtil.setDownloadCont
 @RequestMapping( ChronicleStudyApi.CONTROLLER )
 public class ChronicleStudyController implements ChronicleStudyApi {
 
-    private static final String RAW_DATA_PREFIX          = "ChronicleData_";
-    private static final String PREPROCESSED_DATA_PREFIX = "ChroniclePreprocessedData_";
-    private static final String USAGE_DATA_PREFIX        = "ChronicleAppUsageData_";
-
-    @Inject
-    private DataDeletionManager dataDeletionManager;
-
-    @Inject
-    private AppDataUploadManager dataUploadManager;
-
     @Inject
     private SurveysManager surveysManager;
-
-    @Inject
-    private DataDownloadManager dataDownloadManager;
 
     @Inject
     private EnrollmentManager enrollmentManager;
@@ -106,41 +93,6 @@ public class ChronicleStudyController implements ChronicleStudyApi {
         //  look up in association entitySet between device and participant, and device and study to see if it exists?
         //  DataApi.getEntity(entitySetId :UUID, entityKeyId :UUID)
         return enrollmentManager.isKnownDatasource( null, studyId, participantId, datasourceId );
-    }
-
-    @Override
-    @Timed
-    @RequestMapping(
-            path = AUTHENTICATED + STUDY_ID_PATH + PARTICIPANT_ID_PATH,
-            method = RequestMethod.DELETE
-    )
-    public Void deleteParticipantAndAllNeighbors(
-            @PathVariable( STUDY_ID ) UUID studyId,
-            @PathVariable( PARTICIPANT_ID ) String participantId,
-            @RequestParam( TYPE ) DeleteType deleteType
-    ) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String token = ( (JwtAuthentication) authentication ).getToken();
-        dataDeletionManager.deleteParticipantAndAllNeighbors( null, studyId, participantId, deleteType, token );
-
-        return null;
-    }
-
-    @Timed
-    @RequestMapping(
-            path = AUTHENTICATED + STUDY_ID_PATH,
-            method = RequestMethod.DELETE
-    )
-    @ResponseStatus( HttpStatus.OK )
-    public Void deleteStudyAndAllNeighbors(
-            @PathVariable( STUDY_ID ) UUID studyId,
-            @RequestParam( TYPE ) DeleteType deleteType
-    ) {
-
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String token = ( (JwtAuthentication) authentication ).getToken();
-        dataDeletionManager.deleteStudyAndAllNeighbors( null, studyId, deleteType, token );
-        return null;
     }
 
     @Timed
@@ -194,118 +146,6 @@ public class ChronicleStudyController implements ChronicleStudyApi {
         surveysManager.submitAppUsageSurvey( null, studyId, participantId, associationDetails );
     }
 
-    @Timed
-    @RequestMapping(
-            path = AUTHENTICATED + PARTICIPANT_PATH + DATA_PATH + STUDY_ID_PATH
-                    + ENTITY_KEY_ID_PATH
-                    + PREPROCESSED_PATH,
-            method = RequestMethod.GET,
-            produces = { MediaType.APPLICATION_JSON_VALUE, CustomMediaType.TEXT_CSV_VALUE }
-    )
-    public Iterable<Map<String, Set<Object>>> getAllPreprocessedParticipantData(
-            @PathVariable( STUDY_ID ) UUID studyId,
-            @PathVariable( ENTITY_KEY_ID ) UUID participantEntityKeyId,
-            @RequestParam( value = FILE_TYPE, required = false ) FileType fileType,
-            HttpServletResponse response ) {
-
-        Iterable<Map<String, Set<Object>>> data = getAllPreprocessedParticipantData(
-                studyId,
-                participantEntityKeyId,
-                fileType
-        );
-
-        String fileName = getParticipantDataFileName(
-                enrollmentManager,
-                PREPROCESSED_DATA_PREFIX,
-                null,
-                studyId,
-                participantEntityKeyId );
-        setContentDisposition( response, fileName, fileType );
-        setDownloadContentType( response, fileType );
-        return data;
-    }
-
-    public Iterable<Map<String, Set<Object>>> getAllPreprocessedParticipantData(
-            UUID studyId,
-            UUID participantEntityKeyId,
-            FileType fileType ) {
-
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String token = ( (JwtAuthentication) authentication ).getToken();
-        return dataDownloadManager.getAllPreprocessedParticipantData( null, studyId, participantEntityKeyId, token );
-
-    }
-
-    @Timed
-    @RequestMapping(
-            path = AUTHENTICATED + PARTICIPANT_PATH + DATA_PATH + STUDY_ID_PATH
-                    + ENTITY_KEY_ID_PATH,
-            method = RequestMethod.GET,
-            produces = { MediaType.APPLICATION_JSON_VALUE, CustomMediaType.TEXT_CSV_VALUE }
-    )
-    public Iterable<Map<String, Set<Object>>> getAllParticipantData(
-            @PathVariable( STUDY_ID ) UUID studyId,
-            @PathVariable( ENTITY_KEY_ID ) UUID participantEntityKeyId,
-            @RequestParam( value = FILE_TYPE, required = false ) FileType fileType,
-            HttpServletResponse response ) {
-
-        Iterable<Map<String, Set<Object>>> data = getAllParticipantData(
-                studyId,
-                participantEntityKeyId,
-                fileType
-        );
-
-        String fileName = getParticipantDataFileName(
-                enrollmentManager,
-                RAW_DATA_PREFIX,
-                null,
-                studyId,
-                participantEntityKeyId );
-        setContentDisposition( response, fileName, fileType );
-        setDownloadContentType( response, fileType );
-        return data;
-    }
-
-    @Override
-    public Iterable<Map<String, Set<Object>>> getAllParticipantData(
-            UUID studyId,
-            UUID participantEntityKeyId,
-            FileType fileType ) {
-
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String token = ( (JwtAuthentication) authentication ).getToken();
-        return dataDownloadManager.getAllParticipantData( null, studyId, participantEntityKeyId, token );
-    }
-
-    @Timed
-    @RequestMapping(
-            path = AUTHENTICATED + PARTICIPANT_PATH + DATA_PATH + STUDY_ID_PATH
-                    + ENTITY_KEY_ID_PATH + USAGE_PATH,
-            method = RequestMethod.GET,
-            produces = { MediaType.APPLICATION_JSON_VALUE, CustomMediaType.TEXT_CSV_VALUE }
-    )
-    public Iterable<Map<String, Set<Object>>> getAllParticipantAppsUsageData(
-            @PathVariable( STUDY_ID ) UUID studyId,
-            @PathVariable( ENTITY_KEY_ID ) UUID participantEntityKeyId,
-            @RequestParam( value = FILE_TYPE, required = false ) FileType fileType,
-            HttpServletResponse response ) {
-
-        Iterable<Map<String, Set<Object>>> data = getAllParticipantAppsUsageData(
-                studyId,
-                participantEntityKeyId,
-                fileType );
-
-        String fileName = getParticipantDataFileName(
-                enrollmentManager,
-                USAGE_DATA_PREFIX,
-                null,
-                studyId,
-                participantEntityKeyId );
-        setContentDisposition( response, fileName, fileType );
-        setDownloadContentType( response, fileType );
-        return data;
-    }
-
     @Override
     @Timed
     @RequestMapping(
@@ -348,15 +188,4 @@ public class ChronicleStudyController implements ChronicleStudyApi {
         return surveysManager.getStudyQuestionnaires( null, studyId );
     }
 
-    @Override
-    public Iterable<Map<String, Set<Object>>> getAllParticipantAppsUsageData(
-            UUID studyId,
-            UUID participantEntityKeyId,
-            FileType fileType ) {
-
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String token = ( (JwtAuthentication) authentication ).getToken();
-
-        return dataDownloadManager.getAllParticipantAppsUsageData( null, studyId, participantEntityKeyId, token );
-    }
 }

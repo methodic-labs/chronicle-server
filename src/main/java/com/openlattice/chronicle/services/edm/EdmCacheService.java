@@ -211,7 +211,16 @@ public class EdmCacheService implements EdmCacheManager {
         if ( organizationId == null ) {
             return getEntitySetId( entitySetName );
         }
+        return getEntitySetId( organizationId, appComponent, templateName );
+    }
 
+    @Override
+        // get entity set id from a app configs context
+    public UUID getEntitySetId (
+            UUID organizationId,
+            AppComponent appComponent,
+            CollectionTemplateTypeName templateTypeName
+    ) {
         Map<CollectionTemplateTypeName, UUID> templateEntitySetIdMap = getEntitySetIdsByOrgId()
                 .getOrDefault( appComponent, ImmutableMap.of() )
                 .getOrDefault( organizationId, ImmutableMap.of() );
@@ -221,13 +230,13 @@ public class EdmCacheService implements EdmCacheManager {
             return null;
         }
 
-        if ( !templateEntitySetIdMap.containsKey( templateName ) ) {
+        if ( !templateEntitySetIdMap.containsKey( templateTypeName ) ) {
             logger.error( "app {} does not have a template {} in its entityTypeCollection",
                     appComponent,
-                    templateName );
+                    templateTypeName );
             return null;
         }
 
-        return templateEntitySetIdMap.get( templateName );
+        return templateEntitySetIdMap.get( templateTypeName );
     }
 }

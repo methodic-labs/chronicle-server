@@ -262,15 +262,9 @@ public class ScheduledTasksManager {
                         .newHashMap(); // studyEKID -> studyId (for lookup when processing neighbors)
 
                 // entity set ids
-                UUID studiesESID = edmCacheManager.getEntitySetIdsByOrgId().getOrDefault( CHRONICLE, ImmutableMap.of() )
-                        .getOrDefault( orgId, ImmutableMap.of() ).getOrDefault( STUDIES, null );
-
-                UUID participantsESID = edmCacheManager.getEntitySetIdsByOrgId()
-                        .getOrDefault( CHRONICLE, ImmutableMap.of() )
-                        .getOrDefault( orgId, ImmutableMap.of() ).getOrDefault( PARTICIPANTS, null );
-                UUID participatedInESID = edmCacheManager.getEntitySetIdsByOrgId()
-                        .getOrDefault( CHRONICLE, ImmutableMap.of() )
-                        .getOrDefault( orgId, ImmutableMap.of() ).getOrDefault( PARTICIPATED_IN, null );
+                UUID participatedInESID = edmCacheManager.getEntitySetId( orgId, CHRONICLE, PARTICIPATED_IN );
+                UUID participantsESID = edmCacheManager.getEntitySetId( orgId, CHRONICLE, PARTICIPANTS );
+                UUID studiesESID = edmCacheManager.getEntitySetId( orgId, CHRONICLE, STUDIES );
 
                 if ( studiesESID == null || participantsESID == null || participatedInESID == null )
                     return;
@@ -292,6 +286,11 @@ public class ScheduledTasksManager {
                     studyEntityKeyIds.computeIfAbsent( orgId, key -> Maps.newHashMap() ).put( studyId, studyEKID );
                     studyIds.put( studyEKID, studyId );
                 } );
+
+                if (studyIds.isEmpty()) {
+                    logger.info( "study info refresh: organization {} does not have studies", orgId );
+                    return;
+                }
 
                 // get study neighbors constrained by participated_in association
                 Set<UUID> edgeESIDS = ImmutableSet.of( participatedInESID );

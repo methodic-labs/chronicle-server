@@ -16,8 +16,6 @@ public interface EdmCacheManager {
 
     UUID getPropertyTypeId( FullQualifiedName fqn );
 
-    UUID getEntitySetId( String entitySetName );
-
     PropertyType getPropertyType( UUID propertyTypeId );
 
     PropertyType getPropertyType( FullQualifiedName fqn );
@@ -26,10 +24,21 @@ public interface EdmCacheManager {
 
     UUID getParticipantEntitySetId( UUID organizationId, UUID studyId );
 
+    // entity set id in legacy context
+    UUID getEntitySetId( String entitySetName );
+
+    // entity set id in either app configs context / legacy
     UUID getEntitySetId(
             UUID organizationId,
             AppComponent appComponent,
             CollectionTemplateTypeName templateName,
             String entitySetName
+    );
+
+    // get entity set id from a app configs context
+    UUID getEntitySetId (
+            UUID organizationId,
+            AppComponent appComponent,
+            CollectionTemplateTypeName templateTypeName
     );
 }

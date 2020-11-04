@@ -185,7 +185,7 @@ public class DataDeletionService implements DataDeletionManager {
                 logger.info( "Deleted study {} from global studies dataset", studyId );
 
                 userEntitySetsApi.deleteEntitySet( participantsESID );
-                logger.info( "Deleted study {} from global studies dataset.", studyId );
+                logger.info( "Deleted participant entity for study {}.", studyId );
 
             } else {
                 logger.info( "Deleted study {} from org {}", studyId, organizationId );
