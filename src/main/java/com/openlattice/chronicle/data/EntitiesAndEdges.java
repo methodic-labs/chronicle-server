@@ -14,12 +14,11 @@ import java.util.UUID;
  */
 public class EntitiesAndEdges {
 
-    private Map<EntityKey, Map<UUID, Set<Object>>> entityByEntityKey;
+    private Map<EntityKey, Map<UUID, Set<Object>>>       entityByEntityKey;
     private Set<Triple<EntityKey, EntityKey, EntityKey>> edgeEntityKeys;
 
     @JsonCreator
     public EntitiesAndEdges() {
-
     }
 
     @JsonCreator

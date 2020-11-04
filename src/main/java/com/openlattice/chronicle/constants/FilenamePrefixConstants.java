@@ -8,5 +8,6 @@ public class FilenamePrefixConstants {
     public static final String PREPROCESSED_DATA_PREFIX = "ChroniclePreprocessedData_";
     public static final String USAGE_DATA_PREFIX        = "ChronicleAppUsageData_";
 
-    private FilenamePrefixConstants() {}
+    private FilenamePrefixConstants() {
+    }
 }
