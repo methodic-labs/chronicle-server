@@ -2,17 +2,9 @@ package com.openlattice.chronicle.services;
 
 import com.dataloom.streams.StreamUtil;
 import com.google.common.collect.*;
-import com.openlattice.apps.App;
-import com.openlattice.apps.AppApi;
-import com.openlattice.apps.UserAppConfig;
-import com.openlattice.authorization.securable.AbstractSecurableObject;
 import com.openlattice.chronicle.constants.*;
-import com.openlattice.chronicle.services.edm.EdmCacheService;
+import com.openlattice.chronicle.services.edm.EdmCacheManager;
 import com.openlattice.client.ApiClient;
-import com.openlattice.collections.CollectionTemplateType;
-import com.openlattice.collections.CollectionsApi;
-import com.openlattice.collections.EntitySetCollection;
-import com.openlattice.collections.EntityTypeCollection;
 import com.openlattice.data.DataApi;
 import com.openlattice.data.requests.EntitySetSelection;
 import com.openlattice.data.requests.FileType;
@@ -58,56 +50,11 @@ import static com.openlattice.edm.EdmConstants.ID_FQN;
 public class ScheduledTasksManager {
     protected final Logger logger = LoggerFactory.getLogger( ScheduledTasksManager.class );
 
-    private final long ENTITY_SETS_REFRESH_INTERVAL = 15 * 60 * 1000; // 15 minutes
-    private final long USER_APPS_REFRESH_INTERVAL = 60 * 1000; // 1 minute
-    private final long STUDY_INFO_REFRESH_INTERVAL = 60 * 1000; // 1 minute
-    private final long SYNC_USER_REFRESH_INTERVAL = 60 * 1000; // 1 minute
-    private final long SYSTEM_APPS_REFRESH_INTERVAL = 60 * 60 * 1000; // 1 hour
+    private final long USER_APPS_REFRESH_INTERVAL    = 60 * 1000; // 1 minute
+    private final long STUDY_INFO_REFRESH_INTERVAL   = 60 * 1000; // 1 minute
+    private final long SYNC_USER_REFRESH_INTERVAL    = 60 * 1000; // 1 minute
+    private final long SYSTEM_APPS_REFRESH_INTERVAL  = 60 * 60 * 1000; // 1 hour
     private final long DEVICES_INFO_REFRESH_INTERVAL = 60 * 1000; // 1 minute
-
-    public Map<AppComponent, Map<UUID, Map<CollectionTemplateTypeName, UUID>>> getEntitySetIdsByOrgId() {
-        return entitySetIdsByOrgId;
-    }
-
-    public Map<UUID, Map<UUID, Map<String, UUID>>> getStudyParticipantsByOrg() {
-        return studyParticipantsByOrg;
-    }
-
-    public Map<UUID, Map<UUID, UUID>> getStudyEntityKeyIdsByOrg() {
-        return studyEntityKeyIdsByOrg;
-    }
-
-    public Map<UUID, Map<String, UUID>> getDeviceIdsByOrg() {
-        return deviceIdsByOrg;
-    }
-
-    public Map<String, Set<UUID>> getUserAppsFullNamesByOrg() {
-        return userAppsFullNamesByOrg;
-    }
-
-    public Map<String, UUID> getDeviceIdsByEKID() {
-        return deviceIdsByEKID;
-    }
-
-    public Map<UUID, Map<String, UUID>> getStudyParticipants() {
-        return studyParticipants;
-    }
-
-    public Map<UUID, UUID> getStudyEKIDById() {
-        return studyEKIDById;
-    }
-
-    public Set<String> getUserAppsFullNameValues() {
-        return userAppsFullNameValues;
-    }
-
-    public Set<String> getSystemAppPackageNames() {
-        return systemAppPackageNames;
-    }
-
-    // appName -> orgId -> templateName -> entitySetID
-    private final Map<AppComponent, Map<UUID, Map<CollectionTemplateTypeName, UUID>>> entitySetIdsByOrgId = Maps
-            .newHashMap();
 
     // orgId -> studyId -> participantId -> EKID
     private final Map<UUID, Map<UUID, Map<String, UUID>>> studyParticipantsByOrg = Maps.newHashMap();
@@ -137,16 +84,15 @@ public class ScheduledTasksManager {
     private final Set<String> systemAppPackageNames = Sets.newHashSet();
 
     private final ApiCacheManager apiCacheManager;
-    private final EdmCacheService edmCacheService;
+    private final EdmCacheManager edmCacheManager;
 
     public ScheduledTasksManager(
             ApiCacheManager apiCacheManager,
-            EdmCacheService edmCacheService ) throws ExecutionException {
+            EdmCacheManager edmCacheManager ) throws ExecutionException {
         this.apiCacheManager = apiCacheManager;
-        this.edmCacheService = edmCacheService;
+        this.edmCacheManager = edmCacheManager;
 
         syncCallingUser();
-        initializeEntitySets();
         refreshAllOrgsUserAppFullNames();
         refreshUserAppsFullNames();
         refreshAllOrgsStudyInformation();
@@ -165,7 +111,7 @@ public class ScheduledTasksManager {
                 .loadSelectedEntitySetData(
                         entitySetId,
                         new EntitySetSelection(
-                                Optional.of( fqns.stream().map( edmCacheService::getPropertyTypeId ).collect(
+                                Optional.of( fqns.stream().map( edmCacheManager::getPropertyTypeId ).collect(
                                         Collectors.toSet() ) )
                         ),
                         FileType.json
@@ -185,69 +131,6 @@ public class ScheduledTasksManager {
         }
     }
 
-    @Scheduled( fixedRate = ENTITY_SETS_REFRESH_INTERVAL )
-    public void initializeEntitySets() throws ExecutionException {
-        logger.info( "Refreshing entity set ids map" );
-
-        ApiClient apiClient = apiCacheManager.prodApiClientCache.get( ApiClient.class );
-        AppApi appApi = apiClient.getAppApi();
-        CollectionsApi collectionsApi = apiClient.getCollectionsApi();
-
-        // create a app -> appId mapping
-        Map<AppComponent, UUID> appNameIdMap = Maps.newHashMapWithExpectedSize( AppComponent.values().length );
-        for ( AppComponent component : AppComponent.values() ) {
-            App app = appApi.getAppByName( component.toString() );
-            appNameIdMap.put( component, app.getId() );
-        }
-
-        Map<AppComponent, Map<UUID, Map<CollectionTemplateTypeName, UUID>>> entitySets = new HashMap<>();
-
-        // get configs for each app
-        appNameIdMap.forEach( ( appComponent, appId ) -> {
-            List<UserAppConfig> configs = appApi.getAvailableAppConfigs( appId );
-
-            if ( configs.isEmpty() )
-                return;
-
-            // get EntityTypeCollection associated with app
-            EntitySetCollection entitySetCollection = collectionsApi
-                    .getEntitySetCollection( configs.get( 0 ).getEntitySetCollectionId() );
-            EntityTypeCollection entityTypeCollection = collectionsApi
-                    .getEntityTypeCollection( entitySetCollection.getEntityTypeCollectionId() );
-
-            // create mapping from templateTypeName -> templateTypeId
-            Map<String, UUID> templateTypeNameIdMap = entityTypeCollection
-                    .getTemplate()
-                    .stream()
-                    .collect( Collectors.toMap( CollectionTemplateType::getName, AbstractSecurableObject::getId ) );
-
-            // for each config map orgId -> templateTypeName -> ESID
-            Map<UUID, Map<CollectionTemplateTypeName, UUID>> orgEntitySetMap = new HashMap<>();
-
-            configs.forEach( userAppConfig -> {
-                Map<UUID, UUID> templateTypeIdESIDMap = collectionsApi
-                        .getEntitySetCollection( userAppConfig.getEntitySetCollectionId() ).getTemplate();
-
-                // iterate over templateTypeName enums and create mapping templateTypeName -> entitySetId
-                Map<CollectionTemplateTypeName, UUID> templateTypeNameESIDMap = Maps
-                        .newHashMapWithExpectedSize( templateTypeIdESIDMap.size() );
-
-                for ( CollectionTemplateTypeName templateTypeName : CollectionTemplateTypeName.values() ) {
-                    UUID templateTypeId = templateTypeNameIdMap.get( templateTypeName.toString() );
-
-                    if ( templateTypeId != null ) {
-                        templateTypeNameESIDMap.put( templateTypeName, templateTypeIdESIDMap.get( templateTypeId ) );
-                    }
-                }
-                orgEntitySetMap.put( userAppConfig.getOrganizationId(), templateTypeNameESIDMap );
-            } );
-
-            entitySets.put( appComponent, orgEntitySetMap );
-        } );
-
-        entitySetIdsByOrgId.putAll( entitySets );
-    }
-
     @Scheduled( fixedRate = SYSTEM_APPS_REFRESH_INTERVAL )
     public void refreshSystemApps() {
         logger.info( "Refreshing system apps cache" );
@@ -258,8 +141,8 @@ public class ScheduledTasksManager {
 
             Iterable<SetMultimap<FullQualifiedName, Object>> entitySetData = getEntitySetData(
                     dataApi,
-                    edmCacheService.getHistoricalEntitySetId( APPS_DICTIONARY_ES ),
-                    ImmutableSet.of( FULL_NAME_FQN, RECORD_TYPE_FQN)
+                    edmCacheManager.getEntitySetId( APPS_DICTIONARY_ES ),
+                    ImmutableSet.of( FULL_NAME_FQN, RECORD_TYPE_FQN )
             );
             logger.info(
                     "Fetched {} entities from chronicle_application_dictionary entity set",
@@ -297,7 +180,7 @@ public class ScheduledTasksManager {
             // load entities from chronicle_user_apps
             Iterable<SetMultimap<FullQualifiedName, Object>> data = getEntitySetData(
                     dataApi,
-                    edmCacheService.getHistoricalEntitySetId( USER_APPS_ES ),
+                    edmCacheManager.getEntitySetId( USER_APPS_ES ),
                     ImmutableSet.of( FULL_NAME_FQN )
             );
 
@@ -325,7 +208,7 @@ public class ScheduledTasksManager {
 
             Map<String, Set<UUID>> fullNamesMap = Maps.newLinkedHashMap(); // fullName -> { org1, org2, org3 }
 
-            Map<UUID, Map<CollectionTemplateTypeName, UUID>> orgEntitySets = entitySetIdsByOrgId
+            Map<UUID, Map<CollectionTemplateTypeName, UUID>> orgEntitySets = edmCacheManager.getEntitySetIdsByOrgId()
                     .getOrDefault( CHRONICLE_DATA_COLLECTION, Map.of() );
 
             orgEntitySets.forEach( ( orgId, templateTypeESIDMap ) -> {
@@ -333,7 +216,7 @@ public class ScheduledTasksManager {
                 Iterable<SetMultimap<FullQualifiedName, Object>> data = getEntitySetData(
                         dataApi,
                         templateTypeESIDMap.get( USER_APPS ),
-                        ImmutableSet.of( FULL_NAME_FQN)
+                        ImmutableSet.of( FULL_NAME_FQN )
                 );
 
                 // map fullNames -> set of orgIds
@@ -370,7 +253,7 @@ public class ScheduledTasksManager {
                     .newHashMap(); // orgId -> studyId -> participantId -> participantEKID
             Map<UUID, Map<UUID, UUID>> studyEntityKeyIds = Maps.newHashMap(); // orgId -> studyId -> studyEKID
 
-            Map<UUID, Map<CollectionTemplateTypeName, UUID>> orgEntitySets = entitySetIdsByOrgId
+            Map<UUID, Map<CollectionTemplateTypeName, UUID>> orgEntitySets = edmCacheManager.getEntitySetIdsByOrgId()
                     .getOrDefault( CHRONICLE, Map.of() );
 
             orgEntitySets.forEach( ( orgId, templateTypeESIDMap ) -> {
@@ -379,13 +262,15 @@ public class ScheduledTasksManager {
                         .newHashMap(); // studyEKID -> studyId (for lookup when processing neighbors)
 
                 // entity set ids
-                UUID studiesESID = entitySetIdsByOrgId.getOrDefault( CHRONICLE, Map.of() )
-                        .getOrDefault( orgId, Map.of() ).getOrDefault( STUDIES, null );
+                UUID studiesESID = edmCacheManager.getEntitySetIdsByOrgId().getOrDefault( CHRONICLE, ImmutableMap.of() )
+                        .getOrDefault( orgId, ImmutableMap.of() ).getOrDefault( STUDIES, null );
 
-                UUID participantsESID = entitySetIdsByOrgId.getOrDefault( CHRONICLE, Map.of() )
-                        .getOrDefault( orgId, Map.of() ).getOrDefault( PARTICIPANTS, null );
-                UUID participatedInESID = entitySetIdsByOrgId.getOrDefault( CHRONICLE, Map.of() )
-                        .getOrDefault( orgId, Map.of() ).getOrDefault( PARTICIPATED_IN, null );
+                UUID participantsESID = edmCacheManager.getEntitySetIdsByOrgId()
+                        .getOrDefault( CHRONICLE, ImmutableMap.of() )
+                        .getOrDefault( orgId, ImmutableMap.of() ).getOrDefault( PARTICIPANTS, null );
+                UUID participatedInESID = edmCacheManager.getEntitySetIdsByOrgId()
+                        .getOrDefault( CHRONICLE, ImmutableMap.of() )
+                        .getOrDefault( orgId, ImmutableMap.of() ).getOrDefault( PARTICIPATED_IN, null );
 
                 if ( studiesESID == null || participantsESID == null || participatedInESID == null )
                     return;
@@ -394,7 +279,7 @@ public class ScheduledTasksManager {
                 Iterable<SetMultimap<FullQualifiedName, Object>> studyEntities = getEntitySetData(
                         dataApi,
                         studiesESID,
-                        ImmutableSet.of( STRING_ID_FQN)
+                        ImmutableSet.of( STRING_ID_FQN )
                 );
 
                 // map studyIds -> studyEKIDs
@@ -478,14 +363,14 @@ public class ScheduledTasksManager {
                     .newHashMap(); // studyID -> participantId -> participantEKID
 
             // entity set ids
-            UUID participatedInESID = edmCacheService.getHistoricalEntitySetId( PARTICIPATED_IN_ES );
-            UUID studiesESID = edmCacheService.getHistoricalEntitySetId( STUDY_ES );
+            UUID participatedInESID = edmCacheManager.getEntitySetId( PARTICIPATED_IN_ES );
+            UUID studiesESID = edmCacheManager.getEntitySetId( STUDY_ES );
 
             // get study entities
             Iterable<SetMultimap<FullQualifiedName, Object>> studyEntities = getEntitySetData(
                     dataApi,
                     studiesESID,
-                    ImmutableSet.of( STRING_ID_FQN)
+                    ImmutableSet.of( STRING_ID_FQN )
             );
 
             // process studies
@@ -548,7 +433,7 @@ public class ScheduledTasksManager {
             ApiClient apiClient = apiCacheManager.prodApiClientCache.get( ApiClient.class );
             DataApi dataApi = apiClient.getDataApi();
 
-            Map<UUID, Map<CollectionTemplateTypeName, UUID>> orgEntitySets = entitySetIdsByOrgId
+            Map<UUID, Map<CollectionTemplateTypeName, UUID>> orgEntitySets = edmCacheManager.getEntitySetIdsByOrgId()
                     .getOrDefault( CHRONICLE_DATA_COLLECTION, Map.of() );
 
             Map<UUID, Map<String, UUID>> deviceIdsByOrg = Maps.newHashMap();
@@ -578,7 +463,7 @@ public class ScheduledTasksManager {
             DataApi dataApi = apiClient.getDataApi();
 
             Map<String, UUID> deviceIdsByEKID = getDeviceIdsByEKID( dataApi,
-                    edmCacheService.getHistoricalEntitySetId( DEVICES_ES ) );
+                    edmCacheManager.getEntitySetId( DEVICES_ES ) );
 
             this.deviceIdsByEKID.putAll( deviceIdsByEKID );
 
@@ -596,7 +481,7 @@ public class ScheduledTasksManager {
         Iterable<SetMultimap<FullQualifiedName, Object>> deviceEntities = getEntitySetData(
                 dataApi,
                 entitySetId,
-                ImmutableSet.of( STRING_ID_FQN)
+                ImmutableSet.of( STRING_ID_FQN )
         );
 
         StreamUtil.stream( deviceEntities ).map( Multimaps::asMap ).forEach( ( entity ) -> {
@@ -609,5 +494,41 @@ public class ScheduledTasksManager {
         } );
 
         return deviceIds;
+    }
+
+    public Map<UUID, Map<UUID, Map<String, UUID>>> getStudyParticipantsByOrg() {
+        return studyParticipantsByOrg;
+    }
+
+    public Map<UUID, Map<UUID, UUID>> getStudyEntityKeyIdsByOrg() {
+        return studyEntityKeyIdsByOrg;
+    }
+
+    public Map<UUID, Map<String, UUID>> getDeviceIdsByOrg() {
+        return deviceIdsByOrg;
+    }
+
+    public Map<String, Set<UUID>> getUserAppsFullNamesByOrg() {
+        return userAppsFullNamesByOrg;
+    }
+
+    public Map<String, UUID> getDeviceIdsByEKID() {
+        return deviceIdsByEKID;
+    }
+
+    public Map<UUID, Map<String, UUID>> getStudyParticipants() {
+        return studyParticipants;
+    }
+
+    public Map<UUID, UUID> getStudyEKIDById() {
+        return studyEKIDById;
+    }
+
+    public Set<String> getUserAppsFullNameValues() {
+        return userAppsFullNameValues;
+    }
+
+    public Set<String> getSystemAppPackageNames() {
+        return systemAppPackageNames;
     }
 }

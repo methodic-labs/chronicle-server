@@ -29,12 +29,13 @@ import com.openlattice.auth0.AwsAuth0TokenProvider;
 import com.openlattice.authentication.Auth0Configuration;
 import com.openlattice.chronicle.configuration.ChronicleConfiguration;
 import com.openlattice.chronicle.services.ApiCacheManager;
-import com.openlattice.chronicle.services.CommonTasksManager;
-import com.openlattice.chronicle.services.edm.EdmCacheService;
 import com.openlattice.chronicle.services.ScheduledTasksManager;
+import com.openlattice.chronicle.services.delete.DataDeletionManager;
 import com.openlattice.chronicle.services.delete.DataDeletionService;
 import com.openlattice.chronicle.services.download.DataDownloadManager;
 import com.openlattice.chronicle.services.download.DataDownloadService;
+import com.openlattice.chronicle.services.edm.EdmCacheManager;
+import com.openlattice.chronicle.services.edm.EdmCacheService;
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager;
 import com.openlattice.chronicle.services.enrollment.EnrollmentService;
 import com.openlattice.chronicle.services.surveys.SurveysManager;
@@ -85,7 +86,7 @@ public class ChronicleServerServicesPod {
     }
 
     @Bean
-    public EdmCacheService edmCacheManager() throws IOException, ExecutionException {
+    public EdmCacheManager edmCacheManager() throws IOException, ExecutionException {
         return new EdmCacheService( apiCacheManager() );
     }
 
@@ -95,23 +96,22 @@ public class ChronicleServerServicesPod {
     }
 
     @Bean
-    public CommonTasksManager commonTasksManager() throws IOException, ExecutionException {
-        return new CommonTasksManager( apiCacheManager(), edmCacheManager(), scheduledTasksManager() );
-    }
-
-    @Bean
-    public DataDeletionService dataDeletionManager() throws IOException, ExecutionException {
-        return new DataDeletionService( apiCacheManager(), commonTasksManager() );
+    public DataDeletionManager dataDeletionManager() throws IOException, ExecutionException {
+        return new DataDeletionService( apiCacheManager(), edmCacheManager(), enrollmentManager() );
     }
 
     @Bean
     public DataDownloadManager dataDownloadManager() throws IOException, ExecutionException {
-        return new DataDownloadService( commonTasksManager(), edmCacheManager() );
+        return new DataDownloadService( edmCacheManager() );
     }
 
     @Bean
     public EnrollmentManager enrollmentManager() throws IOException, ExecutionException {
-        return new EnrollmentService( apiCacheManager(), edmCacheManager(), commonTasksManager(), scheduledTasksManager() );
+        return new EnrollmentService(
+                apiCacheManager(),
+                edmCacheManager(),
+                scheduledTasksManager()
+        );
     }
 
     @Bean
@@ -120,7 +120,6 @@ public class ChronicleServerServicesPod {
                 apiCacheManager(),
                 edmCacheManager(),
                 scheduledTasksManager(),
-                commonTasksManager(),
                 enrollmentManager()
         );
     }
@@ -131,7 +130,6 @@ public class ChronicleServerServicesPod {
                 apiCacheManager(),
                 edmCacheManager(),
                 enrollmentManager(),
-                commonTasksManager(),
                 scheduledTasksManager()
         );
     }

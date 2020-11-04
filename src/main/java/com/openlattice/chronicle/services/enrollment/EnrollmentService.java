@@ -6,18 +6,15 @@ import com.google.common.collect.*;
 import com.openlattice.ApiUtil;
 import com.openlattice.chronicle.data.ParticipationStatus;
 import com.openlattice.chronicle.services.ApiCacheManager;
-import com.openlattice.chronicle.services.CommonTasksManager;
-import com.openlattice.chronicle.services.edm.EdmCacheService;
 import com.openlattice.chronicle.services.ScheduledTasksManager;
+import com.openlattice.chronicle.services.edm.EdmCacheManager;
 import com.openlattice.chronicle.sources.AndroidDevice;
 import com.openlattice.chronicle.sources.Datasource;
 import com.openlattice.client.ApiClient;
 import com.openlattice.data.*;
 import com.openlattice.data.requests.NeighborEntityDetails;
-import com.openlattice.edm.EdmApi;
 import com.openlattice.search.SearchApi;
 import com.openlattice.search.requests.EntityNeighborsFilter;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,7 +22,6 @@ import org.springframework.security.access.AccessDeniedException;
 
 import java.util.*;
 import java.util.concurrent.ExecutionException;
-import java.util.stream.Collectors;
 
 import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE;
 import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE_DATA_COLLECTION;
@@ -56,18 +52,15 @@ public class EnrollmentService implements EnrollmentManager {
     protected static final Logger logger = LoggerFactory.getLogger( EnrollmentService.class );
 
     private final ApiCacheManager       apiCacheManager;
-    private final CommonTasksManager    commonTasksManager;
     private final ScheduledTasksManager scheduledTasksManager;
-    private final EdmCacheService       edmCacheService;
+    private final EdmCacheManager       edmCacheManager;
 
     public EnrollmentService(
             ApiCacheManager apiCacheManager,
-            EdmCacheService edmCacheService,
-            CommonTasksManager commonTasksManager,
+            EdmCacheManager edmCacheManager,
             ScheduledTasksManager scheduledTasksManager ) {
 
-        this.edmCacheService = edmCacheService;
-        this.commonTasksManager = commonTasksManager;
+        this.edmCacheManager = edmCacheManager;
         this.scheduledTasksManager = scheduledTasksManager;
         this.apiCacheManager = apiCacheManager;
     }
@@ -80,7 +73,7 @@ public class EnrollmentService implements EnrollmentManager {
         EntityKey entityKey = new EntityKey(
                 deviceEntitySetId,
                 ApiUtil.generateDefaultEntityId(
-                        ImmutableList.of( edmCacheService.getPropertyTypeId( STRING_ID_FQN ) ),
+                        ImmutableList.of( edmCacheManager.getPropertyTypeId( STRING_ID_FQN ) ),
                         data
                 )
         );
@@ -101,32 +94,31 @@ public class EnrollmentService implements EnrollmentManager {
             DataIntegrationApi dataIntegrationApi = apiClient.getDataIntegrationApi();
 
             // entity set ids
-            UUID usedByESID = commonTasksManager
+            UUID usedByESID = edmCacheManager
                     .getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, USED_BY, USED_BY_ES );
-            UUID studyESID = commonTasksManager.getEntitySetId( organizationId, CHRONICLE, STUDIES, STUDY_ES );
-            UUID devicesESID = commonTasksManager
+            UUID studyESID = edmCacheManager.getEntitySetId( organizationId, CHRONICLE, STUDIES, STUDY_ES );
+            UUID devicesESID = edmCacheManager
                     .getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, DEVICE, DEVICES_ES );
-            UUID participantsESID = commonTasksManager.getParticipantEntitySetId( organizationId, studyId );
+            UUID participantsESID = edmCacheManager.getParticipantEntitySetId( organizationId, studyId );
 
             checkNotNullUUIDs( Sets.newHashSet( usedByESID, studyESID, participantsESID, devicesESID ) );
 
             // ensure study and participant exist
             UUID studyEKID = Preconditions
-                    .checkNotNull( commonTasksManager.getStudyEntityKeyId( organizationId, studyId ),
+                    .checkNotNull( getStudyEntityKeyId( organizationId, studyId ),
                             "study must exist" );
             UUID participantEKID = Preconditions
-                    .checkNotNull( commonTasksManager
-                            .getParticipantEntityKeyId( organizationId, studyId, participantId ) );
+                    .checkNotNull( getParticipantEntityKeyId( organizationId, studyId, participantId ) );
 
             // device entity data
             Map<UUID, Set<Object>> deviceData = new HashMap<>();
-            deviceData.put( edmCacheService.getPropertyTypeId( STRING_ID_FQN ), Sets.newHashSet( datasourceId ) );
+            deviceData.put( edmCacheManager.getPropertyTypeId( STRING_ID_FQN ), Sets.newHashSet( datasourceId ) );
 
             if ( datasource.isPresent() && AndroidDevice.class.isAssignableFrom( datasource.get().getClass() ) ) {
                 AndroidDevice device = (AndroidDevice) datasource.get();
                 deviceData
-                        .put( edmCacheService.getPropertyTypeId( MODEL_FQN ), Sets.newHashSet( device.getModel() ) );
-                deviceData.put( edmCacheService.getPropertyTypeId( VERSION_FQN ),
+                        .put( edmCacheManager.getPropertyTypeId( MODEL_FQN ), Sets.newHashSet( device.getModel() ) );
+                deviceData.put( edmCacheManager.getPropertyTypeId( VERSION_FQN ),
                         Sets.newHashSet( device.getOsVersion() ) );
             }
 
@@ -149,7 +141,7 @@ public class EnrollmentService implements EnrollmentManager {
             ListMultimap<UUID, DataEdge> associations = ArrayListMultimap.create();
 
             Map<UUID, Set<Object>> usedByEntity = ImmutableMap
-                    .of( edmCacheService.getPropertyTypeId( STRING_ID_FQN ), Sets.newHashSet( UUID.randomUUID() ) );
+                    .of( edmCacheManager.getPropertyTypeId( STRING_ID_FQN ), Sets.newHashSet( UUID.randomUUID() ) );
 
             associations.put( usedByESID, new DataEdge( deviceEDK, participantEDK, usedByEntity ) );
             associations.put( usedByESID, new DataEdge( deviceEDK, studyEDK, usedByEntity ) );
@@ -236,7 +228,7 @@ public class EnrollmentService implements EnrollmentManager {
 
     @Override
     public boolean isKnownParticipant( UUID organizationId, UUID studyId, String participantId ) {
-        return commonTasksManager.getParticipantEntityKeyId( organizationId, studyId, participantId ) != null;
+        return getParticipantEntityKeyId( organizationId, studyId, participantId ) != null;
     }
 
     @Override
@@ -246,7 +238,7 @@ public class EnrollmentService implements EnrollmentManager {
             ApiClient apiClient = apiCacheManager.prodApiClientCache.get( ApiClient.class );
             DataApi dataApi = apiClient.getDataApi();
 
-            UUID entitySetId = commonTasksManager.getParticipantEntitySetId( organizationId, studyId );
+            UUID entitySetId = edmCacheManager.getParticipantEntitySetId( organizationId, studyId );
             if ( entitySetId == null ) {
                 logger.error( "Unable to ge participant ESID: orgId = {}, studyId = {}, participantEKID = {}",
                         organizationId,
@@ -289,17 +281,16 @@ public class EnrollmentService implements EnrollmentManager {
             SearchApi searchApi = apiClient.getSearchApi();
 
             // entity set ids
-            UUID studiesESID = commonTasksManager.getEntitySetId( organizationId, CHRONICLE, STUDIES, STUDY_ES );
-            UUID participatedInESID = commonTasksManager.getEntitySetId( organizationId, CHRONICLE, PARTICIPATED_IN,
+            UUID studiesESID = edmCacheManager.getEntitySetId( organizationId, CHRONICLE, STUDIES, STUDY_ES );
+            UUID participatedInESID = edmCacheManager.getEntitySetId( organizationId, CHRONICLE, PARTICIPATED_IN,
                     PARTICIPATED_IN_ES );
-            UUID participantsESID = commonTasksManager.getParticipantEntitySetId( organizationId, studyId );
+            UUID participantsESID = edmCacheManager.getParticipantEntitySetId( organizationId, studyId );
 
             checkNotNullUUIDs( Sets.newHashSet( studiesESID, participatedInESID, participantsESID ) );
 
             // participant must exist
             UUID participantEKID = Preconditions
-                    .checkNotNull( commonTasksManager
-                                    .getParticipantEntityKeyId( organizationId, studyId, participantId ),
+                    .checkNotNull( getParticipantEntityKeyId( organizationId, studyId, participantId ),
                             "participant not found: orgId = %s, studyId = %s, participantId = %s",
                             organizationId,
                             studyId,
@@ -345,15 +336,15 @@ public class EnrollmentService implements EnrollmentManager {
             SearchApi searchApi = apiClient.getSearchApi();
 
             // get entity set ids
-            UUID studyESID = commonTasksManager.getEntitySetId( organizationId, CHRONICLE, STUDIES, STUDY_ES );
-            UUID notificationESID = commonTasksManager
+            UUID studyESID = edmCacheManager.getEntitySetId( organizationId, CHRONICLE, STUDIES, STUDY_ES );
+            UUID notificationESID = edmCacheManager
                     .getEntitySetId( organizationId, CHRONICLE, NOTIFICATION, NOTIFICATION_ES );
-            UUID partOfESID = commonTasksManager.getEntitySetId( organizationId, CHRONICLE, PART_OF, PART_OF_ES );
+            UUID partOfESID = edmCacheManager.getEntitySetId( organizationId, CHRONICLE, PART_OF, PART_OF_ES );
 
             // ensure study exists
             UUID studyEKID = Preconditions
-                    .checkNotNull( commonTasksManager.getStudyEntityKeyId( organizationId, studyId ),
-                            "study does not exist: orgId=%s, studyId=%s", organizationId, studyId);
+                    .checkNotNull( getStudyEntityKeyId( organizationId, studyId ),
+                            "study does not exist: orgId=%s, studyId=%s", organizationId, studyId );
 
             Map<UUID, List<NeighborEntityDetails>> neighbors = searchApi
                     .executeFilteredEntityNeighborSearch(
@@ -377,7 +368,7 @@ public class EnrollmentService implements EnrollmentManager {
                     .stream()
                     .flatMap( Collection::stream )
                     .map( NeighborEntityDetails::getAssociationDetails )
-                    .anyMatch( neighbor -> studyId.toString().equals( getFirstValueOrNull( neighbor, OL_ID_FQN ) ));
+                    .anyMatch( neighbor -> studyId.toString().equals( getFirstValueOrNull( neighbor, OL_ID_FQN ) ) );
 
         } catch ( Exception e ) {
             String error =
@@ -385,5 +376,27 @@ public class EnrollmentService implements EnrollmentManager {
             logger.error( error, e );
             throw new RuntimeException( error );
         }
+    }
+
+    @Override
+    public UUID getParticipantEntityKeyId( UUID organizationId, UUID studyId, String participantId ) {
+        if ( organizationId != null ) {
+            Map<UUID, Map<String, UUID>> participants = scheduledTasksManager.getStudyParticipantsByOrg()
+                    .getOrDefault( organizationId, Map.of() );
+
+            return participants.getOrDefault( studyId, Map.of() ).getOrDefault( participantId, null );
+        }
+
+        return scheduledTasksManager.getStudyParticipants().getOrDefault( studyId, Map.of() )
+                .getOrDefault( participantId, null );
+    }
+
+    @Override
+    public UUID getStudyEntityKeyId( UUID organizationId, UUID studyId ) {
+        if ( organizationId != null ) {
+            return scheduledTasksManager.getStudyEntityKeyIdsByOrg().getOrDefault( organizationId, Map.of() )
+                    .getOrDefault( studyId, null );
+        }
+        return scheduledTasksManager.getStudyEKIDById().getOrDefault( studyId, null );
     }
 }

@@ -4,8 +4,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import com.openlattice.chronicle.services.CommonTasksManager;
-import com.openlattice.chronicle.services.edm.EdmCacheService;
+import com.openlattice.chronicle.services.edm.EdmCacheManager;
 import com.openlattice.client.ApiClient;
 import com.openlattice.client.RetrofitFactory;
 import com.openlattice.data.requests.NeighborEntityDetails;
@@ -51,12 +50,10 @@ import static com.openlattice.edm.EdmConstants.ID_FQN;
 public class DataDownloadService implements DataDownloadManager {
     protected static final Logger logger = LoggerFactory.getLogger( DataDownloadService.class );
 
-    private final CommonTasksManager commonTasksManager;
-    private final EdmCacheService    edmCacheService;
+    private final EdmCacheManager edmCacheManager;
 
-    public DataDownloadService( CommonTasksManager commonTasksManager, EdmCacheService edmCacheService ) {
-        this.commonTasksManager = commonTasksManager;
-        this.edmCacheService = edmCacheService;
+    public DataDownloadService( EdmCacheManager edmCacheManager ) {
+        this.edmCacheManager = edmCacheManager;
     }
 
     private Iterable<Map<String, Set<Object>>> getParticipantDataHelper(
@@ -77,7 +74,7 @@ public class DataDownloadService implements DataDownloadManager {
              * 1. get the relevant EntitySets
              */
 
-            UUID participantESID = commonTasksManager.getParticipantEntitySetId( organizationId, studyId );
+            UUID participantESID = edmCacheManager.getParticipantEntitySetId( organizationId, studyId );
 
             Map<UUID, EntitySet> entitySetsById = entitySetsApi.getEntitySetsById(
                     ImmutableSet.of( participantESID, srcESID, edgeESID )
@@ -104,13 +101,13 @@ public class DataDownloadService implements DataDownloadManager {
             Set<FullQualifiedName> sourceKeys = edmApi.getEntityType( sourceES.getEntityTypeId() )
                     .getKey()
                     .stream()
-                    .map( propertyTypeId -> edmCacheService.getPropertyType( propertyTypeId ).getType() )
+                    .map( propertyTypeId -> edmCacheManager.getPropertyType( propertyTypeId ).getType() )
                     .collect( Collectors.toSet() );
 
             Set<FullQualifiedName> edgeKeys = edmApi.getEntityType( edgeES.getEntityTypeId() )
                     .getKey()
                     .stream()
-                    .map( propertyTypeId -> edmCacheService.getPropertyType( propertyTypeId ).getType() )
+                    .map( propertyTypeId -> edmCacheManager.getPropertyType( propertyTypeId ).getType() )
                     .collect( Collectors.toSet() );
 
             /*
@@ -154,7 +151,7 @@ public class DataDownloadService implements DataDownloadManager {
                                 .filter( entry -> !sourceKeys.contains( entry.getKey() ) )
                                 .forEach( entry -> {
                                     Set<Object> values = entry.getValue();
-                                    PropertyType propertyType = edmCacheService.getPropertyType( entry.getKey() );
+                                    PropertyType propertyType = edmCacheManager.getPropertyType( entry.getKey() );
                                     String propertyTitle = sourceMeta.get( propertyType.getId() ).getTitle();
                                     if ( propertyType.getDatatype() == EdmPrimitiveTypeKind.DateTimeOffset ) {
                                         Set<Object> dateTimeValues = values
@@ -185,7 +182,7 @@ public class DataDownloadService implements DataDownloadManager {
                                 .stream()
                                 .filter( entry -> !edgeKeys.contains( entry.getKey() ) )
                                 .forEach( entry -> {
-                                    UUID propertyTypeId = edmCacheService.getPropertyTypeId( entry.getKey() );
+                                    UUID propertyTypeId = edmCacheManager.getPropertyTypeId( entry.getKey() );
                                     String propertyTitle = edgeMeta.get( propertyTypeId ).getTitle();
                                     cleanEntityData.put( USER_PREFIX + propertyTitle, entry.getValue() );
                                 } );
@@ -212,9 +209,9 @@ public class DataDownloadService implements DataDownloadManager {
             UUID participatedInEntityKeyId,
             String token ) {
 
-        UUID srcESID = commonTasksManager
+        UUID srcESID = edmCacheManager
                 .getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, PREPROCESSED_DATA, PREPROCESSED_DATA_ES );
-        UUID edgeESID = commonTasksManager
+        UUID edgeESID = edmCacheManager
                 .getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, RECORDED_BY, RECORDED_BY_ES );
 
         checkNotNullUUIDs( Sets.newHashSet( srcESID, edgeESID ) );
@@ -236,8 +233,8 @@ public class DataDownloadService implements DataDownloadManager {
             UUID participantEntityKeyId,
             String token ) {
 
-        UUID srcESID = commonTasksManager.getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, APPDATA, DATA_ES );
-        UUID edgeESID = commonTasksManager
+        UUID srcESID = edmCacheManager.getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, APPDATA, DATA_ES );
+        UUID edgeESID = edmCacheManager
                 .getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, RECORDED_BY, RECORDED_BY_ES );
 
         checkNotNullUUIDs( Sets.newHashSet( srcESID, edgeESID ) );
@@ -259,9 +256,9 @@ public class DataDownloadService implements DataDownloadManager {
             UUID participantEntityKeyId,
             String token ) {
 
-        UUID srcESID = commonTasksManager
+        UUID srcESID = edmCacheManager
                 .getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, USER_APPS, USER_APPS_ES );
-        UUID edgeESID = commonTasksManager
+        UUID edgeESID = edmCacheManager
                 .getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, USED_BY, USED_BY_ES );
 
         checkNotNullUUIDs( Sets.newHashSet( srcESID, edgeESID ) );

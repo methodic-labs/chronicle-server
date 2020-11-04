@@ -4,7 +4,8 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.*;
 import com.openlattice.chronicle.data.DeleteType;
 import com.openlattice.chronicle.services.ApiCacheManager;
-import com.openlattice.chronicle.services.CommonTasksManager;
+import com.openlattice.chronicle.services.edm.EdmCacheManager;
+import com.openlattice.chronicle.services.enrollment.EnrollmentManager;
 import com.openlattice.client.ApiClient;
 import com.openlattice.client.RetrofitFactory;
 import com.openlattice.data.DataApi;
@@ -40,13 +41,17 @@ import static com.openlattice.edm.EdmConstants.ID_FQN;
 public class DataDeletionService implements DataDeletionManager {
     protected static final Logger logger = LoggerFactory.getLogger( DataDeletionService.class );
 
-    private final ApiCacheManager    apiCacheManager;
-    private final CommonTasksManager commonTasksManager;
+    private final ApiCacheManager apiCacheManager;
+    private final EdmCacheManager edmCacheManager;
+    private final EnrollmentManager enrollmentManager;
 
-    public DataDeletionService( ApiCacheManager apiCacheManager, CommonTasksManager commonTasksManager ) {
+    public DataDeletionService(
+            ApiCacheManager apiCacheManager,
+            EdmCacheManager edmCacheManager,
+            EnrollmentManager enrollmentManager ) {
         this.apiCacheManager = apiCacheManager;
-        this.commonTasksManager = commonTasksManager;
-
+        this.edmCacheManager = edmCacheManager;
+        this.enrollmentManager = enrollmentManager;
     }
 
     // TODO: write tests for this
@@ -70,31 +75,31 @@ public class DataDeletionService implements DataDeletionManager {
             DataApi chronicleDataApi = apiClient.getDataApi();
 
             // get required entity set ids
-            UUID studiesESID = commonTasksManager.getEntitySetId( organizationId, CHRONICLE, STUDIES, STUDY_ES );
-            UUID participantsESID = commonTasksManager.getParticipantEntitySetId( organizationId, studyId );
+            UUID studiesESID = edmCacheManager.getEntitySetId( organizationId, CHRONICLE, STUDIES, STUDY_ES );
+            UUID participantsESID = edmCacheManager.getParticipantEntitySetId( organizationId, studyId );
             checkNotNullUUIDs( Sets.newHashSet( studiesESID, participantsESID ) );
 
             // these entity set ids will be null if the respective app modules have not been installed for the organization
-            UUID appDataESID = commonTasksManager
+            UUID appDataESID = edmCacheManager
                     .getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, APPDATA, DATA_ES );
-            UUID preprocessedDataESID = commonTasksManager
+            UUID preprocessedDataESID = edmCacheManager
                     .getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, PREPROCESSED_DATA,
                             PREPROCESSED_DATA_ES );
-            UUID devicesESID = commonTasksManager
+            UUID devicesESID = edmCacheManager
                     .getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, DEVICE, DEVICES_ES );
-            UUID answersESID = commonTasksManager
+            UUID answersESID = edmCacheManager
                     .getEntitySetId( organizationId, CHRONICLE_SURVEYS, ANSWER, ANSWERS_ES );
 
             // ensure study exists
             UUID studyEntityKeyId = Preconditions
-                    .checkNotNull( commonTasksManager.getStudyEntityKeyId( organizationId, studyId ),
+                    .checkNotNull( enrollmentManager.getStudyEntityKeyId( organizationId, studyId ),
                             "study must exist" );
 
             // get a set of all participants to remove:
             Set<UUID> participantsToRemove = new HashSet<>();
             if ( participantId.isPresent() ) {
                 // if participantId: add to set
-                UUID participantEntityKeyId = commonTasksManager
+                UUID participantEntityKeyId = enrollmentManager
                         .getParticipantEntityKeyId( organizationId, studyId, participantId.get() );
                 if ( participantEntityKeyId == null ) {
                     throw new Exception(
@@ -114,8 +119,8 @@ public class DataDeletionService implements DataDeletionManager {
             // Be super careful here that the mapping is one-to-one:
             // don't delete neighbors that might have other neighbors/participants
 
-            Set<UUID> srcNeighborSetIds = ImmutableSet.of( devicesESID, appDataESID, preprocessedDataESID);
-            Set<UUID> dstNeighborSetIds = ImmutableSet.of( answersESID);
+            Set<UUID> srcNeighborSetIds = ImmutableSet.of( devicesESID, appDataESID, preprocessedDataESID );
+            Set<UUID> dstNeighborSetIds = ImmutableSet.of( answersESID );
 
             Map<UUID, Set<UUID>> toDeleteEntitySetIdEntityKeyId = Maps.newHashMap();
 
@@ -176,7 +181,7 @@ public class DataDeletionService implements DataDeletionManager {
                     ImmutableSet.of( studyEntityKeyId ),
                     deleteType );
 
-            if (organizationId == null) {
+            if ( organizationId == null ) {
                 logger.info( "Deleted study {} from global studies dataset", studyId );
 
                 userEntitySetsApi.deleteEntitySet( participantsESID );
