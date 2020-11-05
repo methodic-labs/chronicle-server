@@ -258,12 +258,14 @@ public class AppDataUploadService implements AppDataUploadManager {
                 .stream()
                 .min( OffsetDateTime::compareTo )
                 // .orElse( null ) :commenting this out since pushedDateTimes can never have nulls
+                .get()
                 .toString();
 
         String lastDateTime = pushedDateTimes
                 .stream()
                 .max( OffsetDateTime::compareTo )
                 // .orElse( null ) :commenting this out since pushedDateTimes can never have nulls
+                .get()
                 .toString();
 
         Set<Object> uniqueDates = pushedDateTimes

@@ -51,6 +51,7 @@ public class ChronicleServerUtil {
         }
     }
 
+    @Deprecated(since = "apps v2")
     public static String getParticipantEntitySetName( UUID studyId ) {
         return PARTICIPANTS_PREFIX.concat( studyId.toString() );
     }
