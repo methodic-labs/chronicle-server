@@ -41,8 +41,8 @@ import static com.openlattice.edm.EdmConstants.ID_FQN;
 public class DataDeletionService implements DataDeletionManager {
     protected static final Logger logger = LoggerFactory.getLogger( DataDeletionService.class );
 
-    private final ApiCacheManager apiCacheManager;
-    private final EdmCacheManager edmCacheManager;
+    private final ApiCacheManager   apiCacheManager;
+    private final EdmCacheManager   edmCacheManager;
     private final EnrollmentManager enrollmentManager;
 
     public DataDeletionService(
@@ -119,8 +119,9 @@ public class DataDeletionService implements DataDeletionManager {
             // Be super careful here that the mapping is one-to-one:
             // don't delete neighbors that might have other neighbors/participants
 
-            Set<UUID> srcNeighborSetIds = ImmutableSet.of( devicesESID, appDataESID, preprocessedDataESID );
-            Set<UUID> dstNeighborSetIds = ImmutableSet.of( answersESID );
+            Set<UUID> srcNeighborSetIds = Sets
+                    .filter( Sets.newHashSet( devicesESID, appDataESID, preprocessedDataESID ), Objects::nonNull );
+            Set<UUID> dstNeighborSetIds = Sets.filter( Sets.newHashSet( answersESID ), Objects::nonNull );
 
             Map<UUID, Set<UUID>> toDeleteEntitySetIdEntityKeyId = Maps.newHashMap();
 
