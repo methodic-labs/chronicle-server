@@ -1,18 +1,22 @@
 package com.openlattice.chronicle.services.edm;
 
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Maps;
+import com.dataloom.streams.StreamUtil;
+import com.google.common.collect.*;
 import com.openlattice.apps.App;
 import com.openlattice.apps.AppApi;
 import com.openlattice.apps.UserAppConfig;
 import com.openlattice.authorization.securable.AbstractSecurableObject;
 import com.openlattice.chronicle.constants.*;
 import com.openlattice.chronicle.services.ApiCacheManager;
+import com.openlattice.chronicle.util.ChronicleServerUtil;
 import com.openlattice.client.ApiClient;
 import com.openlattice.collections.CollectionTemplateType;
 import com.openlattice.collections.CollectionsApi;
 import com.openlattice.collections.EntitySetCollection;
 import com.openlattice.collections.EntityTypeCollection;
+import com.openlattice.data.DataApi;
+import com.openlattice.data.requests.EntitySetSelection;
+import com.openlattice.data.requests.FileType;
 import com.openlattice.edm.EdmApi;
 import com.openlattice.edm.type.PropertyType;
 import com.openlattice.entitysets.EntitySetsApi;
@@ -29,6 +33,9 @@ import java.util.stream.StreamSupport;
 
 import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE;
 import static com.openlattice.chronicle.constants.EdmConstants.ENTITY_SET_NAMES;
+import static com.openlattice.chronicle.constants.EdmConstants.STRING_ID_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.STUDY_ES;
+import static com.openlattice.chronicle.util.ChronicleServerUtil.getFirstUUIDOrNull;
 import static com.openlattice.chronicle.util.ChronicleServerUtil.getParticipantEntitySetName;
 
 /**
@@ -37,7 +44,8 @@ import static com.openlattice.chronicle.util.ChronicleServerUtil.getParticipantE
 public class EdmCacheService implements EdmCacheManager {
     protected static final Logger logger = LoggerFactory.getLogger( EdmCacheService.class );
 
-    private final long ENTITY_SETS_REFRESH_INTERVAL = 15 * 60 * 1000; // 15 minutes
+    private final long ENTITY_SETS_REFRESH_INTERVAL     = 15 * 60 * 1000; // 15 minutes
+    private final long PARTICIPANTS_ES_REFRESH_INTERVAL = 60 * 1000; // i minute
 
     // appName -> orgId -> templateName -> entitySetID
     private final Map<AppComponent, Map<UUID, Map<CollectionTemplateTypeName, UUID>>> entitySetIdsByOrgId  = Maps
@@ -139,6 +147,41 @@ public class EdmCacheService implements EdmCacheManager {
         entitySetIdsByOrgId.putAll( entitySets );
     }
 
+    @Deprecated
+    @Scheduled( fixedRate = PARTICIPANTS_ES_REFRESH_INTERVAL )
+    public void refreshLegacyParticipantEntitySetIds() {
+        logger.info( "refreshing participant entityset ids for legacy studies" );
+
+        try {
+            ApiClient apiClient = apiCacheManager.prodApiClientCache.get( ApiClient.class );
+            DataApi dataApi = apiClient.getDataApi();
+            EntitySetsApi entitySetsApi = apiClient.getEntitySetsApi();
+
+            Iterable<SetMultimap<FullQualifiedName, Object>> studies = dataApi.loadSelectedEntitySetData(
+                    getLegacyEntitySetId( STUDY_ES ),
+                    new EntitySetSelection(
+                            Optional.of( ImmutableSet.of( getPropertyTypeId( STRING_ID_FQN ) ) )
+                    ),
+                    FileType.json
+            );
+
+            Set<String> entitySetNames = StreamUtil.stream( studies )
+                    .map( study -> getFirstUUIDOrNull( Multimaps.asMap( study ), STRING_ID_FQN ) )
+                    .filter( Objects::nonNull )
+                    .map( ChronicleServerUtil::getParticipantEntitySetName )
+                    .collect( Collectors.toSet() );
+
+            Map<String, UUID> entitySetIds = entitySetsApi.getEntitySetIds( entitySetNames );
+
+            entitySetIdMap.putAll( entitySetIds );
+
+            logger.info( "loaded {} legacy participant entity set ids", entitySetIds.size() );
+
+        } catch ( Exception e ) {
+            logger.error( "error refreshing legacy participant entityset ids" );
+        }
+    }
+
     @Override
     public UUID getPropertyTypeId( FullQualifiedName fqn ) {
         return this.propertyTypeIdsByFQN.get( fqn );
@@ -154,12 +197,12 @@ public class EdmCacheService implements EdmCacheManager {
         return getPropertyType( getPropertyTypeId( fqn ) );
     }
 
-    @Deprecated (since = "apps v2")
+    @Deprecated( since = "apps v2" )
     @Override
-    public Map<String, UUID> getHistoricalPropertyTypeIds( Set<String> propertyTypeFqns ) {
-        Map<String, UUID> propertyTypeMap = Maps.newHashMapWithExpectedSize (propertyTypeFqns.size());
+    public Map<String, UUID> getLegacyPropertyTypeIds( Set<String> propertyTypeFqns ) {
+        Map<String, UUID> propertyTypeMap = Maps.newHashMapWithExpectedSize( propertyTypeFqns.size() );
 
-        for (String fqnString : propertyTypeFqns) {
+        for ( String fqnString : propertyTypeFqns ) {
             propertyTypeMap.put( fqnString, propertyTypeIdsByFQN.get( new FullQualifiedName( fqnString ) ) );
         }
         return propertyTypeMap;
@@ -167,9 +210,9 @@ public class EdmCacheService implements EdmCacheManager {
 
     @Override
     public Map<FullQualifiedName, UUID> getPropertyTypeIds( Set<FullQualifiedName> propertyTypeFqns ) {
-        Map<FullQualifiedName, UUID> propertyTypeMap = Maps.newHashMapWithExpectedSize (propertyTypeFqns.size());
+        Map<FullQualifiedName, UUID> propertyTypeMap = Maps.newHashMapWithExpectedSize( propertyTypeFqns.size() );
 
-        for (FullQualifiedName fqn : propertyTypeFqns) {
+        for ( FullQualifiedName fqn : propertyTypeFqns ) {
             propertyTypeMap.put( fqn, propertyTypeIdsByFQN.get( fqn ) );
         }
 
@@ -185,12 +228,20 @@ public class EdmCacheService implements EdmCacheManager {
     public UUID getParticipantEntitySetId( UUID organizationId, UUID studyId ) {
         if ( organizationId == null ) {
             try {
+                // if already in cache, returned cached value. otherwise hit api
+                String participantsES = getParticipantEntitySetName( studyId );
+
+                if (entitySetIdMap.containsKey(participantsES )) {
+                    return entitySetIdMap.get( participantsES );
+                }
+
                 ApiClient apiClient = apiCacheManager.prodApiClientCache.get( ApiClient.class );
                 EntitySetsApi entitySetsApi = apiClient.getEntitySetsApi();
 
-                return entitySetsApi.getEntitySetId( getParticipantEntitySetName( studyId ) );
+                return entitySetsApi.getEntitySetId( participantsES );
+
             } catch ( Exception e ) {
-                logger.error( " unable to load apis" );
+                logger.error( "unable to get participant entitySetId for study {}", studyId );
             }
         }
         return getEntitySetIdsByOrgId()
@@ -199,8 +250,9 @@ public class EdmCacheService implements EdmCacheManager {
                 .getOrDefault( CollectionTemplateTypeName.PARTICIPANTS, null );
     }
 
+    @Deprecated
     @Override
-    public UUID getEntitySetId( String entitySetName ) {
+    public UUID getLegacyEntitySetId( String entitySetName ) {
         return this.entitySetIdMap.getOrDefault( entitySetName, null );
     }
 
@@ -213,14 +265,14 @@ public class EdmCacheService implements EdmCacheManager {
     ) {
 
         if ( organizationId == null ) {
-            return getEntitySetId( entitySetName );
+            return getLegacyEntitySetId( entitySetName );
         }
         return getEntitySetId( organizationId, appComponent, templateName );
     }
 
+    // get entity set id from a app configs context
     @Override
-        // get entity set id from a app configs context
-    public UUID getEntitySetId (
+    public UUID getEntitySetId(
             UUID organizationId,
             AppComponent appComponent,
             CollectionTemplateTypeName templateTypeName

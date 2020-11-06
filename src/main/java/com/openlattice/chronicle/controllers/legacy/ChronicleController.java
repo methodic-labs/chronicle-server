@@ -49,7 +49,7 @@ public class ChronicleController implements ChronicleApi {
             produces = MediaType.APPLICATION_JSON_VALUE
     )
     public Map<String, UUID> getPropertyTypeIds( @RequestBody Set<String> propertyTypeFqns ) {
-        return edmCacheManager.getHistoricalPropertyTypeIds( propertyTypeFqns );
+        return edmCacheManager.getLegacyPropertyTypeIds( propertyTypeFqns );
     }
 
     @Override

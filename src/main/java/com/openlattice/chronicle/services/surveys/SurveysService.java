@@ -62,19 +62,16 @@ public class SurveysService implements SurveysManager {
 
     private final ApiCacheManager       apiCacheManager;
     private final EnrollmentManager     enrollmentManager;
-    private final ScheduledTasksManager scheduledTasksManager;
     private final EdmCacheManager       edmCacheManager;
 
     public SurveysService(
             ApiCacheManager apiCacheManager,
             EdmCacheManager edmCacheManager,
-            EnrollmentManager enrollmentManager,
-            ScheduledTasksManager scheduledTasksManager ) {
+            EnrollmentManager enrollmentManager ) {
 
         this.edmCacheManager = edmCacheManager;
         this.apiCacheManager = apiCacheManager;
         this.enrollmentManager = enrollmentManager;
-        this.scheduledTasksManager = scheduledTasksManager;
     }
 
     @Override

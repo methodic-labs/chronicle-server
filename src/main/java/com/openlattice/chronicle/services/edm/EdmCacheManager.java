@@ -13,7 +13,7 @@ import java.util.UUID;
  */
 public interface EdmCacheManager {
     // overloading doesn't work here. javac error: both methods have the same type erasure
-    Map<String, UUID> getHistoricalPropertyTypeIds( Set<String> propertyTypeFqns );
+    Map<String, UUID> getLegacyPropertyTypeIds( Set<String> propertyTypeFqns );
 
     Map<FullQualifiedName, UUID> getPropertyTypeIds( Set<FullQualifiedName> propertyTypeFqns );
 
@@ -28,7 +28,7 @@ public interface EdmCacheManager {
     UUID getParticipantEntitySetId( UUID organizationId, UUID studyId );
 
     // entity set id in legacy context
-    UUID getEntitySetId( String entitySetName );
+    UUID getLegacyEntitySetId( String entitySetName );
 
     // entity set id in either app configs context / legacy
     UUID getEntitySetId(

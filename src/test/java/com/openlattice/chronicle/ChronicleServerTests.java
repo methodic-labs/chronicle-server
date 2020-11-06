@@ -116,7 +116,7 @@ public class ChronicleServerTests {
 //     private static List<NeighborEntityDetails> getParticipantNeighbors( UUID participantEKID, UUID studyID ) {
 //
 //         String participantES = ChronicleServerUtil.getParticipantEntitySetName( studyID );
-//         UUID participantEntitySetId = entitySetsApi.getEntitySetId( participantES );
+//         UUID participantEntitySetId = entitySetsApi.getLegacyEntitySetId( participantES );
 //         UUID userAppsESID = entitySetNameIdMap.get( CHRONICLE_USER_APPS );
 //         UUID usedByESID = entitySetNameIdMap.get( USED_BY_ES_NAME );
 //

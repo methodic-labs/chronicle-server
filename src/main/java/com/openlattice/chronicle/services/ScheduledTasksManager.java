@@ -141,7 +141,7 @@ public class ScheduledTasksManager {
 
             Iterable<SetMultimap<FullQualifiedName, Object>> entitySetData = getEntitySetData(
                     dataApi,
-                    edmCacheManager.getEntitySetId( APPS_DICTIONARY_ES ),
+                    edmCacheManager.getLegacyEntitySetId( APPS_DICTIONARY_ES ),
                     ImmutableSet.of( FULL_NAME_FQN, RECORD_TYPE_FQN )
             );
             logger.info(
@@ -180,7 +180,7 @@ public class ScheduledTasksManager {
             // load entities from chronicle_user_apps
             Iterable<SetMultimap<FullQualifiedName, Object>> data = getEntitySetData(
                     dataApi,
-                    edmCacheManager.getEntitySetId( USER_APPS_ES ),
+                    edmCacheManager.getLegacyEntitySetId( USER_APPS_ES ),
                     ImmutableSet.of( FULL_NAME_FQN )
             );
 
@@ -362,8 +362,8 @@ public class ScheduledTasksManager {
                     .newHashMap(); // studyID -> participantId -> participantEKID
 
             // entity set ids
-            UUID participatedInESID = edmCacheManager.getEntitySetId( PARTICIPATED_IN_ES );
-            UUID studiesESID = edmCacheManager.getEntitySetId( STUDY_ES );
+            UUID participatedInESID = edmCacheManager.getLegacyEntitySetId( PARTICIPATED_IN_ES );
+            UUID studiesESID = edmCacheManager.getLegacyEntitySetId( STUDY_ES );
 
             // get study entities
             Iterable<SetMultimap<FullQualifiedName, Object>> studyEntities = getEntitySetData(
@@ -462,7 +462,7 @@ public class ScheduledTasksManager {
             DataApi dataApi = apiClient.getDataApi();
 
             Map<String, UUID> deviceIdsByEKID = getDeviceIdsByEKID( dataApi,
-                    edmCacheManager.getEntitySetId( DEVICES_ES ) );
+                    edmCacheManager.getLegacyEntitySetId( DEVICES_ES ) );
 
             this.deviceIdsByEKID.putAll( deviceIdsByEKID );
 

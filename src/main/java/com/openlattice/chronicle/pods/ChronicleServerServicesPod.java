@@ -129,8 +129,7 @@ public class ChronicleServerServicesPod {
         return new SurveysService(
                 apiCacheManager(),
                 edmCacheManager(),
-                enrollmentManager(),
-                scheduledTasksManager()
+                enrollmentManager()
         );
     }
 }
