@@ -38,6 +38,8 @@ import com.openlattice.chronicle.services.edm.EdmCacheManager;
 import com.openlattice.chronicle.services.edm.EdmCacheService;
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager;
 import com.openlattice.chronicle.services.enrollment.EnrollmentService;
+import com.openlattice.chronicle.services.entitysets.EntitySetIdsManager;
+import com.openlattice.chronicle.services.entitysets.EntitySetIdsService;
 import com.openlattice.chronicle.services.surveys.SurveysManager;
 import com.openlattice.chronicle.services.surveys.SurveysService;
 import com.openlattice.chronicle.services.upload.AppDataUploadManager;
@@ -91,18 +93,23 @@ public class ChronicleServerServicesPod {
     }
 
     @Bean
+    public EntitySetIdsManager entitySetIdsManager() throws ExecutionException, IOException {
+        return new EntitySetIdsService( apiCacheManager(), edmCacheManager() );
+    }
+
+    @Bean
     public ScheduledTasksManager scheduledTasksManager() throws IOException, ExecutionException {
-        return new ScheduledTasksManager( apiCacheManager(), edmCacheManager() );
+        return new ScheduledTasksManager( apiCacheManager(), edmCacheManager(), entitySetIdsManager() );
     }
 
     @Bean
     public DataDeletionManager dataDeletionManager() throws IOException, ExecutionException {
-        return new DataDeletionService( apiCacheManager(), edmCacheManager(), enrollmentManager() );
+        return new DataDeletionService( apiCacheManager(), entitySetIdsManager(), enrollmentManager() );
     }
 
     @Bean
     public DataDownloadManager dataDownloadManager() throws IOException, ExecutionException {
-        return new DataDownloadService( edmCacheManager() );
+        return new DataDownloadService( entitySetIdsManager(), edmCacheManager() );
     }
 
     @Bean
@@ -110,6 +117,7 @@ public class ChronicleServerServicesPod {
         return new EnrollmentService(
                 apiCacheManager(),
                 edmCacheManager(),
+                entitySetIdsManager(),
                 scheduledTasksManager()
         );
     }
@@ -119,6 +127,7 @@ public class ChronicleServerServicesPod {
         return new AppDataUploadService(
                 apiCacheManager(),
                 edmCacheManager(),
+                entitySetIdsManager(),
                 scheduledTasksManager(),
                 enrollmentManager()
         );
@@ -129,6 +138,7 @@ public class ChronicleServerServicesPod {
         return new SurveysService(
                 apiCacheManager(),
                 edmCacheManager(),
+                entitySetIdsManager(),
                 enrollmentManager()
         );
     }

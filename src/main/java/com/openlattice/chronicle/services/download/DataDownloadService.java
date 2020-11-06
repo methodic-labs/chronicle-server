@@ -5,10 +5,10 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 import com.openlattice.chronicle.data.EntityNeighborProperties;
 import com.openlattice.chronicle.services.edm.EdmCacheManager;
+import com.openlattice.chronicle.services.entitysets.EntitySetIdsManager;
 import com.openlattice.client.ApiClient;
 import com.openlattice.client.RetrofitFactory;
 import com.openlattice.data.requests.NeighborEntityDetails;
-import com.openlattice.edm.EdmApi;
 import com.openlattice.edm.EntitySet;
 import com.openlattice.edm.set.EntitySetPropertyMetadata;
 import com.openlattice.edm.type.PropertyType;
@@ -51,9 +51,12 @@ import static com.openlattice.edm.EdmConstants.ID_FQN;
 public class DataDownloadService implements DataDownloadManager {
     protected static final Logger logger = LoggerFactory.getLogger( DataDownloadService.class );
 
-    private final EdmCacheManager edmCacheManager;
+    private final EntitySetIdsManager entitySetIdsManager;
+    private final EdmCacheManager     edmCacheManager;
 
-    public DataDownloadService( EdmCacheManager edmCacheManager ) {
+    public DataDownloadService( EntitySetIdsManager entitySetIdsManager, EdmCacheManager edmCacheManager ) {
+
+        this.entitySetIdsManager = entitySetIdsManager;
         this.edmCacheManager = edmCacheManager;
     }
 
@@ -75,7 +78,7 @@ public class DataDownloadService implements DataDownloadManager {
              * 1. get the relevant EntitySets
              */
 
-            UUID participantESID = edmCacheManager.getParticipantEntitySetId( organizationId, studyId );
+            UUID participantESID = entitySetIdsManager.getParticipantEntitySetId( organizationId, studyId );
 
             Map<UUID, EntitySet> entitySetsById = entitySetsApi.getEntitySetsById(
                     ImmutableSet.of( participantESID, srcESID, edgeESID )
@@ -194,9 +197,9 @@ public class DataDownloadService implements DataDownloadManager {
             UUID participatedInEntityKeyId,
             String token ) {
 
-        UUID srcESID = edmCacheManager
+        UUID srcESID = entitySetIdsManager
                 .getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, PREPROCESSED_DATA, PREPROCESSED_DATA_ES );
-        UUID edgeESID = edmCacheManager
+        UUID edgeESID = entitySetIdsManager
                 .getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, RECORDED_BY, RECORDED_BY_ES );
 
         EntityNeighborProperties fqnsToExclude = new EntityNeighborProperties(
@@ -222,8 +225,9 @@ public class DataDownloadService implements DataDownloadManager {
             UUID participantEntityKeyId,
             String token ) {
 
-        UUID srcESID = edmCacheManager.getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, APPDATA, DATA_ES );
-        UUID edgeESID = edmCacheManager
+        UUID srcESID = entitySetIdsManager
+                .getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, APPDATA, DATA_ES );
+        UUID edgeESID = entitySetIdsManager
                 .getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, RECORDED_BY, RECORDED_BY_ES );
 
         EntityNeighborProperties fqnsToExclude = new EntityNeighborProperties(
@@ -249,9 +253,9 @@ public class DataDownloadService implements DataDownloadManager {
             UUID participantEntityKeyId,
             String token ) {
 
-        UUID srcESID = edmCacheManager
+        UUID srcESID = entitySetIdsManager
                 .getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, USER_APPS, USER_APPS_ES );
-        UUID edgeESID = edmCacheManager
+        UUID edgeESID = entitySetIdsManager
                 .getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, USED_BY, USED_BY_ES );
 
         EntityNeighborProperties fqnsToExclude = new EntityNeighborProperties(

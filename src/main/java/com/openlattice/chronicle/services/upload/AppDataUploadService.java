@@ -10,6 +10,7 @@ import com.openlattice.chronicle.services.ApiCacheManager;
 import com.openlattice.chronicle.services.ScheduledTasksManager;
 import com.openlattice.chronicle.services.edm.EdmCacheManager;
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager;
+import com.openlattice.chronicle.services.entitysets.EntitySetIdsManager;
 import com.openlattice.client.ApiClient;
 import com.openlattice.data.*;
 import org.apache.commons.lang3.tuple.Triple;
@@ -63,10 +64,12 @@ public class AppDataUploadService implements AppDataUploadManager {
     private final EnrollmentManager     enrollmentManager;
     private final ApiCacheManager       apiCacheManager;
     private final EdmCacheManager       edmCacheManager;
+    private final EntitySetIdsManager   entitySetIdsManager;
 
     public AppDataUploadService(
             ApiCacheManager apiCacheManager,
             EdmCacheManager edmCacheManager,
+            EntitySetIdsManager entitySetIdsManager,
             ScheduledTasksManager scheduledTasksManager,
             EnrollmentManager enrollmentManager ) {
 
@@ -74,6 +77,7 @@ public class AppDataUploadService implements AppDataUploadManager {
         this.scheduledTasksManager = scheduledTasksManager;
         this.enrollmentManager = enrollmentManager;
         this.apiCacheManager = apiCacheManager;
+        this.entitySetIdsManager = entitySetIdsManager;
     }
 
     // return an OffsetDateTime with time 00:00
@@ -240,8 +244,8 @@ public class AppDataUploadService implements AppDataUploadManager {
             String participantId
     ) {
         // entity set ids
-        UUID metadataESID = edmCacheManager.getEntitySetId( organizationId, CHRONICLE, METADATA, METADATA_ES );
-        UUID hasESID = edmCacheManager.getEntitySetId( organizationId, CHRONICLE, HAS, HAS_ES );
+        UUID metadataESID = entitySetIdsManager.getEntitySetId( organizationId, CHRONICLE, METADATA, METADATA_ES );
+        UUID hasESID = entitySetIdsManager.getEntitySetId( organizationId, CHRONICLE, HAS, HAS_ES );
 
         checkNotNullUUIDs( ImmutableSet.of( metadataESID, hasESID ) );
 
@@ -460,15 +464,15 @@ public class AppDataUploadService implements AppDataUploadManager {
             UUID participantESID
     ) {
         // entity set ids
-        UUID appDataESID = edmCacheManager
+        UUID appDataESID = entitySetIdsManager
                 .getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, APPDATA, DATA_ES );
-        UUID recordedByESID = edmCacheManager
+        UUID recordedByESID = entitySetIdsManager
                 .getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, RECORDED_BY, RECORDED_BY_ES );
-        UUID devicesESID = edmCacheManager
+        UUID devicesESID = entitySetIdsManager
                 .getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, DEVICE, DEVICES_ES );
-        UUID usedByESID = edmCacheManager
+        UUID usedByESID = entitySetIdsManager
                 .getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, USED_BY, USED_BY_ES );
-        UUID userAppsESID = edmCacheManager
+        UUID userAppsESID = entitySetIdsManager
                 .getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, USER_APPS, USER_APPS_ES );
 
         ListMultimap<UUID, Map<UUID, Set<Object>>> appDataEntities = ArrayListMultimap.create();
@@ -618,7 +622,7 @@ public class AppDataUploadService implements AppDataUploadManager {
                 return 0;
             }
 
-            UUID participantEntitySetId = edmCacheManager.getParticipantEntitySetId( organizationId, studyId );
+            UUID participantEntitySetId = entitySetIdsManager.getParticipantEntitySetId( organizationId, studyId );
             checkNotNullUUIDs( ImmutableSet.of( participantEntitySetId ) );
 
             createEntitiesAndAssociations(

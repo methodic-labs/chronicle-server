@@ -5,9 +5,9 @@ import com.google.common.collect.*;
 import com.openlattice.chronicle.data.ChronicleAppsUsageDetails;
 import com.openlattice.chronicle.data.ChronicleQuestionnaire;
 import com.openlattice.chronicle.services.ApiCacheManager;
-import com.openlattice.chronicle.services.ScheduledTasksManager;
 import com.openlattice.chronicle.services.edm.EdmCacheManager;
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager;
+import com.openlattice.chronicle.services.entitysets.EntitySetIdsManager;
 import com.openlattice.client.ApiClient;
 import com.openlattice.data.DataApi;
 import com.openlattice.data.DataAssociation;
@@ -60,17 +60,20 @@ import static com.openlattice.edm.EdmConstants.ID_FQN;
 public class SurveysService implements SurveysManager {
     protected static final Logger logger = LoggerFactory.getLogger( SurveysService.class );
 
-    private final ApiCacheManager       apiCacheManager;
-    private final EnrollmentManager     enrollmentManager;
-    private final EdmCacheManager       edmCacheManager;
+    private final ApiCacheManager     apiCacheManager;
+    private final EnrollmentManager   enrollmentManager;
+    private final EdmCacheManager     edmCacheManager;
+    private final EntitySetIdsManager entitySetIdsManager;
 
     public SurveysService(
             ApiCacheManager apiCacheManager,
             EdmCacheManager edmCacheManager,
+            EntitySetIdsManager entitySetIdsManager,
             EnrollmentManager enrollmentManager ) {
 
         this.edmCacheManager = edmCacheManager;
         this.apiCacheManager = apiCacheManager;
+        this.entitySetIdsManager = entitySetIdsManager;
         this.enrollmentManager = enrollmentManager;
     }
 
@@ -92,11 +95,11 @@ public class SurveysService implements SurveysManager {
             SearchApi searchApi = apiClient.getSearchApi();
 
             // entity set ids
-            UUID questionnaireESID = edmCacheManager
+            UUID questionnaireESID = entitySetIdsManager
                     .getEntitySetId( organizationId, CHRONICLE_SURVEYS, SURVEY, QUESTIONNAIRE_ES );
-            UUID studiesESID = edmCacheManager.getEntitySetId( organizationId, CHRONICLE, STUDIES, STUDY_ES );
-            UUID partOfESID = edmCacheManager.getEntitySetId( organizationId, CHRONICLE, PART_OF, PART_OF_ES );
-            UUID questionESID = edmCacheManager
+            UUID studiesESID = entitySetIdsManager.getEntitySetId( organizationId, CHRONICLE, STUDIES, STUDY_ES );
+            UUID partOfESID = entitySetIdsManager.getEntitySetId( organizationId, CHRONICLE, PART_OF, PART_OF_ES );
+            UUID questionESID = entitySetIdsManager
                     .getEntitySetId( organizationId, CHRONICLE_SURVEYS, QUESTION, QUESTIONS_ES );
 
             checkNotNullUUIDs( ImmutableSet.of( questionnaireESID, studiesESID, partOfESID, questionESID ) );
@@ -181,7 +184,7 @@ public class SurveysService implements SurveysManager {
             logger.info( "Retrieving questionnaires for study :{}", studyId );
 
             // If an organization does not have the chronicle_surveys app installed, exit early
-            if ( edmCacheManager.getEntitySetIdsByOrgId().get( CHRONICLE_SURVEYS )
+            if ( entitySetIdsManager.getEntitySetIdsByOrgId().get( CHRONICLE_SURVEYS )
                     .containsKey( organizationId ) ) {
                 logger.warn( "No questionnaires found for study {}. {} is not installed on organization with id {}. ",
                         studyId,
@@ -200,10 +203,10 @@ public class SurveysService implements SurveysManager {
             SearchApi searchApi = apiClient.getSearchApi();
 
             // entity set ids
-            UUID questionnaireESID = edmCacheManager
+            UUID questionnaireESID = entitySetIdsManager
                     .getEntitySetId( organizationId, CHRONICLE_SURVEYS, SURVEY, QUESTIONNAIRE_ES );
-            UUID studiesESID = edmCacheManager.getEntitySetId( organizationId, CHRONICLE, STUDIES, STUDY_ES );
-            UUID partOfESID = edmCacheManager.getEntitySetId( organizationId, CHRONICLE, PART_OF, PART_OF_ES );
+            UUID studiesESID = entitySetIdsManager.getEntitySetId( organizationId, CHRONICLE, STUDIES, STUDY_ES );
+            UUID partOfESID = entitySetIdsManager.getEntitySetId( organizationId, CHRONICLE, PART_OF, PART_OF_ES );
 
             checkNotNullUUIDs( ImmutableSet.of( questionnaireESID, studiesESID, partOfESID ) );
 
@@ -253,16 +256,16 @@ public class SurveysService implements SurveysManager {
             DataApi dataApi = apiClient.getDataApi();
 
             // get entity set ids
-            UUID participantESID = edmCacheManager.getParticipantEntitySetId( organizationId, studyId );
-            UUID answersESID = edmCacheManager
+            UUID participantESID = entitySetIdsManager.getParticipantEntitySetId( organizationId, studyId );
+            UUID answersESID = entitySetIdsManager
                     .getEntitySetId( organizationId, CHRONICLE_SURVEYS, ANSWER, ANSWERS_ES );
-            UUID respondsWithESID = edmCacheManager.getEntitySetId( organizationId,
+            UUID respondsWithESID = entitySetIdsManager.getEntitySetId( organizationId,
                     CHRONICLE_SURVEYS,
                     RESPONDS_WITH,
                     RESPONDS_WITH_ES );
-            UUID addressesESID = edmCacheManager
+            UUID addressesESID = entitySetIdsManager
                     .getEntitySetId( organizationId, CHRONICLE_SURVEYS, ADDRESSES, ADDRESSES_ES );
-            UUID questionsESID = edmCacheManager
+            UUID questionsESID = entitySetIdsManager
                     .getEntitySetId( organizationId, CHRONICLE_SURVEYS, QUESTION, QUESTIONS_ES );
 
             checkNotNullUUIDs( ImmutableSet
@@ -348,7 +351,7 @@ public class SurveysService implements SurveysManager {
             Preconditions.checkArgument( isKnownParticipant, "unknown participant = {}", participantId );
 
             // get entity set ids
-            UUID usedByESID = edmCacheManager
+            UUID usedByESID = entitySetIdsManager
                     .getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, USED_BY, USED_BY_ES );
             checkNotNullUUIDs( ImmutableSet.of( usedByESID ) );
 
@@ -407,10 +410,10 @@ public class SurveysService implements SurveysManager {
                             "participant does not exist" );
 
             // get entity set ids
-            UUID participantsESID = edmCacheManager.getParticipantEntitySetId( organizationId, studyId );
-            UUID userAppsESID = edmCacheManager
+            UUID participantsESID = entitySetIdsManager.getParticipantEntitySetId( organizationId, studyId );
+            UUID userAppsESID = entitySetIdsManager
                     .getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, USER_APPS, USER_APPS_ES );
-            UUID usedByESID = edmCacheManager
+            UUID usedByESID = entitySetIdsManager
                     .getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, USED_BY, USED_BY_ES );
 
             checkNotNullUUIDs( ImmutableSet.of( participantsESID, userAppsESID, usedByESID ) );

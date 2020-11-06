@@ -6,6 +6,7 @@ import com.openlattice.chronicle.data.DeleteType;
 import com.openlattice.chronicle.services.ApiCacheManager;
 import com.openlattice.chronicle.services.edm.EdmCacheManager;
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager;
+import com.openlattice.chronicle.services.entitysets.EntitySetIdsManager;
 import com.openlattice.client.ApiClient;
 import com.openlattice.client.RetrofitFactory;
 import com.openlattice.data.DataApi;
@@ -42,16 +43,17 @@ public class DataDeletionService implements DataDeletionManager {
     protected static final Logger logger = LoggerFactory.getLogger( DataDeletionService.class );
 
     private final ApiCacheManager   apiCacheManager;
-    private final EdmCacheManager   edmCacheManager;
     private final EnrollmentManager enrollmentManager;
+    private final EntitySetIdsManager entitySetIdsManager;
 
     public DataDeletionService(
             ApiCacheManager apiCacheManager,
-            EdmCacheManager edmCacheManager,
+            EntitySetIdsManager entitySetIdsManager,
             EnrollmentManager enrollmentManager ) {
+
         this.apiCacheManager = apiCacheManager;
-        this.edmCacheManager = edmCacheManager;
         this.enrollmentManager = enrollmentManager;
+        this.entitySetIdsManager = entitySetIdsManager;
     }
 
     // TODO: write tests for this
@@ -75,19 +77,19 @@ public class DataDeletionService implements DataDeletionManager {
             DataApi chronicleDataApi = apiClient.getDataApi();
 
             // get required entity set ids
-            UUID studiesESID = edmCacheManager.getEntitySetId( organizationId, CHRONICLE, STUDIES, STUDY_ES );
-            UUID participantsESID = edmCacheManager.getParticipantEntitySetId( organizationId, studyId );
+            UUID studiesESID = entitySetIdsManager.getEntitySetId( organizationId, CHRONICLE, STUDIES, STUDY_ES );
+            UUID participantsESID = entitySetIdsManager.getParticipantEntitySetId( organizationId, studyId );
             checkNotNullUUIDs( Sets.newHashSet( studiesESID, participantsESID ) );
 
             // these entity set ids will be null if the respective app modules have not been installed for the organization
-            UUID appDataESID = edmCacheManager
+            UUID appDataESID = entitySetIdsManager
                     .getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, APPDATA, DATA_ES );
-            UUID preprocessedDataESID = edmCacheManager
+            UUID preprocessedDataESID = entitySetIdsManager
                     .getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, PREPROCESSED_DATA,
                             PREPROCESSED_DATA_ES );
-            UUID devicesESID = edmCacheManager
+            UUID devicesESID = entitySetIdsManager
                     .getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, DEVICE, DEVICES_ES );
-            UUID answersESID = edmCacheManager
+            UUID answersESID = entitySetIdsManager
                     .getEntitySetId( organizationId, CHRONICLE_SURVEYS, ANSWER, ANSWERS_ES );
 
             // ensure study exists
