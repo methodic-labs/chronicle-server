@@ -3,7 +3,7 @@ package com.openlattice.chronicle.services.download;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
+import com.openlattice.chronicle.data.EntityNeighborProperties;
 import com.openlattice.chronicle.services.edm.EdmCacheManager;
 import com.openlattice.client.ApiClient;
 import com.openlattice.client.RetrofitFactory;
@@ -33,15 +33,16 @@ import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.REC
 import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.USED_BY;
 import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.USER_APPS;
 import static com.openlattice.chronicle.constants.EdmConstants.DATA_ES;
+import static com.openlattice.chronicle.constants.EdmConstants.DATE_LOGGED_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.PREPROCESSED_DATA_ES;
 import static com.openlattice.chronicle.constants.EdmConstants.RECORDED_BY_ES;
+import static com.openlattice.chronicle.constants.EdmConstants.STRING_ID_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.TIMEZONE_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.USED_BY_ES;
 import static com.openlattice.chronicle.constants.EdmConstants.USER_APPS_ES;
 import static com.openlattice.chronicle.constants.OutputConstants.APP_PREFIX;
 import static com.openlattice.chronicle.constants.OutputConstants.DEFAULT_TIMEZONE;
 import static com.openlattice.chronicle.constants.OutputConstants.USER_PREFIX;
-import static com.openlattice.chronicle.util.ChronicleServerUtil.checkNotNullUUIDs;
 import static com.openlattice.edm.EdmConstants.ID_FQN;
 
 /**
@@ -62,13 +63,13 @@ public class DataDownloadService implements DataDownloadManager {
             UUID participantEntityKeyId,
             UUID srcESID,
             UUID edgeESID,
+            EntityNeighborProperties fqnsToExclude,
             String token ) {
 
         try {
             ApiClient apiClient = new ApiClient( RetrofitFactory.Environment.PROD_INTEGRATION, () -> token );
             EntitySetsApi entitySetsApi = apiClient.getEntitySetsApi();
             SearchApi searchApi = apiClient.getSearchApi();
-            EdmApi edmApi = apiClient.getEdmApi();
 
             /*
              * 1. get the relevant EntitySets
@@ -95,23 +96,7 @@ public class DataDownloadService implements DataDownloadManager {
             Map<UUID, EntitySetPropertyMetadata> edgeMeta = meta.get( edgeES.getId() );
 
             /*
-             * 3. get EntitySet primary keys, which are used later for filtering
-             */
-
-            Set<FullQualifiedName> sourceKeys = edmApi.getEntityType( sourceES.getEntityTypeId() )
-                    .getKey()
-                    .stream()
-                    .map( propertyTypeId -> edmCacheManager.getPropertyType( propertyTypeId ).getType() )
-                    .collect( Collectors.toSet() );
-
-            Set<FullQualifiedName> edgeKeys = edmApi.getEntityType( edgeES.getEntityTypeId() )
-                    .getKey()
-                    .stream()
-                    .map( propertyTypeId -> edmCacheManager.getPropertyType( propertyTypeId ).getType() )
-                    .collect( Collectors.toSet() );
-
-            /*
-             * 4. perform filtered search to get participant neighbors
+             * 3. perform filtered search to get participant neighbors
              */
 
             Map<UUID, List<NeighborEntityDetails>> participantNeighbors = searchApi.executeFilteredEntityNeighborSearch(
@@ -125,7 +110,7 @@ public class DataDownloadService implements DataDownloadManager {
             );
 
             /*
-             * 5. filter and clean the data before sending it back
+             * 4. filter and clean the data before sending it back
              */
 
             return participantNeighbors
@@ -148,7 +133,7 @@ public class DataDownloadService implements DataDownloadManager {
                         entityData
                                 .entrySet()
                                 .stream()
-                                .filter( entry -> !sourceKeys.contains( entry.getKey() ) )
+                                .filter( entry -> !fqnsToExclude.getEntityFqns().contains( entry.getKey() ) )
                                 .forEach( entry -> {
                                     Set<Object> values = entry.getValue();
                                     PropertyType propertyType = edmCacheManager.getPropertyType( entry.getKey() );
@@ -180,7 +165,7 @@ public class DataDownloadService implements DataDownloadManager {
                         neighbor.getAssociationDetails()
                                 .entrySet()
                                 .stream()
-                                .filter( entry -> !edgeKeys.contains( entry.getKey() ) )
+                                .filter( entry -> !fqnsToExclude.getEdgeFqns().contains( entry.getKey() ) )
                                 .forEach( entry -> {
                                     UUID propertyTypeId = edmCacheManager.getPropertyTypeId( entry.getKey() );
                                     String propertyTitle = edgeMeta.get( propertyTypeId ).getTitle();
@@ -214,7 +199,10 @@ public class DataDownloadService implements DataDownloadManager {
         UUID edgeESID = edmCacheManager
                 .getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, RECORDED_BY, RECORDED_BY_ES );
 
-        checkNotNullUUIDs( Sets.newHashSet( srcESID, edgeESID ) );
+        EntityNeighborProperties fqnsToExclude = new EntityNeighborProperties(
+                ImmutableSet.of( STRING_ID_FQN ),
+                ImmutableSet.of( DATE_LOGGED_FQN, STRING_ID_FQN )
+        );
 
         return getParticipantDataHelper(
                 organizationId,
@@ -222,6 +210,7 @@ public class DataDownloadService implements DataDownloadManager {
                 participatedInEntityKeyId,
                 srcESID,
                 edgeESID,
+                fqnsToExclude,
                 token
         );
     }
@@ -237,7 +226,10 @@ public class DataDownloadService implements DataDownloadManager {
         UUID edgeESID = edmCacheManager
                 .getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, RECORDED_BY, RECORDED_BY_ES );
 
-        checkNotNullUUIDs( Sets.newHashSet( srcESID, edgeESID ) );
+        EntityNeighborProperties fqnsToExclude = new EntityNeighborProperties(
+                ImmutableSet.of( STRING_ID_FQN ),
+                ImmutableSet.of( DATE_LOGGED_FQN, STRING_ID_FQN )
+        );
 
         return getParticipantDataHelper(
                 organizationId,
@@ -245,6 +237,7 @@ public class DataDownloadService implements DataDownloadManager {
                 participantEntityKeyId,
                 srcESID,
                 edgeESID,
+                fqnsToExclude,
                 token
         );
     }
@@ -261,7 +254,10 @@ public class DataDownloadService implements DataDownloadManager {
         UUID edgeESID = edmCacheManager
                 .getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, USED_BY, USED_BY_ES );
 
-        checkNotNullUUIDs( Sets.newHashSet( srcESID, edgeESID ) );
+        EntityNeighborProperties fqnsToExclude = new EntityNeighborProperties(
+                ImmutableSet.of( STRING_ID_FQN ),
+                ImmutableSet.of( STRING_ID_FQN )
+        );
 
         return getParticipantDataHelper(
                 organizationId,
@@ -269,6 +265,7 @@ public class DataDownloadService implements DataDownloadManager {
                 participantEntityKeyId,
                 srcESID,
                 edgeESID,
+                fqnsToExclude,
                 token
         );
     }
