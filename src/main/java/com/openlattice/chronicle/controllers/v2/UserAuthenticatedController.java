@@ -28,7 +28,7 @@ import static com.openlattice.chronicle.util.ChronicleServerUtil.setDownloadCont
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
  */
-@RestController( "userAuthenticatedControllerV2" )
+@RestController ("userAuthenticatedControllerV2")
 @RequestMapping( UserAuthenticatedApi.CONTROLLER )
 public class UserAuthenticatedController implements UserAuthenticatedApi {
 

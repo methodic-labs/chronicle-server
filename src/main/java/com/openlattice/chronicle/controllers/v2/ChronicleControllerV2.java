@@ -25,9 +25,9 @@ import java.util.UUID;
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
  */
-@RestController( "chronicleControllerV2" )
+@RestController
 @RequestMapping( ChronicleApi.CONTROLLER )
-public class ChronicleController implements ChronicleApi {
+public class ChronicleControllerV2 implements ChronicleApi {
 
     @Inject
     private AppDataUploadManager dataUploadManager;
@@ -183,7 +183,7 @@ public class ChronicleController implements ChronicleApi {
             consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE
     )
-    public Map<String, UUID> getPropertyTypeIds( Set<String> propertyTypeFqns ) {
+    public Map<FullQualifiedName, UUID> getPropertyTypeIds( @RequestBody Set<FullQualifiedName> propertyTypeFqns ) {
         return edmCacheManager.getPropertyTypeIds( propertyTypeFqns );
     }
 

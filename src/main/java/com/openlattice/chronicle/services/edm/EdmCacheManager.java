@@ -12,7 +12,10 @@ import java.util.UUID;
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
  */
 public interface EdmCacheManager {
-    Map<String, UUID> getPropertyTypeIds( Set<String> propertyTypeFqns );
+    // overloading doesn't work here. javac error: both methods have the same type erasure
+    Map<String, UUID> getHistoricalPropertyTypeIds( Set<String> propertyTypeFqns );
+
+    Map<FullQualifiedName, UUID> getPropertyTypeIds( Set<FullQualifiedName> propertyTypeFqns );
 
     UUID getPropertyTypeId( FullQualifiedName fqn );
 

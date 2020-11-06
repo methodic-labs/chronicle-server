@@ -4,7 +4,6 @@ import com.codahale.metrics.annotation.Timed;
 import com.google.common.collect.SetMultimap;
 import com.openlattice.chronicle.ChronicleApi;
 import com.openlattice.chronicle.services.edm.EdmCacheManager;
-import com.openlattice.chronicle.services.enrollment.EnrollmentManager;
 import com.openlattice.chronicle.services.upload.AppDataUploadManager;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
@@ -50,7 +49,7 @@ public class ChronicleController implements ChronicleApi {
             produces = MediaType.APPLICATION_JSON_VALUE
     )
     public Map<String, UUID> getPropertyTypeIds( @RequestBody Set<String> propertyTypeFqns ) {
-        return edmCacheManager.getPropertyTypeIds( propertyTypeFqns );
+        return edmCacheManager.getHistoricalPropertyTypeIds( propertyTypeFqns );
     }
 
     @Override

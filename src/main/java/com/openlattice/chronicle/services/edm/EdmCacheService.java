@@ -16,7 +16,6 @@ import com.openlattice.collections.EntityTypeCollection;
 import com.openlattice.edm.EdmApi;
 import com.openlattice.edm.type.PropertyType;
 import com.openlattice.entitysets.EntitySetsApi;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -155,21 +154,26 @@ public class EdmCacheService implements EdmCacheManager {
         return getPropertyType( getPropertyTypeId( fqn ) );
     }
 
+    @Deprecated (since = "apps v2")
     @Override
-    public Map<String, UUID> getPropertyTypeIds( Set<String> propertyTypeFqns ) {
-        EdmApi edmApi;
-        try {
-            ApiClient apiClient = apiCacheManager.prodApiClientCache.get( ApiClient.class );
-            edmApi = apiClient.getEdmApi();
-        } catch ( ExecutionException e ) {
-            logger.error( "Unable to load EdmApi" );
-            return ImmutableMap.of();
+    public Map<String, UUID> getHistoricalPropertyTypeIds( Set<String> propertyTypeFqns ) {
+        Map<String, UUID> propertyTypeMap = Maps.newHashMapWithExpectedSize (propertyTypeFqns.size());
+
+        for (String fqnString : propertyTypeFqns) {
+            propertyTypeMap.put( fqnString, propertyTypeIdsByFQN.get( new FullQualifiedName( fqnString ) ) );
+        }
+        return propertyTypeMap;
+    }
+
+    @Override
+    public Map<FullQualifiedName, UUID> getPropertyTypeIds( Set<FullQualifiedName> propertyTypeFqns ) {
+        Map<FullQualifiedName, UUID> propertyTypeMap = Maps.newHashMapWithExpectedSize (propertyTypeFqns.size());
+
+        for (FullQualifiedName fqn : propertyTypeFqns) {
+            propertyTypeMap.put( fqn, propertyTypeIdsByFQN.get( fqn ) );
         }
 
-        return propertyTypeFqns.stream().map( FullQualifiedName::new ).map( fqn -> Pair
-                .of( fqn.getFullQualifiedNameAsString(),
-                        edmApi.getPropertyTypeId( fqn.getNamespace(), fqn.getName() ) ) )
-                .collect( Collectors.toMap( Pair::getLeft, Pair::getRight ) );
+        return propertyTypeMap;
     }
 
     @Override

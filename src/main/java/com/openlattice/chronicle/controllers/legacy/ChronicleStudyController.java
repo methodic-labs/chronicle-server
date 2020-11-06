@@ -19,35 +19,24 @@
 
 package com.openlattice.chronicle.controllers.legacy;
 
-import com.auth0.spring.security.api.authentication.JwtAuthentication;
 import com.codahale.metrics.annotation.Timed;
 import com.google.common.base.Optional;
 import com.openlattice.chronicle.ChronicleStudyApi;
-import com.openlattice.chronicle.constants.*;
-import com.openlattice.chronicle.data.*;
-import com.openlattice.chronicle.services.delete.DataDeletionManager;
-import com.openlattice.chronicle.services.download.DataDownloadManager;
+import com.openlattice.chronicle.data.ChronicleAppsUsageDetails;
+import com.openlattice.chronicle.data.ChronicleQuestionnaire;
+import com.openlattice.chronicle.data.ParticipationStatus;
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager;
 import com.openlattice.chronicle.services.surveys.SurveysManager;
-import com.openlattice.chronicle.services.upload.AppDataUploadManager;
 import com.openlattice.chronicle.sources.Datasource;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import javax.inject.Inject;
-import javax.servlet.http.HttpServletResponse;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-
-import static com.openlattice.chronicle.util.ChronicleServerUtil.getParticipantDataFileName;
-import static com.openlattice.chronicle.util.ChronicleServerUtil.setContentDisposition;
-import static com.openlattice.chronicle.util.ChronicleServerUtil.setDownloadContentType;
 
 /**
  * @author Matthew Tamayo-Rios &lt;matthew@openlattice.com&gt;
