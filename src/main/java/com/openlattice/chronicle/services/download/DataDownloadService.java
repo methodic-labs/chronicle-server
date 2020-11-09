@@ -89,7 +89,7 @@ public class DataDownloadService implements DataDownloadManager {
              */
 
             Map<UUID, Map<UUID, EntitySetPropertyMetadata>> meta =
-                    entitySetsApi.getPropertyMetadataForEntitySets( Set.of( sourceES.getId(), edgeES.getId() ) );
+                    entitySetsApi.getPropertyMetadataForEntitySets( ImmutableSet.of( sourceES.getId(), edgeES.getId() ) );
 
             Map<UUID, EntitySetPropertyMetadata> sourceMeta = meta.get( sourceES.getId() );
             Map<UUID, EntitySetPropertyMetadata> edgeMeta = meta.get( edgeES.getId() );
