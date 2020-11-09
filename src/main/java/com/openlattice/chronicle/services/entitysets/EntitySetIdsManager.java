@@ -1,6 +1,9 @@
 package com.openlattice.chronicle.services.entitysets;
 
 import com.openlattice.chronicle.constants.*;
+import com.openlattice.chronicle.data.ChronicleCoreAppConfig;
+import com.openlattice.chronicle.data.ChronicleDataCollectionAppConfig;
+import com.openlattice.chronicle.data.ChronicleSurveysAppConfig;
 
 import java.util.Map;
 import java.util.UUID;
@@ -11,23 +14,22 @@ import java.util.UUID;
 public interface EntitySetIdsManager {
     Map<AppComponent, Map<UUID, Map<CollectionTemplateTypeName, UUID>>> getEntitySetIdsByOrgId();
 
-    UUID getParticipantEntitySetId( UUID organizationId, UUID studyId );
+    // entity set ids configs
+    ChronicleDataCollectionAppConfig getChronicleDataCollectionAppConfig( UUID organizationId );
 
-    // entity set id in legacy context
-    UUID getLegacyEntitySetId( String entitySetName );
+    ChronicleCoreAppConfig getChronicleAppConfig( UUID organizationId );
 
-    // entity set id in either app configs context / legacy
-    UUID getEntitySetId(
-            UUID organizationId,
-            AppComponent appComponent,
-            CollectionTemplateTypeName templateName,
-            String entitySetName
-    );
+    ChronicleCoreAppConfig getChronicleAppConfig( UUID organizationId, String participantESName );
 
-    // get entity set id from a app configs context
-    UUID getEntitySetId(
-            UUID organizationId,
-            AppComponent appComponent,
-            CollectionTemplateTypeName templateTypeName
-    );
+    ChronicleSurveysAppConfig getChronicleSurveysAppConfig( UUID organizationId );
+
+    // legacy entity set ids configs
+    ChronicleSurveysAppConfig getLegacyChronicleSurveysAppConfig();
+
+    ChronicleDataCollectionAppConfig getLegacyChronicleDataCollectionAppConfig();
+
+    ChronicleCoreAppConfig getLegacyChronicleAppConfig( String participantESName );
+
+    ChronicleCoreAppConfig getLegacyChronicleAppConfig();
+
 }

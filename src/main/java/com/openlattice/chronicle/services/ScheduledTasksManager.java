@@ -3,6 +3,8 @@ package com.openlattice.chronicle.services;
 import com.dataloom.streams.StreamUtil;
 import com.google.common.collect.*;
 import com.openlattice.chronicle.constants.*;
+import com.openlattice.chronicle.data.ChronicleCoreAppConfig;
+import com.openlattice.chronicle.data.ChronicleDataCollectionAppConfig;
 import com.openlattice.chronicle.services.edm.EdmCacheManager;
 import com.openlattice.chronicle.services.entitysets.EntitySetIdsManager;
 import com.openlattice.client.ApiClient;
@@ -25,21 +27,11 @@ import java.util.stream.Collectors;
 
 import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE;
 import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE_DATA_COLLECTION;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.DEVICE;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.PARTICIPANTS;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.PARTICIPATED_IN;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.STUDIES;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.USER_APPS;
-import static com.openlattice.chronicle.constants.EdmConstants.APPS_DICTIONARY_ES;
-import static com.openlattice.chronicle.constants.EdmConstants.DEVICES_ES;
 import static com.openlattice.chronicle.constants.EdmConstants.FULL_NAME_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.PARTICIPATED_IN_ES;
 import static com.openlattice.chronicle.constants.EdmConstants.PERSON_ID_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.RECORDED_DATE_TIME_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.RECORD_TYPE_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.STRING_ID_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.STUDY_ES;
-import static com.openlattice.chronicle.constants.EdmConstants.USER_APPS_ES;
 import static com.openlattice.chronicle.util.ChronicleServerUtil.getFirstUUIDOrNull;
 import static com.openlattice.chronicle.util.ChronicleServerUtil.getFirstValueOrNull;
 import static com.openlattice.chronicle.util.ChronicleServerUtil.getParticipantEntitySetName;
@@ -98,12 +90,12 @@ public class ScheduledTasksManager {
 
         syncCallingUser();
         refreshAllOrgsUserAppFullNames();
-        refreshUserAppsFullNames();
+        legacyRefreshUserAppsFullNames();
         refreshAllOrgsStudyInformation();
         refreshSystemApps();
-        refreshDevicesCache();
+        legacyRefreshDevicesCache();
         refreshAllOrgsDevicesCache();
-        refreshStudyInformation();
+        legacyRefreshStudyInformation();
     }
 
     // helper methods
@@ -143,9 +135,13 @@ public class ScheduledTasksManager {
             ApiClient apiClient = apiCacheManager.prodApiClientCache.get( ApiClient.class );
             DataApi dataApi = apiClient.getDataApi();
 
+            ChronicleDataCollectionAppConfig dataCollectionAppConfig = entitySetIdsManager
+                    .getLegacyChronicleDataCollectionAppConfig();
+            UUID appsDictionaryEntitySetId = dataCollectionAppConfig.getAppsDictionaryEntitySetId();
+
             Iterable<SetMultimap<FullQualifiedName, Object>> entitySetData = getEntitySetData(
                     dataApi,
-                    entitySetIdsManager.getLegacyEntitySetId( APPS_DICTIONARY_ES ),
+                    appsDictionaryEntitySetId,
                     ImmutableSet.of( FULL_NAME_FQN, RECORD_TYPE_FQN )
             );
             logger.info(
@@ -175,16 +171,22 @@ public class ScheduledTasksManager {
     }
 
     @Scheduled( fixedRate = USER_APPS_REFRESH_INTERVAL )
-    public void refreshUserAppsFullNames() {
+    @Deprecated
+    public void legacyRefreshUserAppsFullNames() {
         logger.info( "refreshing user apps cache" );
         try {
             ApiClient apiClient = apiCacheManager.prodApiClientCache.get( ApiClient.class );
             DataApi dataApi = apiClient.getDataApi();
 
+            ChronicleDataCollectionAppConfig dataCollectionAppConfig = entitySetIdsManager
+                    .getLegacyChronicleDataCollectionAppConfig();
+
+            UUID userAppsEntitySetId = dataCollectionAppConfig.getUserAppsEntitySetId();
+
             // load entities from chronicle_user_apps
             Iterable<SetMultimap<FullQualifiedName, Object>> data = getEntitySetData(
                     dataApi,
-                    entitySetIdsManager.getLegacyEntitySetId( USER_APPS_ES ),
+                    userAppsEntitySetId,
                     ImmutableSet.of( FULL_NAME_FQN )
             );
 
@@ -212,15 +214,18 @@ public class ScheduledTasksManager {
 
             Map<String, Set<UUID>> fullNamesMap = Maps.newLinkedHashMap(); // fullName -> { org1, org2, org3 }
 
-            Map<UUID, Map<CollectionTemplateTypeName, UUID>> orgEntitySets = entitySetIdsManager
-                    .getEntitySetIdsByOrgId()
-                    .getOrDefault( CHRONICLE_DATA_COLLECTION, Map.of() );
+            Set<UUID> orgIds = entitySetIdsManager.getEntitySetIdsByOrgId()
+                    .getOrDefault( CHRONICLE_DATA_COLLECTION, ImmutableMap.of() ).keySet();
 
-            orgEntitySets.forEach( ( orgId, templateTypeESIDMap ) -> {
+            orgIds.forEach( orgId -> {
                 // load entities from entity set
+                ChronicleDataCollectionAppConfig appConfig = entitySetIdsManager
+                        .getChronicleDataCollectionAppConfig( orgId );
+                UUID userAppsEntitySetId = appConfig.getUserAppsEntitySetId();
+
                 Iterable<SetMultimap<FullQualifiedName, Object>> data = getEntitySetData(
                         dataApi,
-                        templateTypeESIDMap.get( USER_APPS ),
+                        userAppsEntitySetId,
                         ImmutableSet.of( FULL_NAME_FQN )
                 );
 
@@ -241,6 +246,7 @@ public class ScheduledTasksManager {
 
             logger.info( "loaded {} fullnames from user apps entity sets in all orgs", fullNamesMap.keySet().size() );
         } catch ( Exception e ) {
+
             logger.info( "error loading all orgs user apps fullnames", e );
         }
     }
@@ -258,22 +264,24 @@ public class ScheduledTasksManager {
                     .newHashMap(); // orgId -> studyId -> participantId -> participantEKID
             Map<UUID, Map<UUID, UUID>> studyEntityKeyIds = Maps.newHashMap(); // orgId -> studyId -> studyEKID
 
-            Map<UUID, Map<CollectionTemplateTypeName, UUID>> orgEntitySets = entitySetIdsManager
-                    .getEntitySetIdsByOrgId()
-                    .getOrDefault( CHRONICLE, Map.of() );
+            Set<UUID> orgIds = entitySetIdsManager.getEntitySetIdsByOrgId()
+                    .getOrDefault( CHRONICLE, ImmutableMap.of() ).keySet();
 
-            orgEntitySets.forEach( ( orgId, templateTypeESIDMap ) -> {
+            orgIds.forEach( orgId -> {
 
                 Map<UUID, UUID> studyIds = Maps
                         .newHashMap(); // studyEKID -> studyId (for lookup when processing neighbors)
 
                 // entity set ids
-                UUID participatedInESID = entitySetIdsManager.getEntitySetId( orgId, CHRONICLE, PARTICIPATED_IN );
-                UUID participantsESID = entitySetIdsManager.getEntitySetId( orgId, CHRONICLE, PARTICIPANTS );
-                UUID studiesESID = entitySetIdsManager.getEntitySetId( orgId, CHRONICLE, STUDIES );
+                ChronicleCoreAppConfig coreAppConfig = entitySetIdsManager.getChronicleAppConfig( orgId );
 
-                if ( studiesESID == null || participantsESID == null || participatedInESID == null )
+                UUID participatedInESID = coreAppConfig.getParticipatedInEntitySetId();
+                UUID participantsESID = coreAppConfig.getParticipantEntitySetId();
+                UUID studiesESID = coreAppConfig.getStudiesEntitySetId();
+
+                if ( studiesESID == null || participantsESID == null || participatedInESID == null ) {
                     return;
+                }
 
                 // load studies entities
                 Iterable<SetMultimap<FullQualifiedName, Object>> studyEntities = getEntitySetData(
@@ -286,8 +294,10 @@ public class ScheduledTasksManager {
                 StreamUtil.stream( studyEntities ).map( Multimaps::asMap ).forEach( ( entity ) -> {
                     UUID studyEKID = getFirstUUIDOrNull( entity, ID_FQN );
                     UUID studyId = getFirstUUIDOrNull( entity, STRING_ID_FQN );
-                    if ( studyId == null )
+
+                    if ( studyId == null ) {
                         return;
+                    }
 
                     studyEntityKeyIds.computeIfAbsent( orgId, key -> Maps.newHashMap() ).put( studyId, studyEKID );
                     studyIds.put( studyEKID, studyId );
@@ -315,16 +325,16 @@ public class ScheduledTasksManager {
                 // process neighbors
                 Map<UUID, Map<String, UUID>> participantsByStudy = Maps
                         .newHashMap(); // studyId -> participantId -> EKID
+
                 studyNeighbors.forEach( ( studyEKID, neighbors ) -> {
                     UUID studyId = studyIds.get( studyEKID );
 
                     neighbors.forEach( neighbor -> {
-
-                        // edge: participatedIn
                         String participantId = getFirstValueOrNull( neighbor.getNeighborDetails().get(),
                                 PERSON_ID_FQN );
-                        if ( participantId == null )
+                        if ( participantId == null ) {
                             return;
+                        }
 
                         UUID participantEKID = neighbor.getNeighborId().get();
 
@@ -353,8 +363,9 @@ public class ScheduledTasksManager {
     }
 
     @Scheduled( fixedRate = STUDY_INFO_REFRESH_INTERVAL )
-    public void refreshStudyInformation() {
-        logger.info( "refreshing study information for cafe studies" );
+    @Deprecated
+    public void legacyRefreshStudyInformation() {
+        logger.info( "refreshing cache for legacy studies" );
 
         try {
             ApiClient apiClient = apiCacheManager.prodApiClientCache.get( ApiClient.class );
@@ -368,8 +379,10 @@ public class ScheduledTasksManager {
                     .newHashMap(); // studyID -> participantId -> participantEKID
 
             // entity set ids
-            UUID participatedInESID = entitySetIdsManager.getLegacyEntitySetId( PARTICIPATED_IN_ES );
-            UUID studiesESID = entitySetIdsManager.getLegacyEntitySetId( STUDY_ES );
+            ChronicleCoreAppConfig coreAppConfig = entitySetIdsManager.getLegacyChronicleAppConfig();
+
+            UUID participatedInESID = coreAppConfig.getParticipatedInEntitySetId();
+            UUID studiesESID = coreAppConfig.getStudiesEntitySetId();
 
             // get study entities
             Iterable<SetMultimap<FullQualifiedName, Object>> studyEntities = getEntitySetData(
@@ -382,8 +395,10 @@ public class ScheduledTasksManager {
             StreamUtil.stream( studyEntities ).map( Multimaps::asMap ).forEach( ( entity ) -> {
                 UUID studyEKID = getFirstUUIDOrNull( entity, ID_FQN );
                 UUID studyId = getFirstUUIDOrNull( entity, STRING_ID_FQN );
-                if ( studyId == null )
+
+                if ( studyId == null ) {
                     return;
+                }
 
                 studyEKIDById.put( studyId, studyEKID );
             } );
@@ -406,8 +421,10 @@ public class ScheduledTasksManager {
                     neighbors.forEach( neighbor -> {
                         String participantId = getFirstValueOrNull( neighbor.getNeighborDetails().get(),
                                 PERSON_ID_FQN );
-                        if ( participantId == null )
+
+                        if ( participantId == null ) {
                             return;
+                        }
 
                         UUID participantEKID = neighbor.getNeighborId().get();
 
@@ -421,12 +438,12 @@ public class ScheduledTasksManager {
             this.studyEKIDById.putAll( studyEKIDById );
             this.studyParticipants.putAll( participants );
 
-            logger.info( "loaded {} study EKIDs from cafe studies", studyEKIDById.size() );
-            logger.info( "loaded {} participants from cafe participants",
+            logger.info( "loaded {} studies from legacy study dataset", studyEKIDById.size() );
+            logger.info( "loaded {} participants from legacy participants datasets",
                     participants.values().stream().mapToInt( map -> map.values().size() ).sum() );
 
         } catch ( Exception e ) {
-            logger.error( "error refreshing study information for cafe studies", e );
+            logger.error( "error refreshing study information for legacy studies", e );
         }
     }
 
@@ -438,15 +455,19 @@ public class ScheduledTasksManager {
             ApiClient apiClient = apiCacheManager.prodApiClientCache.get( ApiClient.class );
             DataApi dataApi = apiClient.getDataApi();
 
-            Map<UUID, Map<CollectionTemplateTypeName, UUID>> orgEntitySets = entitySetIdsManager
-                    .getEntitySetIdsByOrgId()
-                    .getOrDefault( CHRONICLE_DATA_COLLECTION, Map.of() );
+            Set<UUID> orgIds = entitySetIdsManager.getEntitySetIdsByOrgId()
+                    .getOrDefault( CHRONICLE_DATA_COLLECTION, ImmutableMap.of() ).keySet();
 
             Map<UUID, Map<String, UUID>> deviceIdsByOrg = Maps.newHashMap();
-            orgEntitySets.forEach( ( orgId, templateTypeESIDMap ) -> {
+
+            orgIds.forEach( orgId -> {
+                ChronicleDataCollectionAppConfig appConfig = entitySetIdsManager
+                        .getChronicleDataCollectionAppConfig( orgId );
+                UUID deviceEntitySetId = appConfig.getDeviceEntitySetId();
+
                 Map<String, UUID> devicesByEKID = getDeviceIdsByEKID(
                         dataApi,
-                        templateTypeESIDMap.get( DEVICE )
+                        deviceEntitySetId
                 );
                 deviceIdsByOrg.put( orgId, devicesByEKID );
             } );
@@ -462,21 +483,25 @@ public class ScheduledTasksManager {
     }
 
     @Scheduled( fixedRate = DEVICES_INFO_REFRESH_INTERVAL )
-    public void refreshDevicesCache() {
-        logger.info( "refreshing devices info for cafe users" );
+    @Deprecated
+    public void legacyRefreshDevicesCache() {
+        logger.info( "refreshing devices info for legacy devices" );
         try {
             ApiClient apiClient = apiCacheManager.prodApiClientCache.get( ApiClient.class );
             DataApi dataApi = apiClient.getDataApi();
 
-            Map<String, UUID> deviceIdsByEKID = getDeviceIdsByEKID( dataApi,
-                    entitySetIdsManager.getLegacyEntitySetId( DEVICES_ES ) );
+            ChronicleDataCollectionAppConfig dataCollectionAppConfig = entitySetIdsManager
+                    .getLegacyChronicleDataCollectionAppConfig();
+            UUID deviceEntitySetId = dataCollectionAppConfig.getDeviceEntitySetId();
+
+            Map<String, UUID> deviceIdsByEKID = getDeviceIdsByEKID( dataApi, deviceEntitySetId );
 
             this.deviceIdsByEKID.putAll( deviceIdsByEKID );
 
-            logger.info( "loaded {} deviceIds for cafe users", deviceIdsByEKID.size() );
+            logger.info( "loaded {} deviceIds from legacy device dataset", deviceIdsByEKID.size() );
 
         } catch ( Exception e ) {
-            logger.error( "error refreshing devices cache for cafe users", e );
+            logger.error( "error refreshing cache for legacy devices", e );
         }
     }
 
@@ -493,8 +518,10 @@ public class ScheduledTasksManager {
         StreamUtil.stream( deviceEntities ).map( Multimaps::asMap ).forEach( ( entity ) -> {
             UUID deviceEKID = getFirstUUIDOrNull( entity, ID_FQN );
             String deviceId = getFirstValueOrNull( entity, STRING_ID_FQN );
-            if ( deviceId == null )
+
+            if ( deviceId == null ) {
                 return;
+            }
 
             deviceIds.put( deviceId, deviceEKID );
         } );

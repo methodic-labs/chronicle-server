@@ -104,7 +104,12 @@ public class ChronicleServerServicesPod {
 
     @Bean
     public DataDeletionManager dataDeletionManager() throws IOException, ExecutionException {
-        return new DataDeletionService( apiCacheManager(), entitySetIdsManager(), enrollmentManager() );
+        return new DataDeletionService(
+                edmCacheManager(),
+                apiCacheManager(),
+                entitySetIdsManager(),
+                enrollmentManager()
+        );
     }
 
     @Bean

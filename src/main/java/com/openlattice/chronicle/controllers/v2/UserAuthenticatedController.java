@@ -3,7 +3,7 @@ package com.openlattice.chronicle.controllers.v2;
 import com.codahale.metrics.annotation.Timed;
 import com.openlattice.chronicle.api.UserAuthenticatedApi;
 import com.openlattice.chronicle.constants.*;
-import com.openlattice.chronicle.data.DeleteType;
+import com.openlattice.chronicle.data.ChronicleDeleteType;
 import com.openlattice.chronicle.data.FileType;
 import com.openlattice.chronicle.services.delete.DataDeletionManager;
 import com.openlattice.chronicle.services.download.DataDownloadManager;
@@ -28,7 +28,7 @@ import static com.openlattice.chronicle.util.ChronicleServerUtil.setDownloadCont
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
  */
-@RestController ("userAuthenticatedControllerV2")
+@RestController( "userAuthenticatedControllerV2" )
 @RequestMapping( UserAuthenticatedApi.CONTROLLER )
 public class UserAuthenticatedController implements UserAuthenticatedApi {
 
@@ -51,12 +51,12 @@ public class UserAuthenticatedController implements UserAuthenticatedApi {
             @PathVariable( ORGANIZATION_ID ) UUID organizationId,
             @PathVariable( STUDY_ID ) UUID studyId,
             @PathVariable( PARTICIPANT_ID ) String participantId,
-            @RequestParam( TYPE ) DeleteType deleteType
+            @RequestParam( TYPE ) ChronicleDeleteType chronicleDeleteType
     ) {
 
         String token = getTokenFromContext();
         dataDeletionManager
-                .deleteParticipantAndAllNeighbors( organizationId, studyId, participantId, deleteType, token );
+                .deleteParticipantAndAllNeighbors( organizationId, studyId, participantId, chronicleDeleteType, token );
 
         return null;
     }
@@ -70,11 +70,11 @@ public class UserAuthenticatedController implements UserAuthenticatedApi {
     public Void deleteStudyAndAllNeighbors(
             @PathVariable( ORGANIZATION_ID ) UUID organizationId,
             @PathVariable( STUDY_ID ) UUID studyId,
-            @RequestParam( TYPE ) DeleteType deleteType
+            @RequestParam( TYPE ) ChronicleDeleteType chronicleDeleteType
     ) {
 
         String token = getTokenFromContext();
-        dataDeletionManager.deleteStudyAndAllNeighbors( organizationId, studyId, deleteType, token );
+        dataDeletionManager.deleteStudyAndAllNeighbors( organizationId, studyId, chronicleDeleteType, token );
 
         return null;
     }

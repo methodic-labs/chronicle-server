@@ -2,8 +2,7 @@ package com.openlattice.chronicle.services.surveys;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.*;
-import com.openlattice.chronicle.data.ChronicleAppsUsageDetails;
-import com.openlattice.chronicle.data.ChronicleQuestionnaire;
+import com.openlattice.chronicle.data.*;
 import com.openlattice.chronicle.services.ApiCacheManager;
 import com.openlattice.chronicle.services.edm.EdmCacheManager;
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager;
@@ -26,32 +25,12 @@ import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
-import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE;
-import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE_DATA_COLLECTION;
 import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE_SURVEYS;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.ADDRESSES;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.ANSWER;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.PART_OF;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.QUESTION;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.RESPONDS_WITH;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.STUDIES;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.SURVEY;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.USED_BY;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.USER_APPS;
-import static com.openlattice.chronicle.constants.EdmConstants.ADDRESSES_ES;
-import static com.openlattice.chronicle.constants.EdmConstants.ANSWERS_ES;
 import static com.openlattice.chronicle.constants.EdmConstants.COMPLETED_DATE_TIME_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.DATE_TIME_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.PART_OF_ES;
-import static com.openlattice.chronicle.constants.EdmConstants.QUESTIONNAIRE_ES;
-import static com.openlattice.chronicle.constants.EdmConstants.QUESTIONS_ES;
-import static com.openlattice.chronicle.constants.EdmConstants.RESPONDS_WITH_ES;
-import static com.openlattice.chronicle.constants.EdmConstants.STUDY_ES;
-import static com.openlattice.chronicle.constants.EdmConstants.USED_BY_ES;
-import static com.openlattice.chronicle.constants.EdmConstants.USER_APPS_ES;
 import static com.openlattice.chronicle.constants.EdmConstants.VALUES_FQN;
-import static com.openlattice.chronicle.util.ChronicleServerUtil.checkNotNullUUIDs;
 import static com.openlattice.chronicle.util.ChronicleServerUtil.getFirstUUIDOrNull;
+import static com.openlattice.chronicle.util.ChronicleServerUtil.getParticipantEntitySetName;
 import static com.openlattice.edm.EdmConstants.ID_FQN;
 
 /**
@@ -95,14 +74,14 @@ public class SurveysService implements SurveysManager {
             SearchApi searchApi = apiClient.getSearchApi();
 
             // entity set ids
-            UUID questionnaireESID = entitySetIdsManager
-                    .getEntitySetId( organizationId, CHRONICLE_SURVEYS, SURVEY, QUESTIONNAIRE_ES );
-            UUID studiesESID = entitySetIdsManager.getEntitySetId( organizationId, CHRONICLE, STUDIES, STUDY_ES );
-            UUID partOfESID = entitySetIdsManager.getEntitySetId( organizationId, CHRONICLE, PART_OF, PART_OF_ES );
-            UUID questionESID = entitySetIdsManager
-                    .getEntitySetId( organizationId, CHRONICLE_SURVEYS, QUESTION, QUESTIONS_ES );
+            ChronicleSurveysAppConfig surveysAppConfig = entitySetIdsManager
+                    .getChronicleSurveysAppConfig( organizationId );
+            ChronicleCoreAppConfig coreAppConfig = entitySetIdsManager.getChronicleAppConfig( organizationId );
 
-            checkNotNullUUIDs( ImmutableSet.of( questionnaireESID, studiesESID, partOfESID, questionESID ) );
+            UUID questionnaireESID = surveysAppConfig.getSurveyEntitySetId();
+            UUID studiesESID = coreAppConfig.getStudiesEntitySetId();
+            UUID partOfESID = coreAppConfig.getPartOfEntitySetId();
+            UUID questionESID = surveysAppConfig.getQuestionEntitySetId();
 
             // Get questionnaires that neighboring study
             Map<UUID, List<NeighborEntityDetails>> neighbors = searchApi.executeFilteredEntityNeighborSearch(
@@ -203,12 +182,13 @@ public class SurveysService implements SurveysManager {
             SearchApi searchApi = apiClient.getSearchApi();
 
             // entity set ids
-            UUID questionnaireESID = entitySetIdsManager
-                    .getEntitySetId( organizationId, CHRONICLE_SURVEYS, SURVEY, QUESTIONNAIRE_ES );
-            UUID studiesESID = entitySetIdsManager.getEntitySetId( organizationId, CHRONICLE, STUDIES, STUDY_ES );
-            UUID partOfESID = entitySetIdsManager.getEntitySetId( organizationId, CHRONICLE, PART_OF, PART_OF_ES );
+            ChronicleCoreAppConfig coreAppConfig = entitySetIdsManager.getChronicleAppConfig( organizationId );
+            ChronicleSurveysAppConfig surveysAppConfig = entitySetIdsManager
+                    .getChronicleSurveysAppConfig( organizationId );
 
-            checkNotNullUUIDs( ImmutableSet.of( questionnaireESID, studiesESID, partOfESID ) );
+            UUID questionnaireESID = surveysAppConfig.getSurveyEntitySetId();
+            UUID studiesESID = coreAppConfig.getStudiesEntitySetId();
+            UUID partOfESID = coreAppConfig.getPartOfEntitySetId();
 
             // filtered search on questionnaires ES to get neighbors of study
             Map<UUID, List<NeighborEntityDetails>> neighbors = searchApi
@@ -256,20 +236,16 @@ public class SurveysService implements SurveysManager {
             DataApi dataApi = apiClient.getDataApi();
 
             // get entity set ids
-            UUID participantESID = entitySetIdsManager.getParticipantEntitySetId( organizationId, studyId );
-            UUID answersESID = entitySetIdsManager
-                    .getEntitySetId( organizationId, CHRONICLE_SURVEYS, ANSWER, ANSWERS_ES );
-            UUID respondsWithESID = entitySetIdsManager.getEntitySetId( organizationId,
-                    CHRONICLE_SURVEYS,
-                    RESPONDS_WITH,
-                    RESPONDS_WITH_ES );
-            UUID addressesESID = entitySetIdsManager
-                    .getEntitySetId( organizationId, CHRONICLE_SURVEYS, ADDRESSES, ADDRESSES_ES );
-            UUID questionsESID = entitySetIdsManager
-                    .getEntitySetId( organizationId, CHRONICLE_SURVEYS, QUESTION, QUESTIONS_ES );
+            ChronicleCoreAppConfig coreAppConfig = entitySetIdsManager
+                    .getChronicleAppConfig( organizationId, getParticipantEntitySetName( studyId ) );
+            ChronicleSurveysAppConfig surveysAppConfig = entitySetIdsManager
+                    .getChronicleSurveysAppConfig( organizationId );
 
-            checkNotNullUUIDs( ImmutableSet
-                    .of( participantESID, answersESID, respondsWithESID, addressesESID, questionsESID ) );
+            UUID participantESID = coreAppConfig.getParticipantEntitySetId();
+            UUID answersESID = surveysAppConfig.getAnswerEntitySetId();
+            UUID respondsWithESID = surveysAppConfig.getRespondsWithEntitySetId();
+            UUID addressesESID = surveysAppConfig.getAddressesEntitySetId();
+            UUID questionsESID = surveysAppConfig.getQuestionEntitySetId();
 
             // participant must be valid
             UUID participantEKID = Preconditions
@@ -351,9 +327,10 @@ public class SurveysService implements SurveysManager {
             Preconditions.checkArgument( isKnownParticipant, "unknown participant = {}", participantId );
 
             // get entity set ids
-            UUID usedByESID = entitySetIdsManager
-                    .getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, USED_BY, USED_BY_ES );
-            checkNotNullUUIDs( ImmutableSet.of( usedByESID ) );
+            ChronicleDataCollectionAppConfig dataCollectionAppConfig = entitySetIdsManager
+                    .getChronicleDataCollectionAppConfig( organizationId );
+
+            UUID usedByESID = dataCollectionAppConfig.getUsedByEntitySetId();
 
             // create association data
             Map<UUID, Map<UUID, Set<Object>>> associationData = new HashMap<>();
@@ -410,13 +387,14 @@ public class SurveysService implements SurveysManager {
                             "participant does not exist" );
 
             // get entity set ids
-            UUID participantsESID = entitySetIdsManager.getParticipantEntitySetId( organizationId, studyId );
-            UUID userAppsESID = entitySetIdsManager
-                    .getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, USER_APPS, USER_APPS_ES );
-            UUID usedByESID = entitySetIdsManager
-                    .getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, USED_BY, USED_BY_ES );
+            ChronicleDataCollectionAppConfig dataCollectionAppConfig = entitySetIdsManager
+                    .getChronicleDataCollectionAppConfig( organizationId );
+            ChronicleCoreAppConfig coreAppConfig = entitySetIdsManager
+                    .getChronicleAppConfig( organizationId, getParticipantEntitySetName( studyId ) );
 
-            checkNotNullUUIDs( ImmutableSet.of( participantsESID, userAppsESID, usedByESID ) );
+            UUID participantsESID = coreAppConfig.getParticipantEntitySetId();
+            UUID userAppsESID = dataCollectionAppConfig.getUserAppsEntitySetId();
+            UUID usedByESID = dataCollectionAppConfig.getUsedByEntitySetId();
 
             // search participants to retrieve neighbors in user apps entity set
             Map<UUID, List<NeighborEntityDetails>> participantNeighbors = searchApi.executeFilteredEntityNeighborSearch(

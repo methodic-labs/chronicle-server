@@ -14,19 +14,15 @@ import java.util.UUID;
  */
 public class EntitiesAndEdges {
 
-    private Map<EntityKey, Map<UUID, Set<Object>>>       entityByEntityKey;
-    private Set<Triple<EntityKey, EntityKey, EntityKey>> edgeEntityKeys;
-
-    @JsonCreator
-    public EntitiesAndEdges() {
-    }
+    private final  Map<EntityKey, Map<UUID, Set<Object>>>       entityByEntityKey;
+    private final  Set<Triple<EntityKey, EntityKey, EntityKey>> srcEdgeDstEntityKeys;
 
     @JsonCreator
     public EntitiesAndEdges(
             Map<EntityKey, Map<UUID, Set<Object>>> entityByEntityKey,
-            Set<Triple<EntityKey, EntityKey, EntityKey>> edgeEntityKeys ) {
+            Set<Triple<EntityKey, EntityKey, EntityKey>> srcEdgeDstEntityKeys ) {
         this.entityByEntityKey = entityByEntityKey;
-        this.edgeEntityKeys = edgeEntityKeys;
+        this.srcEdgeDstEntityKeys = srcEdgeDstEntityKeys;
     }
 
     @JsonProperty( SerializationConstants.ENTITY_BY_ENTITY_KEY )
@@ -35,7 +31,7 @@ public class EntitiesAndEdges {
     }
 
     @JsonProperty( SerializationConstants.EDGE_ENTITY_KEYS )
-    public Set<Triple<EntityKey, EntityKey, EntityKey>> getEdgeEntityKeys() {
-        return edgeEntityKeys;
+    public Set<Triple<EntityKey, EntityKey, EntityKey>> getSrcEdgeDstEntityKeys() {
+        return srcEdgeDstEntityKeys;
     }
 }

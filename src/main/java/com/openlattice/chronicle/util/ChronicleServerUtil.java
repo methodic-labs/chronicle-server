@@ -45,12 +45,6 @@ public class ChronicleServerUtil {
         }
     }
 
-    public static void checkNotNullUUIDs( Set<UUID> uuids ) {
-        for ( UUID uuid : uuids ) {
-            Preconditions.checkNotNull( uuid );
-        }
-    }
-
     @Deprecated(since = "apps v2")
     public static String getParticipantEntitySetName( UUID studyId ) {
         return PARTICIPANTS_PREFIX.concat( studyId.toString() );

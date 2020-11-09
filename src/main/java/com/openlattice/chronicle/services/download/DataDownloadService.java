@@ -3,7 +3,10 @@ package com.openlattice.chronicle.services.download;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
-import com.openlattice.chronicle.data.EntityNeighborProperties;
+import com.openlattice.chronicle.constants.*;
+import com.openlattice.chronicle.data.ChronicleCoreAppConfig;
+import com.openlattice.chronicle.data.ChronicleDataCollectionAppConfig;
+import com.openlattice.chronicle.data.EntitySetIdGraph;
 import com.openlattice.chronicle.services.edm.EdmCacheManager;
 import com.openlattice.chronicle.services.entitysets.EntitySetIdsManager;
 import com.openlattice.client.ApiClient;
@@ -26,23 +29,16 @@ import java.time.ZoneId;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE_DATA_COLLECTION;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.APPDATA;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.PREPROCESSED_DATA;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.RECORDED_BY;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.USED_BY;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.USER_APPS;
-import static com.openlattice.chronicle.constants.EdmConstants.DATA_ES;
 import static com.openlattice.chronicle.constants.EdmConstants.DATE_LOGGED_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.PREPROCESSED_DATA_ES;
-import static com.openlattice.chronicle.constants.EdmConstants.RECORDED_BY_ES;
 import static com.openlattice.chronicle.constants.EdmConstants.STRING_ID_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.TIMEZONE_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.USED_BY_ES;
-import static com.openlattice.chronicle.constants.EdmConstants.USER_APPS_ES;
 import static com.openlattice.chronicle.constants.OutputConstants.APP_PREFIX;
 import static com.openlattice.chronicle.constants.OutputConstants.DEFAULT_TIMEZONE;
 import static com.openlattice.chronicle.constants.OutputConstants.USER_PREFIX;
+import static com.openlattice.chronicle.constants.ParticipantDataType.PREPROCESSED;
+import static com.openlattice.chronicle.constants.ParticipantDataType.RAW_DATA;
+import static com.openlattice.chronicle.constants.ParticipantDataType.USAGE_DATA;
+import static com.openlattice.chronicle.util.ChronicleServerUtil.getParticipantEntitySetName;
 import static com.openlattice.edm.EdmConstants.ID_FQN;
 
 /**
@@ -61,12 +57,10 @@ public class DataDownloadService implements DataDownloadManager {
     }
 
     private Iterable<Map<String, Set<Object>>> getParticipantDataHelper(
-            UUID organizationId,
-            UUID studyId,
             UUID participantEntityKeyId,
-            UUID srcESID,
-            UUID edgeESID,
-            EntityNeighborProperties fqnsToExclude,
+            EntitySetIdGraph entitySetIdGraph,
+            Set<FullQualifiedName> srcFqnsToExclude,
+            Set<FullQualifiedName> edgeFqnsToExclude,
             String token ) {
 
         try {
@@ -78,7 +72,9 @@ public class DataDownloadService implements DataDownloadManager {
              * 1. get the relevant EntitySets
              */
 
-            UUID participantESID = entitySetIdsManager.getParticipantEntitySetId( organizationId, studyId );
+            UUID participantESID = entitySetIdGraph.getDstEntitySetId();
+            UUID srcESID = entitySetIdGraph.getSrcEntitySetId();
+            UUID edgeESID = entitySetIdGraph.getEdgeEntitySetId();
 
             Map<UUID, EntitySet> entitySetsById = entitySetsApi.getEntitySetsById(
                     ImmutableSet.of( participantESID, srcESID, edgeESID )
@@ -136,7 +132,7 @@ public class DataDownloadService implements DataDownloadManager {
                         entityData
                                 .entrySet()
                                 .stream()
-                                .filter( entry -> !fqnsToExclude.getEntityFqns().contains( entry.getKey() ) )
+                                .filter( entry -> !srcFqnsToExclude.contains( entry.getKey() ) )
                                 .forEach( entry -> {
                                     Set<Object> values = entry.getValue();
                                     PropertyType propertyType = edmCacheManager.getPropertyType( entry.getKey() );
@@ -168,7 +164,7 @@ public class DataDownloadService implements DataDownloadManager {
                         neighbor.getAssociationDetails()
                                 .entrySet()
                                 .stream()
-                                .filter( entry -> !fqnsToExclude.getEdgeFqns().contains( entry.getKey() ) )
+                                .filter( entry -> !edgeFqnsToExclude.contains( entry.getKey() ) )
                                 .forEach( entry -> {
                                     UUID propertyTypeId = edmCacheManager.getPropertyTypeId( entry.getKey() );
                                     String propertyTitle = edgeMeta.get( propertyTypeId ).getTitle();
@@ -197,23 +193,16 @@ public class DataDownloadService implements DataDownloadManager {
             UUID participatedInEntityKeyId,
             String token ) {
 
-        UUID srcESID = entitySetIdsManager
-                .getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, PREPROCESSED_DATA, PREPROCESSED_DATA_ES );
-        UUID edgeESID = entitySetIdsManager
-                .getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, RECORDED_BY, RECORDED_BY_ES );
+        EntitySetIdGraph entitySetIdGraph = getEntitySetIdGraph( organizationId, studyId, PREPROCESSED );
 
-        EntityNeighborProperties fqnsToExclude = new EntityNeighborProperties(
-                ImmutableSet.of( STRING_ID_FQN ),
-                ImmutableSet.of( DATE_LOGGED_FQN, STRING_ID_FQN )
-        );
+        Set<FullQualifiedName> srcFqnsToExclude = ImmutableSet.of( STRING_ID_FQN );
+        Set<FullQualifiedName> edgeFqnsToExclude = ImmutableSet.of( STRING_ID_FQN, DATE_LOGGED_FQN );
 
         return getParticipantDataHelper(
-                organizationId,
-                studyId,
                 participatedInEntityKeyId,
-                srcESID,
-                edgeESID,
-                fqnsToExclude,
+                entitySetIdGraph,
+                srcFqnsToExclude,
+                edgeFqnsToExclude,
                 token
         );
     }
@@ -225,23 +214,16 @@ public class DataDownloadService implements DataDownloadManager {
             UUID participantEntityKeyId,
             String token ) {
 
-        UUID srcESID = entitySetIdsManager
-                .getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, APPDATA, DATA_ES );
-        UUID edgeESID = entitySetIdsManager
-                .getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, RECORDED_BY, RECORDED_BY_ES );
+        EntitySetIdGraph entitySetIdGraph = getEntitySetIdGraph( organizationId, studyId, RAW_DATA );
 
-        EntityNeighborProperties fqnsToExclude = new EntityNeighborProperties(
-                ImmutableSet.of( STRING_ID_FQN ),
-                ImmutableSet.of( DATE_LOGGED_FQN, STRING_ID_FQN )
-        );
+        Set<FullQualifiedName> srcFqnsToExclude = ImmutableSet.of( STRING_ID_FQN );
+        Set<FullQualifiedName> edgeFqnsToExclude = ImmutableSet.of( STRING_ID_FQN, DATE_LOGGED_FQN );
 
         return getParticipantDataHelper(
-                organizationId,
-                studyId,
                 participantEntityKeyId,
-                srcESID,
-                edgeESID,
-                fqnsToExclude,
+                entitySetIdGraph,
+                srcFqnsToExclude,
+                edgeFqnsToExclude,
                 token
         );
     }
@@ -253,24 +235,49 @@ public class DataDownloadService implements DataDownloadManager {
             UUID participantEntityKeyId,
             String token ) {
 
-        UUID srcESID = entitySetIdsManager
-                .getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, USER_APPS, USER_APPS_ES );
-        UUID edgeESID = entitySetIdsManager
-                .getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, USED_BY, USED_BY_ES );
+        EntitySetIdGraph entitySetIdGraph = getEntitySetIdGraph( organizationId, studyId, USAGE_DATA );
 
-        EntityNeighborProperties fqnsToExclude = new EntityNeighborProperties(
-                ImmutableSet.of( STRING_ID_FQN ),
-                ImmutableSet.of( STRING_ID_FQN )
-        );
+        Set<FullQualifiedName> srcFqnsToExclude = ImmutableSet.of( STRING_ID_FQN );
+        Set<FullQualifiedName> edgeFqnsToExclude = ImmutableSet.of( STRING_ID_FQN );
 
         return getParticipantDataHelper(
-                organizationId,
-                studyId,
                 participantEntityKeyId,
-                srcESID,
-                edgeESID,
-                fqnsToExclude,
+                entitySetIdGraph,
+                srcFqnsToExclude,
+                edgeFqnsToExclude,
                 token
         );
+    }
+
+    private EntitySetIdGraph getEntitySetIdGraph(
+            UUID organizationId,
+            UUID studyId,
+            ParticipantDataType participantDataType ) {
+
+        ChronicleCoreAppConfig coreAppConfig = entitySetIdsManager
+                .getChronicleAppConfig( organizationId, getParticipantEntitySetName( studyId ) );
+        ChronicleDataCollectionAppConfig dataCollectionAppConfig = entitySetIdsManager
+                .getChronicleDataCollectionAppConfig( organizationId );
+
+        UUID participantESID = coreAppConfig.getParticipantEntitySetId();
+
+        UUID dataESID;
+        UUID edgeESID;
+
+        switch ( participantDataType ) {
+            case RAW_DATA:
+                dataESID = dataCollectionAppConfig.getAppDataEntitySetId();
+                edgeESID = dataCollectionAppConfig.getRecordedByEntitySetId();
+                break;
+            case USAGE_DATA:
+                dataESID = dataCollectionAppConfig.getUserAppsEntitySetId();
+                edgeESID = dataCollectionAppConfig.getUsedByEntitySetId();
+                break;
+            default:
+                dataESID = dataCollectionAppConfig.getPreprocessedDataEntitySetId();
+                edgeESID = dataCollectionAppConfig.getRecordedByEntitySetId();
+        }
+
+        return new EntitySetIdGraph( dataESID, edgeESID, participantESID );
     }
 }

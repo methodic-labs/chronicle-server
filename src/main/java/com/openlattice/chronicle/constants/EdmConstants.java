@@ -3,7 +3,28 @@ package com.openlattice.chronicle.constants;
 import com.google.common.collect.ImmutableSet;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
 
-import java.util.UUID;
+import java.util.Map;
+import java.util.Set;
+
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.ADDRESSES;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.ANSWER;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.APPDATA;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.APP_DICTIONARY;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.DEVICE;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.HAS;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.METADATA;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.NOTIFICATION;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.PARTICIPATED_IN;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.PART_OF;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.PREPROCESSED_DATA;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.QUESTION;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.RECORDED_BY;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.RESPONDS_WITH;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.STUDIES;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.SURVEY;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.USED_BY;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.USER_APPS;
+import static java.util.Map.entry;
 
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
@@ -34,7 +55,7 @@ public class EdmConstants {
     public static final String STUDY_ES             = "chronicle_study";
     public static final String USED_BY_ES           = "chronicle_used_by";
 
-    public static final ImmutableSet<String> ENTITY_SET_NAMES = ImmutableSet.of(
+    public static final Set<String> ENTITY_SET_NAMES = ImmutableSet.of(
             ADDRESSES_ES,
             ANSWERS_ES,
             APPS_DICTIONARY_ES,
@@ -55,6 +76,28 @@ public class EdmConstants {
             USED_BY_ES
     );
 
+    public static final Map<String, CollectionTemplateTypeName> legacyEntitySetNameCollectionTemplateMap = Map
+            .ofEntries(
+                    entry( ADDRESSES_ES, ADDRESSES ),
+                    entry( ANSWERS_ES, ANSWER ),
+                    entry( APPS_DICTIONARY_ES, APP_DICTIONARY ),
+                    entry( USER_APPS_ES, USER_APPS ),
+                    entry( DATA_ES, APPDATA ),
+                    entry( DEVICES_ES, DEVICE ),
+                    entry( HAS_ES, HAS ),
+                    entry( METADATA_ES, METADATA ),
+                    entry( NOTIFICATION_ES, NOTIFICATION ),
+                    entry( PARTICIPATED_IN_ES, PARTICIPATED_IN ),
+                    entry( PART_OF_ES, PART_OF ),
+                    entry( PREPROCESSED_DATA_ES, PREPROCESSED_DATA ),
+                    entry( QUESTIONNAIRE_ES, SURVEY ),
+                    entry( QUESTIONS_ES, QUESTION ),
+                    entry( RECORDED_BY_ES, RECORDED_BY ),
+                    entry( RESPONDS_WITH_ES, RESPONDS_WITH ),
+                    entry( STUDY_ES, STUDIES ),
+                    entry( USED_BY_ES, USED_BY )
+            );
+
     // property types
     public static final FullQualifiedName COMPLETED_DATE_TIME_FQN = new FullQualifiedName( "date.completeddatetime" );
     public static final FullQualifiedName DATE_LOGGED_FQN         = new FullQualifiedName( "ol.datelogged" );
@@ -73,7 +116,4 @@ public class EdmConstants {
     public static final FullQualifiedName TITLE_FQN               = new FullQualifiedName( "ol.title" );
     public static final FullQualifiedName VALUES_FQN              = new FullQualifiedName( "ol.values" );
     public static final FullQualifiedName VERSION_FQN             = new FullQualifiedName( "ol.version" );
-
-    // CAFE ORG: to maintain backward compatibility, all studies before apps v2 will be assumed to belong to CAFE ORG
-    public static final UUID CAFE_ORG_ID = UUID.fromString( "7349c446-2acc-4d14-b2a9-a13be39cff93" );
 }

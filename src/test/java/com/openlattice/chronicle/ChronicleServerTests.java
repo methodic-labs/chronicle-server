@@ -109,7 +109,7 @@ public class ChronicleServerTests {
 //         // entitySetsIds.add( entitySetNameIdMap.get( USED_BY_ES_NAME ) );
 //
 //         for ( UUID entitySetId : entitySetsIds ) {
-//             dataApi.deleteAllEntitiesFromEntitySet( entitySetId, DeleteType.Hard );
+//             dataApi.deleteAllEntitiesFromEntitySet( entitySetId, ChronicleDeleteType.Hard );
 //         }
 //     }
 //

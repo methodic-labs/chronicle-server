@@ -3,6 +3,8 @@ package com.openlattice.chronicle.services.enrollment;
 import com.google.common.base.Optional;
 import com.google.common.collect.*;
 import com.openlattice.ApiUtil;
+import com.openlattice.chronicle.data.ChronicleCoreAppConfig;
+import com.openlattice.chronicle.data.ChronicleDataCollectionAppConfig;
 import com.openlattice.chronicle.data.ParticipationStatus;
 import com.openlattice.chronicle.services.ApiCacheManager;
 import com.openlattice.chronicle.services.ScheduledTasksManager;
@@ -24,27 +26,13 @@ import java.util.*;
 import java.util.concurrent.ExecutionException;
 
 import static com.google.common.base.Preconditions.checkNotNull;
-import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE;
-import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE_DATA_COLLECTION;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.DEVICE;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.NOTIFICATION;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.PARTICIPATED_IN;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.PART_OF;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.STUDIES;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.USED_BY;
-import static com.openlattice.chronicle.constants.EdmConstants.DEVICES_ES;
 import static com.openlattice.chronicle.constants.EdmConstants.MODEL_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.NOTIFICATION_ES;
 import static com.openlattice.chronicle.constants.EdmConstants.OL_ID_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.PARTICIPATED_IN_ES;
-import static com.openlattice.chronicle.constants.EdmConstants.PART_OF_ES;
 import static com.openlattice.chronicle.constants.EdmConstants.STATUS_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.STRING_ID_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.STUDY_ES;
-import static com.openlattice.chronicle.constants.EdmConstants.USED_BY_ES;
 import static com.openlattice.chronicle.constants.EdmConstants.VERSION_FQN;
-import static com.openlattice.chronicle.util.ChronicleServerUtil.checkNotNullUUIDs;
 import static com.openlattice.chronicle.util.ChronicleServerUtil.getFirstValueOrNull;
+import static com.openlattice.chronicle.util.ChronicleServerUtil.getParticipantEntitySetName;
 
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
@@ -98,14 +86,15 @@ public class EnrollmentService implements EnrollmentManager {
             DataIntegrationApi dataIntegrationApi = apiClient.getDataIntegrationApi();
 
             // entity set ids
-            UUID usedByESID = entitySetIdsManager
-                    .getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, USED_BY, USED_BY_ES );
-            UUID studyESID = entitySetIdsManager.getEntitySetId( organizationId, CHRONICLE, STUDIES, STUDY_ES );
-            UUID devicesESID = entitySetIdsManager
-                    .getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, DEVICE, DEVICES_ES );
-            UUID participantsESID = entitySetIdsManager.getParticipantEntitySetId( organizationId, studyId );
+            ChronicleDataCollectionAppConfig dataCollectionAppConfig = entitySetIdsManager
+                    .getChronicleDataCollectionAppConfig( organizationId );
+            ChronicleCoreAppConfig coreAppConfig = entitySetIdsManager
+                    .getChronicleAppConfig( organizationId, getParticipantEntitySetName( studyId ) );
 
-            checkNotNullUUIDs( Sets.newHashSet( usedByESID, studyESID, participantsESID, devicesESID ) );
+            UUID usedByESID = dataCollectionAppConfig.getUsedByEntitySetId();
+            UUID studyESID = coreAppConfig.getStudiesEntitySetId();
+            UUID devicesESID = dataCollectionAppConfig.getDeviceEntitySetId();
+            UUID participantsESID = coreAppConfig.getParticipantEntitySetId();
 
             // ensure study and participant exist
             UUID studyEKID = checkNotNull( getStudyEntityKeyId( organizationId, studyId ),
@@ -241,7 +230,10 @@ public class EnrollmentService implements EnrollmentManager {
             ApiClient apiClient = apiCacheManager.prodApiClientCache.get( ApiClient.class );
             DataApi dataApi = apiClient.getDataApi();
 
-            UUID entitySetId = entitySetIdsManager.getParticipantEntitySetId( organizationId, studyId );
+            ChronicleCoreAppConfig coreAppConfig = entitySetIdsManager
+                    .getChronicleAppConfig( organizationId, getParticipantEntitySetName( studyId ) );
+
+            UUID entitySetId = coreAppConfig.getParticipantEntitySetId();
             if ( entitySetId == null ) {
                 logger.error( "Unable to ge participant ESID: orgId = {}, studyId = {}, participantEKID = {}",
                         organizationId,
@@ -284,12 +276,12 @@ public class EnrollmentService implements EnrollmentManager {
             SearchApi searchApi = apiClient.getSearchApi();
 
             // entity set ids
-            UUID studiesESID = entitySetIdsManager.getEntitySetId( organizationId, CHRONICLE, STUDIES, STUDY_ES );
-            UUID participatedInESID = entitySetIdsManager.getEntitySetId( organizationId, CHRONICLE, PARTICIPATED_IN,
-                    PARTICIPATED_IN_ES );
-            UUID participantsESID = entitySetIdsManager.getParticipantEntitySetId( organizationId, studyId );
+            ChronicleCoreAppConfig coreAppConfig = entitySetIdsManager
+                    .getChronicleAppConfig( organizationId, getParticipantEntitySetName( studyId ) );
 
-            checkNotNullUUIDs( Sets.newHashSet( studiesESID, participatedInESID, participantsESID ) );
+            UUID studiesESID = coreAppConfig.getStudiesEntitySetId();
+            UUID participatedInESID = coreAppConfig.getParticipatedInEntitySetId();
+            UUID participantsESID = coreAppConfig.getParticipantEntitySetId();
 
             // participant must exist
             UUID participantEKID = checkNotNull( getParticipantEntityKeyId( organizationId, studyId, participantId ),
@@ -338,10 +330,11 @@ public class EnrollmentService implements EnrollmentManager {
             SearchApi searchApi = apiClient.getSearchApi();
 
             // get entity set ids
-            UUID studyESID = entitySetIdsManager.getEntitySetId( organizationId, CHRONICLE, STUDIES, STUDY_ES );
-            UUID notificationESID = entitySetIdsManager
-                    .getEntitySetId( organizationId, CHRONICLE, NOTIFICATION, NOTIFICATION_ES );
-            UUID partOfESID = entitySetIdsManager.getEntitySetId( organizationId, CHRONICLE, PART_OF, PART_OF_ES );
+            ChronicleCoreAppConfig coreAppConfig = entitySetIdsManager.getChronicleAppConfig( organizationId );
+
+            UUID studyESID = coreAppConfig.getStudiesEntitySetId();
+            UUID notificationESID = coreAppConfig.getNotificationEntitySetId();
+            UUID partOfESID = coreAppConfig.getPartOfEntitySetId();
 
             // ensure study exists
             UUID studyEKID = checkNotNull( getStudyEntityKeyId( organizationId, studyId ),
