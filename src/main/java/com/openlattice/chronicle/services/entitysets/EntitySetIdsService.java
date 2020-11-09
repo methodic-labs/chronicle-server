@@ -37,7 +37,7 @@ import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE_SURVEYS
 import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.*;
 import static com.openlattice.chronicle.constants.EdmConstants.ENTITY_SET_NAMES;
 import static com.openlattice.chronicle.constants.EdmConstants.STRING_ID_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.legacyEntitySetNameCollectionTemplateMap;
+import static com.openlattice.chronicle.constants.EdmConstants.LEGACY_DATASET_COLLECTION_TEMPLATE_MAP;
 import static com.openlattice.chronicle.util.ChronicleServerUtil.getFirstUUIDOrNull;
 
 /**
@@ -75,7 +75,7 @@ public class EntitySetIdsService implements EntitySetIdsManager {
         Map<CollectionTemplateTypeName, UUID> legacyEntitySetIds = Maps
                 .newHashMapWithExpectedSize( entitySetIds.size() );
         entitySetIds.forEach( ( esName, esId ) -> {
-            legacyEntitySetIds.put( legacyEntitySetNameCollectionTemplateMap.get( esName ), esId );
+            legacyEntitySetIds.put( LEGACY_DATASET_COLLECTION_TEMPLATE_MAP.get( esName ), esId );
         } );
 
         this.legacyEntitySetIds.putAll( legacyEntitySetIds );

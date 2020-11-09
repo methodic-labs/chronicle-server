@@ -76,7 +76,7 @@ public class EdmConstants {
             USED_BY_ES
     );
 
-    public static final Map<String, CollectionTemplateTypeName> legacyEntitySetNameCollectionTemplateMap = Map
+    public static final Map<String, CollectionTemplateTypeName> LEGACY_DATASET_COLLECTION_TEMPLATE_MAP = Map
             .ofEntries(
                     entry( ADDRESSES_ES, ADDRESSES ),
                     entry( ANSWERS_ES, ANSWER ),
