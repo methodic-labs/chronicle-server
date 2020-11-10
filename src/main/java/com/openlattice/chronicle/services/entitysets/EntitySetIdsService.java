@@ -35,9 +35,8 @@ import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE;
 import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE_DATA_COLLECTION;
 import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE_SURVEYS;
 import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.*;
-import static com.openlattice.chronicle.constants.EdmConstants.ENTITY_SET_NAMES;
-import static com.openlattice.chronicle.constants.EdmConstants.STRING_ID_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.LEGACY_DATASET_COLLECTION_TEMPLATE_MAP;
+import static com.openlattice.chronicle.constants.EdmConstants.STRING_ID_FQN;
 import static com.openlattice.chronicle.util.ChronicleServerUtil.getFirstUUIDOrNull;
 
 /**
@@ -70,7 +69,8 @@ public class EntitySetIdsService implements EntitySetIdsManager {
         EntitySetsApi entitySetsApi = prodApiClient.getEntitySetsApi();
 
         // get legacy entity set ids
-        Map<String, UUID> entitySetIds = entitySetsApi.getEntitySetIds( ENTITY_SET_NAMES );
+        Set<String> entitySetNames = LEGACY_DATASET_COLLECTION_TEMPLATE_MAP.keySet();
+        Map<String, UUID> entitySetIds = entitySetsApi.getEntitySetIds( entitySetNames );
 
         Map<CollectionTemplateTypeName, UUID> legacyEntitySetIds = Maps
                 .newHashMapWithExpectedSize( entitySetIds.size() );

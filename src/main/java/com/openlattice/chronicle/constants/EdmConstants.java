@@ -1,29 +1,10 @@
 package com.openlattice.chronicle.constants;
 
-import com.google.common.collect.ImmutableSet;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
 
 import java.util.Map;
-import java.util.Set;
 
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.ADDRESSES;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.ANSWER;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.APPDATA;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.APP_DICTIONARY;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.DEVICE;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.HAS;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.METADATA;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.NOTIFICATION;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.PARTICIPATED_IN;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.PART_OF;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.PREPROCESSED_DATA;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.QUESTION;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.RECORDED_BY;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.RESPONDS_WITH;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.STUDIES;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.SURVEY;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.USED_BY;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.USER_APPS;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.*;
 import static java.util.Map.entry;
 
 /**
@@ -58,30 +39,6 @@ public class EdmConstants {
     public static final String TIMERANGE_ES         = "chronicle_timerange";
     public static final String USED_BY_ES           = "chronicle_used_by";
 
-    public static final Set<String> ENTITY_SET_NAMES = ImmutableSet.of(
-            ADDRESSES_ES,
-            ANSWERS_ES,
-            APPS_DICTIONARY_ES,
-            USER_APPS_ES,
-            DATA_ES,
-            DEVICES_ES,
-            HAS_ES,
-            METADATA_ES,
-            NOTIFICATION_ES,
-            PARTICIPATED_IN_ES,
-            PART_OF_ES,
-            PREPROCESSED_DATA_ES,
-            QUESTIONNAIRE_ES,
-            QUESTIONS_ES,
-            RECORDED_BY_ES,
-            REGISTERED_FOR_ES,
-            RESPONDS_WITH_ES,
-            STUDY_ES,
-            SUBMISSION_ES,
-            TIMERANGE_ES,
-            USED_BY_ES
-    );
-
     public static final Map<String, CollectionTemplateTypeName> LEGACY_DATASET_COLLECTION_TEMPLATE_MAP = Map
             .ofEntries(
                     entry( ADDRESSES_ES, ADDRESSES ),
@@ -100,7 +57,10 @@ public class EdmConstants {
                     entry( QUESTIONS_ES, QUESTION ),
                     entry( RECORDED_BY_ES, RECORDED_BY ),
                     entry( RESPONDS_WITH_ES, RESPONDS_WITH ),
+                    entry( REGISTERED_FOR_ES, REGISTERED_FOR ),
                     entry( STUDY_ES, STUDIES ),
+                    entry( SUBMISSION_ES, SUBMISSION ),
+                    entry( TIMERANGE_ES, TIME_RANGE ),
                     entry( USED_BY_ES, USED_BY )
             );
 
