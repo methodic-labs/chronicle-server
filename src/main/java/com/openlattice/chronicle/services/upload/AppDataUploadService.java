@@ -4,14 +4,17 @@ import com.dataloom.streams.StreamUtil;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.*;
 import com.openlattice.ApiUtil;
+import com.openlattice.chronicle.data.ChronicleCoreAppConfig;
+import com.openlattice.chronicle.data.ChronicleDataCollectionAppConfig;
+import com.openlattice.chronicle.data.EntitiesAndEdges;
 import com.openlattice.chronicle.data.ParticipationStatus;
 import com.openlattice.chronicle.services.ApiCacheManager;
-import com.openlattice.chronicle.services.CommonTasksManager;
 import com.openlattice.chronicle.services.ScheduledTasksManager;
+import com.openlattice.chronicle.services.edm.EdmCacheManager;
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager;
+import com.openlattice.chronicle.services.entitysets.EntitySetIdsManager;
 import com.openlattice.client.ApiClient;
 import com.openlattice.data.*;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
 import org.slf4j.Logger;
@@ -24,55 +27,43 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE;
-import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE_DATA_COLLECTION;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.APPDATA;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.DEVICE;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.HAS;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.METADATA;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.RECORDED_BY;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.USED_BY;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.USER_APPS;
-import static com.openlattice.chronicle.constants.EdmConstants.DATA_ES;
 import static com.openlattice.chronicle.constants.EdmConstants.DATE_LOGGED_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.DATE_TIME_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.DEVICES_ES;
 import static com.openlattice.chronicle.constants.EdmConstants.END_DATE_TIME_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.FULL_NAME_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.HAS_ES;
-import static com.openlattice.chronicle.constants.EdmConstants.METADATA_ES;
 import static com.openlattice.chronicle.constants.EdmConstants.OL_ID_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.PERSON_ID_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.RECORDED_BY_ES;
 import static com.openlattice.chronicle.constants.EdmConstants.RECORDED_DATE_TIME_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.START_DATE_TIME_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.STRING_ID_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.TITLE_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.USED_BY_ES;
-import static com.openlattice.chronicle.constants.EdmConstants.USER_APPS_ES;
 import static com.openlattice.chronicle.constants.OutputConstants.MINIMUM_DATE;
-import static com.openlattice.chronicle.util.ChronicleServerUtil.checkNotNullUUIDs;
+import static com.openlattice.chronicle.util.ChronicleServerUtil.getParticipantEntitySetName;
 
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
  */
-public class AppDataUploadManagerImpl implements AppDataUploadManager {
-    protected final Logger logger = LoggerFactory.getLogger( AppDataUploadManagerImpl.class );
+public class AppDataUploadService implements AppDataUploadManager {
+    protected final Logger logger = LoggerFactory.getLogger( AppDataUploadService.class );
 
-    private final CommonTasksManager    commonTasksManager;
     private final ScheduledTasksManager scheduledTasksManager;
     private final EnrollmentManager     enrollmentManager;
     private final ApiCacheManager       apiCacheManager;
+    private final EdmCacheManager       edmCacheManager;
+    private final EntitySetIdsManager   entitySetIdsManager;
 
-    public AppDataUploadManagerImpl(
+    public AppDataUploadService(
             ApiCacheManager apiCacheManager,
+            EdmCacheManager edmCacheManager,
+            EntitySetIdsManager entitySetIdsManager,
             ScheduledTasksManager scheduledTasksManager,
-            CommonTasksManager commonTasksManager,
             EnrollmentManager enrollmentManager ) {
-        this.commonTasksManager = commonTasksManager;
+
+        this.edmCacheManager = edmCacheManager;
         this.scheduledTasksManager = scheduledTasksManager;
         this.enrollmentManager = enrollmentManager;
         this.apiCacheManager = apiCacheManager;
+        this.entitySetIdsManager = entitySetIdsManager;
     }
 
     // return an OffsetDateTime with time 00:00
@@ -96,9 +87,9 @@ public class AppDataUploadManagerImpl implements AppDataUploadManager {
                 usedByESID,
                 ApiUtil.generateDefaultEntityId(
                         ImmutableList.of(
-                                commonTasksManager.getPropertyTypeId( FULL_NAME_FQN ),
-                                commonTasksManager.getPropertyTypeId( DATE_TIME_FQN ),
-                                commonTasksManager.getPropertyTypeId( PERSON_ID_FQN )
+                                edmCacheManager.getPropertyTypeId( FULL_NAME_FQN ),
+                                edmCacheManager.getPropertyTypeId( DATE_TIME_FQN ),
+                                edmCacheManager.getPropertyTypeId( PERSON_ID_FQN )
                         ),
                         entityData
                 )
@@ -112,9 +103,9 @@ public class AppDataUploadManagerImpl implements AppDataUploadManager {
                 recordedByESID,
                 ApiUtil.generateDefaultEntityId(
                         ImmutableList.of(
-                                commonTasksManager.getPropertyTypeId( DATE_LOGGED_FQN ),
-                                commonTasksManager.getPropertyTypeId( STRING_ID_FQN ),
-                                commonTasksManager.getPropertyTypeId( FULL_NAME_FQN )
+                                edmCacheManager.getPropertyTypeId( DATE_LOGGED_FQN ),
+                                edmCacheManager.getPropertyTypeId( STRING_ID_FQN ),
+                                edmCacheManager.getPropertyTypeId( FULL_NAME_FQN )
                         ),
                         entityData
                 )
@@ -127,7 +118,7 @@ public class AppDataUploadManagerImpl implements AppDataUploadManager {
         return new EntityKey(
                 userAppsESID,
                 ApiUtil.generateDefaultEntityId( ImmutableList
-                                .of( commonTasksManager.getPropertyTypeId( FULL_NAME_FQN ) ),
+                                .of( edmCacheManager.getPropertyTypeId( FULL_NAME_FQN ) ),
                         entityData )
         );
     }
@@ -136,7 +127,7 @@ public class AppDataUploadManagerImpl implements AppDataUploadManager {
 
         return new EntityKey(
                 metadataESID,
-                ApiUtil.generateDefaultEntityId( ImmutableList.of( commonTasksManager.getPropertyTypeId( OL_ID_FQN ) ),
+                ApiUtil.generateDefaultEntityId( ImmutableList.of( edmCacheManager.getPropertyTypeId( OL_ID_FQN ) ),
                         entityData )
         );
     }
@@ -145,52 +136,52 @@ public class AppDataUploadManagerImpl implements AppDataUploadManager {
 
         return new EntityKey(
                 hasESID,
-                ApiUtil.generateDefaultEntityId( ImmutableList.of( commonTasksManager.getPropertyTypeId( OL_ID_FQN ) ),
+                ApiUtil.generateDefaultEntityId( ImmutableList.of( edmCacheManager.getPropertyTypeId( OL_ID_FQN ) ),
                         entityData )
         );
     }
 
-    // HELPER METHODS: logData
+    // HELPER METHODS: upload
     private Map<UUID, Set<Object>> getUsedByEntity( String appPackageName, String dateLogged, String participantId ) {
-        Map<UUID, Set<Object>> entity = new HashMap<>();
+        Map<UUID, Set<Object>> entity = Maps.newHashMap();
 
-        entity.put( commonTasksManager.getPropertyTypeId( DATE_TIME_FQN ), ImmutableSet.of( dateLogged ) );
-        entity.put( commonTasksManager.getPropertyTypeId( FULL_NAME_FQN ), ImmutableSet.of( appPackageName ) );
-        entity.put( commonTasksManager.getPropertyTypeId( PERSON_ID_FQN ), ImmutableSet.of( participantId ) );
+        entity.put( edmCacheManager.getPropertyTypeId( DATE_TIME_FQN ), ImmutableSet.of( dateLogged ) );
+        entity.put( edmCacheManager.getPropertyTypeId( FULL_NAME_FQN ), ImmutableSet.of( appPackageName ) );
+        entity.put( edmCacheManager.getPropertyTypeId( PERSON_ID_FQN ), ImmutableSet.of( participantId ) );
 
         return entity;
     }
 
     private Map<UUID, Set<Object>> getRecordedByEntity( String deviceId, String appPackageName, String dateLogged ) {
-        Map<UUID, Set<Object>> entity = new HashMap<>();
+        Map<UUID, Set<Object>> entity = Maps.newHashMap();
 
-        entity.put( commonTasksManager.getPropertyTypeId( FULL_NAME_FQN ), ImmutableSet.of( appPackageName ) );
-        entity.put( commonTasksManager.getPropertyTypeId( DATE_LOGGED_FQN ), ImmutableSet.of( dateLogged ) );
-        entity.put( commonTasksManager.getPropertyTypeId( STRING_ID_FQN ), ImmutableSet.of( deviceId ) );
+        entity.put( edmCacheManager.getPropertyTypeId( FULL_NAME_FQN ), ImmutableSet.of( appPackageName ) );
+        entity.put( edmCacheManager.getPropertyTypeId( DATE_LOGGED_FQN ), ImmutableSet.of( dateLogged ) );
+        entity.put( edmCacheManager.getPropertyTypeId( STRING_ID_FQN ), ImmutableSet.of( deviceId ) );
 
         return entity;
     }
 
-    private Map<UUID, Set<Object>> getHasEntity( String firstDateTime ) {
+    private Map<UUID, Set<Object>> getHasEntity( UUID participantEKID ) {
         Map<UUID, Set<Object>> entity = Maps.newHashMap();
-        entity.put( commonTasksManager.getPropertyTypeId( OL_ID_FQN ), Set.of( firstDateTime ) );
+        entity.put( edmCacheManager.getPropertyTypeId( OL_ID_FQN ), Set.of( participantEKID ) );
 
         return entity;
     }
 
     private Map<UUID, Set<Object>> getMetadataEntity( UUID participantEKID ) {
         Map<UUID, Set<Object>> entity = Maps.newHashMap();
-        entity.put( commonTasksManager.getPropertyTypeId( OL_ID_FQN ), Set.of( participantEKID ) );
+        entity.put( edmCacheManager.getPropertyTypeId( OL_ID_FQN ), Set.of( participantEKID ) );
 
         return entity;
     }
 
     private Map<UUID, Set<Object>> getUserAppsEntity( String appPackageName, String appName ) {
 
-        Map<UUID, Set<Object>> entity = new HashMap<>();
+        Map<UUID, Set<Object>> entity = Maps.newHashMap();
 
-        entity.put( commonTasksManager.getPropertyTypeId( FULL_NAME_FQN ), ImmutableSet.of( appPackageName ) );
-        entity.put( commonTasksManager.getPropertyTypeId( TITLE_FQN ), ImmutableSet.of( appName ) );
+        entity.put( edmCacheManager.getPropertyTypeId( FULL_NAME_FQN ), ImmutableSet.of( appPackageName ) );
+        entity.put( edmCacheManager.getPropertyTypeId( TITLE_FQN ), ImmutableSet.of( appName ) );
 
         return entity;
     }
@@ -210,11 +201,11 @@ public class AppDataUploadManagerImpl implements AppDataUploadManager {
     }
 
     private Set<OffsetDateTime> getDateTimeValuesFromDeviceData( List<SetMultimap<UUID, Object>> data ) {
-        Set<OffsetDateTime> dateTimes = new HashSet<>();
+        Set<OffsetDateTime> dateTimes = Sets.newHashSet();
         data.forEach(
                 entity -> {
                     // most date properties in the entity are of length 1
-                    for ( Object date : entity.get( commonTasksManager.getPropertyTypeId( DATE_LOGGED_FQN ) ) ) {
+                    for ( Object date : entity.get( edmCacheManager.getPropertyTypeId( DATE_LOGGED_FQN ) ) ) {
                         OffsetDateTime parsedDateTime = OffsetDateTime
                                 .parse( date.toString() );
 
@@ -228,7 +219,7 @@ public class AppDataUploadManagerImpl implements AppDataUploadManager {
         return dateTimes;
     }
 
-    private Pair<Map<EntityKey, Map<UUID, Set<Object>>>, Set<Triple<EntityKey, EntityKey, EntityKey>>> getMetadataEntitiesAndEdges(
+    private EntitiesAndEdges getMetadataEntitiesAndEdges(
             DataApi dataApi,
             DataIntegrationApi integrationApi,
             List<SetMultimap<UUID, Object>> data,
@@ -239,10 +230,10 @@ public class AppDataUploadManagerImpl implements AppDataUploadManager {
             String participantId
     ) {
         // entity set ids
-        UUID metadataESID = commonTasksManager.getEntitySetId( organizationId, CHRONICLE, METADATA, METADATA_ES );
-        UUID hasESID = commonTasksManager.getEntitySetId( organizationId, CHRONICLE, HAS, HAS_ES );
+        ChronicleCoreAppConfig coreAppConfig = entitySetIdsManager.getChronicleAppConfig( organizationId );
 
-        checkNotNullUUIDs( ImmutableSet.of( metadataESID, hasESID ) );
+        UUID metadataESID = coreAppConfig.getMetadataEntitySetId();
+        UUID hasESID = coreAppConfig.getHasEntitySetId();
 
         Map<EntityKey, Map<UUID, Set<Object>>> entitiesByEntityKey = Maps.newHashMap();
         Set<Triple<EntityKey, EntityKey, EntityKey>> edgesByEntityKey = Sets.newHashSet();
@@ -256,13 +247,15 @@ public class AppDataUploadManagerImpl implements AppDataUploadManager {
         String firstDateTime = pushedDateTimes
                 .stream()
                 .min( OffsetDateTime::compareTo )
-                .orElse( null )
+                // .orElse( null ) :commenting this out since pushedDateTimes can never have nulls
+                .get()
                 .toString();
 
         String lastDateTime = pushedDateTimes
                 .stream()
                 .max( OffsetDateTime::compareTo )
-                .orElse( null )
+                // .orElse( null ) :commenting this out since pushedDateTimes can never have nulls
+                .get()
                 .toString();
 
         Set<Object> uniqueDates = pushedDateTimes
@@ -290,15 +283,15 @@ public class AppDataUploadManagerImpl implements AppDataUploadManager {
                     exception
             );
         }
-        metadataEntityData.put( commonTasksManager.getPropertyTypeId( START_DATE_TIME_FQN ),
+        metadataEntityData.put( edmCacheManager.getPropertyTypeId( START_DATE_TIME_FQN ),
                 entity.getOrDefault( START_DATE_TIME_FQN, Set.of( firstDateTime ) ) );
-        metadataEntityData.put( commonTasksManager.getPropertyTypeId( END_DATE_TIME_FQN ), Set.of( lastDateTime ) );
+        metadataEntityData.put( edmCacheManager.getPropertyTypeId( END_DATE_TIME_FQN ), Set.of( lastDateTime ) );
         uniqueDates.addAll( entity.getOrDefault( RECORDED_DATE_TIME_FQN, Set.of() ) );
-        metadataEntityData.put( commonTasksManager.getPropertyTypeId( RECORDED_DATE_TIME_FQN ), uniqueDates );
+        metadataEntityData.put( edmCacheManager.getPropertyTypeId( RECORDED_DATE_TIME_FQN ), uniqueDates );
 
         entitiesByEntityKey.put( metadataEK, metadataEntityData );
 
-        Map<UUID, Set<Object>> hasEntityData = getHasEntity( firstDateTime );
+        Map<UUID, Set<Object>> hasEntityData = getHasEntity( participantEKID );
         EntityKey hasEK = getHasEntityKey( hasESID, hasEntityData );
         entitiesByEntityKey.put( hasEK, hasEntityData );
 
@@ -307,11 +300,11 @@ public class AppDataUploadManagerImpl implements AppDataUploadManager {
         // association: participant  => has => metadata
         edgesByEntityKey.add( Triple.of( participantEK, hasEK, metadataEK ) );
 
-        return Pair.of( entitiesByEntityKey, edgesByEntityKey );
+        return new EntitiesAndEdges( entitiesByEntityKey, edgesByEntityKey );
     }
 
-    private String getFirstValueOrNullByUUID( SetMultimap<UUID, Object> entity, FullQualifiedName fqn ) {
-        UUID fqnId = commonTasksManager.getPropertyTypeId( fqn );
+    private String getFirstValueOrNull( SetMultimap<UUID, Object> entity, FullQualifiedName fqn ) {
+        UUID fqnId = edmCacheManager.getPropertyTypeId( fqn );
         Object value = Iterables.getFirst( entity.get( fqnId ), null );
 
         return value == null ? null : value.toString();
@@ -411,7 +404,7 @@ public class AppDataUploadManagerImpl implements AppDataUploadManager {
         ListMultimap<UUID, DataAssociation> associations = ArrayListMultimap.create();
 
         Map<UUID, Set<Object>> recordedByEntity = ImmutableMap
-                .of( commonTasksManager.getPropertyTypeId( DATE_LOGGED_FQN ), Sets.newHashSet( timeStamp ) );
+                .of( edmCacheManager.getPropertyTypeId( DATE_LOGGED_FQN ), Sets.newHashSet( timeStamp ) );
 
         associations.put( recordedByESID, new DataAssociation(
                 appDataESID,
@@ -437,10 +430,10 @@ public class AppDataUploadManagerImpl implements AppDataUploadManager {
 
     private boolean hasUserAppPackageName( UUID organizationId, String packageName ) {
         if ( organizationId != null ) {
-            return scheduledTasksManager.userAppsFullNamesByOrg.getOrDefault( packageName, ImmutableSet.of() )
+            return scheduledTasksManager.getUserAppsFullNamesByOrg().getOrDefault( packageName, ImmutableSet.of() )
                     .contains( organizationId );
         }
-        return scheduledTasksManager.userAppsFullNameValues.contains( packageName );
+        return scheduledTasksManager.getUserAppsFullNameValues().contains( packageName );
     }
 
     // create entities and edges
@@ -453,20 +446,20 @@ public class AppDataUploadManagerImpl implements AppDataUploadManager {
             UUID deviceEKID,
             String participantId,
             String deviceId,
-            UUID participantEKID,
-            UUID participantESID
+            UUID participantEKID
     ) {
         // entity set ids
-        UUID appDataESID = commonTasksManager
-                .getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, APPDATA, DATA_ES );
-        UUID recordedByESID = commonTasksManager
-                .getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, RECORDED_BY, RECORDED_BY_ES );
-        UUID devicesESID = commonTasksManager
-                .getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, DEVICE, DEVICES_ES );
-        UUID usedByESID = commonTasksManager
-                .getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, USED_BY, USED_BY_ES );
-        UUID userAppsESID = commonTasksManager
-                .getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, USER_APPS, USER_APPS_ES );
+        ChronicleCoreAppConfig coreAppConfig = entitySetIdsManager
+                .getChronicleAppConfig( organizationId, getParticipantEntitySetName( studyId ) );
+        ChronicleDataCollectionAppConfig dataCollectionAppConfig = entitySetIdsManager
+                .getChronicleDataCollectionAppConfig( organizationId );
+
+        UUID appDataESID = dataCollectionAppConfig.getAppDataEntitySetId();
+        UUID recordedByESID = dataCollectionAppConfig.getRecordedByEntitySetId();
+        UUID devicesESID = dataCollectionAppConfig.getDeviceEntitySetId();
+        UUID usedByESID = dataCollectionAppConfig.getUsedByEntitySetId();
+        UUID userAppsESID = dataCollectionAppConfig.getUserAppsEntitySetId();
+        UUID participantESID = coreAppConfig.getParticipantEntitySetId();
 
         ListMultimap<UUID, Map<UUID, Set<Object>>> appDataEntities = ArrayListMultimap.create();
         ListMultimap<UUID, DataAssociation> appDataAssociations = ArrayListMultimap.create();
@@ -491,14 +484,15 @@ public class AppDataUploadManagerImpl implements AppDataUploadManager {
                             i ) );
 
             String appPackageName, appName;
-            appPackageName = appName = getFirstValueOrNullByUUID( appEntity, FULL_NAME_FQN );
-            String dateLogged = getMidnightDateTime( getFirstValueOrNullByUUID( appEntity, DATE_LOGGED_FQN ) );
+            appPackageName = appName = getFirstValueOrNull( appEntity, FULL_NAME_FQN );
+            String dateLogged = getMidnightDateTime( getFirstValueOrNull( appEntity, DATE_LOGGED_FQN ) );
 
-            if ( scheduledTasksManager.systemAppPackageNames.contains( appPackageName ) || dateLogged == null )
+            if ( scheduledTasksManager.getSystemAppPackageNames().contains( appPackageName ) || dateLogged == null ) {
                 continue; // 'system' app
+            }
 
-            if ( appEntity.containsKey( commonTasksManager.getPropertyTypeId( TITLE_FQN ) ) ) {
-                appName = getFirstValueOrNullByUUID( appEntity, TITLE_FQN );
+            if ( appEntity.containsKey( edmCacheManager.getPropertyTypeId( TITLE_FQN ) ) ) {
+                appName = getFirstValueOrNull( appEntity, TITLE_FQN );
             }
 
             // association 1: user apps => recorded by => device
@@ -511,7 +505,7 @@ public class AppDataUploadManagerImpl implements AppDataUploadManager {
             Map<UUID, Set<Object>> recordedByEntityData = getRecordedByEntity( deviceId, appPackageName, dateLogged );
             EntityKey recordedByEK = getRecordedByEntityKey( recordedByESID, recordedByEntityData );
             recordedByEntityData
-                    .remove( commonTasksManager
+                    .remove( edmCacheManager
                             .getPropertyTypeId( FULL_NAME_FQN ) );   // FULL_NAME_FQN is used to generate EKID but shouldn't be stored
             entitiesByEntityKey.put( recordedByEK, recordedByEntityData );
 
@@ -521,16 +515,16 @@ public class AppDataUploadManagerImpl implements AppDataUploadManager {
             // association 2: user apps => used by => participant
             Map<UUID, Set<Object>> usedByEntityData = getUsedByEntity( appPackageName, dateLogged, participantId );
             EntityKey usedByEK = getUsedByEntityKey( usedByESID, usedByEntityData );
-            usedByEntityData.remove( commonTasksManager
+            usedByEntityData.remove( edmCacheManager
                     .getPropertyTypeId( FULL_NAME_FQN ) ); // FULL_NAME_FQN shouldn't be stored
-            usedByEntityData.remove( commonTasksManager
+            usedByEntityData.remove( edmCacheManager
                     .getPropertyTypeId( PERSON_ID_FQN ) ); // PERSON_ID_FQN shouldn't be stored
             entitiesByEntityKey.put( usedByEK, usedByEntityData );
 
             EntityKey participantEK = getParticipantEntityKey( participantESID, participantId );
             edgesByEntityKey.add( Triple.of( userAppEK, usedByEK, participantEK ) );
         }
-        Pair<Map<EntityKey, Map<UUID, Set<Object>>>, Set<Triple<EntityKey, EntityKey, EntityKey>>> metadata = getMetadataEntitiesAndEdges(
+        EntitiesAndEdges metadata = getMetadataEntitiesAndEdges(
                 dataApi,
                 dataIntegrationApi,
                 data,
@@ -541,8 +535,8 @@ public class AppDataUploadManagerImpl implements AppDataUploadManager {
                 participantId
         );
         if ( metadata != null ) {
-            entitiesByEntityKey.putAll( metadata.getLeft() );
-            edgesByEntityKey.addAll( metadata.getRight() );
+            entitiesByEntityKey.putAll( metadata.getEntityByEntityKey() );
+            edgesByEntityKey.addAll( metadata.getSrcEdgeDstEntityKeys() );
         }
 
         DataGraph dataGraph = new DataGraph( appDataEntities, appDataAssociations );
@@ -570,7 +564,7 @@ public class AppDataUploadManagerImpl implements AppDataUploadManager {
     }
 
     @Override
-    public Integer logData(
+    public Integer upload(
             UUID organizationId,
             UUID studyId,
             String participantId,
@@ -587,7 +581,7 @@ public class AppDataUploadManagerImpl implements AppDataUploadManager {
             DataApi dataApi = apiClient.getDataApi();
             DataIntegrationApi dataIntegrationApi = apiClient.getDataIntegrationApi();
 
-            UUID participantEntityKeyId = commonTasksManager
+            UUID participantEntityKeyId = enrollmentManager
                     .getParticipantEntityKeyId( organizationId, studyId, participantId );
             if ( participantEntityKeyId == null ) {
                 logger.error( "Unable to retrieve participantEntityKeyId, studyId = {}, participantId = {}",
@@ -614,9 +608,6 @@ public class AppDataUploadManagerImpl implements AppDataUploadManager {
                 return 0;
             }
 
-            UUID participantEntitySetId = commonTasksManager.getParticipantEntitySetId( organizationId, studyId );
-            checkNotNullUUIDs( ImmutableSet.of( participantEntitySetId ) );
-
             createEntitiesAndAssociations(
                     dataApi,
                     dataIntegrationApi,
@@ -626,8 +617,7 @@ public class AppDataUploadManagerImpl implements AppDataUploadManager {
                     deviceEntityKeyId,
                     participantId,
                     deviceId,
-                    participantEntityKeyId,
-                    participantEntitySetId
+                    participantEntityKeyId
             );
 
         } catch ( Exception exception ) {

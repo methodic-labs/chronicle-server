@@ -1,22 +1,22 @@
 package com.openlattice.chronicle.services.enrollment;
 
 import com.google.common.base.Optional;
-import com.google.common.base.Preconditions;
 import com.google.common.collect.*;
 import com.openlattice.ApiUtil;
+import com.openlattice.chronicle.data.ChronicleCoreAppConfig;
+import com.openlattice.chronicle.data.ChronicleDataCollectionAppConfig;
 import com.openlattice.chronicle.data.ParticipationStatus;
 import com.openlattice.chronicle.services.ApiCacheManager;
-import com.openlattice.chronicle.services.CommonTasksManager;
 import com.openlattice.chronicle.services.ScheduledTasksManager;
+import com.openlattice.chronicle.services.edm.EdmCacheManager;
+import com.openlattice.chronicle.services.entitysets.EntitySetIdsManager;
 import com.openlattice.chronicle.sources.AndroidDevice;
 import com.openlattice.chronicle.sources.Datasource;
 import com.openlattice.client.ApiClient;
 import com.openlattice.data.*;
 import com.openlattice.data.requests.NeighborEntityDetails;
-import com.openlattice.edm.EdmApi;
 import com.openlattice.search.SearchApi;
 import com.openlattice.search.requests.EntityNeighborsFilter;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,47 +24,37 @@ import org.springframework.security.access.AccessDeniedException;
 
 import java.util.*;
 import java.util.concurrent.ExecutionException;
-import java.util.stream.Collectors;
 
-import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE;
-import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE_DATA_COLLECTION;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.DEVICE;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.NOTIFICATION;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.PARTICIPATED_IN;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.PART_OF;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.STUDIES;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.USED_BY;
-import static com.openlattice.chronicle.constants.EdmConstants.DEVICES_ES;
+import static com.google.common.base.Preconditions.checkNotNull;
 import static com.openlattice.chronicle.constants.EdmConstants.MODEL_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.NOTIFICATION_ES;
 import static com.openlattice.chronicle.constants.EdmConstants.OL_ID_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.PARTICIPATED_IN_ES;
-import static com.openlattice.chronicle.constants.EdmConstants.PART_OF_ES;
 import static com.openlattice.chronicle.constants.EdmConstants.STATUS_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.STRING_ID_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.STUDY_ES;
-import static com.openlattice.chronicle.constants.EdmConstants.USED_BY_ES;
 import static com.openlattice.chronicle.constants.EdmConstants.VERSION_FQN;
-import static com.openlattice.chronicle.util.ChronicleServerUtil.checkNotNullUUIDs;
 import static com.openlattice.chronicle.util.ChronicleServerUtil.getFirstValueOrNull;
+import static com.openlattice.chronicle.util.ChronicleServerUtil.getParticipantEntitySetName;
 
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
  */
-public class EnrollmentManagerImpl implements EnrollmentManager {
-    protected static final Logger logger = LoggerFactory.getLogger( EnrollmentManagerImpl.class );
+public class EnrollmentService implements EnrollmentManager {
+    protected static final Logger logger = LoggerFactory.getLogger( EnrollmentService.class );
 
     private final ApiCacheManager       apiCacheManager;
-    private final CommonTasksManager    commonTasksManager;
     private final ScheduledTasksManager scheduledTasksManager;
+    private final EdmCacheManager       edmCacheManager;
+    private final EntitySetIdsManager   entitySetIdsManager;
 
-    public EnrollmentManagerImpl(
+    public EnrollmentService(
             ApiCacheManager apiCacheManager,
-            CommonTasksManager commonTasksManager,
+            EdmCacheManager edmCacheManager,
+            EntitySetIdsManager entitySetIdsManager,
             ScheduledTasksManager scheduledTasksManager ) {
-        this.apiCacheManager = apiCacheManager;
-        this.commonTasksManager = commonTasksManager;
+
+        this.edmCacheManager = edmCacheManager;
         this.scheduledTasksManager = scheduledTasksManager;
+        this.apiCacheManager = apiCacheManager;
+        this.entitySetIdsManager = entitySetIdsManager;
     }
 
     private UUID reserveDeviceEntityKeyId(
@@ -75,7 +65,7 @@ public class EnrollmentManagerImpl implements EnrollmentManager {
         EntityKey entityKey = new EntityKey(
                 deviceEntitySetId,
                 ApiUtil.generateDefaultEntityId(
-                        ImmutableList.of( commonTasksManager.getPropertyTypeId( STRING_ID_FQN ) ),
+                        ImmutableList.of( edmCacheManager.getPropertyTypeId( STRING_ID_FQN ) ),
                         data
                 )
         );
@@ -96,32 +86,30 @@ public class EnrollmentManagerImpl implements EnrollmentManager {
             DataIntegrationApi dataIntegrationApi = apiClient.getDataIntegrationApi();
 
             // entity set ids
-            UUID usedByESID = commonTasksManager
-                    .getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, USED_BY, USED_BY_ES );
-            UUID studyESID = commonTasksManager.getEntitySetId( organizationId, CHRONICLE, STUDIES, STUDY_ES );
-            UUID devicesESID = commonTasksManager
-                    .getEntitySetId( organizationId, CHRONICLE_DATA_COLLECTION, DEVICE, DEVICES_ES );
-            UUID participantsESID = commonTasksManager.getParticipantEntitySetId( organizationId, studyId );
+            ChronicleDataCollectionAppConfig dataCollectionAppConfig = entitySetIdsManager
+                    .getChronicleDataCollectionAppConfig( organizationId );
+            ChronicleCoreAppConfig coreAppConfig = entitySetIdsManager
+                    .getChronicleAppConfig( organizationId, getParticipantEntitySetName( studyId ) );
 
-            checkNotNullUUIDs( Sets.newHashSet( usedByESID, studyESID, participantsESID, devicesESID ) );
+            UUID usedByESID = dataCollectionAppConfig.getUsedByEntitySetId();
+            UUID studyESID = coreAppConfig.getStudiesEntitySetId();
+            UUID devicesESID = dataCollectionAppConfig.getDeviceEntitySetId();
+            UUID participantsESID = coreAppConfig.getParticipantEntitySetId();
 
             // ensure study and participant exist
-            UUID studyEKID = Preconditions
-                    .checkNotNull( commonTasksManager.getStudyEntityKeyId( organizationId, studyId ),
-                            "study must exist" );
-            UUID participantEKID = Preconditions
-                    .checkNotNull( commonTasksManager
-                            .getParticipantEntityKeyId( organizationId, studyId, participantId ) );
+            UUID studyEKID = checkNotNull( getStudyEntityKeyId( organizationId, studyId ),
+                    "study must exist" );
+            UUID participantEKID = checkNotNull( getParticipantEntityKeyId( organizationId, studyId, participantId ) );
 
             // device entity data
             Map<UUID, Set<Object>> deviceData = new HashMap<>();
-            deviceData.put( commonTasksManager.getPropertyTypeId( STRING_ID_FQN ), Sets.newHashSet( datasourceId ) );
+            deviceData.put( edmCacheManager.getPropertyTypeId( STRING_ID_FQN ), Sets.newHashSet( datasourceId ) );
 
             if ( datasource.isPresent() && AndroidDevice.class.isAssignableFrom( datasource.get().getClass() ) ) {
                 AndroidDevice device = (AndroidDevice) datasource.get();
                 deviceData
-                        .put( commonTasksManager.getPropertyTypeId( MODEL_FQN ), Sets.newHashSet( device.getModel() ) );
-                deviceData.put( commonTasksManager.getPropertyTypeId( VERSION_FQN ),
+                        .put( edmCacheManager.getPropertyTypeId( MODEL_FQN ), Sets.newHashSet( device.getModel() ) );
+                deviceData.put( edmCacheManager.getPropertyTypeId( VERSION_FQN ),
                         Sets.newHashSet( device.getOsVersion() ) );
             }
 
@@ -144,7 +132,7 @@ public class EnrollmentManagerImpl implements EnrollmentManager {
             ListMultimap<UUID, DataEdge> associations = ArrayListMultimap.create();
 
             Map<UUID, Set<Object>> usedByEntity = ImmutableMap
-                    .of( commonTasksManager.getPropertyTypeId( STRING_ID_FQN ), Sets.newHashSet( UUID.randomUUID() ) );
+                    .of( edmCacheManager.getPropertyTypeId( STRING_ID_FQN ), Sets.newHashSet( UUID.randomUUID() ) );
 
             associations.put( usedByESID, new DataEdge( deviceEDK, participantEDK, usedByEntity ) );
             associations.put( usedByESID, new DataEdge( deviceEDK, studyEDK, usedByEntity ) );
@@ -181,21 +169,19 @@ public class EnrollmentManagerImpl implements EnrollmentManager {
         logger.info( "isKnownParticipant {} = {}", participantId, isKnownParticipant );
         logger.info( "isKnownDatasource {} = {}", datasourceId, deviceEKID != null );
 
-        if ( isKnownParticipant && deviceEKID == null ) {
-            return registerDatasourceHelper( organizationId, studyId, participantId, datasourceId, datasource );
-        } else if ( isKnownParticipant ) {
-            return deviceEKID;
-        } else {
+        if ( !isKnownParticipant ) {
             logger.error(
-                    "Unable to enroll device for orgId {} study {}, participant {}, and datasource {} due valid participant = {} or valid device = {}",
+                    "unable to enroll. unknown participant argument :participant = {}, orgId = {}, studyId = {}, datasourceId = {}",
+                    participantId,
                     organizationId,
                     studyId,
-                    participantId,
-                    datasourceId,
-                    isKnownParticipant,
-                    deviceEKID != null );
-            throw new AccessDeniedException( "Unable to enroll device." );
+                    datasourceId );
+            throw new AccessDeniedException( "unable to enroll device" );
         }
+        if ( deviceEKID != null ) {
+            return deviceEKID;
+        }
+        return registerDatasourceHelper( organizationId, studyId, participantId, datasourceId, datasource );
     }
 
     @Override
@@ -218,11 +204,11 @@ public class EnrollmentManagerImpl implements EnrollmentManager {
                 datasourceId );
 
         if ( organizationId != null ) {
-            return scheduledTasksManager.deviceIdsByOrg.getOrDefault( organizationId, Map.of() )
+            return scheduledTasksManager.getDeviceIdsByOrg().getOrDefault( organizationId, Map.of() )
                     .getOrDefault( datasourceId, null );
         }
 
-        return scheduledTasksManager.deviceIdsByEKID.getOrDefault( datasourceId, null );
+        return scheduledTasksManager.getDeviceIdsByEKID().getOrDefault( datasourceId, null );
     }
 
     @Override
@@ -234,7 +220,7 @@ public class EnrollmentManagerImpl implements EnrollmentManager {
 
     @Override
     public boolean isKnownParticipant( UUID organizationId, UUID studyId, String participantId ) {
-        return commonTasksManager.getParticipantEntityKeyId( organizationId, studyId, participantId ) != null;
+        return getParticipantEntityKeyId( organizationId, studyId, participantId ) != null;
     }
 
     @Override
@@ -244,20 +230,35 @@ public class EnrollmentManagerImpl implements EnrollmentManager {
             ApiClient apiClient = apiCacheManager.prodApiClientCache.get( ApiClient.class );
             DataApi dataApi = apiClient.getDataApi();
 
-            UUID entitySetId = commonTasksManager.getParticipantEntitySetId( organizationId, studyId );
+            ChronicleCoreAppConfig coreAppConfig = entitySetIdsManager
+                    .getChronicleAppConfig( organizationId, getParticipantEntitySetName( studyId ) );
+
+            UUID entitySetId = coreAppConfig.getParticipantEntitySetId();
             if ( entitySetId == null ) {
-                logger.error( "Unable to load participant EntitySet id." );
+                logger.error( "Unable to ge participant ESID: orgId = {}, studyId = {}, participantEKID = {}",
+                        organizationId,
+                        studyId,
+                        participantEntityKeyId );
                 return ImmutableMap.of();
             }
             Map<FullQualifiedName, Set<Object>> entity = dataApi.getEntity( entitySetId, participantEntityKeyId );
             if ( entity == null ) {
-                logger.error( "Unable to get participant entity." );
+                logger.error(
+                        "Unable to get participant entity: orgId  = {}, studyId = {} participantEKID = {}, participantESID = {}",
+                        organizationId,
+                        studyId,
+                        participantEntityKeyId,
+                        entitySetId );
                 return ImmutableMap.of();
             }
             return entity;
 
         } catch ( ExecutionException e ) {
-            logger.error( "Unable to get participant entity.", e );
+            logger.error( "Unable to get participant entity: orgId = {}, studyId={}, participantEKID = {} ",
+                    organizationId,
+                    studyId,
+                    participantEntityKeyId,
+                    e );
             return ImmutableMap.of();
         }
     }
@@ -275,18 +276,19 @@ public class EnrollmentManagerImpl implements EnrollmentManager {
             SearchApi searchApi = apiClient.getSearchApi();
 
             // entity set ids
-            UUID studiesESID = commonTasksManager.getEntitySetId( organizationId, CHRONICLE, STUDIES, STUDY_ES );
-            UUID participatedInESID = commonTasksManager.getEntitySetId( organizationId, CHRONICLE, PARTICIPATED_IN,
-                    PARTICIPATED_IN_ES );
-            UUID participantsESID = commonTasksManager.getParticipantEntitySetId( organizationId, studyId );
+            ChronicleCoreAppConfig coreAppConfig = entitySetIdsManager
+                    .getChronicleAppConfig( organizationId, getParticipantEntitySetName( studyId ) );
 
-            checkNotNullUUIDs( Sets.newHashSet( studiesESID, participatedInESID, participantsESID ) );
+            UUID studiesESID = coreAppConfig.getStudiesEntitySetId();
+            UUID participatedInESID = coreAppConfig.getParticipatedInEntitySetId();
+            UUID participantsESID = coreAppConfig.getParticipantEntitySetId();
 
             // participant must exist
-            UUID participantEKID = Preconditions
-                    .checkNotNull( commonTasksManager
-                                    .getParticipantEntityKeyId( organizationId, studyId, participantId ),
-                            "participant not found" );
+            UUID participantEKID = checkNotNull( getParticipantEntityKeyId( organizationId, studyId, participantId ),
+                    "participant not found: orgId = %s, studyId = %s, participantId = %s",
+                    organizationId,
+                    studyId,
+                    participantId );
 
             // filtered search on participants to get associated study entities
             Map<UUID, List<NeighborEntityDetails>> neighborResults = searchApi.executeFilteredEntityNeighborSearch(
@@ -328,15 +330,15 @@ public class EnrollmentManagerImpl implements EnrollmentManager {
             SearchApi searchApi = apiClient.getSearchApi();
 
             // get entity set ids
-            UUID studyESID = commonTasksManager.getEntitySetId( organizationId, CHRONICLE, STUDIES, STUDY_ES );
-            UUID notificationESID = commonTasksManager
-                    .getEntitySetId( organizationId, CHRONICLE, NOTIFICATION, NOTIFICATION_ES );
-            UUID partOfESID = commonTasksManager.getEntitySetId( organizationId, CHRONICLE, PART_OF, PART_OF_ES );
+            ChronicleCoreAppConfig coreAppConfig = entitySetIdsManager.getChronicleAppConfig( organizationId );
+
+            UUID studyESID = coreAppConfig.getStudiesEntitySetId();
+            UUID notificationESID = coreAppConfig.getNotificationEntitySetId();
+            UUID partOfESID = coreAppConfig.getPartOfEntitySetId();
 
             // ensure study exists
-            UUID studyEKID = Preconditions
-                    .checkNotNull( commonTasksManager.getStudyEntityKeyId( organizationId, studyId ),
-                            "study entity must exist" );
+            UUID studyEKID = checkNotNull( getStudyEntityKeyId( organizationId, studyId ),
+                    "study does not exist: orgId=%s, studyId=%s", organizationId, studyId );
 
             Map<UUID, List<NeighborEntityDetails>> neighbors = searchApi
                     .executeFilteredEntityNeighborSearch(
@@ -359,8 +361,8 @@ public class EnrollmentManagerImpl implements EnrollmentManager {
                     .values()
                     .stream()
                     .flatMap( Collection::stream )
-                    .anyMatch( neighbor -> neighbor.getAssociationDetails().getOrDefault( OL_ID_FQN, Set.of( "" ) )
-                            .iterator().next().toString().equals( studyId.toString() ) );
+                    .map( NeighborEntityDetails::getAssociationDetails )
+                    .anyMatch( neighbor -> studyId.toString().equals( getFirstValueOrNull( neighbor, OL_ID_FQN ) ) );
 
         } catch ( Exception e ) {
             String error =
@@ -371,19 +373,24 @@ public class EnrollmentManagerImpl implements EnrollmentManager {
     }
 
     @Override
-    public Map<String, UUID> getPropertyTypeIds( Set<String> propertyTypeFqns ) {
-        EdmApi edmApi;
-        try {
-            ApiClient apiClient = apiCacheManager.prodApiClientCache.get( ApiClient.class );
-            edmApi = apiClient.getEdmApi();
-        } catch ( ExecutionException e ) {
-            logger.error( "Unable to load EdmApi" );
-            return ImmutableMap.of();
+    public UUID getParticipantEntityKeyId( UUID organizationId, UUID studyId, String participantId ) {
+        if ( organizationId != null ) {
+            Map<UUID, Map<String, UUID>> participants = scheduledTasksManager.getStudyParticipantsByOrg()
+                    .getOrDefault( organizationId, Map.of() );
+
+            return participants.getOrDefault( studyId, Map.of() ).getOrDefault( participantId, null );
         }
 
-        return propertyTypeFqns.stream().map( FullQualifiedName::new ).map( fqn -> Pair
-                .of( fqn.getFullQualifiedNameAsString(),
-                        edmApi.getPropertyTypeId( fqn.getNamespace(), fqn.getName() ) ) )
-                .collect( Collectors.toMap( Pair::getLeft, Pair::getRight ) );
+        return scheduledTasksManager.getStudyParticipants().getOrDefault( studyId, Map.of() )
+                .getOrDefault( participantId, null );
+    }
+
+    @Override
+    public UUID getStudyEntityKeyId( UUID organizationId, UUID studyId ) {
+        if ( organizationId != null ) {
+            return scheduledTasksManager.getStudyEntityKeyIdsByOrg().getOrDefault( organizationId, Map.of() )
+                    .getOrDefault( studyId, null );
+        }
+        return scheduledTasksManager.getStudyEKIDById().getOrDefault( studyId, null );
     }
 }

@@ -1,9 +1,9 @@
-package com.openlattice.chronicle.controllers;
+package com.openlattice.chronicle.controllers.legacy;
 
 import com.codahale.metrics.annotation.Timed;
 import com.google.common.collect.SetMultimap;
 import com.openlattice.chronicle.ChronicleApi;
-import com.openlattice.chronicle.services.enrollment.EnrollmentManager;
+import com.openlattice.chronicle.services.edm.EdmCacheManager;
 import com.openlattice.chronicle.services.upload.AppDataUploadManager;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
@@ -22,7 +22,7 @@ public class ChronicleController implements ChronicleApi {
     private AppDataUploadManager dataUploadManager;
 
     @Inject
-    private EnrollmentManager enrollmentManager;
+    private EdmCacheManager edmCacheManager;
 
     @Override
     @Timed
@@ -37,7 +37,7 @@ public class ChronicleController implements ChronicleApi {
             @PathVariable( DATASOURCE_ID ) String datasourceId,
             @RequestBody List<SetMultimap<UUID, Object>> data ) {
 
-        return dataUploadManager.logData( null, studyId, participantId, datasourceId, data );
+        return dataUploadManager.upload( null, studyId, participantId, datasourceId, data );
     }
 
     @Override
@@ -49,7 +49,7 @@ public class ChronicleController implements ChronicleApi {
             produces = MediaType.APPLICATION_JSON_VALUE
     )
     public Map<String, UUID> getPropertyTypeIds( @RequestBody Set<String> propertyTypeFqns ) {
-        return enrollmentManager.getPropertyTypeIds( propertyTypeFqns );
+        return edmCacheManager.getLegacyPropertyTypeIds( propertyTypeFqns );
     }
 
     @Override

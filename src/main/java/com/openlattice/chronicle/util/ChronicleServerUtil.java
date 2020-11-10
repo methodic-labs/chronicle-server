@@ -1,11 +1,14 @@
 package com.openlattice.chronicle.util;
 
+import com.auth0.spring.security.api.authentication.JwtAuthentication;
 import com.google.common.base.Preconditions;
 import com.openlattice.chronicle.constants.*;
 import com.openlattice.chronicle.data.FileType;
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import javax.servlet.http.HttpServletResponse;
 import java.time.LocalDate;
@@ -42,12 +45,7 @@ public class ChronicleServerUtil {
         }
     }
 
-    public static void checkNotNullUUIDs( Set<UUID> uuids ) {
-        for ( UUID uuid : uuids ) {
-            Preconditions.checkNotNull( uuid );
-        }
-    }
-
+    @Deprecated(since = "apps v2")
     public static String getParticipantEntitySetName( UUID studyId ) {
         return PARTICIPANTS_PREFIX.concat( studyId.toString() );
     }
@@ -104,5 +102,12 @@ public class ChronicleServerUtil {
                     "attachment; filename=" + fileName + "." + fileType.toString()
             );
         }
+    }
+
+    // authentication token
+
+    public static String getTokenFromContext() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        return ( (JwtAuthentication) authentication ).getToken();
     }
 }

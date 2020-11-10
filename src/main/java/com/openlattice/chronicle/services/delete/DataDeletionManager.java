@@ -1,6 +1,6 @@
 package com.openlattice.chronicle.services.delete;
 
-import com.openlattice.chronicle.data.DeleteType;
+import com.openlattice.chronicle.data.ChronicleDeleteType;
 
 import java.util.UUID;
 
@@ -13,13 +13,13 @@ public interface DataDeletionManager {
             UUID organizationId,
             UUID studyId,
             String participantId,
-            DeleteType deleteType,
+            ChronicleDeleteType chronicleDeleteType,
             String token );
 
     void deleteStudyAndAllNeighbors(
             UUID organizationId,
             UUID studyId,
-            DeleteType deleteType,
+            ChronicleDeleteType chronicleDeleteType,
             String token
     );
 }

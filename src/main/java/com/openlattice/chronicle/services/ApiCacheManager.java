@@ -33,7 +33,7 @@ public class ApiCacheManager {
 
         prodApiClientCache = CacheBuilder
                 .newBuilder()
-                .expireAfterWrite( 10, TimeUnit.HOURS )
+                .expireAfterWrite( 9, TimeUnit.HOURS )
                 .build( new CacheLoader<Class<?>, ApiClient>() {
                     @Override
                     public ApiClient load( Class<?> key ) throws Exception {
@@ -45,7 +45,7 @@ public class ApiCacheManager {
 
         intApiClientCache = CacheBuilder
                 .newBuilder()
-                .expireAfterWrite( 10, TimeUnit.HOURS )
+                .expireAfterWrite( 9, TimeUnit.HOURS )
                 .build( new CacheLoader<Class<?>, ApiClient>() {
                     @Override
                     public ApiClient load( Class<?> key ) throws Exception {

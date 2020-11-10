@@ -36,6 +36,7 @@ public interface EnrollmentManager {
 
     boolean isNotificationsEnabled( UUID organizationId, UUID studyId );
 
-    Map<String, UUID> getPropertyTypeIds( Set<String> propertyTypeFqns );
+    UUID getParticipantEntityKeyId( UUID organizationId, UUID studyId, String participantId );
 
+    UUID getStudyEntityKeyId( UUID organizationId, UUID studyId );
 }
