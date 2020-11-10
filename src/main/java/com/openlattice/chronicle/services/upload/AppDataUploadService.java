@@ -143,7 +143,7 @@ public class AppDataUploadService implements AppDataUploadManager {
 
     // HELPER METHODS: upload
     private Map<UUID, Set<Object>> getUsedByEntity( String appPackageName, String dateLogged, String participantId ) {
-        Map<UUID, Set<Object>> entity = new HashMap<>();
+        Map<UUID, Set<Object>> entity = Maps.newHashMap();
 
         entity.put( edmCacheManager.getPropertyTypeId( DATE_TIME_FQN ), ImmutableSet.of( dateLogged ) );
         entity.put( edmCacheManager.getPropertyTypeId( FULL_NAME_FQN ), ImmutableSet.of( appPackageName ) );
@@ -153,7 +153,7 @@ public class AppDataUploadService implements AppDataUploadManager {
     }
 
     private Map<UUID, Set<Object>> getRecordedByEntity( String deviceId, String appPackageName, String dateLogged ) {
-        Map<UUID, Set<Object>> entity = new HashMap<>();
+        Map<UUID, Set<Object>> entity = Maps.newHashMap();
 
         entity.put( edmCacheManager.getPropertyTypeId( FULL_NAME_FQN ), ImmutableSet.of( appPackageName ) );
         entity.put( edmCacheManager.getPropertyTypeId( DATE_LOGGED_FQN ), ImmutableSet.of( dateLogged ) );
@@ -162,9 +162,9 @@ public class AppDataUploadService implements AppDataUploadManager {
         return entity;
     }
 
-    private Map<UUID, Set<Object>> getHasEntity( String firstDateTime ) {
+    private Map<UUID, Set<Object>> getHasEntity( UUID participantEKID ) {
         Map<UUID, Set<Object>> entity = Maps.newHashMap();
-        entity.put( edmCacheManager.getPropertyTypeId( OL_ID_FQN ), Set.of( firstDateTime ) );
+        entity.put( edmCacheManager.getPropertyTypeId( OL_ID_FQN ), Set.of( participantEKID ) );
 
         return entity;
     }
@@ -178,7 +178,7 @@ public class AppDataUploadService implements AppDataUploadManager {
 
     private Map<UUID, Set<Object>> getUserAppsEntity( String appPackageName, String appName ) {
 
-        Map<UUID, Set<Object>> entity = new HashMap<>();
+        Map<UUID, Set<Object>> entity = Maps.newHashMap();
 
         entity.put( edmCacheManager.getPropertyTypeId( FULL_NAME_FQN ), ImmutableSet.of( appPackageName ) );
         entity.put( edmCacheManager.getPropertyTypeId( TITLE_FQN ), ImmutableSet.of( appName ) );
@@ -201,7 +201,7 @@ public class AppDataUploadService implements AppDataUploadManager {
     }
 
     private Set<OffsetDateTime> getDateTimeValuesFromDeviceData( List<SetMultimap<UUID, Object>> data ) {
-        Set<OffsetDateTime> dateTimes = new HashSet<>();
+        Set<OffsetDateTime> dateTimes = Sets.newHashSet();
         data.forEach(
                 entity -> {
                     // most date properties in the entity are of length 1
@@ -291,7 +291,7 @@ public class AppDataUploadService implements AppDataUploadManager {
 
         entitiesByEntityKey.put( metadataEK, metadataEntityData );
 
-        Map<UUID, Set<Object>> hasEntityData = getHasEntity( firstDateTime );
+        Map<UUID, Set<Object>> hasEntityData = getHasEntity( participantEKID );
         EntityKey hasEK = getHasEntityKey( hasESID, hasEntityData );
         entitiesByEntityKey.put( hasEK, hasEntityData );
 
