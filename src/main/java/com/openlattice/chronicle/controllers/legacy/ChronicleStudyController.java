@@ -177,4 +177,17 @@ public class ChronicleStudyController implements ChronicleStudyApi {
         return surveysManager.getStudyQuestionnaires( null, studyId );
     }
 
+    @RequestMapping(
+            path = STUDY_ID_PATH + PARTICIPANT_ID_PATH + TIME_USE_DIARY,
+            method = RequestMethod.POST,
+            consumes = MediaType.APPLICATION_JSON_VALUE
+    )
+    @Override
+    public void submitTimeUseDiarySurvey(
+            @PathVariable ( STUDY_ID ) UUID studyId,
+            @PathVariable ( PARTICIPANT_ID ) String participantId,
+            @RequestBody List<Map<FullQualifiedName, Set<Object>>> surveyData
+    ) {
+        surveysManager.submitTimeUseDiarySurvey( null, studyId, participantId, surveyData );
+    }
 }
