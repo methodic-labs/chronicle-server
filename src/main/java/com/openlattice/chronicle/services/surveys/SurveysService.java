@@ -562,7 +562,6 @@ public class SurveysService implements SurveysManager {
         );
     }
 
-    // unique for participant + study + datetime
     private Map<UUID, Set<Object>> getRespondsWithSubmissionEntity(
             UUID studyId,
             String participantId,
@@ -576,7 +575,6 @@ public class SurveysService implements SurveysManager {
         return entity;
     }
 
-    // unique for participant + study + datetime
     private Map<UUID, Set<Object>> getParticipatedInEntity(
             UUID studyId,
             String participantId,
@@ -598,7 +596,6 @@ public class SurveysService implements SurveysManager {
         );
     }
 
-    // unique for time + studyId + participantId
     private Map<UUID, Set<Object>> getSubmissionEntity( UUID studyId, String participantId, OffsetDateTime dateTime ) {
         Map<UUID, Set<Object>> entity = Maps.newHashMap();
 
@@ -622,7 +619,6 @@ public class SurveysService implements SurveysManager {
         );
     }
 
-    // unique for studyId
     private Map<UUID, Set<Object>> getSurveyPartOfEntityData( UUID studyId ) {
         return ImmutableMap.of(
                 edmCacheManager.getPropertyTypeId( OL_ID_FQN ), ImmutableSet.of( studyId )
