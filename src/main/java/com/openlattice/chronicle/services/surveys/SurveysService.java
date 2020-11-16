@@ -453,6 +453,7 @@ public class SurveysService implements SurveysManager {
         );
     }
 
+    // survey -> partof -> study: unique for studyId
     private EntityKey getSurveyPartOfStudyEntityKey( UUID entitySetId, Map<UUID, Set<Object>> data ) {
         return new EntityKey(
                 entitySetId,
@@ -483,6 +484,7 @@ public class SurveysService implements SurveysManager {
         );
     }
 
+    // unique for datetime + study + participant
     private EntityKey getSubmissionEntityKey( UUID entitySetId, Map<UUID, Set<Object>> data ) {
         return new EntityKey(
                 entitySetId,
@@ -493,6 +495,7 @@ public class SurveysService implements SurveysManager {
         );
     }
 
+    // participant -> respondswith -> submission: unique for each studyId + participantId + datetime combination
     private EntityKey getRespondsWithEntityKey( UUID entitySetId, Map<UUID, Set<Object>> data ) {
         return new EntityKey(
                 entitySetId,
@@ -503,6 +506,7 @@ public class SurveysService implements SurveysManager {
         );
     }
 
+    // participant -> participated in -> survey: unique for studyId + participantId + datetime
     private EntityKey getParticipatedInEntityKey( UUID entitySetId, Map<UUID, Set<Object>> data ) {
         return new EntityKey(
                 entitySetId,
