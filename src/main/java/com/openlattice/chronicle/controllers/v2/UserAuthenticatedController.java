@@ -93,8 +93,7 @@ public class UserAuthenticatedController implements UserAuthenticatedApi {
 
     @Timed
     @RequestMapping(
-            path = AUTHENTICATED_PATH + PARTICIPANT_PATH + DATA_PATH + ORGANIZATION_ID_PATH + STUDY_ID_PATH
-                    + ENTITY_KEY_ID_PATH
+            path = AUTHENTICATED_PATH + ORGANIZATION_ID_PATH + STUDY_ID_PATH + ENTITY_KEY_ID_PATH + DATA_PATH
                     + PREPROCESSED_PATH,
             method = RequestMethod.GET,
             produces = { MediaType.APPLICATION_JSON_VALUE, CustomMediaType.TEXT_CSV_VALUE }
@@ -137,8 +136,7 @@ public class UserAuthenticatedController implements UserAuthenticatedApi {
 
     @Timed
     @RequestMapping(
-            path = AUTHENTICATED_PATH + PARTICIPANT_PATH + DATA_PATH + ORGANIZATION_ID_PATH + STUDY_ID_PATH
-                    + ENTITY_KEY_ID_PATH,
+            path = AUTHENTICATED_PATH + ORGANIZATION_ID_PATH + STUDY_ID_PATH + ENTITY_KEY_ID_PATH + DATA_PATH,
             method = RequestMethod.GET,
             produces = { MediaType.APPLICATION_JSON_VALUE, CustomMediaType.TEXT_CSV_VALUE }
     )
@@ -178,8 +176,8 @@ public class UserAuthenticatedController implements UserAuthenticatedApi {
 
     @Timed
     @RequestMapping(
-            path = AUTHENTICATED_PATH + PARTICIPANT_PATH + DATA_PATH + ORGANIZATION_ID_PATH + STUDY_ID_PATH
-                    + ENTITY_KEY_ID_PATH + USAGE_PATH,
+            path = AUTHENTICATED_PATH + ORGANIZATION_ID_PATH + STUDY_ID_PATH + ENTITY_KEY_ID_PATH + DATA_PATH
+                    + USAGE_PATH,
             method = RequestMethod.GET,
             produces = { MediaType.APPLICATION_JSON_VALUE, CustomMediaType.TEXT_CSV_VALUE }
     )

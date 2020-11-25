@@ -47,7 +47,7 @@ public class ChronicleControllerV2 implements ChronicleApi {
             path = ORGANIZATION_ID_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH + DATASOURCE_ID_PATH + ENROLL_PATH,
             method = RequestMethod.POST,
             consumes = MediaType.APPLICATION_JSON_VALUE )
-    public UUID enrollSource(
+    public UUID enroll(
             @PathVariable( ORGANIZATION_ID ) UUID organizationId,
             @PathVariable( STUDY_ID ) UUID studyId,
             @PathVariable( PARTICIPANT_ID ) String participantId,
