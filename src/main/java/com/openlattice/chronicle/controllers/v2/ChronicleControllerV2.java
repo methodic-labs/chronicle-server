@@ -159,6 +159,14 @@ public class ChronicleControllerV2 implements ChronicleApi {
         return surveysManager.getStudyQuestionnaires( organizationId, studyId );
     }
 
+    @Override public void submitTimeUseDiarySurvey(
+            UUID organizationId,
+            UUID studyId,
+            String participantId,
+            List<Map<FullQualifiedName, Set<Object>>> surveyResponses ) {
+        // TODO: implement this
+    }
+
     @Override
     @Timed
     @RequestMapping(
