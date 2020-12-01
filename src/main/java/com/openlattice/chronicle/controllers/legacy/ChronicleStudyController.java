@@ -177,4 +177,8 @@ public class ChronicleStudyController implements ChronicleStudyApi {
         return surveysManager.getStudyQuestionnaires( null, studyId );
     }
 
+    @Override public void submitTimeUseDiarySurvey(
+            UUID studyId, String participantId, List<Map<FullQualifiedName, Set<Object>>> surveyResponses ) {
+        // TODO: implement method
+    }
 }
