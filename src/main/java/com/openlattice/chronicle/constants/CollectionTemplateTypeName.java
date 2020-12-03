@@ -7,6 +7,7 @@ public enum CollectionTemplateTypeName {
     ADDRESSES( "addresses" ),
     ANSWER( "answer" ),
     APPDATA( "appdata" ),
+    APP_DICTIONARY("appDictionary"),
     DEVICE( "device" ),
     HAS( "has" ),
     METADATA( "metadata" ),
