@@ -73,6 +73,16 @@ public class EnrollmentService implements EnrollmentManager {
         return dataIntegrationApi.getEntityKeyIds( ImmutableSet.of( entityKey ) ).iterator().next();
     }
 
+    private void updateDeviceIdsCache( UUID organizationId, UUID deviceEKID, String datasourceId ) {
+        if ( organizationId != null ) {
+            scheduledTasksManager
+                    .getDeviceIdsByOrg().computeIfAbsent( organizationId, key -> Maps.newHashMap() )
+                    .put( datasourceId, deviceEKID );
+        }
+
+        scheduledTasksManager.getDeviceIdsByEKID().put( datasourceId, deviceEKID );
+    }
+
     private UUID registerDatasourceHelper(
             UUID organizationId,
             UUID studyId,
@@ -124,6 +134,8 @@ public class EnrollmentService implements EnrollmentManager {
             dataApi.updateEntitiesInEntitySet( devicesESID,
                     ImmutableMap.of( deviceEntityKeyId, deviceData ),
                     UpdateType.Merge );
+
+            updateDeviceIdsCache( organizationId, deviceEntityKeyId, datasourceId );
 
             EntityDataKey deviceEDK = new EntityDataKey( devicesESID, deviceEntityKeyId );
             EntityDataKey participantEDK = new EntityDataKey( participantsESID, participantEKID );
