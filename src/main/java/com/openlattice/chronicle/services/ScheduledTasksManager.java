@@ -13,7 +13,6 @@ import com.openlattice.data.requests.EntitySetSelection;
 import com.openlattice.data.requests.FileType;
 import com.openlattice.data.requests.NeighborEntityDetails;
 import com.openlattice.directory.PrincipalApi;
-import com.openlattice.entitysets.EntitySetsApi;
 import com.openlattice.search.SearchApi;
 import com.openlattice.search.requests.EntityNeighborsFilter;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
@@ -371,7 +370,6 @@ public class ScheduledTasksManager {
             ApiClient apiClient = apiCacheManager.prodApiClientCache.get( ApiClient.class );
             DataApi dataApi = apiClient.getDataApi();
             SearchApi searchApi = apiClient.getSearchApi();
-            EntitySetsApi entitySetsApi = apiClient.getEntitySetsApi();
 
             Map<UUID, UUID> studyEKIDById = Maps.newHashMap(); // studyId -> studyEKID
 
@@ -405,7 +403,12 @@ public class ScheduledTasksManager {
 
             studyEKIDById.keySet().forEach( studyId -> {
                 String participantES = getParticipantEntitySetName( studyId );
-                UUID participantESID = entitySetsApi.getEntitySetId( participantES );
+
+                ChronicleCoreAppConfig config = entitySetIdsManager.getLegacyChronicleAppConfig( participantES );
+                UUID participantESID = config.getParticipantEntitySetId();
+                if (participantESID == null) {
+                    return;
+                }
 
                 Map<UUID, List<NeighborEntityDetails>> studyNeighbors = searchApi.executeFilteredEntityNeighborSearch(
                         studiesESID,

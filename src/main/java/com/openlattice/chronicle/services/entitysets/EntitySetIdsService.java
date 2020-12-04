@@ -280,9 +280,12 @@ public class EntitySetIdsService implements EntitySetIdsManager {
     @Deprecated
     public ChronicleCoreAppConfig getLegacyChronicleAppConfig( String participantESName ) {
 
+        UUID participantESID = legacyParticipantsEntitySetIds.getOrDefault( participantESName, null);
+        Optional<UUID> optional = participantESID  == null ? Optional.empty() : Optional.of( participantESID );
+
         return new ChronicleCoreAppConfig(
                 legacyEntitySetIds.get( HAS ),
-                Optional.of( legacyParticipantsEntitySetIds.get( participantESName ) ),
+                optional,
                 legacyEntitySetIds.get( PARTICIPATED_IN ),
                 legacyEntitySetIds.get( METADATA ),
                 legacyEntitySetIds.get( PART_OF ),
