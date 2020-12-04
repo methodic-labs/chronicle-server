@@ -159,12 +159,19 @@ public class ChronicleControllerV2 implements ChronicleApi {
         return surveysManager.getStudyQuestionnaires( organizationId, studyId );
     }
 
-    @Override public void submitTimeUseDiarySurvey(
-            UUID organizationId,
-            UUID studyId,
-            String participantId,
-            List<Map<FullQualifiedName, Set<Object>>> surveyResponses ) {
-        // TODO: implement this
+    @RequestMapping(
+            path = ORGANIZATION_ID_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH + TIME_USE_DIARY,
+            method = RequestMethod.POST,
+            consumes = MediaType.APPLICATION_JSON_VALUE
+    )
+    @Override
+    public void submitTimeUseDiarySurvey(
+            @PathVariable ( ORGANIZATION_ID ) UUID organizationId,
+            @PathVariable ( STUDY_ID ) UUID studyId,
+            @PathVariable ( PARTICIPANT_ID ) String participantId,
+            @RequestBody List<Map<FullQualifiedName, Set<Object>>> surveyData
+    ) {
+        surveysManager.submitTimeUseDiarySurvey( organizationId, studyId, participantId, surveyData );
     }
 
     @Override
