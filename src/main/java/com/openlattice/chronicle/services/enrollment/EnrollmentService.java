@@ -78,6 +78,7 @@ public class EnrollmentService implements EnrollmentManager {
             scheduledTasksManager
                     .getDeviceIdsByOrg().computeIfAbsent( organizationId, key -> Maps.newHashMap() )
                     .put( datasourceId, deviceEKID );
+            return;
         }
 
         scheduledTasksManager.getDeviceIdsByEKID().put( datasourceId, deviceEKID );
