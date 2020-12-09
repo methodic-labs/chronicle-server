@@ -171,7 +171,7 @@ public class SurveysService implements SurveysManager {
             logger.info( "Retrieving questionnaires for study :{}", studyId );
 
             // If an organization does not have the chronicle_surveys app installed, exit early
-            if ( organizationId != null && entitySetIdsManager.getEntitySetIdsByOrgId().get( CHRONICLE_SURVEYS )
+            if ( organizationId != null && !entitySetIdsManager.getEntitySetIdsByOrgId().get( CHRONICLE_SURVEYS )
                     .containsKey( organizationId ) ) {
                 logger.warn( "No questionnaires found for study {}. {} is not installed on organization with id {}. ",
                         studyId,
