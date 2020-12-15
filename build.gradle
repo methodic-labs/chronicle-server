@@ -59,7 +59,7 @@ distTar {
     archiveName "$baseName" + ".tgz"
 }
 
-apply from: "https://raw.githubusercontent.com/openlattice/gradles/master/openlattice.gradle"
+apply from: "https://raw.githubusercontent.com/openlattice/openlattice/fix/build/gradles/openlattice.gradle"
 apply plugin: 'kotlin'
 
 mainClassName = "com.openlattice.chronicle.ChronicleServer"
