@@ -84,12 +84,12 @@ public class EnrollmentService implements EnrollmentManager {
         scheduledTasksManager.getDeviceIdsByEKID().put( datasourceId, deviceEKID );
     }
 
-    private UUID registerDatasourceHelper(
+    private UUID registerDataSourceHelper(
             UUID organizationId,
             UUID studyId,
             String participantId,
-            String datasourceId,
-            Optional<Datasource> datasource ) {
+            String dataSourceId,
+            Optional<Datasource> dataSource ) {
 
         try {
             ApiClient apiClient = apiCacheManager.prodApiClientCache.get( ApiClient.class );
@@ -108,16 +108,15 @@ public class EnrollmentService implements EnrollmentManager {
             UUID participantsESID = coreAppConfig.getParticipantEntitySetId();
 
             // ensure study and participant exist
-            UUID studyEKID = checkNotNull( getStudyEntityKeyId( organizationId, studyId ),
-                    "study must exist" );
+            UUID studyEKID = checkNotNull( getStudyEntityKeyId( organizationId, studyId ), "study must exist" );
             UUID participantEKID = checkNotNull( getParticipantEntityKeyId( organizationId, studyId, participantId ) );
 
             // device entity data
             Map<UUID, Set<Object>> deviceData = new HashMap<>();
-            deviceData.put( edmCacheManager.getPropertyTypeId( STRING_ID_FQN ), Sets.newHashSet( datasourceId ) );
+            deviceData.put( edmCacheManager.getPropertyTypeId( STRING_ID_FQN ), Sets.newHashSet( dataSourceId ) );
 
-            if ( datasource.isPresent() && AndroidDevice.class.isAssignableFrom( datasource.get().getClass() ) ) {
-                AndroidDevice device = (AndroidDevice) datasource.get();
+            if ( dataSource.isPresent() && AndroidDevice.class.isAssignableFrom( dataSource.get().getClass() ) ) {
+                AndroidDevice device = (AndroidDevice) dataSource.get();
                 deviceData
                         .put( edmCacheManager.getPropertyTypeId( MODEL_FQN ), Sets.newHashSet( device.getModel() ) );
                 deviceData.put( edmCacheManager.getPropertyTypeId( VERSION_FQN ),
@@ -126,17 +125,20 @@ public class EnrollmentService implements EnrollmentManager {
 
             UUID deviceEntityKeyId = reserveDeviceEntityKeyId( devicesESID, deviceData, dataIntegrationApi );
             if ( deviceEntityKeyId == null ) {
-                logger.error( "Unable to reserve deviceEntityKeyId, dataSourceId = {}, studyId = {}, participantId = {}",
-                        datasourceId,
+                logger.error(
+                        "unable to reserve ekid for data source - orgId = {}, studyId = {}, participantId = {}, dataSourceId = {}",
+                        organizationId,
                         studyId,
-                        participantId );
+                        participantId,
+                        dataSourceId
+                );
                 return null;
             }
             dataApi.updateEntitiesInEntitySet( devicesESID,
                     ImmutableMap.of( deviceEntityKeyId, deviceData ),
                     UpdateType.Merge );
 
-            updateDeviceIdsCache( organizationId, deviceEntityKeyId, datasourceId );
+            updateDeviceIdsCache( organizationId, deviceEntityKeyId, dataSourceId );
 
             EntityDataKey deviceEDK = new EntityDataKey( devicesESID, deviceEntityKeyId );
             EntityDataKey participantEDK = new EntityDataKey( participantsESID, participantEKID );
@@ -152,82 +154,83 @@ public class EnrollmentService implements EnrollmentManager {
 
             dataApi.createAssociations( associations );
 
-            return deviceEntityKeyId;
-        } catch ( Exception e ) {
-
-            String error = "unable to register device: "
-                    + "organizationId = " + organizationId
-                    + ", studyId = " + studyId
-                    + ", deviceId = " + datasourceId;
-            logger.error( error, e );
-            throw new RuntimeException( error );
-        }
-    }
-
-    private UUID enrollSource(
-            UUID organizationId,
-            UUID studyId,
-            String participantId,
-            String datasourceId,
-            Optional<Datasource> datasource ) {
-        final boolean isKnownParticipant = isKnownParticipant( organizationId, studyId, participantId );
-        final UUID deviceEKID = getDeviceEntityKeyId( organizationId, studyId, participantId, datasourceId );
-
-        logger.info(
-                "Attempting to enroll source... study {}, participant {}, and datasource {} ",
-                studyId,
-                participantId,
-                datasourceId
-        );
-        logger.info( "isKnownParticipant {} = {}", participantId, isKnownParticipant );
-        logger.info( "isKnownDatasource {} = {}", datasourceId, deviceEKID != null );
-
-        if ( !isKnownParticipant ) {
-            logger.error(
-                    "unable to enroll. unknown participant argument :participant = {}, orgId = {}, studyId = {}, datasourceId = {}",
-                    participantId,
+            logger.info(
+                    "data source registered - orgId = {}, studyId = {}, participantId = {}, dataSourceId = {}",
                     organizationId,
                     studyId,
-                    datasourceId );
-            throw new AccessDeniedException( "unable to enroll device" );
+                    participantId,
+                    dataSourceId
+            );
+            return deviceEntityKeyId;
+        } catch ( Exception e ) {
+            String error = String.format(
+                    "unable to register data source - orgId = %s, studyId = %s, participantId = %s, dataSourceId = %s",
+                    organizationId,
+                    studyId,
+                    participantId,
+                    dataSourceId
+            );
+            logger.error( error, e );
+            throw new RuntimeException( "unable to register data source" );
         }
-        if ( deviceEKID != null ) {
-            return deviceEKID;
-        }
-        return registerDatasourceHelper( organizationId, studyId, participantId, datasourceId, datasource );
     }
 
     @Override
-    public UUID registerDatasource(
+    public UUID registerDataSource(
             UUID organizationId,
             UUID studyId,
             String participantId,
-            String datasourceId,
+            String dataSourceId,
             Optional<Datasource> datasource ) {
 
-        return enrollSource( organizationId, studyId, participantId, datasourceId, datasource );
+        logger.info(
+                "attempting to register data source - orgId = {}, studyId = {}, participantId = {}, dataSourceId = {}",
+                organizationId,
+                studyId,
+                participantId,
+                dataSourceId
+        );
+
+        final boolean isKnownParticipant = isKnownParticipant( organizationId, studyId, participantId );
+        if ( !isKnownParticipant ) {
+            logger.error(
+                    "unknown participant, unable to register data source - orgId = {}, studyId = {}, participantId = {}, dataSourceId = {}",
+                    organizationId,
+                    studyId,
+                    participantId,
+                    dataSourceId
+            );
+            throw new AccessDeniedException( "unknown participant, unable to register data source" );
+        }
+
+        final UUID deviceEKID = getDeviceEntityKeyId( organizationId, studyId, participantId, dataSourceId );
+        if ( deviceEKID != null ) {
+            logger.info(
+                    "data source is registered - orgId = {}, studyId = {}, participantId = {}, dataSourceId = {}",
+                    organizationId,
+                    studyId,
+                    participantId,
+                    dataSourceId
+            );
+            return deviceEKID;
+        }
+
+        return registerDataSourceHelper( organizationId, studyId, participantId, dataSourceId, datasource );
     }
 
     @Override
-    public UUID getDeviceEntityKeyId(
-            UUID organizationId, UUID studyId, String participantId, String datasourceId ) {
-        logger.info( "Getting device entity key id, studyId = {}, participantId = {}, datasourceId = {}",
-                studyId,
-                participantId,
-                datasourceId );
-
+    public UUID getDeviceEntityKeyId( UUID organizationId, UUID studyId, String participantId, String datasourceId ) {
         if ( organizationId != null ) {
-            return scheduledTasksManager.getDeviceIdsByOrg().getOrDefault( organizationId, Map.of() )
+            return scheduledTasksManager
+                    .getDeviceIdsByOrg()
+                    .getOrDefault( organizationId, Map.of() )
                     .getOrDefault( datasourceId, null );
         }
-
         return scheduledTasksManager.getDeviceIdsByEKID().getOrDefault( datasourceId, null );
     }
 
     @Override
-    public boolean isKnownDatasource(
-            UUID organizationId, UUID studyId, String participantId, String datasourceId ) {
-
+    public boolean isKnownDatasource( UUID organizationId, UUID studyId, String participantId, String datasourceId ) {
         return getDeviceEntityKeyId( organizationId, studyId, participantId, datasourceId ) != null;
     }
 
@@ -257,7 +260,7 @@ public class EnrollmentService implements EnrollmentManager {
             Map<FullQualifiedName, Set<Object>> entity = dataApi.getEntity( entitySetId, participantEntityKeyId );
             if ( entity == null ) {
                 logger.error(
-                        "Unable to get participant entity: orgId  = {}, studyId = {} participantEKID = {}, participantESID = {}",
+                        "Unable to get participant entity: orgId = {}, studyId = {} participantEKID = {}, participantESID = {}",
                         organizationId,
                         studyId,
                         participantEntityKeyId,
@@ -267,7 +270,7 @@ public class EnrollmentService implements EnrollmentManager {
             return entity;
 
         } catch ( ExecutionException e ) {
-            logger.error( "Unable to get participant entity: orgId = {}, studyId={}, participantEKID = {} ",
+            logger.error( "Unable to get participant entity: orgId = {}, studyId = {}, participantEKID = {} ",
                     organizationId,
                     studyId,
                     participantEntityKeyId,

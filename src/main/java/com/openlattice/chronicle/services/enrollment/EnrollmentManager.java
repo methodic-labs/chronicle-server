@@ -14,7 +14,7 @@ import java.util.UUID;
  */
 public interface EnrollmentManager {
 
-    UUID registerDatasource(
+    UUID registerDataSource(
             UUID organizationId,
             UUID studyId,
             String participantId,
