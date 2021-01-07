@@ -17,6 +17,7 @@ import com.openlattice.data.*;
 import com.openlattice.data.requests.NeighborEntityDetails;
 import com.openlattice.search.SearchApi;
 import com.openlattice.search.requests.EntityNeighborsFilter;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -280,12 +281,16 @@ public class EnrollmentService implements EnrollmentManager {
     }
 
     @Override
-    public ParticipationStatus getParticipationStatus(
-            UUID organizationId, UUID studyId, String participantId ) {
-        logger.info( "getting participation status: orgId = {}, studyId = {}, participantId = {}",
+    public ParticipationStatus getParticipationStatus( UUID organizationId, UUID studyId, String participantId ) {
+
+        ParticipationStatus status;
+
+        logger.info(
+                "getting participation status - orgId = {}, studyId = {}, participantId = {}",
                 organizationId,
                 studyId,
-                participantId );
+                participantId
+        );
 
         try {
             ApiClient apiClient = apiCacheManager.prodApiClientCache.get( ApiClient.class );
@@ -300,11 +305,13 @@ public class EnrollmentService implements EnrollmentManager {
             UUID participantsESID = coreAppConfig.getParticipantEntitySetId();
 
             // participant must exist
-            UUID participantEKID = checkNotNull( getParticipantEntityKeyId( organizationId, studyId, participantId ),
-                    "participant not found: orgId = %s, studyId = %s, participantId = %s",
+            UUID participantEKID = checkNotNull(
+                    getParticipantEntityKeyId( organizationId, studyId, participantId ),
+                    "participant not found - orgId = %s, studyId = %s, participantId = %s",
                     organizationId,
                     studyId,
-                    participantId );
+                    participantId
+            );
 
             // filtered search on participants to get associated study entities
             Map<UUID, List<NeighborEntityDetails>> neighborResults = searchApi.executeFilteredEntityNeighborSearch(
@@ -317,22 +324,36 @@ public class EnrollmentService implements EnrollmentManager {
                     )
             );
 
-            return neighborResults.getOrDefault( participantEKID, List.of() )
+            status = neighborResults
+                    .getOrDefault( participantEKID, List.of() )
                     .stream()
-                    .filter( neighbor -> studyId.toString()
-                            .equals( getFirstValueOrNull( neighbor.getNeighborDetails().orElse( Map.of() ),
-                                    STRING_ID_FQN ) ) )
-                    .map( neighbor -> neighbor.getAssociationDetails()
-                            .getOrDefault( STATUS_FQN, Set.of( ParticipationStatus.UNKNOWN.toString() ) ).iterator()
-                            .next().toString() )
+                    .filter( neighbor -> studyId.toString().equals(
+                            getFirstValueOrNull( neighbor.getNeighborDetails().orElse( Map.of() ), STRING_ID_FQN )
+                    ) )
+                    .map( neighbor -> getFirstValueOrNull( neighbor.getAssociationDetails(), STATUS_FQN ) )
+                    .filter( Objects::nonNull )
                     .map( ParticipationStatus::valueOf )
-                    .findFirst().orElse( ParticipationStatus.UNKNOWN );
+                    .findFirst()
+                    .orElse( ParticipationStatus.UNKNOWN );
 
-        } catch ( Exception e ) {
-            logger.error( "unable to get participation status for participant: {}, study: {}, organization: {}.",
-                    participantId,
+            logger.info(
+                    "participation status = {} - orgId = {}, studyId = {}, participantId = {}",
+                    status,
+                    organizationId,
                     studyId,
-                    organizationId, e );
+                    participantId
+            );
+
+            return status;
+        } catch ( Exception e ) {
+            String error = String.format(
+                    "unable to get participation status, returning %s - orgId = %s, studyId = %s, participantId = %s",
+                    ParticipationStatus.UNKNOWN,
+                    organizationId,
+                    studyId,
+                    participantId
+            );
+            logger.error( error, e );
             return ParticipationStatus.UNKNOWN;
         }
     }
