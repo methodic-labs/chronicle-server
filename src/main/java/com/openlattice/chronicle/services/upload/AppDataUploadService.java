@@ -276,13 +276,12 @@ public class AppDataUploadService implements AppDataUploadManager {
         try {
             entity = dataApi.getEntity( metadataESID, metadataEntityKeyId );
         } catch ( Exception exception ) {
-            logger.error(
-                    "failure while getting metadata entity {} - study = {} participant = {}",
-                    metadataEntityKeyId,
+            logger.error( getLoggingMessage(
+                    String.format( "failure while getting metadata entity = %s", metadataEntityKeyId ),
+                    organizationId,
                     studyId,
-                    participantId,
-                    exception
-            );
+                    participantId
+            ), exception );
         }
         metadataEntityData.put( edmCacheManager.getPropertyTypeId( START_DATE_TIME_FQN ),
                 entity.getOrDefault( START_DATE_TIME_FQN, Set.of( firstDateTime ) ) );
