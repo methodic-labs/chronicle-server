@@ -644,7 +644,7 @@ public class AppDataUploadService implements AppDataUploadManager {
                     studyId,
                     participantId,
                     dataSourceId
-            ) );
+            ), exception );
             return 0;
         }
 

@@ -45,6 +45,15 @@ public class ChronicleServerUtil {
         }
     }
 
+    public static String getLoggingMessage( String message, UUID orgId, UUID studyId, String participantId ) {
+        return message + " - " + String.format(
+                "orgId = %s, studyId = %s, participantId = %s",
+                orgId,
+                studyId,
+                participantId
+        );
+    }
+
     public static String getLoggingMessage(
             String message,
             UUID orgId,

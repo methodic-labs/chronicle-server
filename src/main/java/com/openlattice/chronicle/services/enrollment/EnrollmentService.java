@@ -32,8 +32,7 @@ import static com.openlattice.chronicle.constants.EdmConstants.OL_ID_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.STATUS_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.STRING_ID_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.VERSION_FQN;
-import static com.openlattice.chronicle.util.ChronicleServerUtil.getFirstValueOrNull;
-import static com.openlattice.chronicle.util.ChronicleServerUtil.getParticipantEntitySetName;
+import static com.openlattice.chronicle.util.ChronicleServerUtil.*;
 
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
@@ -126,13 +125,13 @@ public class EnrollmentService implements EnrollmentManager {
 
             UUID deviceEntityKeyId = reserveDeviceEntityKeyId( devicesESID, deviceData, dataIntegrationApi );
             if ( deviceEntityKeyId == null ) {
-                logger.error(
-                        "unable to reserve ekid for data source - orgId = {}, studyId = {}, participantId = {}, dataSourceId = {}",
+                logger.error( getLoggingMessage(
+                        "unable to reserve ekid for data source",
                         organizationId,
                         studyId,
                         participantId,
                         dataSourceId
-                );
+                ) );
                 return null;
             }
             dataApi.updateEntitiesInEntitySet( devicesESID,
@@ -155,23 +154,22 @@ public class EnrollmentService implements EnrollmentManager {
 
             dataApi.createAssociations( associations );
 
-            logger.info(
-                    "data source registered - orgId = {}, studyId = {}, participantId = {}, dataSourceId = {}",
+            logger.info( getLoggingMessage(
+                    "data source registered",
                     organizationId,
                     studyId,
                     participantId,
                     dataSourceId
-            );
+            ) );
             return deviceEntityKeyId;
-        } catch ( Exception e ) {
-            String error = String.format(
-                    "unable to register data source - orgId = %s, studyId = %s, participantId = %s, dataSourceId = %s",
+        } catch ( Exception exception ) {
+            logger.error( getLoggingMessage(
+                    "unable to register data source",
                     organizationId,
                     studyId,
                     participantId,
                     dataSourceId
-            );
-            logger.error( error, e );
+            ), exception );
             throw new RuntimeException( "unable to register data source" );
         }
     }
@@ -184,35 +182,35 @@ public class EnrollmentService implements EnrollmentManager {
             String dataSourceId,
             Optional<Datasource> datasource ) {
 
-        logger.info(
-                "attempting to register data source - orgId = {}, studyId = {}, participantId = {}, dataSourceId = {}",
+        logger.info( getLoggingMessage(
+                "attempting to register data source",
                 organizationId,
                 studyId,
                 participantId,
                 dataSourceId
-        );
+        ) );
 
         final boolean isKnownParticipant = isKnownParticipant( organizationId, studyId, participantId );
         if ( !isKnownParticipant ) {
-            logger.error(
-                    "unknown participant, unable to register data source - orgId = {}, studyId = {}, participantId = {}, dataSourceId = {}",
+            logger.error( getLoggingMessage(
+                    "unknown participant, unable to register data source",
                     organizationId,
                     studyId,
                     participantId,
                     dataSourceId
-            );
+            ) );
             throw new AccessDeniedException( "unknown participant, unable to register data source" );
         }
 
         final UUID deviceEKID = getDeviceEntityKeyId( organizationId, studyId, participantId, dataSourceId );
         if ( deviceEKID != null ) {
-            logger.info(
-                    "data source is registered - orgId = {}, studyId = {}, participantId = {}, dataSourceId = {}",
+            logger.info( getLoggingMessage(
+                    "data source is registered",
                     organizationId,
                     studyId,
                     participantId,
                     dataSourceId
-            );
+            ) );
             return deviceEKID;
         }
 
@@ -285,12 +283,7 @@ public class EnrollmentService implements EnrollmentManager {
 
         ParticipationStatus status;
 
-        logger.info(
-                "getting participation status - orgId = {}, studyId = {}, participantId = {}",
-                organizationId,
-                studyId,
-                participantId
-        );
+        logger.info( getLoggingMessage( "getting participation status", organizationId, studyId, participantId ) );
 
         try {
             ApiClient apiClient = apiCacheManager.prodApiClientCache.get( ApiClient.class );
@@ -307,10 +300,7 @@ public class EnrollmentService implements EnrollmentManager {
             // participant must exist
             UUID participantEKID = checkNotNull(
                     getParticipantEntityKeyId( organizationId, studyId, participantId ),
-                    "participant not found - orgId = %s, studyId = %s, participantId = %s",
-                    organizationId,
-                    studyId,
-                    participantId
+                    getLoggingMessage( "participant not found", organizationId, studyId, participantId )
             );
 
             // filtered search on participants to get associated study entities
@@ -336,24 +326,21 @@ public class EnrollmentService implements EnrollmentManager {
                     .findFirst()
                     .orElse( ParticipationStatus.UNKNOWN );
 
-            logger.info(
-                    "participation status = {} - orgId = {}, studyId = {}, participantId = {}",
-                    status,
+            logger.info( getLoggingMessage(
+                    String.format( "participation status = %s", status ),
                     organizationId,
                     studyId,
                     participantId
-            );
+            ) );
 
             return status;
-        } catch ( Exception e ) {
-            String error = String.format(
-                    "unable to get participation status, returning %s - orgId = %s, studyId = %s, participantId = %s",
-                    ParticipationStatus.UNKNOWN,
+        } catch ( Exception exception ) {
+            logger.info( getLoggingMessage(
+                    String.format( "unable to get participation status, returning %s", ParticipationStatus.UNKNOWN ),
                     organizationId,
                     studyId,
                     participantId
-            );
-            logger.error( error, e );
+            ), exception );
             return ParticipationStatus.UNKNOWN;
         }
     }
