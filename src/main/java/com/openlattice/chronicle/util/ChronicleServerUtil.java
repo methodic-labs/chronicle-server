@@ -45,6 +45,22 @@ public class ChronicleServerUtil {
         }
     }
 
+    public static String getLoggingMessage(
+            String message,
+            UUID orgId,
+            UUID studyId,
+            String participantId,
+            String dataSourceId
+    ) {
+        return message + " - " + String.format(
+                "orgId = %s, studyId = %s, participantId = %s, dataSourceId = %s",
+                orgId,
+                studyId,
+                participantId,
+                dataSourceId
+        );
+    }
+
     @Deprecated(since = "apps v2")
     public static String getParticipantEntitySetName( UUID studyId ) {
         return PARTICIPANTS_PREFIX.concat( studyId.toString() );
