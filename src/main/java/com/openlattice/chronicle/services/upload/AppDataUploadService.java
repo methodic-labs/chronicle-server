@@ -649,12 +649,9 @@ public class AppDataUploadService implements AppDataUploadManager {
 
         stopwatch.stop();
 
+        long seconds = stopwatch.elapsed( TimeUnit.SECONDS );
         logger.info( getLoggingMessage(
-                String.format(
-                        "logging %d entries took %d seconds",
-                        data.size(),
-                        stopwatch.elapsed( TimeUnit.SECONDS )
-                ),
+                String.format( "logging %d entries took %d seconds", data.size(), seconds ),
                 organizationId,
                 studyId,
                 participantId,
