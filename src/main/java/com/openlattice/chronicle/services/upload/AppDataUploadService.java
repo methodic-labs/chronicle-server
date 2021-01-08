@@ -38,6 +38,7 @@ import static com.openlattice.chronicle.constants.EdmConstants.START_DATE_TIME_F
 import static com.openlattice.chronicle.constants.EdmConstants.STRING_ID_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.TITLE_FQN;
 import static com.openlattice.chronicle.constants.OutputConstants.MINIMUM_DATE;
+import static com.openlattice.chronicle.util.ChronicleServerUtil.getLoggingMessage;
 import static com.openlattice.chronicle.util.ChronicleServerUtil.getParticipantEntitySetName;
 
 /**
@@ -568,14 +569,18 @@ public class AppDataUploadService implements AppDataUploadManager {
             UUID organizationId,
             UUID studyId,
             String participantId,
-            String deviceId,
+            String dataSourceId,
             List<SetMultimap<UUID, Object>> data ) {
         Stopwatch stopwatch = Stopwatch.createStarted();
 
-        logger.info( "attempting to log data: studyId = {}, participantId = {}, deviceId = {}",
+        logger.info( getLoggingMessage(
+                "attempting to log data",
+                organizationId,
                 studyId,
                 participantId,
-                deviceId );
+                dataSourceId
+        ) );
+
         try {
             ApiClient apiClient = apiCacheManager.intApiClientCache.get( ApiClient.class );
             DataApi dataApi = apiClient.getDataApi();
@@ -584,27 +589,39 @@ public class AppDataUploadService implements AppDataUploadManager {
             UUID participantEntityKeyId = enrollmentManager
                     .getParticipantEntityKeyId( organizationId, studyId, participantId );
             if ( participantEntityKeyId == null ) {
-                logger.error( "Unable to retrieve participantEntityKeyId, studyId = {}, participantId = {}",
+                logger.error( getLoggingMessage(
+                        "unable to get participant ekid",
+                        organizationId,
                         studyId,
-                        participantId );
+                        participantId,
+                        dataSourceId
+                ) );
                 return 0;
             }
 
             ParticipationStatus status = enrollmentManager
                     .getParticipationStatus( organizationId, studyId, participantId );
             if ( ParticipationStatus.NOT_ENROLLED.equals( status ) ) {
-                logger.warn( "participantId = {} is not enrolled, ignoring data upload", participantId );
+                logger.warn( getLoggingMessage(
+                        "participant is not enrolled, ignoring upload",
+                        organizationId,
+                        studyId,
+                        participantId,
+                        dataSourceId
+                ) );
                 return 0;
             }
 
             UUID deviceEntityKeyId = enrollmentManager
-                    .getDeviceEntityKeyId( organizationId, studyId, participantId, deviceId );
+                    .getDeviceEntityKeyId( organizationId, studyId, participantId, dataSourceId );
             if ( deviceEntityKeyId == null ) {
-                logger.error(
-                        "deviceId not found, ignoring data upload: studyId = {}, participantId = {}, deviceId = {} ",
+                logger.error( getLoggingMessage(
+                        "data source not found, ignoring upload",
+                        organizationId,
                         studyId,
                         participantId,
-                        deviceId );
+                        dataSourceId
+                ) );
                 return 0;
             }
 
@@ -616,28 +633,34 @@ public class AppDataUploadService implements AppDataUploadManager {
                     studyId,
                     deviceEntityKeyId,
                     participantId,
-                    deviceId,
+                    dataSourceId,
                     participantEntityKeyId
             );
 
         } catch ( Exception exception ) {
-            logger.error( "error logging data: studyId = {}, participantId = {}, deviceId = {}",
+            logger.error( getLoggingMessage(
+                    "error logging data",
+                    organizationId,
                     studyId,
                     participantId,
-                    deviceId,
-                    exception
-            );
+                    dataSourceId
+            ) );
             return 0;
         }
 
         stopwatch.stop();
-        logger.info( "logging {} entries took {} seconds: studyId = {}, participantId = {}, deviceId = {}",
-                data.size(),
-                stopwatch.elapsed( TimeUnit.SECONDS ),
+
+        logger.info( getLoggingMessage(
+                String.format(
+                        "logging %d entries took %d seconds",
+                        data.size(),
+                        stopwatch.elapsed( TimeUnit.SECONDS )
+                ),
+                organizationId,
                 studyId,
                 participantId,
-                deviceId
-        );
+                dataSourceId
+        ) );
 
         return data.size();
     }
