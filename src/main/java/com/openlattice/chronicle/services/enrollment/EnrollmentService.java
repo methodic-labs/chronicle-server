@@ -87,8 +87,8 @@ public class EnrollmentService implements EnrollmentManager {
             UUID organizationId,
             UUID studyId,
             String participantId,
-            String dataSourceId,
-            Optional<Datasource> dataSource ) {
+            String datasourceId,
+            Optional<Datasource> datasource ) {
 
         try {
             ApiClient apiClient = apiCacheManager.prodApiClientCache.get( ApiClient.class );
@@ -112,10 +112,10 @@ public class EnrollmentService implements EnrollmentManager {
 
             // device entity data
             Map<UUID, Set<Object>> deviceData = new HashMap<>();
-            deviceData.put( edmCacheManager.getPropertyTypeId( STRING_ID_FQN ), Sets.newHashSet( dataSourceId ) );
+            deviceData.put( edmCacheManager.getPropertyTypeId( STRING_ID_FQN ), Sets.newHashSet( datasourceId ) );
 
-            if ( dataSource.isPresent() && AndroidDevice.class.isAssignableFrom( dataSource.get().getClass() ) ) {
-                AndroidDevice device = (AndroidDevice) dataSource.get();
+            if ( datasource.isPresent() && AndroidDevice.class.isAssignableFrom( datasource.get().getClass() ) ) {
+                AndroidDevice device = (AndroidDevice) datasource.get();
                 deviceData
                         .put( edmCacheManager.getPropertyTypeId( MODEL_FQN ), Sets.newHashSet( device.getModel() ) );
                 deviceData.put( edmCacheManager.getPropertyTypeId( VERSION_FQN ),
@@ -125,11 +125,11 @@ public class EnrollmentService implements EnrollmentManager {
             UUID deviceEntityKeyId = reserveDeviceEntityKeyId( devicesESID, deviceData, dataIntegrationApi );
             if ( deviceEntityKeyId == null ) {
                 logger.error( getLoggingMessage(
-                        "unable to reserve ekid for data source",
+                        "unable to reserve ekid for datasource",
                         organizationId,
                         studyId,
                         participantId,
-                        dataSourceId
+                        datasourceId
                 ) );
                 return null;
             }
@@ -137,7 +137,7 @@ public class EnrollmentService implements EnrollmentManager {
                     ImmutableMap.of( deviceEntityKeyId, deviceData ),
                     UpdateType.Merge );
 
-            updateDeviceIdsCache( organizationId, deviceEntityKeyId, dataSourceId );
+            updateDeviceIdsCache( organizationId, deviceEntityKeyId, datasourceId );
 
             EntityDataKey deviceEDK = new EntityDataKey( devicesESID, deviceEntityKeyId );
             EntityDataKey participantEDK = new EntityDataKey( participantsESID, participantEKID );
@@ -154,22 +154,22 @@ public class EnrollmentService implements EnrollmentManager {
             dataApi.createAssociations( associations );
 
             logger.info( getLoggingMessage(
-                    "data source registered",
+                    "datasource registered",
                     organizationId,
                     studyId,
                     participantId,
-                    dataSourceId
+                    datasourceId
             ) );
             return deviceEntityKeyId;
         } catch ( Exception exception ) {
             logger.error( getLoggingMessage(
-                    "unable to register data source",
+                    "unable to register datasource",
                     organizationId,
                     studyId,
                     participantId,
-                    dataSourceId
+                    datasourceId
             ), exception );
-            throw new RuntimeException( "unable to register data source" );
+            throw new RuntimeException( "unable to register datasource" );
         }
     }
 
@@ -178,7 +178,7 @@ public class EnrollmentService implements EnrollmentManager {
             UUID organizationId,
             UUID studyId,
             String participantId,
-            String dataSourceId,
+            String datasourceId,
             Optional<Datasource> datasource ) {
 
         logger.info( getLoggingMessage(
@@ -186,34 +186,34 @@ public class EnrollmentService implements EnrollmentManager {
                 organizationId,
                 studyId,
                 participantId,
-                dataSourceId
+                datasourceId
         ) );
 
         final boolean isKnownParticipant = isKnownParticipant( organizationId, studyId, participantId );
         if ( !isKnownParticipant ) {
             logger.error( getLoggingMessage(
-                    "unknown participant, unable to register data source",
+                    "unknown participant, unable to register datasource",
                     organizationId,
                     studyId,
                     participantId,
-                    dataSourceId
+                    datasourceId
             ) );
-            throw new AccessDeniedException( "unknown participant, unable to register data source" );
+            throw new AccessDeniedException( "unknown participant, unable to register datasource" );
         }
 
-        final UUID deviceEKID = getDeviceEntityKeyId( organizationId, studyId, participantId, dataSourceId );
+        final UUID deviceEKID = getDeviceEntityKeyId( organizationId, studyId, participantId, datasourceId );
         if ( deviceEKID != null ) {
             logger.info( getLoggingMessage(
-                    "data source is registered",
+                    "datasource is registered",
                     organizationId,
                     studyId,
                     participantId,
-                    dataSourceId
+                    datasourceId
             ) );
             return deviceEKID;
         }
 
-        return registerDatasourceHelper( organizationId, studyId, participantId, dataSourceId, datasource );
+        return registerDatasourceHelper( organizationId, studyId, participantId, datasourceId, datasource );
     }
 
     @Override
