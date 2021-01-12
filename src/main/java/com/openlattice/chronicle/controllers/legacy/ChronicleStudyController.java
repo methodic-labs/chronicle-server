@@ -64,7 +64,7 @@ public class ChronicleStudyController implements ChronicleStudyApi {
             @PathVariable( DATASOURCE_ID ) String datasourceId,
             @RequestBody Optional<Datasource> datasource ) {
 
-        return enrollmentManager.registerDataSource( null, studyId, participantId, datasourceId, datasource );
+        return enrollmentManager.registerDatasource( null, studyId, participantId, datasourceId, datasource );
     }
 
     @Override

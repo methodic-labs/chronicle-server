@@ -53,7 +53,7 @@ public class ChronicleControllerV2 implements ChronicleApi {
             @PathVariable( PARTICIPANT_ID ) String participantId,
             @PathVariable( DATASOURCE_ID ) String datasourceId,
             @RequestBody Optional<Datasource> datasource ) {
-        return enrollmentManager.registerDataSource( organizationId, studyId, participantId, datasourceId, datasource );
+        return enrollmentManager.registerDatasource( organizationId, studyId, participantId, datasourceId, datasource );
     }
 
     @Override

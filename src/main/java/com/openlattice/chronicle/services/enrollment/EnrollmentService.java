@@ -83,7 +83,7 @@ public class EnrollmentService implements EnrollmentManager {
         scheduledTasksManager.getDeviceIdsByEKID().put( datasourceId, deviceEKID );
     }
 
-    private UUID registerDataSourceHelper(
+    private UUID registerDatasourceHelper(
             UUID organizationId,
             UUID studyId,
             String participantId,
@@ -174,7 +174,7 @@ public class EnrollmentService implements EnrollmentManager {
     }
 
     @Override
-    public UUID registerDataSource(
+    public UUID registerDatasource(
             UUID organizationId,
             UUID studyId,
             String participantId,
@@ -213,7 +213,7 @@ public class EnrollmentService implements EnrollmentManager {
             return deviceEKID;
         }
 
-        return registerDataSourceHelper( organizationId, studyId, participantId, dataSourceId, datasource );
+        return registerDatasourceHelper( organizationId, studyId, participantId, dataSourceId, datasource );
     }
 
     @Override
