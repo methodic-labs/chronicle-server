@@ -51,7 +51,7 @@ public class DataDownloadService implements DataDownloadManager {
             String token ) {
 
         try {
-            ApiClient apiClient = new ApiClient( RetrofitFactory.Environment.LOCAL, () -> token );
+            ApiClient apiClient = new ApiClient( RetrofitFactory.Environment.PROD_INTEGRATION, () -> token );
             EntitySetsApi entitySetsApi = apiClient.getEntitySetsApi();
             GraphApi graphApi = apiClient.getGraphApi();
 

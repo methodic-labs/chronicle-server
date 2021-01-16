@@ -83,14 +83,19 @@ public class ParticipantDataIterable implements Iterable<Map<String, Set<Object>
         }
 
         @Override public NeighborPage get() {
-            EntityNeighborsFilter searchFilter = new EntityNeighborsFilter(
-                    ImmutableSet.of( participantEKID ),
-                    Optional.of( ImmutableSet.of( entitySetIdGraph.getSrcEntitySetId() ) ),
-                    Optional.of( ImmutableSet.of( entitySetIdGraph.getDstEntitySetId() ) ),
-                    Optional.of( ImmutableSet.of( entitySetIdGraph.getEdgeEntitySetId() ) )
-            );
-            page = graphApi.getPageOfNeighbors( entitySetIdGraph.getDstEntitySetId(),
-                    new PagedNeighborRequest( searchFilter, page.getBookmark(), MAX_PAGE_SIZE ) );
+            try {
+                EntityNeighborsFilter searchFilter = new EntityNeighborsFilter(
+                        ImmutableSet.of( participantEKID ),
+                        Optional.of( ImmutableSet.of( entitySetIdGraph.getSrcEntitySetId() ) ),
+                        Optional.of( ImmutableSet.of( entitySetIdGraph.getDstEntitySetId() ) ),
+                        Optional.of( ImmutableSet.of( entitySetIdGraph.getEdgeEntitySetId() ) )
+                );
+                page = graphApi.getPageOfNeighbors( entitySetIdGraph.getDstEntitySetId(),
+                        new PagedNeighborRequest( searchFilter, page.getBookmark(), MAX_PAGE_SIZE ) );
+            } catch ( Exception e ) {
+                logger.error( "error retrieving neighbor page", e );
+                page = null;
+            }
 
             return page;
         }
@@ -172,6 +177,13 @@ public class ParticipantDataIterable implements Iterable<Map<String, Set<Object>
                 // if we have finished processing all data in current page, retrieve next
                 if ( currentPage == null || finishedCurrentPage ) {
                     currentPage = neighborPageSupplier.get();
+
+                    // if an exception occurs while getting page, stop iterating
+                    if (currentPage == null) {
+                        hasMorePages = false;
+
+                        throw new RuntimeException("download failed");
+                    }
                     currentIndex = 0; // reset index
                 }
 
