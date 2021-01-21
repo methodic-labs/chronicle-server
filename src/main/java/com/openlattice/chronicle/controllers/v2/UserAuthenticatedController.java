@@ -90,10 +90,9 @@ public class UserAuthenticatedController implements UserAuthenticatedApi {
             FileType fileType ) {
 
         String token = getTokenFromContext();
-        ParticipantDataIterable data = dataDownloadManager
-                .getAllPreprocessedParticipantData( organizationId, studyId, participantEntityKeyId, token );
-
-        return Objects.requireNonNull( data.stream() ).collect( Collectors.toList() );
+        return dataDownloadManager
+                .getAllPreprocessedParticipantData( organizationId, studyId, participantEntityKeyId, token )
+                .cast();
     }
 
     @Timed
@@ -136,10 +135,9 @@ public class UserAuthenticatedController implements UserAuthenticatedApi {
             FileType fileType ) {
 
         String token = getTokenFromContext();
-        ParticipantDataIterable data = dataDownloadManager
-                .getAllParticipantData( organizationId, studyId, participantEntityKeyId, token );
-
-        return Objects.requireNonNull( data.stream() ).collect( Collectors.toList() );
+        return dataDownloadManager
+                .getAllParticipantData( organizationId, studyId, participantEntityKeyId, token )
+                .cast();
     }
 
     @Timed
@@ -178,9 +176,10 @@ public class UserAuthenticatedController implements UserAuthenticatedApi {
             UUID organizationId, UUID studyId, UUID participantEntityKeyId, FileType fileType ) {
 
         String token = getTokenFromContext();
-        ParticipantDataIterable data = dataDownloadManager
-                .getAllParticipantAppsUsageData( organizationId, studyId, participantEntityKeyId, token );
-        return Objects.requireNonNull( data.stream() ).collect( Collectors.toList() );
+        return  dataDownloadManager
+                .getAllParticipantAppsUsageData( organizationId, studyId, participantEntityKeyId, token )
+                .cast();
+
     }
 
     @Timed

@@ -32,9 +32,7 @@ class ParticipantDataIterable(private val supplier: NeighborPageSupplier) : Iter
         return ParticipantDataIterator(supplier)
     }
 
-    fun stream(): Stream<Map<String, Set<Any>>>? {
-        return StreamUtil.stream(this)
-    }
+    fun cast() : Iterable<Map<String, Set<Any>>>  = this
 
     class NeighborPageSupplier(
             val edmCacheManager: EdmCacheManager,
@@ -89,6 +87,7 @@ class ParticipantDataIterable(private val supplier: NeighborPageSupplier) : Iter
         override fun hasNext(): Boolean {
             return hasMorePages
         }
+
 
         private fun parseDateTimeValues(values: Set<Any?>, zoneId: ZoneId): Set<Any> {
             val result: MutableSet<Any> = Sets.newHashSet()
