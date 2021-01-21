@@ -7,6 +7,7 @@ import com.openlattice.chronicle.data.ChronicleDeleteType;
 import com.openlattice.chronicle.data.FileType;
 import com.openlattice.chronicle.services.delete.DataDeletionManager;
 import com.openlattice.chronicle.services.download.DataDownloadManager;
+import com.openlattice.chronicle.services.download.ParticipantDataIterable;
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
@@ -14,8 +15,10 @@ import org.springframework.web.bind.annotation.*;
 import javax.inject.Inject;
 import javax.servlet.http.HttpServletResponse;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static com.openlattice.chronicle.constants.FilenamePrefixConstants.PREPROCESSED_DATA_PREFIX;
 import static com.openlattice.chronicle.constants.FilenamePrefixConstants.RAW_DATA_PREFIX;
@@ -87,8 +90,10 @@ public class UserAuthenticatedController implements UserAuthenticatedApi {
             FileType fileType ) {
 
         String token = getTokenFromContext();
-        return dataDownloadManager
+        ParticipantDataIterable data = dataDownloadManager
                 .getAllPreprocessedParticipantData( organizationId, studyId, participantEntityKeyId, token );
+
+        return Objects.requireNonNull( data.stream() ).collect( Collectors.toList() );
     }
 
     @Timed
@@ -131,7 +136,10 @@ public class UserAuthenticatedController implements UserAuthenticatedApi {
             FileType fileType ) {
 
         String token = getTokenFromContext();
-        return dataDownloadManager.getAllParticipantData( organizationId, studyId, participantEntityKeyId, token );
+        ParticipantDataIterable data = dataDownloadManager
+                .getAllParticipantData( organizationId, studyId, participantEntityKeyId, token );
+
+        return Objects.requireNonNull( data.stream() ).collect( Collectors.toList() );
     }
 
     @Timed
@@ -170,8 +178,9 @@ public class UserAuthenticatedController implements UserAuthenticatedApi {
             UUID organizationId, UUID studyId, UUID participantEntityKeyId, FileType fileType ) {
 
         String token = getTokenFromContext();
-        return dataDownloadManager
+        ParticipantDataIterable data = dataDownloadManager
                 .getAllParticipantAppsUsageData( organizationId, studyId, participantEntityKeyId, token );
+        return Objects.requireNonNull( data.stream() ).collect( Collectors.toList() );
     }
 
     @Timed
