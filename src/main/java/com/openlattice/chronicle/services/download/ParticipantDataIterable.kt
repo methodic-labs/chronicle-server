@@ -1,6 +1,5 @@
 package com.openlattice.chronicle.services.download
 
-import com.dataloom.streams.StreamUtil
 import com.google.common.collect.*
 import com.openlattice.chronicle.constants.EdmConstants
 import com.openlattice.chronicle.constants.OutputConstants
@@ -15,14 +14,12 @@ import com.openlattice.search.requests.EntityNeighborsFilter
 import org.apache.olingo.commons.api.edm.EdmPrimitiveTypeKind
 import org.apache.olingo.commons.api.edm.FullQualifiedName
 import org.slf4j.LoggerFactory
-import java.lang.Exception
 import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.util.*
 import java.util.concurrent.locks.ReentrantLock
 import java.util.function.Consumer
 import java.util.function.Supplier
-import java.util.stream.Stream
 
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
@@ -31,7 +28,7 @@ class ParticipantDataIterable(private val supplier: NeighborPageSupplier) : Iter
     override fun iterator(): Iterator<Map<String, Set<Any>>> {
         return ParticipantDataIterator(supplier)
     }
-    
+
     class NeighborPageSupplier(
             val edmCacheManager: EdmCacheManager,
             private val graphApi: GraphApi,

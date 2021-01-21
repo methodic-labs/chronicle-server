@@ -31,7 +31,7 @@ class DataDownloadService(private val entitySetIdsManager: EntitySetIdsManager, 
             token: String?): Iterable<Map<String, Set<Any>>> {
 
         return try {
-            val apiClient = ApiClient(RetrofitFactory.Environment.LOCAL) { token }
+            val apiClient = ApiClient(RetrofitFactory.Environment.PROD_INTEGRATION) { token }
             val entitySetsApi = apiClient.entitySetsApi
             val graphApi = apiClient.graphApi
 
