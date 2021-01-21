@@ -17,7 +17,6 @@ import org.slf4j.LoggerFactory
 import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.util.*
-import java.util.concurrent.locks.ReentrantLock
 import java.util.function.Consumer
 import java.util.function.Supplier
 
@@ -69,7 +68,6 @@ class ParticipantDataIterable(private val supplier: NeighborPageSupplier) : Iter
     }
 
     private class ParticipantDataIterator(private val neighborPageSupplier: NeighborPageSupplier) : Iterator<Map<String, Set<Any>>> {
-        private val lock = ReentrantLock()
         private var hasMorePages = true
         private var finishedCurrentPage = false
         private var currentIndex = 0
@@ -101,8 +99,8 @@ class ParticipantDataIterable(private val supplier: NeighborPageSupplier) : Iter
             return result
         }
 
+        @Synchronized
         override fun next(): Map<String, Set<Any>> {
-            lock.lock()
 
             val nextElement: MutableMap<String, Set<Any>> = Maps.newHashMap()
             try {
@@ -137,8 +135,8 @@ class ParticipantDataIterable(private val supplier: NeighborPageSupplier) : Iter
                         if (!neighborPageSupplier.srcPropertiesToExclude.contains(key)) {
                             val propertyType = neighborPageSupplier.edmCacheManager
                                     .getPropertyType(key)
-                            val title = OutputConstants.APP_PREFIX + neighborPageSupplier.srcMetadata[propertyType.id]
-                                    ?.title
+                            val title = OutputConstants.APP_PREFIX + neighborPageSupplier.srcMetadata.getValue(propertyType.id)
+                                    .title
                             if (propertyType.datatype == EdmPrimitiveTypeKind.DateTimeOffset) {
                                 nextElement[title] = parseDateTimeValues(`val`, zoneId)
                             } else {
@@ -154,8 +152,8 @@ class ParticipantDataIterable(private val supplier: NeighborPageSupplier) : Iter
                         if (!neighborPageSupplier.edgePropertiesToExclude.contains(key)) {
                             val propertyTypeId = neighborPageSupplier.edmCacheManager
                                     .getPropertyTypeId(key)
-                            val title = OutputConstants.USER_PREFIX + neighborPageSupplier.edgeMetadata[propertyTypeId]
-                                    ?.title
+                            val title = OutputConstants.USER_PREFIX + neighborPageSupplier.edgeMetadata.getValue(propertyTypeId)
+                                    .title
                             nextElement[title] = `val`
                         }
                     }
@@ -164,9 +162,8 @@ class ParticipantDataIterable(private val supplier: NeighborPageSupplier) : Iter
                 }
             } catch (e: Exception) {
                 logger.error("unable to retrieve next element", e)
-            } finally {
-                lock.unlock()
             }
+
             return nextElement.toMap()
         }
     }
