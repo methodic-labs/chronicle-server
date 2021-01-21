@@ -31,9 +31,7 @@ class ParticipantDataIterable(private val supplier: NeighborPageSupplier) : Iter
     override fun iterator(): Iterator<Map<String, Set<Any>>> {
         return ParticipantDataIterator(supplier)
     }
-
-    fun cast() : Iterable<Map<String, Set<Any>>>  = this
-
+    
     class NeighborPageSupplier(
             val edmCacheManager: EdmCacheManager,
             private val graphApi: GraphApi,

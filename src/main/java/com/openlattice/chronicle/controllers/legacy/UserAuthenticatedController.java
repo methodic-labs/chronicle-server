@@ -7,7 +7,6 @@ import com.openlattice.chronicle.data.ChronicleDeleteType;
 import com.openlattice.chronicle.data.FileType;
 import com.openlattice.chronicle.services.delete.DataDeletionManager;
 import com.openlattice.chronicle.services.download.DataDownloadManager;
-import com.openlattice.chronicle.services.download.ParticipantDataIterable;
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -16,10 +15,8 @@ import org.springframework.web.bind.annotation.*;
 import javax.inject.Inject;
 import javax.servlet.http.HttpServletResponse;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import static com.openlattice.chronicle.constants.FilenamePrefixConstants.PREPROCESSED_DATA_PREFIX;
 import static com.openlattice.chronicle.constants.FilenamePrefixConstants.RAW_DATA_PREFIX;
@@ -57,7 +54,8 @@ public class UserAuthenticatedController implements UserAuthenticatedApi {
             @RequestParam( TYPE ) ChronicleDeleteType chronicleDeleteType
     ) {
         String token = getTokenFromContext();
-        dataDeletionManager.deleteParticipantAndAllNeighbors( null, studyId, participantId, chronicleDeleteType, token );
+        dataDeletionManager
+                .deleteParticipantAndAllNeighbors( null, studyId, participantId, chronicleDeleteType, token );
         return null;
     }
 
@@ -84,9 +82,7 @@ public class UserAuthenticatedController implements UserAuthenticatedApi {
             FileType fileType ) {
 
         String token = getTokenFromContext();
-        return dataDownloadManager
-                .getAllPreprocessedParticipantData( null, studyId, participantEntityKeyId, token )
-                .cast();
+        return dataDownloadManager.getAllPreprocessedParticipantData( null, studyId, participantEntityKeyId, token );
 
     }
 
@@ -128,9 +124,7 @@ public class UserAuthenticatedController implements UserAuthenticatedApi {
             FileType fileType ) {
 
         String token = getTokenFromContext();
-        return dataDownloadManager
-                .getAllParticipantData( null, studyId, participantEntityKeyId, token )
-                .cast();
+        return dataDownloadManager.getAllParticipantData( null, studyId, participantEntityKeyId, token );
     }
 
     @Timed
@@ -170,9 +164,7 @@ public class UserAuthenticatedController implements UserAuthenticatedApi {
             FileType fileType ) {
 
         String token = getTokenFromContext();
-        return dataDownloadManager
-                .getAllParticipantAppsUsageData( null, studyId, participantEntityKeyId, token )
-                .cast();
+        return dataDownloadManager.getAllParticipantAppsUsageData( null, studyId, participantEntityKeyId, token );
     }
 
     @Timed
