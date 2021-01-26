@@ -25,6 +25,9 @@ import static com.openlattice.chronicle.constants.EdmConstants.PERSON_ID_FQN;
  */
 public class ChronicleServerUtil {
 
+    public static String ORG_STUDY_PARTICIPANT = " - orgId = {}, studyId = {}, participantId = {}";
+    public static String ORG_STUDY_PARTICIPANT_DATASOURCE = " - orgId = {}, studyId = {}, participantId = {}, dataSourceId = {}";
+
     public static String getFirstValueOrNull( Map<FullQualifiedName, Set<Object>> entity, FullQualifiedName fqn ) {
         if ( entity.getOrDefault( fqn, Set.of() ).isEmpty() ) {
             return null;

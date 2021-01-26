@@ -42,6 +42,7 @@ plugins {
     id 'idea'
     id 'jacoco'
     id 'java'
+    id 'checkstyle'
     id 'maven-publish'
     id 'signing'
     id 'org.jetbrains.kotlin.jvm' version '1.3.72'
@@ -59,7 +60,7 @@ distTar {
     archiveName "$baseName" + ".tgz"
 }
 
-apply from: "https://raw.githubusercontent.com/openlattice/gradles/master/openlattice.gradle"
+apply from: "https://raw.githubusercontent.com/openlattice/openlattice/develop/gradles/openlattice.gradle"
 apply plugin: 'kotlin'
 
 mainClassName = "com.openlattice.chronicle.ChronicleServer"
@@ -116,6 +117,23 @@ configurations {
     published.extendsFrom tests, archives
 }
 
+checkstyle {
+    toolVersion = '7.4'
+    showViolations = false
+    config project.resources.text.fromUri('https://raw.githubusercontent.com/openlattice/openlattice/develop/gradles/checkstyle.xml')
+}
+
+tasks.withType(Checkstyle) {
+    reports {
+        xml.enabled = false
+        html.enabled = true
+    }
+}
+
+test {
+    ignoreFailures = true
+}
+
 ext.odata_version = '4.2.0'
 ext.chronicle_api_version = '0.0.14'
 
@@ -124,9 +142,9 @@ dependencies {
 
     if (project.hasProperty('developmentMode') && project.developmentMode) {
         logger.quiet(project.name + " using project dependencies.")
-        compile project(":rhizome")
-        compile project(":api")
-        compile(project(":chronicle-api")) {
+        implementation project(":rhizome")
+        implementation project(":api")
+        implementation(project(":chronicle-api")) {
             exclude group: 'com.google.guava', module: 'guava'
         }
     } else {
@@ -136,10 +154,6 @@ dependencies {
         compile("com.openlattice:chronicle-api:${chronicle_api_version}") {
             exclude group: 'com.google.guava', module: 'guava'
         }
-
-        testCompile "com.openlattice:chronicle-api:${chronicle_api_version}:tests"
-        testCompile "com.openlattice:rhizome:${rhizome_version}:tests"
-        testCompile "com.openlattice:rhizome-client:${rhizome_client_version}:tests"
     }
 
     compile "org.apache.olingo:odata-server-api:${odata_version}"
@@ -152,9 +166,9 @@ dependencies {
     /*
      * TESTING
      */
-    testCompile "junit:junit:${junit_version}"
-    testCompile "com.openlattice:conductor-client:${conductor_client_version}"
-    testCompile("org.mockito:mockito-all:${mockito_version}") {
+    testImplementation "junit:junit:${junit_version}"
+    testImplementation "com.openlattice:conductor-client:${conductor_client_version}"
+    testImplementation("org.mockito:mockito-all:${mockito_version}") {
         exclude module: 'hamcrest'
         exclude module: 'hamcrest-core'
     }
