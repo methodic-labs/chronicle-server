@@ -38,8 +38,7 @@ import static com.openlattice.chronicle.constants.EdmConstants.START_DATE_TIME_F
 import static com.openlattice.chronicle.constants.EdmConstants.STRING_ID_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.TITLE_FQN;
 import static com.openlattice.chronicle.constants.OutputConstants.MINIMUM_DATE;
-import static com.openlattice.chronicle.util.ChronicleServerUtil.getLoggingMessage;
-import static com.openlattice.chronicle.util.ChronicleServerUtil.getParticipantEntitySetName;
+import static com.openlattice.chronicle.util.ChronicleServerUtil.*;
 
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
@@ -276,12 +275,14 @@ public class AppDataUploadService implements AppDataUploadManager {
         try {
             entity = dataApi.getEntity( metadataESID, metadataEntityKeyId );
         } catch ( Exception exception ) {
-            logger.error( getLoggingMessage(
-                    String.format( "failure while getting metadata entity = %s", metadataEntityKeyId ),
+            logger.error(
+                    "failure while getting metadata entity = {}" + ORG_STUDY_PARTICIPANT,
+                    metadataEntityKeyId,
                     organizationId,
                     studyId,
-                    participantId
-            ), exception );
+                    participantId,
+                    exception
+            );
         }
         metadataEntityData.put( edmCacheManager.getPropertyTypeId( START_DATE_TIME_FQN ),
                 entity.getOrDefault( START_DATE_TIME_FQN, Set.of( firstDateTime ) ) );
@@ -572,13 +573,13 @@ public class AppDataUploadService implements AppDataUploadManager {
             List<SetMultimap<UUID, Object>> data ) {
         Stopwatch stopwatch = Stopwatch.createStarted();
 
-        logger.info( getLoggingMessage(
-                "attempting to log data",
+        logger.info(
+                "attempting to log data" + ORG_STUDY_PARTICIPANT_DATASOURCE,
                 organizationId,
                 studyId,
                 participantId,
                 dataSourceId
-        ) );
+        );
 
         try {
             ApiClient apiClient = apiCacheManager.intApiClientCache.get( ApiClient.class );
@@ -588,39 +589,39 @@ public class AppDataUploadService implements AppDataUploadManager {
             UUID participantEntityKeyId = enrollmentManager
                     .getParticipantEntityKeyId( organizationId, studyId, participantId );
             if ( participantEntityKeyId == null ) {
-                logger.error( getLoggingMessage(
-                        "unable to get participant ekid",
+                logger.error(
+                        "unable to get participant ekid" + ORG_STUDY_PARTICIPANT_DATASOURCE,
                         organizationId,
                         studyId,
                         participantId,
                         dataSourceId
-                ) );
+                );
                 return 0;
             }
 
             ParticipationStatus status = enrollmentManager
                     .getParticipationStatus( organizationId, studyId, participantId );
             if ( ParticipationStatus.NOT_ENROLLED.equals( status ) ) {
-                logger.warn( getLoggingMessage(
-                        "participant is not enrolled, ignoring upload",
+                logger.warn(
+                        "participant is not enrolled, ignoring upload" + ORG_STUDY_PARTICIPANT_DATASOURCE,
                         organizationId,
                         studyId,
                         participantId,
                         dataSourceId
-                ) );
+                );
                 return 0;
             }
 
             UUID deviceEntityKeyId = enrollmentManager
                     .getDeviceEntityKeyId( organizationId, studyId, participantId, dataSourceId );
             if ( deviceEntityKeyId == null ) {
-                logger.error( getLoggingMessage(
-                        "data source not found, ignoring upload",
+                logger.error(
+                        "data source not found, ignoring upload" + ORG_STUDY_PARTICIPANT_DATASOURCE,
                         organizationId,
                         studyId,
                         participantId,
                         dataSourceId
-                ) );
+                );
                 return 0;
             }
 
@@ -637,26 +638,29 @@ public class AppDataUploadService implements AppDataUploadManager {
             );
 
         } catch ( Exception exception ) {
-            logger.error( getLoggingMessage(
-                    "error logging data",
+            logger.error(
+                    "error logging data" + ORG_STUDY_PARTICIPANT_DATASOURCE,
                     organizationId,
                     studyId,
                     participantId,
-                    dataSourceId
-            ), exception );
+                    dataSourceId,
+                    exception
+            );
             return 0;
         }
 
         stopwatch.stop();
 
         long seconds = stopwatch.elapsed( TimeUnit.SECONDS );
-        logger.info( getLoggingMessage(
-                String.format( "logging %d entries took %d seconds", data.size(), seconds ),
+        logger.info(
+                "logging {} entries took {} seconds" + ORG_STUDY_PARTICIPANT_DATASOURCE,
+                data.size(),
+                seconds,
                 organizationId,
                 studyId,
                 participantId,
                 dataSourceId
-        ) );
+        );
 
         return data.size();
     }
