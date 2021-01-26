@@ -89,6 +89,7 @@ public class UserAuthenticatedController implements UserAuthenticatedApi {
         String token = getTokenFromContext();
         return dataDownloadManager
                 .getAllPreprocessedParticipantData( organizationId, studyId, participantEntityKeyId, token );
+
     }
 
     @Timed
@@ -172,6 +173,7 @@ public class UserAuthenticatedController implements UserAuthenticatedApi {
         String token = getTokenFromContext();
         return dataDownloadManager
                 .getAllParticipantAppsUsageData( organizationId, studyId, participantEntityKeyId, token );
+
     }
 
     @Timed

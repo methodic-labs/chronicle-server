@@ -54,7 +54,8 @@ public class UserAuthenticatedController implements UserAuthenticatedApi {
             @RequestParam( TYPE ) ChronicleDeleteType chronicleDeleteType
     ) {
         String token = getTokenFromContext();
-        dataDeletionManager.deleteParticipantAndAllNeighbors( null, studyId, participantId, chronicleDeleteType, token );
+        dataDeletionManager
+                .deleteParticipantAndAllNeighbors( null, studyId, participantId, chronicleDeleteType, token );
         return null;
     }
 
@@ -82,6 +83,7 @@ public class UserAuthenticatedController implements UserAuthenticatedApi {
 
         String token = getTokenFromContext();
         return dataDownloadManager.getAllPreprocessedParticipantData( null, studyId, participantEntityKeyId, token );
+
     }
 
     @Timed
