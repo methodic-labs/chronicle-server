@@ -30,8 +30,8 @@ import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.fasterxml.jackson.datatype.joda.JodaModule;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.fasterxml.jackson.module.afterburner.AfterburnerModule;
-import com.google.common.collect.Sets;
-import com.openlattice.chronicle.constants.CustomMediaType;
+import com.openlattice.chronicle.constants.*;
+import com.openlattice.chronicle.services.download.ParticipantDataIterable;
 import org.springframework.http.HttpInputMessage;
 import org.springframework.http.HttpOutputMessage;
 import org.springframework.http.converter.AbstractGenericHttpMessageConverter;
@@ -40,11 +40,11 @@ import org.springframework.http.converter.HttpMessageNotWritableException;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
-import java.util.Map;
+import java.util.List;
 import java.util.Set;
 
 public class IterableCsvHttpMessageConverter
-        extends AbstractGenericHttpMessageConverter<Iterable<Map<String, Set<?>>>> {
+        extends AbstractGenericHttpMessageConverter<ParticipantDataIterable> {
 
     private final CsvMapper csvMapper = new CsvMapper();
 
@@ -60,13 +60,13 @@ public class IterableCsvHttpMessageConverter
     }
 
     @Override
-    public Iterable<Map<String, Set<?>>> read( Type type, Class<?> contextClass, HttpInputMessage inputMessage )
+    public ParticipantDataIterable read( Type type, Class<?> contextClass, HttpInputMessage inputMessage )
             throws HttpMessageNotReadableException {
         throw new UnsupportedOperationException( "CSV is not a supported input format" );
     }
 
     @Override
-    protected void writeInternal( Iterable<Map<String, Set<?>>> t, Type type, HttpOutputMessage outputMessage )
+    protected void writeInternal( ParticipantDataIterable t, Type type, HttpOutputMessage outputMessage )
             throws IOException, HttpMessageNotWritableException {
         csvMapper.writer( getSchema( t ) ).writeValues( outputMessage.getBody() ).writeAll( t );
     }
@@ -77,21 +77,18 @@ public class IterableCsvHttpMessageConverter
     }
 
     @Override
-    protected Iterable<Map<String, Set<?>>> readInternal(
-            Class<? extends Iterable<Map<String, Set<?>>>> clazz,
+    protected ParticipantDataIterable readInternal(
+            Class<? extends ParticipantDataIterable> clazz,
             HttpInputMessage inputMessage ) throws HttpMessageNotReadableException {
         throw new UnsupportedOperationException( "CSV is not a supported input format" );
     }
 
-    private CsvSchema getSchema( Iterable<Map<String, Set<?>>> maps ) {
-        Set<String> columns = Sets.newLinkedHashSet();
-        maps.forEach( map -> columns.addAll( map.keySet() ) );
+    private CsvSchema getSchema( ParticipantDataIterable iterable ) {
         Builder schemaBuilder = CsvSchema.builder();
-        columns.forEach( column -> schemaBuilder.addColumn( column, ColumnType.ARRAY ) );
-        if ( columns.size() > 0 ) {
-            schemaBuilder.setUseHeader( true );
-        }
-        return schemaBuilder.build();
-    }
+        List<String> columns = iterable.getColumnTitles();
 
+        columns.forEach( col -> schemaBuilder.addColumn( col, ColumnType.ARRAY ) );
+
+        return schemaBuilder.setUseHeader( true ).build();
+    }
 }

@@ -23,17 +23,21 @@ import java.util.function.Supplier
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
  */
-class ParticipantDataIterable(private val supplier: NeighborPageSupplier) : Iterable<Map<String, Set<Any>>> {
+class ParticipantDataIterable(private val columnTitles :List<String>, private val supplier: NeighborPageSupplier) : Iterable<Map<String, Set<Any>>> {
     override fun iterator(): Iterator<Map<String, Set<Any>>> {
         return ParticipantDataIterator(supplier)
+    }
+
+    fun getColumnTitles() :List<String> {
+        return columnTitles
     }
 
     class NeighborPageSupplier(
             val edmCacheManager: EdmCacheManager,
             private val graphApi: GraphApi,
             private val entitySetIdGraph: EntitySetIdGraph,
-            val srcPropertiesToExclude: Set<FullQualifiedName>,
-            val edgePropertiesToExclude: Set<FullQualifiedName>,
+            val srcPropertiesToInclude: Set<FullQualifiedName>,
+            val edgePropertiesToInclude: Set<FullQualifiedName>,
             val srcMetadata: Map<UUID, EntitySetPropertyMetadata>,
             val edgeMetadata: Map<UUID, EntitySetPropertyMetadata>,
             val participantEKID: UUID
@@ -46,16 +50,16 @@ class ParticipantDataIterable(private val supplier: NeighborPageSupplier) : Iter
         }
 
         init {
-            page = NeighborPage(ImmutableMap.of(), null)
+            page = NeighborPage(mapOf(), null)
         }
 
         override fun get(): NeighborPage? {
             page = try {
                 val searchFilter = EntityNeighborsFilter(
-                        ImmutableSet.of(participantEKID),
-                        Optional.of(ImmutableSet.of(entitySetIdGraph.srcEntitySetId)),
-                        Optional.of(ImmutableSet.of(entitySetIdGraph.dstEntitySetId)),
-                        Optional.of(ImmutableSet.of(entitySetIdGraph.edgeEntitySetId))
+                        setOf(participantEKID),
+                        Optional.of(setOf(entitySetIdGraph.srcEntitySetId)),
+                        Optional.of(setOf(entitySetIdGraph.dstEntitySetId)),
+                        Optional.of(setOf(entitySetIdGraph.edgeEntitySetId))
                 )
                 graphApi.getPageOfNeighbors(entitySetIdGraph.dstEntitySetId,
                         PagedNeighborRequest(searchFilter, page!!.bookmark, MAX_PAGE_SIZE))
@@ -72,6 +76,7 @@ class ParticipantDataIterable(private val supplier: NeighborPageSupplier) : Iter
         private var finishedCurrentPage = false
         private var currentIndex = 0
         private var currentPage: NeighborPage? = null
+        private var isFirstPage = true
 
         companion object {
             private val logger = LoggerFactory.getLogger(ParticipantDataIterable::class.java)
@@ -99,11 +104,47 @@ class ParticipantDataIterable(private val supplier: NeighborPageSupplier) : Iter
             return result
         }
 
+        private fun getZoneIdFromEntity(entity: Map<FullQualifiedName, Set<Any>>): ZoneId {
+            return ZoneId.of(entity
+                    .getOrDefault(EdmConstants.TIMEZONE_FQN, ImmutableSet.of<Any>(OutputConstants.DEFAULT_TIMEZONE))
+                    .iterator()
+                    .next()
+                    .toString())
+
+        }
+
+        private fun getDownloadValuesForEntity(
+                entity: Map<FullQualifiedName, Set<Any>>,
+                metadata: Map<UUID, EntitySetPropertyMetadata>,
+                propertiesToInclude: Set<FullQualifiedName>,
+                prefix: String
+        ): Map<String, Set<Any>> {
+            val zoneId = getZoneIdFromEntity(entity)
+
+            return entity.entries.filter { (fqn, _) ->
+                propertiesToInclude.contains(fqn)
+            }.associate { (fqn, values) ->
+                val propertyType = neighborPageSupplier.edmCacheManager.getPropertyType(fqn)
+                val title = prefix + metadata.getValue(propertyType.id).title
+
+                if (propertyType.datatype == EdmPrimitiveTypeKind.DateTimeOffset) {
+                    title to parseDateTimeValues(values, zoneId)
+                } else {
+                    title to values
+                }
+            }
+        }
+
         @Synchronized
         override fun next(): Map<String, Set<Any>> {
 
-            val nextElement: MutableMap<String, Set<Any>> = Maps.newHashMap()
             try {
+                // if we haven't retrieved any page yet, send an empty map to the output writer
+                if (isFirstPage) {
+                    isFirstPage = false
+                    return mapOf()
+                }
+
                 // if we have finished processing all data in current page, retrieve next
                 if (currentPage == null || finishedCurrentPage) {
                     currentPage = neighborPageSupplier.get()
@@ -119,52 +160,33 @@ class ParticipantDataIterable(private val supplier: NeighborPageSupplier) : Iter
                 if (neighbors.isEmpty()) {
                     hasMorePages = false
                 }
-                val neighborEntityDetails = neighbors[neighborPageSupplier.participantEKID] ?: ImmutableList.of()
+                val neighborEntityDetails = neighbors[neighborPageSupplier.participantEKID] ?: listOf()
                 if (neighborEntityDetails.isNotEmpty()) {
 
-                    // 1: process entity data
-                    val entities = neighborEntityDetails[currentIndex]
-                            .neighborDetails.get()
-                    val zoneId = ZoneId.of(entities
-                            .getOrDefault(EdmConstants.TIMEZONE_FQN, ImmutableSet.of<Any>(OutputConstants.DEFAULT_TIMEZONE))
-                            .iterator()
-                            .next()
-                            .toString()
+                    val neighborValues = getDownloadValuesForEntity(
+                            neighborEntityDetails[currentIndex].neighborDetails.get(),
+                            neighborPageSupplier.srcMetadata,
+                            neighborPageSupplier.srcPropertiesToInclude,
+                            OutputConstants.APP_PREFIX
                     )
-                    entities.forEach { (key: FullQualifiedName?, `val`: Set<Any?>) ->
-                        if (!neighborPageSupplier.srcPropertiesToExclude.contains(key)) {
-                            val propertyType = neighborPageSupplier.edmCacheManager
-                                    .getPropertyType(key)
-                            val title = OutputConstants.APP_PREFIX + neighborPageSupplier.srcMetadata.getValue(propertyType.id)
-                                    .title
-                            if (propertyType.datatype == EdmPrimitiveTypeKind.DateTimeOffset) {
-                                nextElement[title] = parseDateTimeValues(`val`, zoneId)
-                            } else {
-                                nextElement[title] = `val`
-                            }
-                        }
-                    }
 
-                    // 2: process association data
-                    val associations = neighborEntityDetails[currentIndex]
-                            .associationDetails
-                    associations.forEach { (key: FullQualifiedName?, `val`: Set<Any?>) ->
-                        if (!neighborPageSupplier.edgePropertiesToExclude.contains(key)) {
-                            val propertyTypeId = neighborPageSupplier.edmCacheManager
-                                    .getPropertyTypeId(key)
-                            val title = OutputConstants.USER_PREFIX + neighborPageSupplier.edgeMetadata.getValue(propertyTypeId)
-                                    .title
-                            nextElement[title] = `val`
-                        }
-                    }
+                    val associationValues = getDownloadValuesForEntity(
+                            neighborEntityDetails[currentIndex].associationDetails,
+                            neighborPageSupplier.edgeMetadata,
+                            neighborPageSupplier.edgePropertiesToInclude,
+                            OutputConstants.USER_PREFIX
+                    )
+
                     currentIndex++
                     finishedCurrentPage = currentIndex == neighborEntityDetails.size
+
+                    return neighborValues + associationValues
                 }
             } catch (e: Exception) {
                 logger.error("unable to retrieve next element", e)
+                return mapOf()
             }
-
-            return nextElement.toMap()
+            return mapOf()
         }
     }
 }
