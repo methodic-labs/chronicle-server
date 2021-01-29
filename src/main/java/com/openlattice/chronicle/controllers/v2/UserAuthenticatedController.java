@@ -88,7 +88,7 @@ public class UserAuthenticatedController implements UserAuthenticatedApi {
 
         String token = getTokenFromContext();
         return dataDownloadManager
-                .getAllPreprocessedParticipantData( organizationId, studyId, participantEntityKeyId, token );
+                .getParticipantData( organizationId, studyId, participantEntityKeyId, ParticipantDataType.PREPROCESSED, token );
 
     }
 
@@ -132,7 +132,7 @@ public class UserAuthenticatedController implements UserAuthenticatedApi {
             FileType fileType ) {
 
         String token = getTokenFromContext();
-        return dataDownloadManager.getAllParticipantData( organizationId, studyId, participantEntityKeyId, token );
+        return dataDownloadManager.getParticipantData( organizationId, studyId, participantEntityKeyId, ParticipantDataType.RAW_DATA, token );
     }
 
     @Timed
@@ -172,7 +172,7 @@ public class UserAuthenticatedController implements UserAuthenticatedApi {
 
         String token = getTokenFromContext();
         return dataDownloadManager
-                .getAllParticipantAppsUsageData( organizationId, studyId, participantEntityKeyId, token );
+                .getParticipantData( organizationId, studyId, participantEntityKeyId, ParticipantDataType.USAGE_DATA, token );
 
     }
 
