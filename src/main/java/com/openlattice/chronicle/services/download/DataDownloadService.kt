@@ -103,14 +103,11 @@ class DataDownloadService(private val entitySetIdsManager: EntitySetIdsManager, 
         return when (dataType) {
             ParticipantDataType.USAGE_DATA -> linkedSetOf(TITLE_FQN, FULL_NAME_FQN)
             ParticipantDataType.RAW_DATA -> linkedSetOf(
-                    START_DATE_TIME_FQN,
-                    GENERAL_END_TIME_FQN,
-                    TIMEZONE_FQN,
                     DATE_LOGGED_FQN,
+                    TIMEZONE_FQN,
                     TITLE_FQN,
                     FULL_NAME_FQN,
-                    RECORD_TYPE_FQN,
-                    DURATION_FQN
+                    RECORD_TYPE_FQN
             )
             ParticipantDataType.PREPROCESSED -> linkedSetOf(
                     NEW_APP_FQN,
