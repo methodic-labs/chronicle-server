@@ -1,7 +1,8 @@
 package com.openlattice.chronicle.services.download
 
 import com.google.common.collect.ImmutableSet
-import com.openlattice.chronicle.constants.EdmConstants
+import com.openlattice.chronicle.constants.EdmConstants.*
+import com.openlattice.chronicle.constants.OutputConstants
 import com.openlattice.chronicle.constants.ParticipantDataType
 import com.openlattice.chronicle.data.EntitySetIdGraph
 import com.openlattice.chronicle.services.download.ParticipantDataIterable.NeighborPageSupplier
@@ -10,9 +11,9 @@ import com.openlattice.chronicle.services.entitysets.EntitySetIdsManager
 import com.openlattice.chronicle.util.ChronicleServerUtil
 import com.openlattice.client.ApiClient
 import com.openlattice.client.RetrofitFactory
+import com.openlattice.edm.set.EntitySetPropertyMetadata
 import org.apache.olingo.commons.api.edm.FullQualifiedName
 import org.slf4j.LoggerFactory
-import java.lang.Exception
 import java.util.*
 
 /**
@@ -24,10 +25,10 @@ class DataDownloadService(private val entitySetIdsManager: EntitySetIdsManager, 
     }
 
     private fun getParticipantDataHelper(
-            participantEKID: UUID?,
-            entitySetIdGraph: EntitySetIdGraph,
-            srcPropertiesToExclude: Set<FullQualifiedName>,
-            edgePropertiesToExclude: Set<FullQualifiedName>,
+            organizationId: UUID?,
+            studyId: UUID,
+            participantEKID: UUID,
+            dataType: ParticipantDataType,
             token: String?): Iterable<Map<String, Set<Any>>> {
 
         return try {
@@ -35,22 +36,32 @@ class DataDownloadService(private val entitySetIdsManager: EntitySetIdsManager, 
             val entitySetsApi = apiClient.entitySetsApi
             val graphApi = apiClient.graphApi
 
+            val entitySetIdGraph = getEntitySetIdGraph(organizationId, studyId, dataType)
+
             // get entity sets property metadata
             val srcESID = entitySetIdGraph.srcEntitySetId
             val edgeESID = entitySetIdGraph.edgeEntitySetId
-            val meta = entitySetsApi.getPropertyMetadataForEntitySets(ImmutableSet.of(srcESID, edgeESID))
-            val sourceMeta = meta[srcESID]
-            val edgeMeta = meta[edgeESID]
+            val metadata = entitySetsApi.getPropertyMetadataForEntitySets(ImmutableSet.of(srcESID, edgeESID))
+            val srcMetadata = metadata.getValue(srcESID)
+            val edgeMetadata = metadata.getValue(edgeESID)
+
+            val srcPropertiesToInclude = getSrcPropertiesToInclude(dataType)
+            val edgePropertiesToInclude = getEdgePropertiesToInclude(dataType)
+
+            val srcColumnTitles = getColumnTitles(srcPropertiesToInclude, srcMetadata, OutputConstants.APP_PREFIX)
+            val edgeColumnTitles = getColumnTitles(edgePropertiesToInclude, edgeMetadata, OutputConstants.USER_PREFIX)
+
             ParticipantDataIterable(
+                    srcColumnTitles + edgeColumnTitles,
                     NeighborPageSupplier(
                             edmCacheManager,
                             graphApi,
                             entitySetIdGraph,
-                            srcPropertiesToExclude,
-                            edgePropertiesToExclude,
-                            sourceMeta!!,
-                            edgeMeta!!,
-                            participantEKID!!
+                            srcPropertiesToInclude,
+                            edgePropertiesToInclude,
+                            srcMetadata,
+                            edgeMetadata,
+                            participantEKID
                     )
             )
         } catch (e: Exception) {
@@ -59,64 +70,69 @@ class DataDownloadService(private val entitySetIdsManager: EntitySetIdsManager, 
             // internally. additionally, it doesn't seem right for the request to return a stacktrace. instead,
             // catching all exceptions and throwing a general exception here will result in a failed request with
             // a simple error message to indicate something went wrong during the file download.
-            val errorMsg = "failed to download participant data"
-            logger.error(errorMsg, e)
-            throw RuntimeException(errorMsg)
+            logger.error("failed to download data for participant {}", participantEKID, e)
+            throw RuntimeException("failed to download participant data")
         }
     }
 
-    override fun getAllPreprocessedParticipantData(
+    override fun getParticipantData(
             organizationId: UUID?,
-            studyId: UUID?,
-            participantEntityId: UUID?,
-            token: String?): Iterable<Map<String, Set<Any>>> {
-        val entitySetIdGraph = getEntitySetIdGraph(organizationId, studyId, ParticipantDataType.PREPROCESSED)
-        val srcPropertiesToExclude: Set<FullQualifiedName> = ImmutableSet.of(EdmConstants.STRING_ID_FQN, com.openlattice.edm.EdmConstants.ID_FQN)
-        val edgePropertiesToExclude: Set<FullQualifiedName> = ImmutableSet.of(EdmConstants.STRING_ID_FQN, EdmConstants.DATE_LOGGED_FQN, com.openlattice.edm.EdmConstants.ID_FQN)
+            studyId: UUID,
+            participantEntityId: UUID,
+            dataType: ParticipantDataType,
+            token: String?
+    ): Iterable<Map<String, Set<Any>>> {
 
         return getParticipantDataHelper(
+                organizationId,
+                studyId,
                 participantEntityId,
-                entitySetIdGraph,
-                srcPropertiesToExclude,
-                edgePropertiesToExclude,
+                dataType,
                 token
         )
     }
 
-    override fun getAllParticipantData(
-            organizationId: UUID?,
-            studyId: UUID?,
-            participantEntityId: UUID?,
-            token: String?): Iterable<Map<String, Set<Any>>> {
-        val entitySetIdGraph = getEntitySetIdGraph(organizationId, studyId, ParticipantDataType.RAW_DATA)
-        val srcPropertiesToExclude: Set<FullQualifiedName> = ImmutableSet.of(EdmConstants.STRING_ID_FQN, com.openlattice.edm.EdmConstants.ID_FQN)
-        val edgePropertiesToExclude: Set<FullQualifiedName> = ImmutableSet.of(EdmConstants.STRING_ID_FQN, EdmConstants.DATE_LOGGED_FQN, com.openlattice.edm.EdmConstants.ID_FQN)
-
-        return getParticipantDataHelper(
-                participantEntityId,
-                entitySetIdGraph,
-                srcPropertiesToExclude,
-                edgePropertiesToExclude,
-                token
-        )
+    private fun getColumnTitles(propertyTypes: Set<FullQualifiedName>, metadata: Map<UUID, EntitySetPropertyMetadata>, prefix: String): List<String> {
+        return propertyTypes.map {
+            val propertyTypeId = edmCacheManager.getPropertyTypeId(it)
+            prefix + metadata.getValue(propertyTypeId).title
+        }
     }
 
-    override fun getAllParticipantAppsUsageData(
-            organizationId: UUID?,
-            studyId: UUID?,
-            participantEntityId: UUID?,
-            token: String?): Iterable<Map<String, Set<Any>>> {
-        val entitySetIdGraph = getEntitySetIdGraph(organizationId, studyId, ParticipantDataType.USAGE_DATA)
-        val srcPropertiesToExclude: Set<FullQualifiedName> = ImmutableSet.of(EdmConstants.STRING_ID_FQN, com.openlattice.edm.EdmConstants.ID_FQN)
-        val edgePropertiesToExclude: Set<FullQualifiedName> = ImmutableSet.of(EdmConstants.STRING_ID_FQN, com.openlattice.edm.EdmConstants.ID_FQN)
+    private fun getSrcPropertiesToInclude(dataType: ParticipantDataType): Set<FullQualifiedName> {
+        return when (dataType) {
+            ParticipantDataType.USAGE_DATA -> linkedSetOf(TITLE_FQN, FULL_NAME_FQN)
+            ParticipantDataType.RAW_DATA -> linkedSetOf(
+                    START_DATE_TIME_FQN,
+                    GENERAL_END_TIME_FQN,
+                    TIMEZONE_FQN,
+                    DATE_LOGGED_FQN,
+                    TITLE_FQN,
+                    FULL_NAME_FQN,
+                    RECORD_TYPE_FQN,
+                    DURATION_FQN
+            )
+            ParticipantDataType.PREPROCESSED -> linkedSetOf(
+                    NEW_APP_FQN,
+                    TIMEZONE_FQN,
+                    START_DATE_TIME_FQN,
+                    GENERAL_END_TIME_FQN,
+                    RECORD_TYPE_FQN,
+                    TITLE_FQN,
+                    FULL_NAME_FQN,
+                    NEW_PERIOD_FQN,
+                    DURATION_FQN,
+                    WARNING_FQN
+            )
+        }
+    }
 
-        return getParticipantDataHelper(
-                participantEntityId,
-                entitySetIdGraph,
-                srcPropertiesToExclude,
-                edgePropertiesToExclude,
-                token
-        )
+    private fun getEdgePropertiesToInclude(dataType: ParticipantDataType): Set<FullQualifiedName> {
+        return when (dataType) {
+            ParticipantDataType.USAGE_DATA -> linkedSetOf(USER_FQN, DATE_TIME_FQN)
+            ParticipantDataType.RAW_DATA -> linkedSetOf()
+            ParticipantDataType.PREPROCESSED -> linkedSetOf()
+        }
     }
 
     private fun getEntitySetIdGraph(
