@@ -38,7 +38,9 @@ import static com.openlattice.chronicle.constants.EdmConstants.START_DATE_TIME_F
 import static com.openlattice.chronicle.constants.EdmConstants.STRING_ID_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.TITLE_FQN;
 import static com.openlattice.chronicle.constants.OutputConstants.MINIMUM_DATE;
-import static com.openlattice.chronicle.util.ChronicleServerUtil.*;
+import static com.openlattice.chronicle.util.ChronicleServerUtil.ORG_STUDY_PARTICIPANT;
+import static com.openlattice.chronicle.util.ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE;
+import static com.openlattice.chronicle.util.ChronicleServerUtil.getParticipantEntitySetName;
 
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
@@ -271,10 +273,14 @@ public class AppDataUploadService implements AppDataUploadManager {
         // verify if there is already an entry of metadata for participant
         // error means there is no metadata yet.
         UUID metadataEntityKeyId = integrationApi.getEntityKeyIds( ImmutableSet.of( metadataEK ) ).iterator().next();
-        Map<FullQualifiedName, Set<Object>> entity = new HashMap<>();
         try {
-            entity = dataApi.getEntity( metadataESID, metadataEntityKeyId );
+            Map<FullQualifiedName, Set<Object>> entity = dataApi.getEntity( metadataESID, metadataEntityKeyId );
+            metadataEntityData.put( edmCacheManager.getPropertyTypeId( START_DATE_TIME_FQN ),
+                    entity.getOrDefault( START_DATE_TIME_FQN, Set.of( firstDateTime ) ) );
+
         } catch ( Exception exception ) {
+            metadataEntityData
+                    .put( edmCacheManager.getPropertyTypeId( START_DATE_TIME_FQN ), ImmutableSet.of( firstDateTime ) );
             logger.error(
                     "failure while getting metadata entity = {}" + ORG_STUDY_PARTICIPANT,
                     metadataEntityKeyId,
@@ -284,13 +290,15 @@ public class AppDataUploadService implements AppDataUploadManager {
                     exception
             );
         }
-        metadataEntityData.put( edmCacheManager.getPropertyTypeId( START_DATE_TIME_FQN ),
-                entity.getOrDefault( START_DATE_TIME_FQN, Set.of( firstDateTime ) ) );
-        metadataEntityData.put( edmCacheManager.getPropertyTypeId( END_DATE_TIME_FQN ), Set.of( lastDateTime ) );
-        uniqueDates.addAll( entity.getOrDefault( RECORDED_DATE_TIME_FQN, Set.of() ) );
         metadataEntityData.put( edmCacheManager.getPropertyTypeId( RECORDED_DATE_TIME_FQN ), uniqueDates );
-
         entitiesByEntityKey.put( metadataEK, metadataEntityData );
+
+        // Update endDateTime separately with PartialReplace to prevent the data array from growing linearly with the # of uploads
+        Map<UUID, Set<Object>> lastDateEntity = ImmutableMap
+                .of( edmCacheManager.getPropertyTypeId( END_DATE_TIME_FQN ), ImmutableSet.of( lastDateTime ) );
+        dataApi.updateEntitiesInEntitySet( metadataESID,
+                ImmutableMap.of( metadataEntityKeyId, lastDateEntity ),
+                UpdateType.PartialReplace );
 
         Map<UUID, Set<Object>> hasEntityData = getHasEntity( participantEKID );
         EntityKey hasEK = getHasEntityKey( hasESID, hasEntityData );
@@ -557,7 +565,7 @@ public class AppDataUploadService implements AppDataUploadManager {
         Map<UUID, Map<UUID, Map<UUID, Set<Object>>>> entitiesByESID = groupEntitiesByEntitySetId( entitiesByEntityKey,
                 entityKeyIdMap );
         entitiesByESID.forEach( ( entitySetId, entities ) -> {
-            dataApi.updateEntitiesInEntitySet( entitySetId, entities, UpdateType.PartialReplace );
+            dataApi.updateEntitiesInEntitySet( entitySetId, entities, UpdateType.Merge );
         } );
 
         Set<DataEdgeKey> dataEdgeKeys = getDataEdgeKeysFromEntityKeys( edgesByEntityKey, entityKeyIdMap );

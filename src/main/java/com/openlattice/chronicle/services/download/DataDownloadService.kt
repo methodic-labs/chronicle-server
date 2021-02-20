@@ -1,7 +1,6 @@
 package com.openlattice.chronicle.services.download
 
 import com.google.common.collect.ImmutableSet
-import com.openlattice.chronicle.constants.EdmConstants.*
 import com.openlattice.chronicle.constants.OutputConstants
 import com.openlattice.chronicle.constants.ParticipantDataType
 import com.openlattice.chronicle.data.EntitySetIdGraph
@@ -45,8 +44,8 @@ class DataDownloadService(private val entitySetIdsManager: EntitySetIdsManager, 
             val srcMetadata = metadata.getValue(srcESID)
             val edgeMetadata = metadata.getValue(edgeESID)
 
-            val srcPropertiesToInclude = getSrcPropertiesToInclude(dataType)
-            val edgePropertiesToInclude = getEdgePropertiesToInclude(dataType)
+            val srcPropertiesToInclude = DownloadTypePropertyTypeFqns.SRC.getValue(dataType)
+            val edgePropertiesToInclude = DownloadTypePropertyTypeFqns.EDGE.getValue(dataType)
 
             val srcColumnTitles = getColumnTitles(srcPropertiesToInclude, srcMetadata, OutputConstants.APP_PREFIX)
             val edgeColumnTitles = getColumnTitles(edgePropertiesToInclude, edgeMetadata, OutputConstants.USER_PREFIX)
@@ -96,39 +95,6 @@ class DataDownloadService(private val entitySetIdsManager: EntitySetIdsManager, 
         return propertyTypes.map {
             val propertyTypeId = edmCacheManager.getPropertyTypeId(it)
             prefix + metadata.getValue(propertyTypeId).title
-        }
-    }
-
-    private fun getSrcPropertiesToInclude(dataType: ParticipantDataType): Set<FullQualifiedName> {
-        return when (dataType) {
-            ParticipantDataType.USAGE_DATA -> linkedSetOf(TITLE_FQN, FULL_NAME_FQN)
-            ParticipantDataType.RAW_DATA -> linkedSetOf(
-                    DATE_LOGGED_FQN,
-                    TIMEZONE_FQN,
-                    TITLE_FQN,
-                    FULL_NAME_FQN,
-                    RECORD_TYPE_FQN
-            )
-            ParticipantDataType.PREPROCESSED -> linkedSetOf(
-                    NEW_APP_FQN,
-                    TIMEZONE_FQN,
-                    START_DATE_TIME_FQN,
-                    GENERAL_END_TIME_FQN,
-                    RECORD_TYPE_FQN,
-                    TITLE_FQN,
-                    FULL_NAME_FQN,
-                    NEW_PERIOD_FQN,
-                    DURATION_FQN,
-                    WARNING_FQN
-            )
-        }
-    }
-
-    private fun getEdgePropertiesToInclude(dataType: ParticipantDataType): Set<FullQualifiedName> {
-        return when (dataType) {
-            ParticipantDataType.USAGE_DATA -> linkedSetOf(USER_FQN, DATE_TIME_FQN)
-            ParticipantDataType.RAW_DATA -> linkedSetOf()
-            ParticipantDataType.PREPROCESSED -> linkedSetOf()
         }
     }
 
