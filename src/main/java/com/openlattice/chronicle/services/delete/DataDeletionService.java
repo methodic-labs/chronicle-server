@@ -3,7 +3,12 @@ package com.openlattice.chronicle.services.delete;
 import com.dataloom.streams.StreamUtil;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
-import com.google.common.collect.*;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Multimaps;
+import com.google.common.collect.SetMultimap;
+import com.google.common.collect.Sets;
 import com.openlattice.chronicle.data.ChronicleCoreAppConfig;
 import com.openlattice.chronicle.data.ChronicleDataCollectionAppConfig;
 import com.openlattice.chronicle.data.ChronicleDeleteType;
@@ -26,7 +31,11 @@ import org.apache.olingo.commons.api.edm.FullQualifiedName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -109,7 +118,7 @@ public class DataDeletionService implements DataDeletionManager {
         // outside app configs context, only chronicle super user can delete neighbors
         neighborEntityKeyIds
                 .forEach( ( entitySetId, entityKeyId ) -> dataApi
-                        .deleteEntities( entitySetId, entityKeyId, deleteType )
+                        .deleteEntities( entitySetId, entityKeyId, deleteType, true )
                 );
     }
 
@@ -204,7 +213,7 @@ public class DataDeletionService implements DataDeletionManager {
                     deleteType );
 
             // delete participants
-            int deleted = dataApi.deleteEntities( participantsESID, participantsToDelete, deleteType );
+            int deleted = dataApi.deleteEntities( participantsESID, participantsToDelete, deleteType, true );
             logger.info( "Deleted {} participants from study {} in org {}.", deleted, studyId, organizationId );
 
             // delete study if no participantId is specified
@@ -214,7 +223,8 @@ public class DataDeletionService implements DataDeletionManager {
 
             dataApi.deleteEntities( studiesESID,
                     ImmutableSet.of( studyEntityKeyId ),
-                    deleteType );
+                    deleteType,
+                    true );
             logger.info( "Deleted study {} from org {}", studyId, organizationId );
 
         } catch ( Exception e ) {
@@ -283,7 +293,7 @@ public class DataDeletionService implements DataDeletionManager {
                     deleteType );
 
             // delete participants
-            int deleted = userDataApi.deleteEntities( participantsESID, participantsToDelete, deleteType );
+            int deleted = userDataApi.deleteEntities( participantsESID, participantsToDelete, deleteType, true );
             logger.info( "Deleted {} participants from study {}.", deleted, studyId );
 
             // if no participant is specified, delete study
@@ -293,7 +303,8 @@ public class DataDeletionService implements DataDeletionManager {
 
             userDataApi.deleteEntities( studiesESID,
                     ImmutableSet.of( studyEntityKeyId ),
-                    deleteType );
+                    deleteType,
+                    true );
             logger.info( "Deleted study {} from global studies dataset", studyId );
 
             userEntitySetsApi.deleteEntitySet( participantsESID );
