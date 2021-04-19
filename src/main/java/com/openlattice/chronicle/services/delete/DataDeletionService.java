@@ -118,7 +118,7 @@ public class DataDeletionService implements DataDeletionManager {
         // outside app configs context, only chronicle super user can delete neighbors
         neighborEntityKeyIds
                 .forEach( ( entitySetId, entityKeyId ) -> dataApi
-                        .deleteEntities( entitySetId, entityKeyId, deleteType, true )
+                        .deleteEntities( entitySetId, entityKeyId, deleteType, false )
                 );
     }
 
@@ -213,7 +213,7 @@ public class DataDeletionService implements DataDeletionManager {
                     deleteType );
 
             // delete participants
-            int deleted = dataApi.deleteEntities( participantsESID, participantsToDelete, deleteType, true );
+            int deleted = dataApi.deleteEntities( participantsESID, participantsToDelete, deleteType, false );
             logger.info( "Deleted {} participants from study {} in org {}.", deleted, studyId, organizationId );
 
             // delete study if no participantId is specified
@@ -224,7 +224,7 @@ public class DataDeletionService implements DataDeletionManager {
             dataApi.deleteEntities( studiesESID,
                     ImmutableSet.of( studyEntityKeyId ),
                     deleteType,
-                    true );
+                    false );
             logger.info( "Deleted study {} from org {}", studyId, organizationId );
 
         } catch ( Exception e ) {
@@ -293,7 +293,7 @@ public class DataDeletionService implements DataDeletionManager {
                     deleteType );
 
             // delete participants
-            int deleted = userDataApi.deleteEntities( participantsESID, participantsToDelete, deleteType, true );
+            int deleted = userDataApi.deleteEntities( participantsESID, participantsToDelete, deleteType, false );
             logger.info( "Deleted {} participants from study {}.", deleted, studyId );
 
             // if no participant is specified, delete study
@@ -304,7 +304,7 @@ public class DataDeletionService implements DataDeletionManager {
             userDataApi.deleteEntities( studiesESID,
                     ImmutableSet.of( studyEntityKeyId ),
                     deleteType,
-                    true );
+                    false );
             logger.info( "Deleted study {} from global studies dataset", studyId );
 
             userEntitySetsApi.deleteEntitySet( participantsESID );
