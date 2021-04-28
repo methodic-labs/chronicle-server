@@ -1,14 +1,8 @@
 package com.openlattice.chronicle.services.delete;
 
-import com.dataloom.streams.StreamUtil;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Multimaps;
-import com.google.common.collect.SetMultimap;
-import com.google.common.collect.Sets;
+import com.google.common.collect.*;
 import com.openlattice.chronicle.data.ChronicleCoreAppConfig;
 import com.openlattice.chronicle.data.ChronicleDataCollectionAppConfig;
 import com.openlattice.chronicle.data.ChronicleDeleteType;
@@ -21,28 +15,17 @@ import com.openlattice.client.ApiClient;
 import com.openlattice.client.RetrofitFactory;
 import com.openlattice.data.DataApi;
 import com.openlattice.data.DeleteType;
-import com.openlattice.data.requests.EntitySetSelection;
-import com.openlattice.data.requests.FileType;
 import com.openlattice.data.requests.NeighborEntityIds;
 import com.openlattice.entitysets.EntitySetsApi;
 import com.openlattice.search.SearchApi;
 import com.openlattice.search.requests.EntityNeighborsFilter;
-import org.apache.olingo.commons.api.edm.FullQualifiedName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
-import static com.openlattice.chronicle.constants.EdmConstants.PERSON_ID_FQN;
-import static com.openlattice.chronicle.util.ChronicleServerUtil.getFirstUUIDOrNull;
 import static com.openlattice.chronicle.util.ChronicleServerUtil.getParticipantEntitySetName;
-import static com.openlattice.edm.EdmConstants.ID_FQN;
 
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
@@ -83,39 +66,27 @@ public class DataDeletionService implements DataDeletionManager {
 
         Map<UUID, Set<UUID>> neighborEntityKeyIds = Maps.newHashMap();
 
-        participantsToRemove.forEach(
-                participantEntityKeyId -> {
-                    // Get participant neighbors
-                    Map<UUID, Map<UUID, SetMultimap<UUID, NeighborEntityIds>>> participantNeighbors = searchApi
-                            .executeFilteredEntityNeighborIdsSearch(
-                                    participantsESID,
-                                    new EntityNeighborsFilter(
-                                            ImmutableSet.of( participantEntityKeyId ),
-                                            Optional.of( srcEntitySetIds ),
-                                            Optional.of( dstEntitySetIds ),
-                                            Optional.empty()
-                                    )
-                            );
+        Map<UUID, Map<UUID, SetMultimap<UUID, NeighborEntityIds>>> participantNeighbors = searchApi
+                .executeFilteredEntityNeighborIdsSearch(
+                        participantsESID,
+                        new EntityNeighborsFilter(
+                                participantsToRemove,
+                                Optional.of( srcEntitySetIds ),
+                                Optional.of( dstEntitySetIds ),
+                                Optional.empty()
+                        )
+                );
 
-                    if ( participantNeighbors.size() == 0 ) {
-                        logger.info( "Attempt to remove participant without data." );
-                    }
-
-                    // fill Map<entitySetId, Set<entityKeyId>>
-                    participantNeighbors
-                            .getOrDefault( participantEntityKeyId, ImmutableMap.of() )
-                            .forEach( ( edgeEntitySetId, edgeNeighbor ) -> {
-                                edgeNeighbor.forEach( ( neighborEntitySetId, neighborEntityIds ) -> {
-                                    neighborEntityKeyIds
-                                            .computeIfAbsent( neighborEntitySetId, esid -> Sets.newHashSet() )
-                                            .add( neighborEntityIds.getNeighborEntityKeyId() );
-                                } );
-                            } );
-                }
-        );
+        participantNeighbors.values().forEach( entities -> {
+            entities.values().forEach( neighborEntity-> {
+                neighborEntity.forEach((neighborEntitySetId, neighborEntityIds) -> {
+                    neighborEntityKeyIds.computeIfAbsent( neighborEntitySetId, esid -> Sets.newHashSet() )
+                            .add( neighborEntityIds.getNeighborEntityKeyId() );
+                });
+            });
+        });
 
         // delete all neighbors
-        // outside app configs context, only chronicle super user can delete neighbors
         neighborEntityKeyIds
                 .forEach( ( entitySetId, entityKeyId ) -> dataApi
                         .deleteEntities( entitySetId, entityKeyId, deleteType, false )
@@ -143,17 +114,7 @@ public class DataDeletionService implements DataDeletionManager {
         }
 
         // no participant was specified, so remove all participants from entity set
-        Iterable<SetMultimap<FullQualifiedName, Object>> entitySetData = dataApi.loadSelectedEntitySetData(
-                participantESID,
-                new EntitySetSelection( Optional
-                        .of( ImmutableSet.of( edmCacheManager.getPropertyTypeId( PERSON_ID_FQN ) ) ) ),
-                FileType.json
-        );
-
-        return StreamUtil.stream( entitySetData )
-                .map( entity -> getFirstUUIDOrNull( Multimaps.asMap( entity ), ID_FQN ) )
-                .filter( Objects::nonNull )
-                .collect( Collectors.toSet() );
+        return enrollmentManager.getStudyParticipants( organizationId, studyId );
     }
 
     private void deleteStudyData(
@@ -213,8 +174,8 @@ public class DataDeletionService implements DataDeletionManager {
                     deleteType );
 
             // delete participants
-            int deleted = dataApi.deleteEntities( participantsESID, participantsToDelete, deleteType, false );
-            logger.info( "Deleted {} participants from study {} in org {}.", deleted, studyId, organizationId );
+            dataApi.deleteEntities( participantsESID, participantsToDelete, deleteType, false );
+            logger.info( "Deleted {} participants from study {} in org {}.", participantsToDelete.size(), studyId, organizationId );
 
             // delete study if no participantId is specified
             if ( participantId.isPresent() ) {
@@ -293,8 +254,8 @@ public class DataDeletionService implements DataDeletionManager {
                     deleteType );
 
             // delete participants
-            int deleted = userDataApi.deleteEntities( participantsESID, participantsToDelete, deleteType, false );
-            logger.info( "Deleted {} participants from study {}.", deleted, studyId );
+            userDataApi.deleteEntities( participantsESID, participantsToDelete, deleteType, false );
+            logger.info( "Deleted {} participants from study {}.", participantsToDelete.size(), studyId );
 
             // if no participant is specified, delete study
             if ( participantId.isPresent() ) {
