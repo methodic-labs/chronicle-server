@@ -255,7 +255,7 @@ public class DataDeletionService implements DataDeletionManager {
 
             // delete participants
             userDataApi.deleteEntities( participantsESID, participantsToDelete, deleteType, false );
-            logger.info( "Deleted {} participants from study {}.", participantsToDelete.size(), studyId );
+            logger.info( "Deleting {} participants from study {}.", participantsToDelete.size(), studyId );
 
             // if no participant is specified, delete study
             if ( participantId.isPresent() ) {
