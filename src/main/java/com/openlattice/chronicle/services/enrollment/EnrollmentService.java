@@ -31,7 +31,10 @@ import static com.openlattice.chronicle.constants.EdmConstants.OL_ID_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.STATUS_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.STRING_ID_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.VERSION_FQN;
-import static com.openlattice.chronicle.util.ChronicleServerUtil.*;
+import static com.openlattice.chronicle.util.ChronicleServerUtil.ORG_STUDY_PARTICIPANT;
+import static com.openlattice.chronicle.util.ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE;
+import static com.openlattice.chronicle.util.ChronicleServerUtil.getFirstValueOrNull;
+import static com.openlattice.chronicle.util.ChronicleServerUtil.getParticipantEntitySetName;
 
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
@@ -409,6 +412,17 @@ public class EnrollmentService implements EnrollmentManager {
 
         return scheduledTasksManager.getStudyParticipants().getOrDefault( studyId, Map.of() )
                 .getOrDefault( participantId, null );
+    }
+
+    @Override
+    public Set<UUID> getStudyParticipants( UUID organizationId, UUID studyId) {
+        if (organizationId != null) {
+            Map<UUID, Map<String, UUID>> participants = scheduledTasksManager.getStudyParticipantsByOrg().getOrDefault( organizationId, Map.of() );
+
+            return Sets.newHashSet( participants.getOrDefault( studyId, Map.of() ).values() );
+        }
+
+        return Sets.newHashSet(scheduledTasksManager.getStudyParticipants().getOrDefault( studyId, Map.of() ).values());
     }
 
     @Override
