@@ -39,4 +39,6 @@ public interface EnrollmentManager {
     UUID getParticipantEntityKeyId( UUID organizationId, UUID studyId, String participantId );
 
     UUID getStudyEntityKeyId( UUID organizationId, UUID studyId );
+
+    Set<UUID> getStudyParticipants( UUID organizationId, UUID studyId );
 }
