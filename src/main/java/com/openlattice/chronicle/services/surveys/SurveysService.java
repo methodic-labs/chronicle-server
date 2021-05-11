@@ -604,8 +604,8 @@ public class SurveysService implements SurveysManager {
         Map<UUID, Set<Object>> entity = Maps.newHashMap();
 
         entity.put( edmCacheManager.getPropertyTypeId( DATE_TIME_FQN ), ImmutableSet.of( dateTime ) );
-        entity.put( edmCacheManager.getPropertyTypeId( STRING_ID_FQN ), ImmutableSet.of( studyId ) );
-        entity.put( edmCacheManager.getPropertyTypeId( OL_ID_FQN ), ImmutableSet.of( participantId ) );
+        entity.put( edmCacheManager.getPropertyTypeId( OL_ID_FQN ), ImmutableSet.of( studyId ) );
+        entity.put( edmCacheManager.getPropertyTypeId( STRING_ID_FQN ), ImmutableSet.of( participantId ) );
 
         return entity;
     }
@@ -820,7 +820,6 @@ public class SurveysService implements SurveysManager {
         Map<UUID, Set<Object>> submissionEntityData = getSubmissionEntity( studyId, participantId, dateTime );
         EntityKey submissionEK = getSubmissionEntityKey( submissionESID, submissionEntityData );
         submissionEntityData.remove( edmCacheManager.getPropertyTypeId( STRING_ID_FQN ) ); // shouldn't be stored
-        submissionEntityData.remove( edmCacheManager.getPropertyTypeId( OL_ID_FQN ) ); // shouldn't be stored
         entitiesByEK.put( submissionEK, submissionEntityData );
 
         Map<UUID, Set<Object>> respondsWithSubmissionEntity = getRespondsWithSubmissionEntity( studyId,
