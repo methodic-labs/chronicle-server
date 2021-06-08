@@ -1,13 +1,13 @@
 package com.openlattice.chronicle.services.delete;
 
-import com.dataloom.streams.StreamUtil;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 import com.google.common.collect.SetMultimap;
 import com.google.common.collect.Sets;
-import com.openlattice.authorization.*;
+import com.openlattice.authorization.AclKey;
+import com.openlattice.authorization.PermissionsApi;
 import com.openlattice.chronicle.data.ChronicleCoreAppConfig;
 import com.openlattice.chronicle.data.ChronicleDataCollectionAppConfig;
 import com.openlattice.chronicle.data.ChronicleDeleteType;
@@ -22,7 +22,6 @@ import com.openlattice.controllers.exceptions.ForbiddenException;
 import com.openlattice.data.DataApi;
 import com.openlattice.data.DeleteType;
 import com.openlattice.data.requests.NeighborEntityIds;
-import com.openlattice.directory.PrincipalApi;
 import com.openlattice.entitysets.EntitySetsApi;
 import com.openlattice.search.SearchApi;
 import com.openlattice.search.requests.EntityNeighborsFilter;
@@ -31,7 +30,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 import static com.openlattice.chronicle.util.ChronicleServerUtil.getParticipantEntitySetName;
 
@@ -206,7 +204,6 @@ public class DataDeletionService implements DataDeletionManager {
         }
     }
 
-
     private void ensureOwnerAccess( UUID studyId, PermissionsApi permissionsApi ) {
         ChronicleCoreAppConfig coreAppConfig = entitySetIdsManager
                 .getLegacyChronicleAppConfig( getParticipantEntitySetName( studyId ) );
@@ -216,7 +213,7 @@ public class DataDeletionService implements DataDeletionManager {
 
         try {
             permissionsApi.getAcl( aclKey );
-        } catch (Exception e) {
+        } catch ( Exception e ) {
             logger.error( "Authorization for deleting data from participant entity set {} failed", participantsESID );
             throw new ForbiddenException( "insufficient permission to delete data from participant entity set" );
         }
