@@ -2,8 +2,10 @@ package com.openlattice.chronicle.data;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.common.collect.ImmutableSet;
 
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -74,5 +76,18 @@ public class ChronicleCoreAppConfig {
     @JsonProperty( SerializationConstants.ENTITY_SET_ID )
     public UUID getStudiesEntitySetId() {
         return studiesEntitySetId;
+    }
+
+    @JsonProperty (SerializationConstants.ENTITY_SET_IDS)
+    public Set<UUID> getAllEntitySetIds() {
+        return ImmutableSet.of(
+                hasEntitySetId,
+                participantEntitySetId,
+                participatedInEntitySetId,
+                metadataEntitySetId,
+                studiesEntitySetId,
+                notificationEntitySetId,
+                partOfEntitySetId
+        );
     }
 }

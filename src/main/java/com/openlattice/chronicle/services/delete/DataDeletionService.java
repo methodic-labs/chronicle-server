@@ -2,10 +2,7 @@ package com.openlattice.chronicle.services.delete;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Maps;
-import com.google.common.collect.SetMultimap;
-import com.google.common.collect.Sets;
+import com.google.common.collect.*;
 import com.openlattice.authorization.AclKey;
 import com.openlattice.authorization.PermissionsApi;
 import com.openlattice.chronicle.data.ChronicleCoreAppConfig;
@@ -156,6 +153,12 @@ public class DataDeletionService implements DataDeletionManager {
             UUID devicesESID = dataCollectionAppConfig.getDeviceEntitySetId();
             UUID answersESID = surveysAppConfig.getAnswerEntitySetId();
 
+            // user needs OWNER on all entity sets in order to delete
+            Set<UUID> allEntitySetIds = Sets.newHashSet( Iterables.concat( coreAppConfig.getAllEntitySetIds(),
+                    dataCollectionAppConfig.getAllEntitySetIds(),
+                    surveysAppConfig.getAllEntitySetIds() ) );
+            ensureUserCanDeleteData( allEntitySetIds, userApiClient.getPermissionsApi() );
+
             Set<UUID> participantsToDelete = getParticipantsToDelete( dataApi,
                     organizationId,
                     studyId,
@@ -204,18 +207,16 @@ public class DataDeletionService implements DataDeletionManager {
         }
     }
 
-    private void ensureOwnerAccess( UUID studyId, PermissionsApi permissionsApi ) {
-        ChronicleCoreAppConfig coreAppConfig = entitySetIdsManager
-                .getLegacyChronicleAppConfig( getParticipantEntitySetName( studyId ) );
-        UUID participantsESID = coreAppConfig.getParticipantEntitySetId();
+    private void ensureUserCanDeleteData( Set<UUID> entitySetIds, PermissionsApi permissionsApi ) {
 
-        AclKey aclKey = new AclKey( participantsESID );
-
-        try {
-            permissionsApi.getAcl( aclKey );
-        } catch ( Exception e ) {
-            logger.error( "Authorization for deleting data from participant entity set {} failed", participantsESID );
-            throw new ForbiddenException( "insufficient permission to delete data from participant entity set" );
+        for (UUID entitySetId : entitySetIds) {
+            AclKey aclKey = new AclKey( entitySetId );
+            try {
+                permissionsApi.getAcl( aclKey );
+            } catch ( Exception e ) {
+                logger.error( "Authorization for deleting participant data from {} failed", entitySetId );
+                throw new ForbiddenException( "insufficient permission to delete participant data" );
+            }
         }
     }
 
@@ -232,10 +233,6 @@ public class DataDeletionService implements DataDeletionManager {
             SearchApi userSearchApi = userApiClient.getSearchApi();
             DataApi userDataApi = userApiClient.getDataApi();
             EntitySetsApi userEntitySetsApi = userApiClient.getEntitySetsApi();
-            PermissionsApi permissionsApi = userApiClient.getPermissionsApi();
-
-            // ensure that user has OWNER on participants entity set
-            ensureOwnerAccess( studyId, permissionsApi );
 
             // load api for actions authenticated by chronicle super user.
             // for legacy studies, only the chronicle super user has permissions to delete from the participant neighbor entity sets
@@ -260,6 +257,9 @@ public class DataDeletionService implements DataDeletionManager {
             UUID preprocessedDataESID = dataCollectionAppConfig.getPreprocessedDataEntitySetId();
             UUID devicesESID = dataCollectionAppConfig.getDeviceEntitySetId();
             UUID answersESID = surveysAppConfig.getAnswerEntitySetId();
+
+            // ensure that user has OWNER on participants entity set
+            ensureUserCanDeleteData( ImmutableSet.of(participantsESID), userApiClient.getPermissionsApi() );
 
             Set<UUID> participantsToDelete = getParticipantsToDelete(
                     userDataApi,
