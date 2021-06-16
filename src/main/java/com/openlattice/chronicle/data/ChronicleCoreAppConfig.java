@@ -78,7 +78,7 @@ public class ChronicleCoreAppConfig {
         return studiesEntitySetId;
     }
 
-    @JsonProperty (SerializationConstants.ENTITY_SET_IDS)
+    @JsonProperty( SerializationConstants.ENTITY_SET_IDS )
     public Set<UUID> getAllEntitySetIds() {
         return ImmutableSet.of(
                 hasEntitySetId,

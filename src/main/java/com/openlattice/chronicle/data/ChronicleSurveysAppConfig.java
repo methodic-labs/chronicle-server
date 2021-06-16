@@ -9,7 +9,7 @@ import java.util.UUID;
 
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
- * <p>
+ *
  * Represent the surveys component of chronicle and its associated entity set ids
  */
 public class ChronicleSurveysAppConfig {

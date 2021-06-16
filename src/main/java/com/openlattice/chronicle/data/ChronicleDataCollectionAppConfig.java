@@ -9,7 +9,7 @@ import java.util.UUID;
 
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
- * <p>
+ *
  * POJO for data collection component of chronicle and its associated entity set ids
  */
 public class ChronicleDataCollectionAppConfig {

@@ -27,6 +27,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import static com.openlattice.chronicle.util.ChronicleServerUtil.getParticipantEntitySetName;
 
@@ -208,16 +209,14 @@ public class DataDeletionService implements DataDeletionManager {
     }
 
     private void ensureUserCanDeleteData( Set<UUID> entitySetIds, PermissionsApi permissionsApi ) {
-
-        for (UUID entitySetId : entitySetIds) {
-            AclKey aclKey = new AclKey( entitySetId );
             try {
-                permissionsApi.getAcl( aclKey );
+                Set<AclKey> aclKeys = entitySetIds.stream().map( AclKey::new ).collect(
+                        Collectors.toSet());
+                permissionsApi.getAcls( aclKeys );
             } catch ( Exception e ) {
-                logger.error( "Authorization for deleting participant data from {} failed", entitySetId );
+                logger.error( "Authorization for deleting participant data failed" );
                 throw new ForbiddenException( "insufficient permission to delete participant data" );
             }
-        }
     }
 
     private void legacyDeleteStudyData(
