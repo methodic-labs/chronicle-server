@@ -2,7 +2,9 @@ package com.openlattice.chronicle.data;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.common.collect.ImmutableSet;
 
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -22,14 +24,14 @@ public class ChronicleSurveysAppConfig {
 
     @JsonCreator
     public ChronicleSurveysAppConfig(
-            @JsonProperty(SerializationConstants.ENTITY_SET_ID)UUID surveyEntitySetId,
-            @JsonProperty (SerializationConstants.ENTITY_SET_ID)UUID timeRangeEntitySetId,
-            @JsonProperty (SerializationConstants.ENTITY_SET_ID)UUID submissionEntitySetId,
-            @JsonProperty (SerializationConstants.ENTITY_SET_ID)UUID registeredForEntitySetId,
-            @JsonProperty (SerializationConstants.ENTITY_SET_ID)UUID respondsWithEntitySetId,
-            @JsonProperty (SerializationConstants.ENTITY_SET_ID)UUID addressesEntitySetId,
-            @JsonProperty (SerializationConstants.ENTITY_SET_ID)UUID answerEntitySetId,
-            @JsonProperty (SerializationConstants.ENTITY_SET_ID)UUID questionEntitySetId
+            @JsonProperty( SerializationConstants.ENTITY_SET_ID ) UUID surveyEntitySetId,
+            @JsonProperty( SerializationConstants.ENTITY_SET_ID ) UUID timeRangeEntitySetId,
+            @JsonProperty( SerializationConstants.ENTITY_SET_ID ) UUID submissionEntitySetId,
+            @JsonProperty( SerializationConstants.ENTITY_SET_ID ) UUID registeredForEntitySetId,
+            @JsonProperty( SerializationConstants.ENTITY_SET_ID ) UUID respondsWithEntitySetId,
+            @JsonProperty( SerializationConstants.ENTITY_SET_ID ) UUID addressesEntitySetId,
+            @JsonProperty( SerializationConstants.ENTITY_SET_ID ) UUID answerEntitySetId,
+            @JsonProperty( SerializationConstants.ENTITY_SET_ID ) UUID questionEntitySetId
     ) {
         this.surveyEntitySetId = surveyEntitySetId;
         this.timeRangeEntitySetId = timeRangeEntitySetId;
@@ -41,43 +43,57 @@ public class ChronicleSurveysAppConfig {
         this.answerEntitySetId = answerEntitySetId;
     }
 
-    @JsonProperty (SerializationConstants.ENTITY_SET_ID)
+    @JsonProperty( SerializationConstants.ENTITY_SET_ID )
     public UUID getSurveyEntitySetId() {
         return surveyEntitySetId;
     }
 
-    @JsonProperty (SerializationConstants.ENTITY_SET_ID)
+    @JsonProperty( SerializationConstants.ENTITY_SET_ID )
     public UUID getTimeRangeEntitySetId() {
         return timeRangeEntitySetId;
     }
 
-    @JsonProperty (SerializationConstants.ENTITY_SET_ID)
+    @JsonProperty( SerializationConstants.ENTITY_SET_ID )
     public UUID getSubmissionEntitySetId() {
         return submissionEntitySetId;
     }
 
-    @JsonProperty (SerializationConstants.ENTITY_SET_ID)
+    @JsonProperty( SerializationConstants.ENTITY_SET_ID )
     public UUID getRegisteredForEntitySetId() {
         return registeredForEntitySetId;
     }
 
-    @JsonProperty (SerializationConstants.ENTITY_SET_ID)
+    @JsonProperty( SerializationConstants.ENTITY_SET_ID )
     public UUID getRespondsWithEntitySetId() {
         return respondsWithEntitySetId;
     }
 
-    @JsonProperty (SerializationConstants.ENTITY_SET_ID)
+    @JsonProperty( SerializationConstants.ENTITY_SET_ID )
     public UUID getAddressesEntitySetId() {
         return addressesEntitySetId;
     }
 
-    @JsonProperty (SerializationConstants.ENTITY_SET_ID)
+    @JsonProperty( SerializationConstants.ENTITY_SET_ID )
     public UUID getQuestionEntitySetId() {
         return questionEntitySetId;
     }
 
-    @JsonProperty (SerializationConstants.ENTITY_SET_ID)
+    @JsonProperty( SerializationConstants.ENTITY_SET_ID )
     public UUID getAnswerEntitySetId() {
         return answerEntitySetId;
+    }
+
+    @JsonProperty( SerializationConstants.ENTITY_SET_IDS )
+    public Set<UUID> getAllEntitySetIds() {
+        return ImmutableSet.of(
+                surveyEntitySetId,
+                timeRangeEntitySetId,
+                submissionEntitySetId,
+                registeredForEntitySetId,
+                respondsWithEntitySetId,
+                addressesEntitySetId,
+                questionEntitySetId,
+                answerEntitySetId
+        );
     }
 }
