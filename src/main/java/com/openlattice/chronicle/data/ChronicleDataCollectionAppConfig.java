@@ -2,14 +2,16 @@ package com.openlattice.chronicle.data;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
 
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
- *
+ * <p>
  * POJO for data collection component of chronicle and its associated entity set ids
  */
 public class ChronicleDataCollectionAppConfig {
@@ -77,7 +79,7 @@ public class ChronicleDataCollectionAppConfig {
 
     @JsonProperty( SerializationConstants.ENTITY_SET_IDS )
     public Set<UUID> getAllEntitySetIds() {
-        return ImmutableSet.of(
+        return Sets.newHashSet(
                 recordedByEntitySetId,
                 deviceEntitySetId,
                 usedByEntitySetId,
@@ -85,6 +87,6 @@ public class ChronicleDataCollectionAppConfig {
                 preprocessedDataEntitySetId,
                 appDataEntitySetId,
                 appsDictionaryEntitySetId
-        );
+        ).stream().filter( Objects::nonNull ).collect( Collectors.toSet() );
     }
 }
