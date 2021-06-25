@@ -99,10 +99,8 @@ public class DataDeletionService implements DataDeletionManager {
 
     // get a set of all participants to remove:
     private Set<UUID> getParticipantsToDelete(
-            DataApi dataApi,
             UUID organizationId,
             UUID studyId,
-            UUID participantESID,
             Optional<String> participantId ) throws Exception {
 
         // specific participant
@@ -160,11 +158,7 @@ public class DataDeletionService implements DataDeletionManager {
                     surveysAppConfig.getAllEntitySetIds() ) );
             ensureUserCanDeleteData( allEntitySetIds, userApiClient.getPermissionsApi() );
 
-            Set<UUID> participantsToDelete = getParticipantsToDelete( dataApi,
-                    organizationId,
-                    studyId,
-                    participantsESID,
-                    participantId );
+            Set<UUID> participantsToDelete = getParticipantsToDelete( organizationId, studyId, participantId );
 
             /*
              * Since the data collection and surveys chronicle components are optional, entity set ids will be null if the
@@ -260,12 +254,7 @@ public class DataDeletionService implements DataDeletionManager {
             // ensure that user has OWNER on participants entity set
             ensureUserCanDeleteData( ImmutableSet.of(participantsESID), userApiClient.getPermissionsApi() );
 
-            Set<UUID> participantsToDelete = getParticipantsToDelete(
-                    userDataApi,
-                    null,
-                    studyId,
-                    participantsESID,
-                    participantId );
+            Set<UUID> participantsToDelete = getParticipantsToDelete( null, studyId, participantId );
 
             // delete participant neighbors
             Set<UUID> srcEntitySetIds = Sets.newHashSet( devicesESID, appDataESID, preprocessedDataESID );
