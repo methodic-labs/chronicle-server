@@ -151,7 +151,7 @@ dependencies {
         logger.quiet(project.name + " using jar dependencies.")
         implementation "com.openlattice:rhizome:${rhizome_version}"
         implementation "com.openlattice:api:${api_version}"
-        compile("com.openlattice:chronicle-api:${chronicle_api_version}") {
+        implementation("com.openlattice:chronicle-api:${chronicle_api_version}") {
             exclude group: 'com.google.guava', module: 'guava'
         }
     }
