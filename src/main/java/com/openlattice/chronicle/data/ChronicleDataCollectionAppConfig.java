@@ -4,10 +4,12 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.Sets;
 
+import java.util.Arrays;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
@@ -79,7 +81,7 @@ public class ChronicleDataCollectionAppConfig {
 
     @JsonProperty( SerializationConstants.ENTITY_SET_IDS )
     public Set<UUID> getAllEntitySetIds() {
-        return Sets.newHashSet(
+        return Stream.of(
                 recordedByEntitySetId,
                 deviceEntitySetId,
                 usedByEntitySetId,
@@ -87,6 +89,6 @@ public class ChronicleDataCollectionAppConfig {
                 preprocessedDataEntitySetId,
                 appDataEntitySetId,
                 appsDictionaryEntitySetId
-        ).stream().filter( Objects::nonNull ).collect( Collectors.toSet() );
+        ).filter( Objects::nonNull ).collect( Collectors.toSet() );
     }
 }
