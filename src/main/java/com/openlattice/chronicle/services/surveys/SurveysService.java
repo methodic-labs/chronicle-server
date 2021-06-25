@@ -885,7 +885,8 @@ public class SurveysService implements SurveysManager {
             UUID studyId,
             String participantId,
             List<Map<FullQualifiedName, Set<Object>>> surveyData ) {
-        logger.info( "attempting to submit time use diary survey: studyId = {}, participantId = {}",
+        logger.info( "attempting to submit time use diary survey: orgId = {}, studyId = {}, participantId = {}",
+                orgId,
                 studyId,
                 participantId );
 
@@ -975,12 +976,14 @@ public class SurveysService implements SurveysManager {
             Set<DataEdgeKey> dataEdgeKeys = getDataEdgeKeysFromEntityKeys( edgesByEntityKey, entityKeyIdMap );
             dataApi.createEdges( dataEdgeKeys );
 
-            logger.info( "successfully submitted time use diary survey: studyId = {}, participantId = {}",
+            logger.info( "successfully submitted time use diary survey: orgId = {}, studyId = {}, participantId = {}",
+                    orgId,
                     studyId,
                     participantId );
 
         } catch ( Exception e ) {
-            logger.error( "failed to submit time use diary survey: studyId = {}, participantId = {}",
+            logger.error( "failed to submit time use diary survey: orgId = {}, studyId = {}, participantId = {}",
+                    orgId,
                     studyId,
                     participantId,
                     e );
