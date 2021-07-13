@@ -27,12 +27,16 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.web.csrf.CsrfFilter;
+import org.springframework.web.filter.CharacterEncodingFilter;
+
+import java.nio.charset.StandardCharsets;
 
 @Configuration
 @EnableGlobalMethodSecurity(
         prePostEnabled = true )
 @EnableWebSecurity(
-        debug = false )
+        debug = true )
 @EnableMetrics
 public class ChronicleServerSecurityPod extends Auth0SecurityPod {
 
@@ -43,6 +47,10 @@ public class ChronicleServerSecurityPod extends Auth0SecurityPod {
                 .antMatchers( HttpMethod.OPTIONS ).permitAll()
                 .antMatchers( HttpMethod.POST, "/chronicle/data/study/participant" ).permitAll()
                 .antMatchers ( "/chronicle/data/authenticated/**" ).authenticated();
-    }
 
+        CharacterEncodingFilter filter = new CharacterEncodingFilter();
+        filter.setEncoding( StandardCharsets.UTF_8.toString() );
+        filter.setForceEncoding( true );
+        http.addFilterBefore( filter, CsrfFilter.class );
+    }
 }
