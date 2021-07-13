@@ -36,7 +36,7 @@ import java.nio.charset.StandardCharsets;
 @EnableGlobalMethodSecurity(
         prePostEnabled = true )
 @EnableWebSecurity(
-        debug = true )
+        debug = false )
 @EnableMetrics
 public class ChronicleServerSecurityPod extends Auth0SecurityPod {
 
