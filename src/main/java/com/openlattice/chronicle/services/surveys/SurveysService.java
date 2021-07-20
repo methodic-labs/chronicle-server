@@ -966,7 +966,7 @@ public class SurveysService implements SurveysManager {
             Map<UUID, Map<UUID, Map<UUID, Set<Object>>>> entitiesByEntitySet = getEntitiesByESID( entityKeyIdMap,
                     entitiesByEntityKey );
             entitiesByEntitySet.forEach( ( entitySetId, groupedEntities ) -> {
-                dataApi.updateEntitiesInEntitySet( entitySetId, groupedEntities, UpdateType.PartialReplace );
+                dataApi.updateEntitiesInEntitySet( entitySetId, groupedEntities, UpdateType.Merge );
             } );
 
             DataGraph dataGraph = new DataGraph( entities, associations );

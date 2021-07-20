@@ -29,6 +29,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 
 import java.util.*;
 import java.util.concurrent.ExecutionException;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE;
@@ -56,6 +57,9 @@ public class EntitySetIdsService implements EntitySetIdsManager {
             .newHashMap();
     private final Map<CollectionTemplateTypeName, UUID> legacyEntitySetIds             = Maps
             .newHashMap();
+
+    // appComponent -> orgId -> settings
+    private final Map<AppComponent, Map<UUID, Map<String, Object>>> appSettings = Maps.newHashMap();
 
     private final ApiCacheManager apiCacheManager;
     private final EdmCacheManager edmCacheManager;
@@ -124,6 +128,9 @@ public class EntitySetIdsService implements EntitySetIdsManager {
             // for each config map orgId -> templateTypeName -> ESID
             Map<UUID, Map<CollectionTemplateTypeName, UUID>> orgEntitySetMap = new HashMap<>();
 
+            // orgId -> settings
+            Map<UUID, Map<String, Object>> settings = Maps.newHashMap();
+
             configs.forEach( userAppConfig -> {
                 Map<UUID, UUID> templateTypeIdESIDMap = collectionsApi
                         .getEntitySetCollection( userAppConfig.getEntitySetCollectionId() ).getTemplate();
@@ -140,8 +147,11 @@ public class EntitySetIdsService implements EntitySetIdsManager {
                     }
                 }
                 orgEntitySetMap.put( userAppConfig.getOrganizationId(), templateTypeNameESIDMap );
+
+                settings.put(userAppConfig.getOrganizationId(), userAppConfig.getSettings());
             } );
 
+            appSettings.put( appComponent, settings );
             entitySets.put( appComponent, orgEntitySetMap );
         } );
 
@@ -188,6 +198,18 @@ public class EntitySetIdsService implements EntitySetIdsManager {
     @Override
     public Map<AppComponent, Map<UUID, Map<CollectionTemplateTypeName, UUID>>> getEntitySetIdsByOrgId() {
         return entitySetIdsByOrgId;
+    }
+
+    // app settings
+    @Override
+    public Map<String, Object> getOrgAppSettings(AppComponent appComponent, UUID organizationId) {
+        return appSettings.getOrDefault( appComponent, ImmutableMap.of() ).getOrDefault( organizationId, ImmutableMap.of() );
+    }
+
+    @Override
+    public Map<String, Object> getOrgAppSettings (String appName, UUID organizationId) {
+        AppComponent component = AppComponent.fromString( appName );
+        return getOrgAppSettings( component, organizationId );
     }
 
     public ChronicleCoreAppConfig getChronicleAppConfig( UUID organizationId ) {

@@ -9,6 +9,7 @@ import com.openlattice.chronicle.data.ChronicleQuestionnaire;
 import com.openlattice.chronicle.data.ParticipationStatus;
 import com.openlattice.chronicle.services.edm.EdmCacheManager;
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager;
+import com.openlattice.chronicle.services.entitysets.EntitySetIdsManager;
 import com.openlattice.chronicle.services.surveys.SurveysManager;
 import com.openlattice.chronicle.services.upload.AppDataUploadManager;
 import com.openlattice.chronicle.sources.Datasource;
@@ -40,6 +41,9 @@ public class ChronicleControllerV2 implements ChronicleApi {
 
     @Inject
     private EdmCacheManager edmCacheManager;
+
+    @Inject
+    private EntitySetIdsManager entitySetIdsManager;
 
     @Override
     @Timed
@@ -200,6 +204,19 @@ public class ChronicleControllerV2 implements ChronicleApi {
     )
     public Map<FullQualifiedName, UUID> getPropertyTypeIds( @RequestBody Set<FullQualifiedName> propertyTypeFqns ) {
         return edmCacheManager.getPropertyTypeIds( propertyTypeFqns );
+    }
+
+    @Override
+    @RequestMapping(
+            path = ORGANIZATION_ID_PATH + SETTINGS_PATH,
+            method = RequestMethod.GET,
+            produces = MediaType.APPLICATION_JSON_VALUE
+    )
+    public Map<String, Object> getAppSettings(
+            @PathVariable ( ORGANIZATION_ID ) UUID organizationId,
+            @RequestParam (value = APP_NAME) String appName
+    ) {
+        return entitySetIdsManager.getOrgAppSettings( appName, organizationId );
     }
 
     @Override
