@@ -17,7 +17,7 @@ public interface EntitySetIdsManager {
     // app settings
     Map<String, Object> getOrgAppSettings(AppComponent appComponent, UUID organizationId);
 
-    Map<String, Object> getOrgAppSettings (String appName, UUID organizationId);
+    Map<String, Object> getOrgAppSettings(String appName, UUID organizationId);
 
     // entity set ids configs
     ChronicleDataCollectionAppConfig getChronicleDataCollectionAppConfig( UUID organizationId );
