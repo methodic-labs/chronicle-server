@@ -207,7 +207,7 @@ public class EntitySetIdsService implements EntitySetIdsManager {
     }
 
     @Override
-    public Map<String, Object> getOrgAppSettings (String appName, UUID organizationId) {
+    public Map<String, Object> getOrgAppSettings(String appName, UUID organizationId) {
         AppComponent component = AppComponent.fromString( appName );
         return getOrgAppSettings( component, organizationId );
     }
