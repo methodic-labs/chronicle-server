@@ -213,8 +213,8 @@ public class ChronicleControllerV2 implements ChronicleApi {
             produces = MediaType.APPLICATION_JSON_VALUE
     )
     public Map<String, Object> getAppSettings(
-            @PathVariable ( ORGANIZATION_ID ) UUID organizationId,
-            @RequestParam (value = APP_NAME) String appName
+            @PathVariable( ORGANIZATION_ID ) UUID organizationId,
+            @RequestParam( value = APP_NAME ) String appName
     ) {
         return entitySetIdsManager.getOrgAppSettings( appName, organizationId );
     }
