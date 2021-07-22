@@ -4,6 +4,7 @@ import com.dataloom.streams.StreamUtil;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.*;
 import com.openlattice.ApiUtil;
+import com.openlattice.chronicle.constants.*;
 import com.openlattice.chronicle.data.ChronicleCoreAppConfig;
 import com.openlattice.chronicle.data.ChronicleDataCollectionAppConfig;
 import com.openlattice.chronicle.data.EntitiesAndEdges;
@@ -34,6 +35,7 @@ import static com.openlattice.chronicle.constants.EdmConstants.FULL_NAME_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.OL_ID_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.PERSON_ID_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.RECORDED_DATE_TIME_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.RECORD_TYPE_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.START_DATE_TIME_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.STRING_ID_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.TITLE_FQN;
@@ -47,6 +49,9 @@ import static com.openlattice.chronicle.util.ChronicleServerUtil.getParticipantE
  */
 public class AppDataUploadService implements AppDataUploadManager {
     protected final Logger logger = LoggerFactory.getLogger( AppDataUploadService.class );
+
+    private static final String FOREGROUND_EVENT_TYPE = "Move to Foreground";
+    private static final String APP_USAGE_FREQUENCY   = "appUsageFrequency";
 
     private final ScheduledTasksManager scheduledTasksManager;
     private final EnrollmentManager     enrollmentManager;
@@ -68,18 +73,24 @@ public class AppDataUploadService implements AppDataUploadManager {
         this.entitySetIdsManager = entitySetIdsManager;
     }
 
-    // return an OffsetDateTime with time 00:00
-    private String getMidnightDateTime( String dateTime ) {
-        if ( dateTime == null )
+    private String getTruncatedDateTimeHelper(String dateTime, ChronoUnit chronoUnit) {
+        if ( dateTime == null ) {
             return null;
+        }
 
-        return OffsetDateTime
-                .parse( dateTime )
-                .withHour( 0 )
-                .withMinute( 0 )
-                .withSecond( 0 )
-                .withNano( 0 )
+        return OffsetDateTime.parse( dateTime )
+                .truncatedTo( chronoUnit )
                 .toString();
+    }
+
+    private String getTruncatedDateTime( String datetime, UUID organizationId ) {
+        Map<String, Object> settings = entitySetIdsManager
+                .getOrgAppSettings( AppComponent.CHRONICLE_DATA_COLLECTION, organizationId );
+
+        String appUsageFreq = settings.getOrDefault( APP_USAGE_FREQUENCY, AppUsageFrequencyType.DAILY).toString();
+        ChronoUnit chronoUnit = appUsageFreq.equals( AppUsageFrequencyType.HOURLY.toString()) ? ChronoUnit.HOURS : ChronoUnit.DAYS;
+
+        return getTruncatedDateTimeHelper( datetime, chronoUnit );
     }
 
     // unique for user + app + date
@@ -494,7 +505,12 @@ public class AppDataUploadService implements AppDataUploadManager {
 
             String appPackageName, appName;
             appPackageName = appName = getFirstValueOrNull( appEntity, FULL_NAME_FQN );
-            String dateLogged = getMidnightDateTime( getFirstValueOrNull( appEntity, DATE_LOGGED_FQN ) );
+            String eventDate = getFirstValueOrNull( appEntity, DATE_LOGGED_FQN );
+            if ( eventDate == null ) {
+                continue;
+            }
+
+            String dateLogged = getTruncatedDateTime( eventDate, organizationId );
 
             if ( scheduledTasksManager.getSystemAppPackageNames().contains( appPackageName ) || dateLogged == null ) {
                 continue; // 'system' app
@@ -502,6 +518,12 @@ public class AppDataUploadService implements AppDataUploadManager {
 
             if ( appEntity.containsKey( edmCacheManager.getPropertyTypeId( TITLE_FQN ) ) ) {
                 appName = getFirstValueOrNull( appEntity, TITLE_FQN );
+            }
+
+            String recordType = getFirstValueOrNull( appEntity, RECORD_TYPE_FQN );
+            if ( recordType == null || !recordType.equals( FOREGROUND_EVENT_TYPE ) ) {
+                continue; // only record events that indicate user interaction with an app.
+                // This MIGHT help filter out "system apps" that the user doesn't interact with
             }
 
             // association 1: user apps => recorded by => device
@@ -528,6 +550,9 @@ public class AppDataUploadService implements AppDataUploadManager {
                     .getPropertyTypeId( FULL_NAME_FQN ) ); // FULL_NAME_FQN shouldn't be stored
             usedByEntityData.remove( edmCacheManager
                     .getPropertyTypeId( PERSON_ID_FQN ) ); // PERSON_ID_FQN shouldn't be stored
+
+            // we generate the entity key id using a truncated date to enforce uniqueness, but we'll store the actual datetime value
+            usedByEntityData.put( edmCacheManager.getPropertyTypeId( DATE_TIME_FQN ), ImmutableSet.of( eventDate ) );
             entitiesByEntityKey.put( usedByEK, usedByEntityData );
 
             EntityKey participantEK = getParticipantEntityKey( participantESID, participantId );
