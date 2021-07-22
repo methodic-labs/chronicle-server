@@ -28,7 +28,6 @@ import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE;
 import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE_DATA_COLLECTION;
 import static com.openlattice.chronicle.constants.EdmConstants.FULL_NAME_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.PERSON_ID_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.RECORDED_DATE_TIME_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.RECORD_TYPE_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.STRING_ID_FQN;
 import static com.openlattice.chronicle.util.ChronicleServerUtil.getFirstUUIDOrNull;
@@ -152,7 +151,7 @@ public class ScheduledTasksManager {
 
             entitySetData.forEach( entity -> {
                 String packageName = getFirstValueOrNull( Multimaps.asMap( entity ), FULL_NAME_FQN );
-                String recordType = getFirstValueOrNull( Multimaps.asMap( entity ), RECORDED_DATE_TIME_FQN );
+                String recordType = getFirstValueOrNull( Multimaps.asMap( entity ), RECORD_TYPE_FQN );
 
                 if ( RecordType.SYSTEM.name().equals( recordType ) && packageName != null ) {
                     systemAppPackageNames.add( packageName );
@@ -406,7 +405,7 @@ public class ScheduledTasksManager {
 
                 ChronicleCoreAppConfig config = entitySetIdsManager.getLegacyChronicleAppConfig( participantES );
                 UUID participantESID = config.getParticipantEntitySetId();
-                if (participantESID == null) {
+                if ( participantESID == null ) {
                     return;
                 }
 
