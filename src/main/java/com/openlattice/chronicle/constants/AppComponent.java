@@ -18,4 +18,13 @@ public enum AppComponent {
     public String toString() {
         return component;
     }
+
+    public static AppComponent fromString(String name) {
+        for (AppComponent component: AppComponent.values()) {
+            if (component.toString().equals( name )) {
+                return component;
+            }
+        }
+        throw new IllegalArgumentException("No app component with name " + name);
+    }
 }
