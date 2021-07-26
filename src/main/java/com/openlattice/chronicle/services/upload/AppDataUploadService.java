@@ -50,7 +50,6 @@ import static com.openlattice.chronicle.util.ChronicleServerUtil.getParticipantE
 public class AppDataUploadService implements AppDataUploadManager {
     protected final Logger logger = LoggerFactory.getLogger( AppDataUploadService.class );
 
-    private static final String FOREGROUND_EVENT_TYPE = "Move to Foreground";
     private static final String APP_USAGE_FREQUENCY   = "appUsageFrequency";
 
     private final ScheduledTasksManager scheduledTasksManager;
@@ -519,13 +518,7 @@ public class AppDataUploadService implements AppDataUploadManager {
             if ( appEntity.containsKey( edmCacheManager.getPropertyTypeId( TITLE_FQN ) ) ) {
                 appName = getFirstValueOrNull( appEntity, TITLE_FQN );
             }
-
-            String recordType = getFirstValueOrNull( appEntity, RECORD_TYPE_FQN );
-            if ( recordType == null || !recordType.equals( FOREGROUND_EVENT_TYPE ) ) {
-                continue; // only record events that indicate user interaction with an app.
-                // This MIGHT help filter out "system apps" that the user doesn't interact with
-            }
-
+            
             // association 1: user apps => recorded by => device
             Map<UUID, Set<Object>> userAppEntityData = getUserAppsEntity( appPackageName, appName );
             EntityKey userAppEK = getUserAppsEntityKey( userAppsESID, userAppEntityData );
