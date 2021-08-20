@@ -26,6 +26,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -37,6 +39,7 @@ import static com.openlattice.chronicle.util.ChronicleServerUtil.getParticipantE
 public class DataDeletionService implements DataDeletionManager {
     protected static final Logger logger = LoggerFactory.getLogger( DataDeletionService.class );
 
+    private final Executor executor = Executors.newSingleThreadExecutor();
     private final ApiCacheManager     apiCacheManager;
     private final EnrollmentManager   enrollmentManager;
     private final EntitySetIdsManager entitySetIdsManager;
@@ -168,14 +171,16 @@ public class DataDeletionService implements DataDeletionManager {
                     .filter( Sets.newHashSet( devicesESID, appDataESID, preprocessedDataESID ), Objects::nonNull );
             Set<UUID> dstEntitySetIds = Sets.filter( Sets.newHashSet( answersESID ), Objects::nonNull );
 
-            deleteParticipantNeighbors(
-                    dataApi,
-                    searchApi,
-                    srcEntitySetIds,
-                    dstEntitySetIds,
-                    participantsToDelete,
-                    participantsESID,
-                    deleteType );
+            executor.execute( () -> {
+                deleteParticipantNeighbors(
+                        dataApi,
+                        searchApi,
+                        srcEntitySetIds,
+                        dstEntitySetIds,
+                        participantsToDelete,
+                        participantsESID,
+                        deleteType );
+            } );
 
             // delete participants
             dataApi.deleteEntities( participantsESID, participantsToDelete, deleteType, false );
@@ -260,14 +265,16 @@ public class DataDeletionService implements DataDeletionManager {
             Set<UUID> srcEntitySetIds = Sets.newHashSet( devicesESID, appDataESID, preprocessedDataESID );
             Set<UUID> dstEntitySetIds = Sets.newHashSet( answersESID );
 
-            deleteParticipantNeighbors(
-                    chronicleDataApi,
-                    userSearchApi,
-                    srcEntitySetIds,
-                    dstEntitySetIds,
-                    participantsToDelete,
-                    participantsESID,
-                    deleteType );
+            executor.execute( () -> {
+                deleteParticipantNeighbors(
+                        chronicleDataApi,
+                        userSearchApi,
+                        srcEntitySetIds,
+                        dstEntitySetIds,
+                        participantsToDelete,
+                        participantsESID,
+                        deleteType );
+            } );
 
             // delete participants
             chronicleDataApi.deleteEntities( participantsESID, participantsToDelete, deleteType, false );
