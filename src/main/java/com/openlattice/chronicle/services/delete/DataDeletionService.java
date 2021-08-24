@@ -180,25 +180,27 @@ public class DataDeletionService implements DataDeletionManager {
                         participantsToDelete,
                         participantsESID,
                         deleteType );
+
+                // delete participants
+                dataApi.deleteEntities( participantsESID, participantsToDelete, deleteType, false );
+                logger.info( "Deleted {} participants from study {} in org {}.",
+                        participantsToDelete.size(),
+                        studyId,
+                        organizationId );
             } );
 
-            // delete participants
-            dataApi.deleteEntities( participantsESID, participantsToDelete, deleteType, false );
-            logger.info( "Deleting {} participants from study {} in org {}.",
-                    participantsToDelete.size(),
-                    studyId,
-                    organizationId );
-
-            // delete study if no participantId is specified
             if ( participantId.isPresent() ) {
                 return;
             }
 
-            dataApi.deleteEntities( studiesESID,
-                    ImmutableSet.of( studyEntityKeyId ),
-                    deleteType,
-                    false );
-            logger.info( "Deleted study {} from org {}", studyId, organizationId );
+            // delete study if no participantId is specified
+            executor.execute( () -> {
+                dataApi.deleteEntities( studiesESID,
+                        ImmutableSet.of( studyEntityKeyId ),
+                        deleteType,
+                        false );
+                logger.info( "Deleted study {} from org {}", studyId, organizationId );
+            } );
 
         } catch ( Exception e ) {
             String errorMsg = "failed to delete participant data";
@@ -274,25 +276,27 @@ public class DataDeletionService implements DataDeletionManager {
                         participantsToDelete,
                         participantsESID,
                         deleteType );
+
+                // delete participants
+                chronicleDataApi.deleteEntities( participantsESID, participantsToDelete, deleteType, false );
+                logger.info( "Deleting {} participants from study {}.", participantsToDelete.size(), studyId );
             } );
 
-            // delete participants
-            chronicleDataApi.deleteEntities( participantsESID, participantsToDelete, deleteType, false );
-            logger.info( "Deleting {} participants from study {}.", participantsToDelete.size(), studyId );
-
-            // if no participant is specified, delete study
             if ( participantId.isPresent() ) {
                 return;
             }
 
-            chronicleDataApi.deleteEntities( studiesESID,
-                    ImmutableSet.of( studyEntityKeyId ),
-                    deleteType,
-                    false );
-            logger.info( "Deleted study {} from global studies dataset", studyId );
+            // if no participant is specified, delete study
+            executor.execute( () -> {
+                chronicleDataApi.deleteEntities( studiesESID,
+                        ImmutableSet.of( studyEntityKeyId ),
+                        deleteType,
+                        false );
+                logger.info( "Deleted study {} from global studies dataset", studyId );
 
-            userEntitySetsApi.deleteEntitySet( participantsESID );
-            logger.info( "Deleted participant dataset for study {}.", studyId );
+                userEntitySetsApi.deleteEntitySet( participantsESID );
+                logger.info( "Deleted participant dataset for study {}.", studyId );
+            } );
 
         } catch ( Exception e ) {
             String errorMessage = "failed to delete participant data";
