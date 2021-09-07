@@ -3,6 +3,7 @@ package com.openlattice.chronicle.services.delete;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.*;
+import com.google.common.util.concurrent.ListeningExecutorService;
 import com.openlattice.authorization.AclKey;
 import com.openlattice.authorization.PermissionsApi;
 import com.openlattice.chronicle.data.ChronicleCoreAppConfig;
@@ -39,18 +40,20 @@ import static com.openlattice.chronicle.util.ChronicleServerUtil.getParticipantE
 public class DataDeletionService implements DataDeletionManager {
     protected static final Logger logger = LoggerFactory.getLogger( DataDeletionService.class );
 
-    private final Executor executor = Executors.newSingleThreadExecutor();
+    private final ListeningExecutorService listeningExecutorService;
     private final ApiCacheManager     apiCacheManager;
     private final EnrollmentManager   enrollmentManager;
     private final EntitySetIdsManager entitySetIdsManager;
     private final EdmCacheManager     edmCacheManager;
 
     public DataDeletionService(
+            ListeningExecutorService listeningExecutorService,
             EdmCacheManager edmCacheManager,
             ApiCacheManager apiCacheManager,
             EntitySetIdsManager entitySetIdsManager,
             EnrollmentManager enrollmentManager ) {
 
+        this.listeningExecutorService = listeningExecutorService;
         this.edmCacheManager = edmCacheManager;
         this.apiCacheManager = apiCacheManager;
         this.enrollmentManager = enrollmentManager;
@@ -171,7 +174,7 @@ public class DataDeletionService implements DataDeletionManager {
                     .filter( Sets.newHashSet( devicesESID, appDataESID, preprocessedDataESID ), Objects::nonNull );
             Set<UUID> dstEntitySetIds = Sets.filter( Sets.newHashSet( answersESID ), Objects::nonNull );
 
-            executor.execute( () -> {
+            listeningExecutorService.execute( () -> {
                 deleteParticipantNeighbors(
                         dataApi,
                         searchApi,
@@ -194,7 +197,7 @@ public class DataDeletionService implements DataDeletionManager {
             }
 
             // delete study if no participantId is specified
-            executor.execute( () -> {
+            listeningExecutorService.execute( () -> {
                 dataApi.deleteEntities( studiesESID,
                         ImmutableSet.of( studyEntityKeyId ),
                         deleteType,
@@ -267,7 +270,7 @@ public class DataDeletionService implements DataDeletionManager {
             Set<UUID> srcEntitySetIds = Sets.newHashSet( devicesESID, appDataESID, preprocessedDataESID );
             Set<UUID> dstEntitySetIds = Sets.newHashSet( answersESID );
 
-            executor.execute( () -> {
+            listeningExecutorService.execute( () -> {
                 deleteParticipantNeighbors(
                         chronicleDataApi,
                         userSearchApi,
@@ -287,7 +290,7 @@ public class DataDeletionService implements DataDeletionManager {
             }
 
             // if no participant is specified, delete study
-            executor.execute( () -> {
+            listeningExecutorService.execute( () -> {
                 chronicleDataApi.deleteEntities( studiesESID,
                         ImmutableSet.of( studyEntityKeyId ),
                         deleteType,
