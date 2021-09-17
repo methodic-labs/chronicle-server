@@ -355,7 +355,8 @@ public class SurveysService implements SurveysManager {
             // update association entities
             dataApi.updateEntitiesInEntitySet( usedByESID,
                     associationData,
-                    UpdateType.Replace );
+                    UpdateType.Replace,
+                    PropertyUpdateType.Versioned );
 
             logger.info( "updated {} apps usage associations", associationDetails.size() );
 
@@ -478,7 +479,7 @@ public class SurveysService implements SurveysManager {
                 ApiUtil.generateDefaultEntityId(
                         List.of( END_DATE_TIME_FQN, START_DATE_TIME_FQN ).stream()
                                 .map( edmCacheManager::getPropertyTypeId ).collect(
-                                Collectors.toList() ),
+                                        Collectors.toList() ),
                         data
                 )
         );
@@ -966,7 +967,10 @@ public class SurveysService implements SurveysManager {
             Map<UUID, Map<UUID, Map<UUID, Set<Object>>>> entitiesByEntitySet = getEntitiesByESID( entityKeyIdMap,
                     entitiesByEntityKey );
             entitiesByEntitySet.forEach( ( entitySetId, groupedEntities ) -> {
-                dataApi.updateEntitiesInEntitySet( entitySetId, groupedEntities, UpdateType.PartialReplace );
+                dataApi.updateEntitiesInEntitySet( entitySetId,
+                        groupedEntities,
+                        UpdateType.PartialReplace,
+                        PropertyUpdateType.Versioned );
             } );
 
             DataGraph dataGraph = new DataGraph( entities, associations );

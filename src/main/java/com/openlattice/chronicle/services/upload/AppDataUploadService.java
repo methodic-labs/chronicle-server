@@ -308,7 +308,8 @@ public class AppDataUploadService implements AppDataUploadManager {
                 .of( edmCacheManager.getPropertyTypeId( END_DATE_TIME_FQN ), ImmutableSet.of( lastDateTime ) );
         dataApi.updateEntitiesInEntitySet( metadataESID,
                 ImmutableMap.of( metadataEntityKeyId, lastDateEntity ),
-                UpdateType.PartialReplace );
+                UpdateType.PartialReplace,
+                PropertyUpdateType.Versioned );
 
         Map<UUID, Set<Object>> hasEntityData = getHasEntity( participantEKID );
         EntityKey hasEK = getHasEntityKey( hasESID, hasEntityData );
@@ -583,7 +584,7 @@ public class AppDataUploadService implements AppDataUploadManager {
         Map<UUID, Map<UUID, Map<UUID, Set<Object>>>> entitiesByESID = groupEntitiesByEntitySetId( entitiesByEntityKey,
                 entityKeyIdMap );
         entitiesByESID.forEach( ( entitySetId, entities ) -> {
-            dataApi.updateEntitiesInEntitySet( entitySetId, entities, UpdateType.Merge );
+            dataApi.updateEntitiesInEntitySet( entitySetId, entities, UpdateType.Merge, PropertyUpdateType.Versioned );
         } );
 
         Set<DataEdgeKey> dataEdgeKeys = getDataEdgeKeysFromEntityKeys( edgesByEntityKey, entityKeyIdMap );
