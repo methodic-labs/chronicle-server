@@ -66,9 +66,6 @@ public class ChronicleServerServicesPod {
     @Inject
     private Auth0Configuration auth0Configuration;
 
-    @Inject
-    private AsyncPod asyncPod;
-
     @Bean
     public ObjectMapper defaultObjectMapper() {
 
@@ -110,7 +107,6 @@ public class ChronicleServerServicesPod {
     @Bean
     public DataDeletionManager dataDeletionManager() throws IOException, ExecutionException {
         return new DataDeletionService(
-                asyncPod.listeningExecutorService(),
                 edmCacheManager(),
                 apiCacheManager(),
                 entitySetIdsManager(),

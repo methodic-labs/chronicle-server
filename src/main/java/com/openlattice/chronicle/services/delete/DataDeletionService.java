@@ -27,8 +27,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -40,67 +38,21 @@ import static com.openlattice.chronicle.util.ChronicleServerUtil.getParticipantE
 public class DataDeletionService implements DataDeletionManager {
     protected static final Logger logger = LoggerFactory.getLogger( DataDeletionService.class );
 
-    private final ListeningExecutorService listeningExecutorService;
-    private final ApiCacheManager     apiCacheManager;
-    private final EnrollmentManager   enrollmentManager;
-    private final EntitySetIdsManager entitySetIdsManager;
-    private final EdmCacheManager     edmCacheManager;
+    private final ApiCacheManager          apiCacheManager;
+    private final EnrollmentManager        enrollmentManager;
+    private final EntitySetIdsManager      entitySetIdsManager;
+    private final EdmCacheManager          edmCacheManager;
 
     public DataDeletionService(
-            ListeningExecutorService listeningExecutorService,
             EdmCacheManager edmCacheManager,
             ApiCacheManager apiCacheManager,
             EntitySetIdsManager entitySetIdsManager,
             EnrollmentManager enrollmentManager ) {
 
-        this.listeningExecutorService = listeningExecutorService;
         this.edmCacheManager = edmCacheManager;
         this.apiCacheManager = apiCacheManager;
         this.enrollmentManager = enrollmentManager;
         this.entitySetIdsManager = entitySetIdsManager;
-    }
-
-    /*
-     * Delete participant neighbors
-     * WARNING: Care must be taken to not delete entities that neighbor other participants/neighbors.
-     * The entities in srcEntitySetIds and dstEntitySetIds MUST have one-to-one mapping with participant.
-     */
-    private void deleteParticipantNeighbors(
-            DataApi dataApi,
-            SearchApi searchApi,
-            Set<UUID> srcEntitySetIds,
-            Set<UUID> dstEntitySetIds,
-            Set<UUID> participantsToRemove,
-            UUID participantsESID,
-            DeleteType deleteType ) {
-
-        Map<UUID, Set<UUID>> neighborEntityKeyIds = Maps.newHashMap();
-
-        Map<UUID, Map<UUID, SetMultimap<UUID, NeighborEntityIds>>> participantNeighbors = searchApi
-                .executeFilteredEntityNeighborIdsSearch(
-                        participantsESID,
-                        new EntityNeighborsFilter(
-                                participantsToRemove,
-                                Optional.of( srcEntitySetIds ),
-                                Optional.of( dstEntitySetIds ),
-                                Optional.empty()
-                        )
-                );
-
-        participantNeighbors.values().forEach( entities -> {
-            entities.values().forEach( neighborEntity -> {
-                neighborEntity.forEach( ( neighborEntitySetId, neighborEntityIds ) -> {
-                    neighborEntityKeyIds.computeIfAbsent( neighborEntitySetId, esid -> Sets.newHashSet() )
-                            .add( neighborEntityIds.getNeighborEntityKeyId() );
-                } );
-            } );
-        } );
-
-        // delete all neighbors
-        neighborEntityKeyIds
-                .forEach( ( entitySetId, entityKeyId ) -> dataApi
-                        .deleteEntities( entitySetId, entityKeyId, deleteType, false )
-                );
     }
 
     // get a set of all participants to remove:
@@ -135,7 +87,6 @@ public class DataDeletionService implements DataDeletionManager {
             // load api for actions authenticated by the user
             ApiClient userApiClient = new ApiClient( RetrofitFactory.Environment.PROD_INTEGRATION,
                     () -> userToken );
-            SearchApi searchApi = userApiClient.getSearchApi();
             DataApi dataApi = userApiClient.getDataApi();
 
             // ensure study exists
@@ -157,6 +108,8 @@ public class DataDeletionService implements DataDeletionManager {
             UUID preprocessedDataESID = dataCollectionAppConfig.getPreprocessedDataEntitySetId();
             UUID devicesESID = dataCollectionAppConfig.getDeviceEntitySetId();
             UUID answersESID = surveysAppConfig.getAnswerEntitySetId();
+            UUID submissionESID = surveysAppConfig.getSubmissionEntitySetId();
+            UUID metadataESID = coreAppConfig.getMetadataEntitySetId();
 
             // user needs OWNER on all entity sets in order to delete
             Set<UUID> allEntitySetIds = Sets.newHashSet( Iterables.concat( coreAppConfig.getAllEntitySetIds(),
@@ -172,38 +125,32 @@ public class DataDeletionService implements DataDeletionManager {
              */
             Set<UUID> srcEntitySetIds = Sets
                     .filter( Sets.newHashSet( devicesESID, appDataESID, preprocessedDataESID ), Objects::nonNull );
-            Set<UUID> dstEntitySetIds = Sets.filter( Sets.newHashSet( answersESID ), Objects::nonNull );
+            Set<UUID> dstEntitySetIds = Sets.filter( Sets.newHashSet( answersESID, submissionESID, metadataESID ), Objects::nonNull );
 
-            listeningExecutorService.execute( () -> {
-                deleteParticipantNeighbors(
-                        dataApi,
-                        searchApi,
-                        srcEntitySetIds,
-                        dstEntitySetIds,
+            if (!participantsToDelete.isEmpty()) {
+                dataApi.deleteEntitiesAndNeighbors( participantsESID, new EntityNeighborsFilter(
                         participantsToDelete,
-                        participantsESID,
-                        deleteType );
+                        Optional.of( srcEntitySetIds ),
+                        Optional.of( dstEntitySetIds ),
+                        Optional.empty()
+                ), deleteType );
 
-                // delete participants
-                dataApi.deleteEntities( participantsESID, participantsToDelete, deleteType, false );
                 logger.info( "Deleted {} participants from study {} in org {}.",
                         participantsToDelete.size(),
                         studyId,
                         organizationId );
-            } );
+            }
 
             if ( participantId.isPresent() ) {
                 return;
             }
 
             // delete study if no participantId is specified
-            listeningExecutorService.execute( () -> {
-                dataApi.deleteEntities( studiesESID,
-                        ImmutableSet.of( studyEntityKeyId ),
-                        deleteType,
-                        false );
-                logger.info( "Deleted study {} from org {}", studyId, organizationId );
-            } );
+            dataApi.deleteEntities( studiesESID,
+                    ImmutableSet.of( studyEntityKeyId ),
+                    deleteType,
+                    false );
+            logger.info( "Deleted study {} from org {}", studyId, organizationId );
 
         } catch ( Exception e ) {
             String errorMsg = "failed to delete participant data";
@@ -213,14 +160,14 @@ public class DataDeletionService implements DataDeletionManager {
     }
 
     private void ensureUserCanDeleteData( Set<UUID> entitySetIds, PermissionsApi permissionsApi ) {
-            try {
-                Set<AclKey> aclKeys = entitySetIds.stream().map( AclKey::new ).collect(
-                        Collectors.toSet());
-                permissionsApi.getAcls( aclKeys );
-            } catch ( Exception e ) {
-                logger.error( "Authorization for deleting participant data failed" );
-                throw new ForbiddenException( "insufficient permission to delete participant data" );
-            }
+        try {
+            Set<AclKey> aclKeys = entitySetIds.stream().map( AclKey::new ).collect(
+                    Collectors.toSet() );
+            permissionsApi.getAcls( aclKeys );
+        } catch ( Exception e ) {
+            logger.error( "Authorization for deleting participant data failed" );
+            throw new ForbiddenException( "insufficient permission to delete participant data" );
+        }
     }
 
     private void legacyDeleteStudyData(
@@ -262,7 +209,7 @@ public class DataDeletionService implements DataDeletionManager {
             UUID answersESID = surveysAppConfig.getAnswerEntitySetId();
 
             // ensure that user has OWNER on participants entity set
-            ensureUserCanDeleteData( ImmutableSet.of(participantsESID), userApiClient.getPermissionsApi() );
+            ensureUserCanDeleteData( ImmutableSet.of( participantsESID ), userApiClient.getPermissionsApi() );
 
             Set<UUID> participantsToDelete = getParticipantsToDelete( null, studyId, participantId );
 
@@ -270,36 +217,32 @@ public class DataDeletionService implements DataDeletionManager {
             Set<UUID> srcEntitySetIds = Sets.newHashSet( devicesESID, appDataESID, preprocessedDataESID );
             Set<UUID> dstEntitySetIds = Sets.newHashSet( answersESID );
 
-            listeningExecutorService.execute( () -> {
-                deleteParticipantNeighbors(
-                        chronicleDataApi,
-                        userSearchApi,
-                        srcEntitySetIds,
-                        dstEntitySetIds,
-                        participantsToDelete,
-                        participantsESID,
-                        deleteType );
-
-                // delete participants
-                chronicleDataApi.deleteEntities( participantsESID, participantsToDelete, deleteType, false );
-                logger.info( "Deleting {} participants from study {}.", participantsToDelete.size(), studyId );
-            } );
+            if (!participantsToDelete.isEmpty()) {
+                chronicleDataApi.deleteEntitiesAndNeighbors( participantsESID,
+                        new EntityNeighborsFilter(
+                                participantsToDelete,
+                                Optional.of( srcEntitySetIds ),
+                                Optional.of( dstEntitySetIds ),
+                                Optional.empty()
+                        ),
+                        deleteType
+                );
+                logger.info( "Deleted {} participants from study {} ", participantsToDelete.size(), studyId );
+            }
 
             if ( participantId.isPresent() ) {
                 return;
             }
 
             // if no participant is specified, delete study
-            listeningExecutorService.execute( () -> {
-                chronicleDataApi.deleteEntities( studiesESID,
-                        ImmutableSet.of( studyEntityKeyId ),
-                        deleteType,
-                        false );
-                logger.info( "Deleted study {} from global studies dataset", studyId );
+            chronicleDataApi.deleteEntities( studiesESID,
+                    ImmutableSet.of( studyEntityKeyId ),
+                    deleteType,
+                    false );
+            logger.info( "Deleted study {} from global studies dataset", studyId );
 
-                userEntitySetsApi.deleteEntitySet( participantsESID );
-                logger.info( "Deleted participant dataset for study {}.", studyId );
-            } );
+            userEntitySetsApi.deleteEntitySet( participantsESID );
+            logger.info( "Deleted participant dataset for study {}.", studyId );
 
         } catch ( Exception e ) {
             String errorMessage = "failed to delete participant data";
