@@ -2,8 +2,9 @@ package com.openlattice.chronicle.services.delete;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
-import com.google.common.collect.*;
-import com.google.common.util.concurrent.ListeningExecutorService;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Sets;
 import com.openlattice.authorization.AclKey;
 import com.openlattice.authorization.PermissionsApi;
 import com.openlattice.chronicle.data.ChronicleCoreAppConfig;
@@ -19,14 +20,16 @@ import com.openlattice.client.RetrofitFactory;
 import com.openlattice.controllers.exceptions.ForbiddenException;
 import com.openlattice.data.DataApi;
 import com.openlattice.data.DeleteType;
-import com.openlattice.data.requests.NeighborEntityIds;
 import com.openlattice.entitysets.EntitySetsApi;
 import com.openlattice.search.SearchApi;
 import com.openlattice.search.requests.EntityNeighborsFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -38,10 +41,10 @@ import static com.openlattice.chronicle.util.ChronicleServerUtil.getParticipantE
 public class DataDeletionService implements DataDeletionManager {
     protected static final Logger logger = LoggerFactory.getLogger( DataDeletionService.class );
 
-    private final ApiCacheManager          apiCacheManager;
-    private final EnrollmentManager        enrollmentManager;
-    private final EntitySetIdsManager      entitySetIdsManager;
-    private final EdmCacheManager          edmCacheManager;
+    private final ApiCacheManager     apiCacheManager;
+    private final EnrollmentManager   enrollmentManager;
+    private final EntitySetIdsManager entitySetIdsManager;
+    private final EdmCacheManager     edmCacheManager;
 
     public DataDeletionService(
             EdmCacheManager edmCacheManager,
@@ -125,15 +128,16 @@ public class DataDeletionService implements DataDeletionManager {
              */
             Set<UUID> srcEntitySetIds = Sets
                     .filter( Sets.newHashSet( devicesESID, appDataESID, preprocessedDataESID ), Objects::nonNull );
-            Set<UUID> dstEntitySetIds = Sets.filter( Sets.newHashSet( answersESID, submissionESID, metadataESID ), Objects::nonNull );
+            Set<UUID> dstEntitySetIds = Sets.filter( Sets.newHashSet( answersESID, submissionESID, metadataESID ),
+                    Objects::nonNull );
 
-            if (!participantsToDelete.isEmpty()) {
+            if ( !participantsToDelete.isEmpty() ) {
                 dataApi.deleteEntitiesAndNeighbors( participantsESID, new EntityNeighborsFilter(
                         participantsToDelete,
                         Optional.of( srcEntitySetIds ),
                         Optional.of( dstEntitySetIds ),
                         Optional.empty()
-                ), deleteType );
+                ), deleteType, false );
 
                 logger.info( "Deleted {} participants from study {} in org {}.",
                         participantsToDelete.size(),
@@ -217,16 +221,14 @@ public class DataDeletionService implements DataDeletionManager {
             Set<UUID> srcEntitySetIds = Sets.newHashSet( devicesESID, appDataESID, preprocessedDataESID );
             Set<UUID> dstEntitySetIds = Sets.newHashSet( answersESID );
 
-            if (!participantsToDelete.isEmpty()) {
+            if ( !participantsToDelete.isEmpty() ) {
                 chronicleDataApi.deleteEntitiesAndNeighbors( participantsESID,
                         new EntityNeighborsFilter(
                                 participantsToDelete,
                                 Optional.of( srcEntitySetIds ),
                                 Optional.of( dstEntitySetIds ),
                                 Optional.empty()
-                        ),
-                        deleteType
-                );
+                        ), deleteType, false );
                 logger.info( "Deleted {} participants from study {} ", participantsToDelete.size(), studyId );
             }
 
