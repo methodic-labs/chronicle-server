@@ -138,7 +138,8 @@ public class EnrollmentService implements EnrollmentManager {
             }
             dataApi.updateEntitiesInEntitySet( devicesESID,
                     ImmutableMap.of( deviceEntityKeyId, deviceData ),
-                    UpdateType.Merge );
+                    UpdateType.Merge,
+                    PropertyUpdateType.Versioned );
 
             updateDeviceIdsCache( organizationId, deviceEntityKeyId, datasourceId );
 
