@@ -20,4 +20,3 @@ app.css.map
 target/
 *.csv
 out/
-src/main/resources/auth0.yaml
