@@ -137,7 +137,7 @@ public class DataDeletionService implements DataDeletionManager {
                         Optional.of( srcEntitySetIds ),
                         Optional.of( dstEntitySetIds ),
                         Optional.empty()
-                ), deleteType, false );
+                ), deleteType );
 
                 logger.info( "Deleted {} participants from study {} in org {}.",
                         participantsToDelete.size(),
@@ -228,7 +228,7 @@ public class DataDeletionService implements DataDeletionManager {
                                 Optional.of( srcEntitySetIds ),
                                 Optional.of( dstEntitySetIds ),
                                 Optional.empty()
-                        ), deleteType, false );
+                        ), deleteType );
                 logger.info( "Deleted {} participants from study {} ", participantsToDelete.size(), studyId );
             }
 
