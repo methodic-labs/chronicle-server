@@ -243,7 +243,7 @@ public class DataDeletionService implements DataDeletionManager {
                     false );
             logger.info( "Deleted study {} from global studies dataset", studyId );
 
-            userEntitySetsApi.deleteEntitySet( participantsESID );
+            userEntitySetsApi.deleteEntitySet( participantsESID, deleteType );
             logger.info( "Deleted participant dataset for study {}.", studyId );
 
         } catch ( Exception e ) {
