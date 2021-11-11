@@ -24,7 +24,9 @@ import java.util.*;
 import java.util.concurrent.ExecutionException;
 
 import static com.openlattice.chronicle.util.ChronicleServerUtil.getParticipantEntitySetName;
-
+/**
+ * @author toddbergman &lt;todd@openlattice.com&gt;
+ */
 public class MessageService implements MessageManager {
     protected static final Logger logger = LoggerFactory.getLogger( MessageService.class );
 

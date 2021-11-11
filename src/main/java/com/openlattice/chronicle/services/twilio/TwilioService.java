@@ -13,6 +13,9 @@ import org.slf4j.LoggerFactory;
 import java.net.URI;
 import java.time.OffsetDateTime;
 
+/**
+ * @author toddbergman &lt;todd@openlattice.com&gt;
+ */
 public class TwilioService implements TwilioManager {
     protected static final Logger logger = LoggerFactory.getLogger( TwilioService.class );
 

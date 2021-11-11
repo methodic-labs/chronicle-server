@@ -2,6 +2,7 @@ package com.openlattice.chronicle.services.message;
 
 import java.util.Map;
 import java.util.UUID;
+
 /**
  * @author toddbergman &lt;todd@openlattice.com&gt;
  */
