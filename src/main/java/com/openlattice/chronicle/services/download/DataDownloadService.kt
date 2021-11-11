@@ -1,6 +1,8 @@
 package com.openlattice.chronicle.services.download
 
 import com.google.common.collect.ImmutableSet
+import com.openlattice.chronicle.constants.AppComponent
+import com.openlattice.chronicle.constants.EdmConstants.USER_FQN
 import com.openlattice.chronicle.constants.OutputConstants
 import com.openlattice.chronicle.constants.ParticipantDataType
 import com.openlattice.chronicle.data.EntitySetIdGraph
@@ -21,6 +23,7 @@ import java.util.*
 class DataDownloadService(private val entitySetIdsManager: EntitySetIdsManager, private val edmCacheManager: EdmCacheManager) : DataDownloadManager {
     companion object {
         private val logger = LoggerFactory.getLogger(DataDownloadService::class.java)
+        const val RAW_DATA_SHOW_DEVICE_USER = "rawDataIndicateDeviceUser"
     }
 
     private fun getParticipantDataHelper(
@@ -44,7 +47,15 @@ class DataDownloadService(private val entitySetIdsManager: EntitySetIdsManager, 
             val srcMetadata = metadata.getValue(srcESID)
             val edgeMetadata = metadata.getValue(edgeESID)
 
-            val srcPropertiesToInclude = DownloadTypePropertyTypeFqns.SRC.getValue(dataType)
+            val appSettings = if (organizationId != null) entitySetIdsManager.getOrgAppSettings(AppComponent.CHRONICLE_DATA_COLLECTION, organizationId) else mapOf()
+
+            val srcPropertiesToInclude = DownloadTypePropertyTypeFqns.SRC.getValue(dataType).let {
+                if (dataType == ParticipantDataType.RAW_DATA && appSettings.getOrDefault(RAW_DATA_SHOW_DEVICE_USER, false) as Boolean) {
+                    it + linkedSetOf(USER_FQN)
+                } else {
+                    it
+                }
+            }
             val edgePropertiesToInclude = DownloadTypePropertyTypeFqns.EDGE.getValue(dataType)
 
             val srcColumnTitles = getColumnTitles(srcPropertiesToInclude, srcMetadata, OutputConstants.APP_PREFIX)
