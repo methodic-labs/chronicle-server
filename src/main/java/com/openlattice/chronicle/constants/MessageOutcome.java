@@ -1,10 +1,7 @@
 package com.openlattice.chronicle.constants;
 
-import com.openlattice.chronicle.data.MessageType;
-
 import java.time.OffsetDateTime;
 import java.util.Objects;
-import java.util.UUID;
 
 public class MessageOutcome {
 
