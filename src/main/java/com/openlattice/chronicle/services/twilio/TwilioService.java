@@ -2,7 +2,7 @@ package com.openlattice.chronicle.services.twilio;
 
 import com.openlattice.chronicle.configuration.TwilioConfiguration;
 import com.openlattice.chronicle.constants.MessageOutcome;
-import com.openlattice.chronicle.data.MessageDetails;
+import com.openlattice.chronicle.constants.MessageDetails;
 import com.twilio.Twilio;
 import com.twilio.exception.ApiException;
 import com.twilio.rest.api.v2010.account.Message;

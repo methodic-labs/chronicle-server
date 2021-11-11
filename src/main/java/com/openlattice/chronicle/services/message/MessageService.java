@@ -6,7 +6,7 @@ import com.google.common.collect.ListMultimap;
 import com.openlattice.chronicle.constants.EdmConstants;
 import com.openlattice.chronicle.constants.MessageOutcome;
 import com.openlattice.chronicle.data.ChronicleCoreAppConfig;
-import com.openlattice.chronicle.data.MessageDetails;
+import com.openlattice.chronicle.constants.MessageDetails;
 import com.openlattice.chronicle.services.ApiCacheManager;
 import com.openlattice.chronicle.services.edm.EdmCacheManager;
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager;

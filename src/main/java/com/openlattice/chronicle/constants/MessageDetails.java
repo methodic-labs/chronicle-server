@@ -1,4 +1,4 @@
-package com.openlattice.chronicle.data;
+package com.openlattice.chronicle.constants;
 
 import java.time.OffsetDateTime;
 import java.util.Objects;
