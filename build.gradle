@@ -156,6 +156,8 @@ dependencies {
         }
     }
 
+    implementation group: "com.twilio.sdk", name: "twilio", version: "8.21.0"
+
     implementation "org.apache.olingo:odata-server-api:${odata_version}"
     implementation "org.apache.olingo:odata-server-core:${odata_version}"
     implementation "org.apache.olingo:odata-commons-api:${odata_version}"
