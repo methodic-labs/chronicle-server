@@ -41,6 +41,8 @@ import com.openlattice.chronicle.services.enrollment.EnrollmentManager;
 import com.openlattice.chronicle.services.enrollment.EnrollmentService;
 import com.openlattice.chronicle.services.entitysets.EntitySetIdsManager;
 import com.openlattice.chronicle.services.entitysets.EntitySetIdsService;
+import com.openlattice.chronicle.services.message.MessageManager;
+import com.openlattice.chronicle.services.message.MessageService;
 import com.openlattice.chronicle.services.surveys.SurveysManager;
 import com.openlattice.chronicle.services.surveys.SurveysService;
 import com.openlattice.chronicle.services.twilio.TwilioManager;
@@ -159,5 +161,16 @@ public class ChronicleServerServicesPod {
     @Bean
     public TwilioManager twilioManager() throws IOException, ExecutionException {
         return new TwilioService( getTwilioConfiguration() );
+    }
+
+    @Bean
+    public MessageManager messageManager() throws IOException, ExecutionException {
+        return new MessageService(
+                apiCacheManager(),
+                edmCacheManager(),
+                enrollmentManager(),
+                entitySetIdsManager(),
+                twilioManager()
+        );
     }
 }
