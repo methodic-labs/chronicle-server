@@ -166,8 +166,7 @@ public class ChronicleControllerV2 implements ChronicleApi {
 
         return surveysManager.getStudyQuestionnaires( organizationId, studyId );
     }
-
-    // send message to partipant
+    
     @RequestMapping(
             path = ORGANIZATION_ID_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH + MESSAGE_PATH,
             method = RequestMethod.POST,
