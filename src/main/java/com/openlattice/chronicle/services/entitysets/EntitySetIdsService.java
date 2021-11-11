@@ -233,7 +233,9 @@ public class EntitySetIdsService implements EntitySetIdsManager {
                 templateEntitySetIdMap.get( PARTICIPATED_IN ),
                 templateEntitySetIdMap.get( METADATA ),
                 templateEntitySetIdMap.get( PART_OF ),
+                templateEntitySetIdMap.get( MESSAGES ),
                 templateEntitySetIdMap.get( NOTIFICATION ),
+                templateEntitySetIdMap.get( SENT_TO ),
                 templateEntitySetIdMap.get( STUDIES )
         );
     }
@@ -309,9 +311,11 @@ public class EntitySetIdsService implements EntitySetIdsManager {
                 legacyEntitySetIds.get( HAS ),
                 optional,
                 legacyEntitySetIds.get( PARTICIPATED_IN ),
+                legacyEntitySetIds.get( MESSAGES ),
                 legacyEntitySetIds.get( METADATA ),
                 legacyEntitySetIds.get( PART_OF ),
                 legacyEntitySetIds.get( NOTIFICATION ),
+                legacyEntitySetIds.get( SENT_TO ),
                 legacyEntitySetIds.get( STUDIES )
         );
     }
@@ -323,9 +327,11 @@ public class EntitySetIdsService implements EntitySetIdsManager {
                 legacyEntitySetIds.get( HAS ),
                 Optional.empty(),
                 legacyEntitySetIds.get( PARTICIPATED_IN ),
+                legacyEntitySetIds.get( MESSAGES ),
                 legacyEntitySetIds.get( METADATA ),
                 legacyEntitySetIds.get( PART_OF ),
                 legacyEntitySetIds.get( NOTIFICATION ),
+                legacyEntitySetIds.get( SENT_TO ),
                 legacyEntitySetIds.get( STUDIES )
         );
     }
