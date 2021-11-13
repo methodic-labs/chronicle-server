@@ -88,4 +88,5 @@ public class EdmConstants {
     public static final FullQualifiedName GENERAL_END_TIME_FQN    = new FullQualifiedName( "general.EndTime" );
     public static final FullQualifiedName NEW_PERIOD_FQN          = new FullQualifiedName( "ol.newperiod" );
     public static final FullQualifiedName WARNING_FQN             = new FullQualifiedName( "ol.warning" );
+    public static final FullQualifiedName NAME_FQN                = new FullQualifiedName( "ol.name" );
 }
