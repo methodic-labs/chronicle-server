@@ -1,5 +1,6 @@
 package com.openlattice.chronicle.services.message
 
+import com.openlattice.chronicle.data.MessageDetails
 import java.util.*
 
 public interface MessageManager {
@@ -7,6 +8,6 @@ public interface MessageManager {
         organizationId: UUID,
         studyId: UUID,
         participantId: String,
-        messageDetails: Map<String, String>
+        messageDetails: List<MessageDetails>
     )
 }
