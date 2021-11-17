@@ -1,24 +1,15 @@
 package com.openlattice.chronicle.constants
 
+import com.openlattice.chronicle.data.MessageType
 import java.time.OffsetDateTime
 import java.util.*
 
-class MessageOutcome(
-    val messageType: String,
+data class MessageOutcome(
+    val messageType: MessageType,
     val dateTime: OffsetDateTime,
     val participantId: String,
     val url: String,
     var isSuccess: Boolean,
-    val sid: String
-) {
-    override fun hashCode(): Int {
-        return Objects
-            .hash(
-                messageType,
-                dateTime,
-                participantId,
-                isSuccess,
-                sid
-            )
-    }
-}
+    val sid: String,
+    val studyId :UUID,
+)
