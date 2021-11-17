@@ -23,66 +23,64 @@ import java.util.concurrent.ExecutionException
 /**
  * @author toddbergman &lt;todd@openlattice.com&gt;
  */
-class MessageService(
+open class MessageService(
     private val apiCacheManager: ApiCacheManager,
     private val edmCacheManager: EdmCacheManager,
     private val enrollmentManager: EnrollmentManager,
     private val entitySetIdsManager: EntitySetIdsManager,
     private val twilioManager: TwilioManager
 ) : MessageManager {
-    override fun sendMessage(
-        organizationId: UUID,
-        studyId: UUID,
-        participantId: String,
-        messageDetails: Map<String, String>
-    ) {
-        val message = MessageDetails(
-            messageDetails?.get("type") ?: "",
-            OffsetDateTime.now(),
-            participantId,
-            messageDetails?.get("phone") ?: "",
-            messageDetails?.get("url") ?: ""
-        )
-        val outcome = twilioManager.sendMessage(participantId, message)
-        try {
-            recordMessageSent(organizationId, studyId, outcome)
-            logger.info("Recorded notification {} sent", outcome.sid)
-        } catch (e: ExecutionException) {
-            logger.error("Unable to record notification sent for SID {}", outcome.sid, e)
+
+    companion object {
+        protected val logger = LoggerFactory.getLogger(MessageService::class.java)
+    }
+
+    override fun sendMessages(organizationId: UUID, messageDetailsList: List<MessageDetails>) {
+        val outcomes = twilioManager.sendMessages(messageDetailsList)
+        for(outcome in outcomes) {
+            try {
+                recordMessageSent(organizationId, outcome)
+                logger.info("Recorded notification {} sent to participant {}", outcome.sid, outcome.participantId)
+            } catch (e: ExecutionException) {
+                logger.error("Unable to record notification sent for SID {}", outcome.sid, e)
+            }
         }
     }
 
     @Throws(ExecutionException::class)
-    fun recordMessageSent(organizationId: UUID?, studyId: UUID?, messageOutcome: MessageOutcome) {
+    fun recordMessageSent(organizationId: UUID?, messageOutcome: MessageOutcome) {
         val apiClient = apiCacheManager.prodApiClientCache[ApiClient::class.java]
         val dataApi = apiClient.dataApi
 
         // entity set ids
-        val participantES = ChronicleServerUtil.getParticipantEntitySetName(studyId)
+        val participantES = ChronicleServerUtil.getParticipantEntitySetName(messageOutcome.studyId)
         val coreAppConfig = entitySetIdsManager
             .getChronicleAppConfig(organizationId)
         val legacyAppConfig = entitySetIdsManager
             .getLegacyChronicleAppConfig(participantES)
+
         val messageESID = coreAppConfig.messagesEntitySetId
         val sentToESID = legacyAppConfig.sentToEntitySetId
         val participantsESID = coreAppConfig.participantEntitySetId
+
         val participantEKID =
-            enrollmentManager.getParticipantEntityKeyId(organizationId, studyId, messageOutcome.participantId)
+            enrollmentManager.getParticipantEntityKeyId(organizationId, messageOutcome.studyId, messageOutcome.participantId)
+
         val entities: ListMultimap<UUID, Map<UUID, Set<Any>>> = ArrayListMultimap.create()
         val associations: ListMultimap<UUID, DataAssociation> = ArrayListMultimap.create()
-        val messageEntity: MutableMap<UUID, Set<Any>> = HashMap()
-        messageEntity[edmCacheManager.getPropertyTypeId(EdmConstants.TYPE_FQN)] =
-            ImmutableSet.of<Any>(messageOutcome.messageType)
-        messageEntity[edmCacheManager.getPropertyTypeId(EdmConstants.OL_ID_FQN)] =
-            ImmutableSet.of<Any>(messageOutcome.sid)
-        messageEntity[edmCacheManager.getPropertyTypeId(EdmConstants.DATE_TIME_FQN)] =
-            ImmutableSet.of<Any>(messageOutcome.dateTime)
-        messageEntity[edmCacheManager.getPropertyTypeId(EdmConstants.DELIVERED_FQN)] =
-            ImmutableSet.of<Any>(messageOutcome.isSuccess)
+
+        val messageEntity = mapOf(
+            edmCacheManager.getPropertyTypeId(EdmConstants.TYPE_FQN) to ImmutableSet.of<Any>(messageOutcome.messageType),
+            edmCacheManager.getPropertyTypeId(EdmConstants.OL_ID_FQN) to ImmutableSet.of<Any>(messageOutcome.sid),
+            edmCacheManager.getPropertyTypeId(EdmConstants.DATE_TIME_FQN) to ImmutableSet.of<Any>(messageOutcome.dateTime),
+            edmCacheManager.getPropertyTypeId(EdmConstants.DELIVERED_FQN) to ImmutableSet.of<Any>(messageOutcome.isSuccess)
+        )
         entities.put(messageESID, messageEntity)
-        val sentToEntity: MutableMap<UUID, Set<Any>> = HashMap()
-        sentToEntity[edmCacheManager.getPropertyTypeId(EdmConstants.DATE_TIME_FQN)] =
-            ImmutableSet.of<Any>(messageOutcome.dateTime)
+
+        val sentToEntity = mapOf(
+            edmCacheManager.getPropertyTypeId(EdmConstants.DATE_TIME_FQN) to ImmutableSet.of<Any>(messageOutcome.dateTime)
+        )
+
         associations.put(
             sentToESID,
             DataAssociation(
@@ -97,9 +95,5 @@ class MessageService(
         )
         val dataGraph = DataGraph(entities, associations)
         dataApi.createEntityAndAssociationData(dataGraph)
-    }
-
-    companion object {
-        protected val logger = LoggerFactory.getLogger(MessageService::class.java)
     }
 }

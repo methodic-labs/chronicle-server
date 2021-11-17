@@ -7,5 +7,5 @@ import com.openlattice.chronicle.constants.MessageOutcome
  * @author toddbergman &lt;todd@openlattice.com&gt;
  */
 interface TwilioManager {
-    fun sendMessage(participantId: String, messageDetails: MessageDetails): MessageOutcome
+    fun sendMessages(messageDetailsList: List<MessageDetails>): List<MessageOutcome>
 }

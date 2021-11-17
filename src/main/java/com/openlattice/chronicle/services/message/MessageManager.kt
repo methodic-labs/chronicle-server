@@ -4,10 +4,8 @@ import com.openlattice.chronicle.data.MessageDetails
 import java.util.*
 
 public interface MessageManager {
-    fun sendMessage(
+    fun sendMessages(
         organizationId: UUID,
-        studyId: UUID,
-        participantId: String,
         messageDetails: List<MessageDetails>
     )
 }

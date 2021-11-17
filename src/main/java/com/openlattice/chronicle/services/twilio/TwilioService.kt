@@ -16,38 +16,6 @@ import java.time.OffsetDateTime
  */
 class TwilioService(configuration: TwilioConfiguration) :
     TwilioManager {
-    private val fromPhoneNumber: PhoneNumber = PhoneNumber(configuration.fromPhone)
-    override fun sendMessage(participantId: String, messageDetails: MessageDetails): MessageOutcome {
-        val messageText = "Follow this link to enroll in Chronicle: {{URL}}".replace(URL, messageDetails.url)
-        return try {
-            val message = Message
-                .creator(PhoneNumber(messageDetails.phoneNumber), fromPhoneNumber, messageText)
-                .setStatusCallback(
-                    URI
-                        .create("https://api.openlattice.com/bifrost/messages/status")
-                )
-                .create()
-            MessageOutcome(
-                messageDetails.messageType,
-                OffsetDateTime.now(),
-                participantId,
-                messageDetails.url,
-                message.status != Message.Status.FAILED,
-                message.sid
-            )
-        } catch (e: ApiException) {
-            logger.error("Unable to send message to {}", messageDetails.phoneNumber, e)
-            MessageOutcome(
-                messageDetails.messageType,
-                OffsetDateTime.now(),
-                participantId,
-                messageDetails.url,
-                false,
-                "message not sent"
-            )
-        }
-    }
-
     companion object {
         protected val logger = LoggerFactory.getLogger(TwilioService::class.java)
         private const val URL = "{{URL}}"
@@ -55,5 +23,41 @@ class TwilioService(configuration: TwilioConfiguration) :
 
     init {
         Twilio.init(configuration.sid, configuration.token)
+    }
+
+    private val fromPhoneNumber: PhoneNumber = PhoneNumber(configuration.fromPhone)
+
+    private fun sendMessage(messageDetails: MessageDetails) :MessageOutcome {
+        val messageText = "Follow this link to enroll in Chronicle: {{URL}}".replace(URL, messageDetails.url)
+        try {
+            val message = Message
+                .creator(PhoneNumber(messageDetails.phoneNumber), fromPhoneNumber, messageText)
+                .setStatusCallback(URI.create("https://api.openlattice.com/bifrost/messages/status"))
+                .create()
+            return MessageOutcome(
+                messageDetails.messageType,
+                OffsetDateTime.now(),
+                messageDetails.participantId,
+                messageDetails.url,
+                message.status != Message.Status.FAILED,
+                message.sid,
+                messageDetails.studyId
+            )
+        } catch (e: ApiException) {
+            logger.error("Unable to send message to {}", messageDetails.phoneNumber, e)
+            return MessageOutcome(
+                messageDetails.messageType,
+                OffsetDateTime.now(),
+                messageDetails.participantId,
+                messageDetails.url,
+                false,
+                "message not sent",
+                messageDetails.studyId
+            )
+        }
+    }
+
+    override fun sendMessages(messageDetailsList: List<MessageDetails>): List<MessageOutcome> {
+        return messageDetailsList.map { messageDetails -> sendMessage(messageDetails) }
     }
 }

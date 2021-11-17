@@ -169,17 +169,15 @@ public class ChronicleControllerV2 implements ChronicleApi {
     }
     
     @RequestMapping(
-            path = ORGANIZATION_ID_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH + MESSAGE_PATH,
+            path = ORGANIZATION_ID_PATH + MESSAGE_PATH,
             method = RequestMethod.POST,
             consumes = MediaType.APPLICATION_JSON_VALUE
     )
-    public void sendMessage(
+    public void sendMessages(
             @PathVariable ( ORGANIZATION_ID ) UUID organizationId,
-            @PathVariable ( STUDY_ID ) UUID studyId,
-            @PathVariable ( PARTICIPANT_ID ) String participantId,
-            @RequestBody Map<String, String> messageDetails
+            @RequestBody List<MessageDetails> messageDetails
     ) {
-        messageManager.sendMessage( organizationId, studyId, participantId, messageDetails );
+        messageManager.sendMessages( organizationId, messageDetails);
     }
 
     @RequestMapping(
