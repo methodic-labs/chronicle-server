@@ -8,14 +8,13 @@ import com.kryptnostic.rhizome.configuration.ConfigurationKey
 import com.kryptnostic.rhizome.configuration.SimpleConfigurationKey
 import com.kryptnostic.rhizome.configuration.annotation.ReloadableConfiguration
 
-@ReloadableConfiguration(uri = "twilio.yaml")
+private const val CONFIG_FILE_NAME = "twilio.yaml"
+@ReloadableConfiguration(uri = CONFIG_FILE_NAME)
+
 class TwilioConfiguration @JsonCreator constructor(
-    @get:JsonProperty(SID_PROPERTY)
-    @param:JsonProperty(SID_PROPERTY) val sid: String,
-    @get:JsonProperty(TOKEN_PROPERTY)
-    @param:JsonProperty(TOKEN_PROPERTY) val token: String,
-    @get:JsonProperty(FROM_PHONE)
-    @param:JsonProperty(FROM_PHONE) val fromPhone: String
+    @JsonProperty val sid: String,
+    @JsonProperty val token: String,
+    @JsonProperty val fromPhone: String
 ) : Configuration {
 
     @JsonIgnore
@@ -24,12 +23,7 @@ class TwilioConfiguration @JsonCreator constructor(
     }
 
     companion object {
-        protected var key: ConfigurationKey = SimpleConfigurationKey(
-            "twilio.yaml"
-        )
-        private const val SID_PROPERTY = "sid"
-        private const val TOKEN_PROPERTY = "token"
-        private const val FROM_PHONE = "fromPhone"
+        protected var key: ConfigurationKey = SimpleConfigurationKey(CONFIG_FILE_NAME)
         @JsonIgnore
         fun key(): ConfigurationKey {
             return key
