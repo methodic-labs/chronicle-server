@@ -37,7 +37,7 @@ open class MessageService(
 
     override fun sendMessages(organizationId: UUID, messageDetailsList: List<MessageDetails>) {
         val outcomes = twilioManager.sendMessages(messageDetailsList)
-        for(outcome in outcomes) {
+        for (outcome in outcomes) {
             try {
                 recordMessageSent(organizationId, outcome)
                 logger.info("Recorded notification {} sent to participant {}", outcome.sid, outcome.participantId)
