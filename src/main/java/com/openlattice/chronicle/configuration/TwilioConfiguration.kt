@@ -15,4 +15,14 @@ data class TwilioConfiguration  constructor(
     val sid: String,
     val token: String,
     val fromPhone: String
-)
+): Configuration {
+
+    companion object {
+        @JvmStatic
+        val key = SimpleConfigurationKey(CONFIG_FILE_NAME)
+    }
+
+    override fun getKey(): ConfigurationKey {
+        return TwilioConfiguration.key
+    }
+}
