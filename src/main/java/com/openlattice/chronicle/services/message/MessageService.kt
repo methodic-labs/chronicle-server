@@ -44,36 +44,34 @@ open class MessageService(
     fun recordMessagesSent(organizationId: UUID?, messageOutcomes: List<MessageOutcome>) {
         val apiClient = apiCacheManager.prodApiClientCache[ApiClient::class.java]
         val dataApi = apiClient.dataApi
+        val coreAppConfig = entitySetIdsManager.getChronicleAppConfig(organizationId)
+
+        // entity set ids
+        val messageESID = coreAppConfig.messagesEntitySetId
+        val sentToESID = coreAppConfig.sentToEntitySetId
+        val participantsESID = coreAppConfig.participantEntitySetId
+
         val entities: ListMultimap<UUID, Map<UUID, Set<Any>>> = ArrayListMultimap.create();
         val associations: ListMultimap<UUID, DataAssociation> = ArrayListMultimap.create()
-        // entity set ids
+
         messageOutcomes.forEachIndexed { index, messageOutcome ->
-            val participantES = ChronicleServerUtil.getParticipantEntitySetName(messageOutcome.studyId)
-            val coreAppConfig = entitySetIdsManager
-                .getChronicleAppConfig(organizationId)
-            val legacyAppConfig = entitySetIdsManager
-                .getLegacyChronicleAppConfig(participantES)
-
-            val messageESID = coreAppConfig.messagesEntitySetId
-            val sentToESID = legacyAppConfig.sentToEntitySetId
-            val participantsESID = coreAppConfig.participantEntitySetId
-
             val participantEKID =
                 enrollmentManager.getParticipantEntityKeyId(organizationId, messageOutcome.studyId, messageOutcome.participantId)
 
             val messageEntity = mapOf(
-                edmCacheManager.getPropertyTypeId(EdmConstants.TYPE_FQN) to ImmutableSet.of<Any>(messageOutcome.messageType),
-                edmCacheManager.getPropertyTypeId(EdmConstants.OL_ID_FQN) to ImmutableSet.of<Any>(messageOutcome.sid),
-                edmCacheManager.getPropertyTypeId(EdmConstants.DATE_TIME_FQN) to ImmutableSet.of<Any>(messageOutcome.dateTime),
-                edmCacheManager.getPropertyTypeId(EdmConstants.DELIVERED_FQN) to ImmutableSet.of<Any>(messageOutcome.isSuccess)
+                edmCacheManager.getPropertyTypeId(EdmConstants.TYPE_FQN) to setOf(messageOutcome.messageType),
+                edmCacheManager.getPropertyTypeId(EdmConstants.OL_ID_FQN) to setOf(messageOutcome.sid),
+                edmCacheManager.getPropertyTypeId(EdmConstants.DATE_TIME_FQN) to setOf(messageOutcome.dateTime),
+                edmCacheManager.getPropertyTypeId(EdmConstants.DELIVERED_FQN) to setOf(messageOutcome.isSuccess)
             )
+
             entities.put(
                 messageESID,
                 messageEntity
             )
 
             val sentToEntity = mapOf(
-                edmCacheManager.getPropertyTypeId(EdmConstants.DATE_TIME_FQN) to ImmutableSet.of<Any>(messageOutcome.dateTime)
+                edmCacheManager.getPropertyTypeId(EdmConstants.DATE_TIME_FQN) to setOf(messageOutcome.dateTime)
             )
 
             associations.put(
