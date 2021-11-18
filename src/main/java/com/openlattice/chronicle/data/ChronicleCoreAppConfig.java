@@ -10,7 +10,6 @@ import java.util.UUID;
 
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
- * <p>
  * POJO for the core feature datasets of chronicle
  */
 public class ChronicleCoreAppConfig {
