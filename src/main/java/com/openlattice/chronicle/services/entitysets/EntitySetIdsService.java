@@ -229,9 +229,9 @@ public class EntitySetIdsService implements EntitySetIdsManager {
                 templateEntitySetIdMap.get( HAS ),
                 Optional.of( templateEntitySetIdMap.get( PARTICIPANTS ) ),
                 templateEntitySetIdMap.get( PARTICIPATED_IN ),
-                Optional.of( templateEntitySetIdMap.get( METADATA ) ),
+                Optional.of(  templateEntitySetIdMap.get( MESSAGES )),
+                templateEntitySetIdMap.get( METADATA ),
                 templateEntitySetIdMap.get( PART_OF ),
-                templateEntitySetIdMap.get( MESSAGES ),
                 templateEntitySetIdMap.get( NOTIFICATION ),
                 Optional.of(  templateEntitySetIdMap.get( SENT_TO )),
                 templateEntitySetIdMap.get( STUDIES )
