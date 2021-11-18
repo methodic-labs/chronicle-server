@@ -9,9 +9,9 @@ import com.kryptnostic.rhizome.configuration.SimpleConfigurationKey
 import com.kryptnostic.rhizome.configuration.annotation.ReloadableConfiguration
 
 private const val CONFIG_FILE_NAME = "twilio.yaml"
-@ReloadableConfiguration(uri = CONFIG_FILE_NAME)
 
-data class TwilioConfiguration  constructor(
+@ReloadableConfiguration(uri = CONFIG_FILE_NAME)
+data class TwilioConfiguration(
     val sid: String,
     val token: String,
     val fromPhone: String

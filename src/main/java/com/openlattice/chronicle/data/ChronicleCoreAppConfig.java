@@ -10,7 +10,7 @@ import java.util.UUID;
 
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
- *
+ * <p>
  * POJO for the core feature datasets of chronicle
  */
 public class ChronicleCoreAppConfig {
@@ -19,10 +19,10 @@ public class ChronicleCoreAppConfig {
     private final UUID participatedInEntitySetId;
     private final UUID metadataEntitySetId;
     private final UUID partOfEntitySetId;
-    private final UUID messagesEntitySetId;
+    private       UUID messagesEntitySetId;
     private final UUID notificationEntitySetId;
     private       UUID participantEntitySetId;
-    private final UUID sentToEntitySetId;
+    private       UUID sentToEntitySetId;
     private final UUID studiesEntitySetId;
 
     @JsonCreator
@@ -30,22 +30,22 @@ public class ChronicleCoreAppConfig {
             @JsonProperty( SerializationConstants.ENTITY_SET_ID ) UUID hasEntitySetId,
             @JsonProperty( SerializationConstants.ENTITY_SET_ID ) Optional<UUID> participantEntitySetId,
             @JsonProperty( SerializationConstants.ENTITY_SET_ID ) UUID participatedInEntitySetId,
-            @JsonProperty( SerializationConstants.ENTITY_SET_ID ) UUID messagesEntitySetId,
+            @JsonProperty( SerializationConstants.ENTITY_SET_ID ) Optional<UUID> messagesEntitySetId,
             @JsonProperty( SerializationConstants.ENTITY_SET_ID ) UUID metadataEntitySetId,
             @JsonProperty( SerializationConstants.ENTITY_SET_ID ) UUID partOfEntitySetId,
             @JsonProperty( SerializationConstants.ENTITY_SET_ID ) UUID notificationEntitySetId,
-            @JsonProperty( SerializationConstants.ENTITY_SET_ID ) UUID sentToEntitySetId,
+            @JsonProperty( SerializationConstants.ENTITY_SET_ID ) Optional<UUID> sentToEntitySetId,
             @JsonProperty( SerializationConstants.ENTITY_SET_ID ) UUID studiesEntitySetId
     ) {
         participantEntitySetId.ifPresent( uuid -> this.participantEntitySetId = uuid );
 
         this.hasEntitySetId = hasEntitySetId;
         this.participatedInEntitySetId = participatedInEntitySetId;
-        this.messagesEntitySetId = messagesEntitySetId;
+        messagesEntitySetId.ifPresent( uuid -> this.messagesEntitySetId = uuid );
         this.metadataEntitySetId = metadataEntitySetId;
         this.partOfEntitySetId = partOfEntitySetId;
         this.notificationEntitySetId = notificationEntitySetId;
-        this.sentToEntitySetId = sentToEntitySetId;
+        sentToEntitySetId.ifPresent( uuid -> this.sentToEntitySetId = uuid );
         this.studiesEntitySetId = studiesEntitySetId;
     }
 

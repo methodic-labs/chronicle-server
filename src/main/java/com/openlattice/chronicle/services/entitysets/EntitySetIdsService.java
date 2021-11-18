@@ -6,7 +6,8 @@ import com.openlattice.apps.App;
 import com.openlattice.apps.AppApi;
 import com.openlattice.apps.UserAppConfig;
 import com.openlattice.authorization.securable.AbstractSecurableObject;
-import com.openlattice.chronicle.constants.*;
+import com.openlattice.chronicle.constants.AppComponent;
+import com.openlattice.chronicle.constants.CollectionTemplateTypeName;
 import com.openlattice.chronicle.data.ChronicleCoreAppConfig;
 import com.openlattice.chronicle.data.ChronicleDataCollectionAppConfig;
 import com.openlattice.chronicle.data.ChronicleSurveysAppConfig;
@@ -29,12 +30,9 @@ import org.springframework.scheduling.annotation.Scheduled;
 
 import java.util.*;
 import java.util.concurrent.ExecutionException;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE;
-import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE_DATA_COLLECTION;
-import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE_SURVEYS;
+import static com.openlattice.chronicle.constants.AppComponent.*;
 import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.*;
 import static com.openlattice.chronicle.constants.EdmConstants.LEGACY_DATASET_COLLECTION_TEMPLATE_MAP;
 import static com.openlattice.chronicle.constants.EdmConstants.STRING_ID_FQN;
@@ -231,11 +229,11 @@ public class EntitySetIdsService implements EntitySetIdsManager {
                 templateEntitySetIdMap.get( HAS ),
                 Optional.of( templateEntitySetIdMap.get( PARTICIPANTS ) ),
                 templateEntitySetIdMap.get( PARTICIPATED_IN ),
+                Optional.of(  templateEntitySetIdMap.get( MESSAGES )),
                 templateEntitySetIdMap.get( METADATA ),
                 templateEntitySetIdMap.get( PART_OF ),
-                templateEntitySetIdMap.get( MESSAGES ),
                 templateEntitySetIdMap.get( NOTIFICATION ),
-                templateEntitySetIdMap.get( SENT_TO ),
+                Optional.of(  templateEntitySetIdMap.get( SENT_TO )),
                 templateEntitySetIdMap.get( STUDIES )
         );
     }
@@ -311,11 +309,11 @@ public class EntitySetIdsService implements EntitySetIdsManager {
                 legacyEntitySetIds.get( HAS ),
                 optional,
                 legacyEntitySetIds.get( PARTICIPATED_IN ),
-                legacyEntitySetIds.get( MESSAGES ),
+                Optional.empty(),
                 legacyEntitySetIds.get( METADATA ),
                 legacyEntitySetIds.get( PART_OF ),
                 legacyEntitySetIds.get( NOTIFICATION ),
-                legacyEntitySetIds.get( SENT_TO ),
+                Optional.empty(),
                 legacyEntitySetIds.get( STUDIES )
         );
     }
@@ -327,11 +325,11 @@ public class EntitySetIdsService implements EntitySetIdsManager {
                 legacyEntitySetIds.get( HAS ),
                 Optional.empty(),
                 legacyEntitySetIds.get( PARTICIPATED_IN ),
-                legacyEntitySetIds.get( MESSAGES ),
+                Optional.empty(),
                 legacyEntitySetIds.get( METADATA ),
                 legacyEntitySetIds.get( PART_OF ),
                 legacyEntitySetIds.get( NOTIFICATION ),
-                legacyEntitySetIds.get( SENT_TO ),
+                Optional.empty(),
                 legacyEntitySetIds.get( STUDIES )
         );
     }
