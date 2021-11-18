@@ -11,7 +11,7 @@ import com.openlattice.chronicle.data.ParticipationStatus;
 import com.openlattice.chronicle.services.edm.EdmCacheManager;
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager;
 import com.openlattice.chronicle.services.entitysets.EntitySetIdsManager;
-import com.openlattice.chronicle.services.message.MessageManager;
+import com.openlattice.chronicle.services.message.MessageService;
 import com.openlattice.chronicle.services.surveys.SurveysManager;
 import com.openlattice.chronicle.services.upload.AppDataUploadManager;
 import com.openlattice.chronicle.sources.Datasource;
@@ -48,7 +48,7 @@ public class ChronicleControllerV2 implements ChronicleApi {
     private EntitySetIdsManager entitySetIdsManager;
 
     @Inject
-    private MessageManager messageManager;
+    private MessageService messageService;
 
     @Override
     @Timed
@@ -177,7 +177,7 @@ public class ChronicleControllerV2 implements ChronicleApi {
             @PathVariable ( ORGANIZATION_ID ) UUID organizationId,
             @RequestBody List<MessageDetails> messageDetails
     ) {
-        messageManager.sendMessages( organizationId, messageDetails);
+        messageService.sendMessages( organizationId, messageDetails);
     }
 
     @RequestMapping(
