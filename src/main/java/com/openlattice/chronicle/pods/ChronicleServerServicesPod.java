@@ -159,18 +159,18 @@ public class ChronicleServerServicesPod {
     }
 
     @Bean
-    public TwilioManager twilioManager() throws IOException, ExecutionException {
+    public TwilioService twilioService() throws IOException, ExecutionException {
         return new TwilioService( getTwilioConfiguration() );
     }
 
     @Bean
-    public MessageManager messageManager() throws IOException, ExecutionException {
+    public MessageService messageService() throws IOException, ExecutionException {
         return new MessageService(
                 apiCacheManager(),
                 edmCacheManager(),
                 enrollmentManager(),
                 entitySetIdsManager(),
-                twilioManager()
+                twilioService()
         );
     }
 }
