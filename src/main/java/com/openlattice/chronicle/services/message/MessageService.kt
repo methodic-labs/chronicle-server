@@ -97,7 +97,7 @@ open class MessageService(
                 """)
             }
         } catch (e: ExecutionException) {
-            logger.info("Failed to record messages", e);
+            logger.info("Failed to record messages", e)
             for (messageOutcome in messageOutcomes) {
                 logger.info(
                         """
