@@ -2,7 +2,7 @@ package com.openlattice.chronicle.services.twilio
 
 import com.openlattice.chronicle.configuration.TwilioConfiguration
 import com.openlattice.chronicle.data.MessageDetails
-import com.openlattice.chronicle.constants.MessageOutcome
+import com.openlattice.chronicle.data.MessageOutcome
 import com.twilio.Twilio
 import com.twilio.exception.ApiException
 import com.twilio.rest.api.v2010.account.Message
@@ -28,7 +28,7 @@ class TwilioService(configuration: TwilioConfiguration) :
     private val fromPhoneNumber: PhoneNumber = PhoneNumber(configuration.fromPhone)
 
     private fun sendMessage(messageDetails: MessageDetails) :MessageOutcome {
-        val messageText = "Follow this link to enroll in Chronicle: {{URL}}".replace(URL, messageDetails.url)
+        val messageText = "Follow this link to enroll in Chronicle: ${messageDetails.url}"
         try {
             val message = Message
                 .creator(PhoneNumber(messageDetails.phoneNumber), fromPhoneNumber, messageText)
@@ -44,7 +44,11 @@ class TwilioService(configuration: TwilioConfiguration) :
                 messageDetails.studyId
             )
         } catch (e: ApiException) {
-            logger.error("Unable to send message to {}", messageDetails.phoneNumber, e)
+            logger.error("""
+                Unable to send message of type ${messageDetails.messageType} 
+                to participant ${messageDetails.participantId} 
+                in study ${messageDetails.studyId}
+                """.trimIndent(), e)
             return MessageOutcome(
                 messageDetails.messageType,
                 OffsetDateTime.now(),
