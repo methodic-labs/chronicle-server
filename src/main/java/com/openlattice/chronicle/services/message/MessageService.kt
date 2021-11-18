@@ -5,7 +5,7 @@ import com.google.common.collect.ImmutableSet
 import com.google.common.collect.ListMultimap
 import com.openlattice.chronicle.constants.EdmConstants
 import com.openlattice.chronicle.data.MessageDetails
-import com.openlattice.chronicle.constants.MessageOutcome
+import com.openlattice.chronicle.data.MessageOutcome
 import com.openlattice.chronicle.services.ApiCacheManager
 import com.openlattice.chronicle.services.edm.EdmCacheManager
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
@@ -37,63 +37,82 @@ open class MessageService(
 
     override fun sendMessages(organizationId: UUID, messageDetailsList: List<MessageDetails>) {
         val outcomes = twilioManager.sendMessages(messageDetailsList)
-        for (outcome in outcomes) {
-            try {
-                recordMessageSent(organizationId, outcome)
-                logger.info("Recorded notification {} sent to participant {}", outcome.sid, outcome.participantId)
-            } catch (e: ExecutionException) {
-                logger.error("Unable to record notification sent for SID {}", outcome.sid, e)
-            }
-        }
+        recordMessagesSent(organizationId, outcomes)
     }
 
     @Throws(ExecutionException::class)
-    fun recordMessageSent(organizationId: UUID?, messageOutcome: MessageOutcome) {
+    fun recordMessagesSent(organizationId: UUID?, messageOutcomes: List<MessageOutcome>) {
         val apiClient = apiCacheManager.prodApiClientCache[ApiClient::class.java]
         val dataApi = apiClient.dataApi
-
-        // entity set ids
-        val participantES = ChronicleServerUtil.getParticipantEntitySetName(messageOutcome.studyId)
-        val coreAppConfig = entitySetIdsManager
-            .getChronicleAppConfig(organizationId)
-        val legacyAppConfig = entitySetIdsManager
-            .getLegacyChronicleAppConfig(participantES)
-
-        val messageESID = coreAppConfig.messagesEntitySetId
-        val sentToESID = legacyAppConfig.sentToEntitySetId
-        val participantsESID = coreAppConfig.participantEntitySetId
-
-        val participantEKID =
-            enrollmentManager.getParticipantEntityKeyId(organizationId, messageOutcome.studyId, messageOutcome.participantId)
-
-        val entities: ListMultimap<UUID, Map<UUID, Set<Any>>> = ArrayListMultimap.create()
+        val entities: ListMultimap<UUID, Map<UUID, Set<Any>>> = ArrayListMultimap.create();
         val associations: ListMultimap<UUID, DataAssociation> = ArrayListMultimap.create()
+        // entity set ids
+        messageOutcomes.forEachIndexed { index, messageOutcome ->
+            val participantES = ChronicleServerUtil.getParticipantEntitySetName(messageOutcome.studyId)
+            val coreAppConfig = entitySetIdsManager
+                .getChronicleAppConfig(organizationId)
+            val legacyAppConfig = entitySetIdsManager
+                .getLegacyChronicleAppConfig(participantES)
 
-        val messageEntity = mapOf(
-            edmCacheManager.getPropertyTypeId(EdmConstants.TYPE_FQN) to ImmutableSet.of<Any>(messageOutcome.messageType),
-            edmCacheManager.getPropertyTypeId(EdmConstants.OL_ID_FQN) to ImmutableSet.of<Any>(messageOutcome.sid),
-            edmCacheManager.getPropertyTypeId(EdmConstants.DATE_TIME_FQN) to ImmutableSet.of<Any>(messageOutcome.dateTime),
-            edmCacheManager.getPropertyTypeId(EdmConstants.DELIVERED_FQN) to ImmutableSet.of<Any>(messageOutcome.isSuccess)
-        )
-        entities.put(messageESID, messageEntity)
+            val messageESID = coreAppConfig.messagesEntitySetId
+            val sentToESID = legacyAppConfig.sentToEntitySetId
+            val participantsESID = coreAppConfig.participantEntitySetId
 
-        val sentToEntity = mapOf(
-            edmCacheManager.getPropertyTypeId(EdmConstants.DATE_TIME_FQN) to ImmutableSet.of<Any>(messageOutcome.dateTime)
-        )
+            val participantEKID =
+                enrollmentManager.getParticipantEntityKeyId(organizationId, messageOutcome.studyId, messageOutcome.participantId)
 
-        associations.put(
-            sentToESID,
-            DataAssociation(
-                messageESID,
-                Optional.of(0),
-                Optional.empty(),
-                participantsESID,
-                Optional.empty(),
-                Optional.of(participantEKID),
-                sentToEntity
+            val messageEntity = mapOf(
+                edmCacheManager.getPropertyTypeId(EdmConstants.TYPE_FQN) to ImmutableSet.of<Any>(messageOutcome.messageType),
+                edmCacheManager.getPropertyTypeId(EdmConstants.OL_ID_FQN) to ImmutableSet.of<Any>(messageOutcome.sid),
+                edmCacheManager.getPropertyTypeId(EdmConstants.DATE_TIME_FQN) to ImmutableSet.of<Any>(messageOutcome.dateTime),
+                edmCacheManager.getPropertyTypeId(EdmConstants.DELIVERED_FQN) to ImmutableSet.of<Any>(messageOutcome.isSuccess)
             )
-        )
+            entities.put(
+                messageESID,
+                messageEntity
+            )
+
+            val sentToEntity = mapOf(
+                edmCacheManager.getPropertyTypeId(EdmConstants.DATE_TIME_FQN) to ImmutableSet.of<Any>(messageOutcome.dateTime)
+            )
+
+            associations.put(
+                sentToESID,
+                DataAssociation(
+                    messageESID,
+                    Optional.of(index),
+                    Optional.empty(),
+                    participantsESID,
+                    Optional.empty(),
+                    Optional.of(participantEKID),
+                    sentToEntity
+                )
+            )
+        }
         val dataGraph = DataGraph(entities, associations)
-        dataApi.createEntityAndAssociationData(dataGraph)
+        try {
+            dataApi.createEntityAndAssociationData(dataGraph)
+            for (messageOutcome in messageOutcomes) {
+                logger.info("""
+                    Recorded message ${messageOutcome.sid}
+                    sent to participant ${messageOutcome.participantId}
+                    for study ${messageOutcome.studyId}
+                    in organization $organizationId
+                """)
+            }
+        }
+        catch (e: ExecutionException) {
+            logger.info("Failed to record messages", e);
+            for (messageOutcome in messageOutcomes) {
+                logger.info(
+                    """
+                    Unable to record message ${messageOutcome.sid}
+                    sent to participant ${messageOutcome.participantId}
+                    for study ${messageOutcome.studyId}
+                    in organization $organizationId
+                """
+                )
+            }
+        }
     }
 }
