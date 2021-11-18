@@ -28,7 +28,7 @@ class TwilioService(configuration: TwilioConfiguration) :
     private val fromPhoneNumber: PhoneNumber = PhoneNumber(configuration.fromPhone)
 
     private fun sendMessage(messageDetails: MessageDetails) :MessageOutcome {
-        val messageText = "Follow this link to enroll in Chronicle: ${messageDetails.url}"
+        val messageText = "Chronicle device enrollment:  Please download app from your app store and click on ${messageDetails.url} to enroll your device."
         try {
             val message = Message
                 .creator(PhoneNumber(messageDetails.phoneNumber), fromPhoneNumber, messageText)
