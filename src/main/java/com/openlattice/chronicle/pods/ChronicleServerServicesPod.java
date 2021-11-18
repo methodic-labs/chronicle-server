@@ -40,6 +40,8 @@ import com.openlattice.chronicle.services.enrollment.EnrollmentManager;
 import com.openlattice.chronicle.services.enrollment.EnrollmentService;
 import com.openlattice.chronicle.services.entitysets.EntitySetIdsManager;
 import com.openlattice.chronicle.services.entitysets.EntitySetIdsService;
+import com.openlattice.chronicle.services.ios.SensorDataManager;
+import com.openlattice.chronicle.services.ios.SensorDataService;
 import com.openlattice.chronicle.services.surveys.SurveysManager;
 import com.openlattice.chronicle.services.surveys.SurveysService;
 import com.openlattice.chronicle.services.upload.AppDataUploadManager;
@@ -144,6 +146,17 @@ public class ChronicleServerServicesPod {
                 apiCacheManager(),
                 edmCacheManager(),
                 entitySetIdsManager(),
+                enrollmentManager()
+        );
+    }
+
+    @Bean
+    public SensorDataManager sensorDataManager() throws IOException, ExecutionException {
+        return new SensorDataService(
+                apiCacheManager(),
+                edmCacheManager(),
+                entitySetIdsManager(),
+                scheduledTasksManager(),
                 enrollmentManager()
         );
     }

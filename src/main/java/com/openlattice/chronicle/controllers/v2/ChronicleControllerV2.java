@@ -10,6 +10,7 @@ import com.openlattice.chronicle.data.ParticipationStatus;
 import com.openlattice.chronicle.services.edm.EdmCacheManager;
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager;
 import com.openlattice.chronicle.services.entitysets.EntitySetIdsManager;
+import com.openlattice.chronicle.services.ios.SensorDataManager;
 import com.openlattice.chronicle.services.surveys.SurveysManager;
 import com.openlattice.chronicle.services.upload.AppDataUploadManager;
 import com.openlattice.chronicle.sources.Datasource;
@@ -44,6 +45,9 @@ public class ChronicleControllerV2 implements ChronicleApi {
 
     @Inject
     private EntitySetIdsManager entitySetIdsManager;
+
+    @Inject
+    private SensorDataManager sensorDataManager;
 
     @Override
     @Timed
@@ -170,12 +174,25 @@ public class ChronicleControllerV2 implements ChronicleApi {
     )
     @Override
     public void submitTimeUseDiarySurvey(
-            @PathVariable ( ORGANIZATION_ID ) UUID organizationId,
-            @PathVariable ( STUDY_ID ) UUID studyId,
-            @PathVariable ( PARTICIPANT_ID ) String participantId,
+            @PathVariable( ORGANIZATION_ID ) UUID organizationId,
+            @PathVariable( STUDY_ID ) UUID studyId,
+            @PathVariable( PARTICIPANT_ID ) String participantId,
             @RequestBody List<Map<FullQualifiedName, Set<Object>>> surveyData
     ) {
         surveysManager.submitTimeUseDiarySurvey( organizationId, studyId, participantId, surveyData );
+    }
+
+    @Override
+    @Timed
+    @RequestMapping(
+            path = ORGANIZATION_ID_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH + DATASOURCE_ID_PATH + UPLOAD_PATH
+                    + IOS_PATH,
+            method = RequestMethod.POST,
+            consumes = MediaType.APPLICATION_JSON_VALUE
+    )
+    public void uploadIOSSensorData(
+            UUID organizationId, UUID studyId, String participantId, String deviceId, List<Map<UUID, Object>> data ) {
+        sensorDataManager.uploadData( organizationId, studyId, participantId, deviceId, data );
     }
 
     @Override
