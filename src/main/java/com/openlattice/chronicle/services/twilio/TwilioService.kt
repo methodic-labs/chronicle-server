@@ -18,7 +18,6 @@ class TwilioService(configuration: TwilioConfiguration) :
     TwilioManager {
     companion object {
         protected val logger = LoggerFactory.getLogger(TwilioService::class.java)
-        private const val URL = "{{URL}}"
     }
 
     init {
