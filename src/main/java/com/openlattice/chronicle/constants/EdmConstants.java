@@ -1,8 +1,10 @@
 package com.openlattice.chronicle.constants;
 
+import com.google.common.collect.ImmutableSet;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
 
 import java.util.Map;
+import java.util.Set;
 
 import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.*;
 import static java.util.Map.entry;
@@ -63,6 +65,30 @@ public class EdmConstants {
                     entry( TIMERANGE_ES, TIME_RANGE ),
                     entry( USED_BY_ES, USED_BY )
             );
+
+    public static final Set<String> LEGACY_ENTITY_SET_NAMES = ImmutableSet.of(
+            APPS_DICTIONARY_ES,
+            ADDRESSES_ES,
+            ANSWERS_ES,
+            USER_APPS_ES,
+            DATA_ES,
+            DEVICES_ES,
+            HAS_ES,
+            METADATA_ES,
+            NOTIFICATION_ES,
+            PARTICIPATED_IN_ES,
+            PART_OF_ES,
+            PREPROCESSED_DATA_ES,
+            QUESTIONNAIRE_ES,
+            QUESTIONS_ES,
+            RECORDED_BY_ES,
+            REGISTERED_FOR_ES,
+            RESPONDS_WITH_ES,
+            STUDY_ES,
+            SUBMISSION_ES,
+            TIMERANGE_ES,
+            USED_BY_ES
+    );
 
     // property types
     public static final FullQualifiedName COMPLETED_DATE_TIME_FQN = new FullQualifiedName( "date.completeddatetime" );

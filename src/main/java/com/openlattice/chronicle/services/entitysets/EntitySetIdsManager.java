@@ -1,11 +1,10 @@
 package com.openlattice.chronicle.services.entitysets;
 
 import com.openlattice.chronicle.constants.*;
-import com.openlattice.chronicle.data.ChronicleCoreAppConfig;
-import com.openlattice.chronicle.data.ChronicleDataCollectionAppConfig;
-import com.openlattice.chronicle.data.ChronicleSurveysAppConfig;
+import com.openlattice.chronicle.data.*;
 
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -19,22 +18,7 @@ public interface EntitySetIdsManager {
 
     Map<String, Object> getOrgAppSettings(String appName, UUID organizationId);
 
-    // entity set ids configs
-    ChronicleDataCollectionAppConfig getChronicleDataCollectionAppConfig( UUID organizationId );
+    ChronicleAppConfig getChronicleAppConfig(UUID organizationId, Set<AppComponent> components );
 
-    ChronicleCoreAppConfig getChronicleAppConfig( UUID organizationId );
-
-    ChronicleCoreAppConfig getChronicleAppConfig( UUID organizationId, String participantESName );
-
-    ChronicleSurveysAppConfig getChronicleSurveysAppConfig( UUID organizationId );
-
-    // legacy entity set ids configs
-    ChronicleSurveysAppConfig getLegacyChronicleSurveysAppConfig();
-
-    ChronicleDataCollectionAppConfig getLegacyChronicleDataCollectionAppConfig();
-
-    ChronicleCoreAppConfig getLegacyChronicleAppConfig( String participantESName );
-
-    ChronicleCoreAppConfig getLegacyChronicleAppConfig();
-
+    LegacyChronicleAppConfig getChronicleLegacyAppConfig(UUID studyId);
 }

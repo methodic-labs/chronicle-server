@@ -1,15 +1,15 @@
 package com.openlattice.chronicle.services.entitysets;
 
+import com.amazonaws.annotation.Immutable;
 import com.dataloom.streams.StreamUtil;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.*;
 import com.openlattice.apps.App;
 import com.openlattice.apps.AppApi;
 import com.openlattice.apps.UserAppConfig;
 import com.openlattice.authorization.securable.AbstractSecurableObject;
 import com.openlattice.chronicle.constants.*;
-import com.openlattice.chronicle.data.ChronicleCoreAppConfig;
-import com.openlattice.chronicle.data.ChronicleDataCollectionAppConfig;
-import com.openlattice.chronicle.data.ChronicleSurveysAppConfig;
+import com.openlattice.chronicle.data.*;
 import com.openlattice.chronicle.services.ApiCacheManager;
 import com.openlattice.chronicle.services.edm.EdmCacheManager;
 import com.openlattice.chronicle.util.ChronicleServerUtil;
@@ -31,13 +31,13 @@ import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE;
 import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE_DATA_COLLECTION;
 import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE_SURVEYS;
 import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.*;
-import static com.openlattice.chronicle.constants.EdmConstants.LEGACY_DATASET_COLLECTION_TEMPLATE_MAP;
-import static com.openlattice.chronicle.constants.EdmConstants.STRING_ID_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.*;
 import static com.openlattice.chronicle.util.ChronicleServerUtil.getFirstUUIDOrNull;
 
 /**
@@ -53,10 +53,7 @@ public class EntitySetIdsService implements EntitySetIdsManager {
     private final Map<AppComponent, Map<UUID, Map<CollectionTemplateTypeName, UUID>>> entitySetIdsByOrgId = Maps
             .newHashMap();
 
-    private final Map<String, UUID>                     legacyParticipantsEntitySetIds = Maps
-            .newHashMap();
-    private final Map<CollectionTemplateTypeName, UUID> legacyEntitySetIds             = Maps
-            .newHashMap();
+    private final Map<String, UUID> legacyEntitySetIds = Maps.newHashMap();
 
     // appComponent -> orgId -> settings
     private final Map<AppComponent, Map<UUID, Map<String, Object>>> appSettings = Maps.newHashMap();
@@ -73,16 +70,8 @@ public class EntitySetIdsService implements EntitySetIdsManager {
         EntitySetsApi entitySetsApi = prodApiClient.getEntitySetsApi();
 
         // get legacy entity set ids
-        Set<String> entitySetNames = LEGACY_DATASET_COLLECTION_TEMPLATE_MAP.keySet();
-        Map<String, UUID> entitySetIds = entitySetsApi.getEntitySetIds( entitySetNames );
-
-        Map<CollectionTemplateTypeName, UUID> legacyEntitySetIds = Maps
-                .newHashMapWithExpectedSize( entitySetIds.size() );
-        entitySetIds.forEach( ( esName, esId ) -> {
-            legacyEntitySetIds.put( LEGACY_DATASET_COLLECTION_TEMPLATE_MAP.get( esName ), esId );
-        } );
-
-        this.legacyEntitySetIds.putAll( legacyEntitySetIds );
+        Map<String, UUID> entitySetIds = entitySetsApi.getEntitySetIds( LEGACY_ENTITY_SET_NAMES );
+        this.legacyEntitySetIds.putAll( entitySetIds );
 
         refreshOrgsEntitySets();
         refreshLegacyParticipantEntitySetIds();
@@ -168,10 +157,10 @@ public class EntitySetIdsService implements EntitySetIdsManager {
             DataApi dataApi = apiClient.getDataApi();
             EntitySetsApi entitySetsApi = apiClient.getEntitySetsApi();
 
-            ChronicleCoreAppConfig coreAppConfig = getLegacyChronicleAppConfig();
+            UUID studiesEntitySetId = legacyEntitySetIds.get( STUDY_ES );
 
             Iterable<SetMultimap<FullQualifiedName, Object>> studies = dataApi.loadSelectedEntitySetData(
-                    coreAppConfig.getStudiesEntitySetId(),
+                    studiesEntitySetId,
                     new EntitySetSelection(
                             Optional.of( ImmutableSet.of( edmCacheManager.getPropertyTypeId( STRING_ID_FQN ) ) )
                     ),
@@ -186,7 +175,7 @@ public class EntitySetIdsService implements EntitySetIdsManager {
 
             Map<String, UUID> entitySetIds = entitySetsApi.getEntitySetIds( entitySetNames );
 
-            legacyParticipantsEntitySetIds.putAll( entitySetIds );
+            this.legacyEntitySetIds.putAll( entitySetIds );
 
             logger.info( "loaded {} legacy participant entity set ids", entitySetIds.size() );
 
@@ -212,148 +201,34 @@ public class EntitySetIdsService implements EntitySetIdsManager {
         return getOrgAppSettings( component, organizationId );
     }
 
-    public ChronicleCoreAppConfig getChronicleAppConfig( UUID organizationId ) {
+    @Override public ChronicleAppConfig getChronicleAppConfig(
+            UUID organizationId, Set<AppComponent> components ) {
+        components.add( CHRONICLE ); // core component required by all organizations
+        ensureOrganizationHasComponents( organizationId, components);
 
-        if ( organizationId == null ) {
-            return getLegacyChronicleAppConfig();
-        }
+        Map<CollectionTemplateTypeName, UUID> coreEntitySets = getEntitySetIdsByOrgId().get( CHRONICLE ).get( organizationId );
+        Map<CollectionTemplateTypeName, UUID> dataCollectionEntitySets = getEntitySetIdsByOrgId().getOrDefault( CHRONICLE_DATA_COLLECTION, ImmutableMap.of() ).getOrDefault( organizationId, ImmutableMap.of() );
+        Map<CollectionTemplateTypeName, UUID> questionnairesEntitySets = getEntitySetIdsByOrgId().getOrDefault( CHRONICLE_SURVEYS, ImmutableMap.of() ).getOrDefault( organizationId, ImmutableMap.of() );
 
-        Map<CollectionTemplateTypeName, UUID> templateEntitySetIdMap = getEntitySetIdsByOrgId()
-                .getOrDefault( CHRONICLE, ImmutableMap.of() )
-                .getOrDefault( organizationId, ImmutableMap.of() );
-
-        if ( templateEntitySetIdMap.isEmpty() ) {
-            logger.error( "organization {} does not have chronicle core app installed ", organizationId );
-            return null;
-        }
-
-        return new ChronicleCoreAppConfig(
-                templateEntitySetIdMap.get( HAS ),
-                Optional.of( templateEntitySetIdMap.get( PARTICIPANTS ) ),
-                templateEntitySetIdMap.get( PARTICIPATED_IN ),
-                templateEntitySetIdMap.get( METADATA ),
-                templateEntitySetIdMap.get( PART_OF ),
-                templateEntitySetIdMap.get( NOTIFICATION ),
-                templateEntitySetIdMap.get( STUDIES )
-        );
+        return new ChronicleAppConfig( coreEntitySets, dataCollectionEntitySets, questionnairesEntitySets );
     }
 
-    public ChronicleCoreAppConfig getChronicleAppConfig( UUID organizationId, String participantESName ) {
-
-        if ( organizationId == null ) {
-            return getLegacyChronicleAppConfig( participantESName );
-        }
-
-        return getChronicleAppConfig( organizationId );
+    @Override public LegacyChronicleAppConfig getChronicleLegacyAppConfig( UUID studyId ) {
+        return new LegacyChronicleAppConfig( legacyEntitySetIds, studyId );
     }
 
-    public ChronicleDataCollectionAppConfig getChronicleDataCollectionAppConfig( UUID organizationId ) {
+    // helpers
 
-        if ( organizationId == null ) {
-            return getLegacyChronicleDataCollectionAppConfig();
-        }
-        Map<CollectionTemplateTypeName, UUID> templateEntitySetIdMap = getEntitySetIdsByOrgId()
-                .getOrDefault( CHRONICLE_DATA_COLLECTION, ImmutableMap.of() )
-                .getOrDefault( organizationId, ImmutableMap.of() );
+    private void ensureOrganizationHasComponents(UUID organizationId, Set<AppComponent> components) {
+        components.forEach( appComponent -> {
+            Map<UUID, Map<CollectionTemplateTypeName, UUID>> orgComponents = getEntitySetIdsByOrgId().getOrDefault( appComponent, ImmutableMap.of() );
 
-        if ( templateEntitySetIdMap.isEmpty() ) {
-            logger.error( "organization {} does not have chronicle data collection app installed ", organizationId );
-            return null;
-        }
-
-        return new ChronicleDataCollectionAppConfig(
-                templateEntitySetIdMap.get( APP_DICTIONARY ),
-                templateEntitySetIdMap.get( RECORDED_BY ),
-                templateEntitySetIdMap.get( DEVICE ),
-                templateEntitySetIdMap.get( USED_BY ),
-                templateEntitySetIdMap.get( USER_APPS ),
-                templateEntitySetIdMap.get( PREPROCESSED_DATA ),
-                templateEntitySetIdMap.get( APPDATA )
-        );
-    }
-
-    public ChronicleSurveysAppConfig getChronicleSurveysAppConfig( UUID organizationId ) {
-
-        if ( organizationId == null ) {
-            return getLegacyChronicleSurveysAppConfig();
-        }
-
-        Map<CollectionTemplateTypeName, UUID> templateEntitySetIdMap = getEntitySetIdsByOrgId()
-                .getOrDefault( CHRONICLE_SURVEYS, ImmutableMap.of() )
-                .getOrDefault( organizationId, ImmutableMap.of() );
-
-        if ( templateEntitySetIdMap.isEmpty() ) {
-            logger.error( "organization {} does not have chronicle surveys app installed ", organizationId );
-            return null;
-        }
-
-        return new ChronicleSurveysAppConfig(
-                templateEntitySetIdMap.get( SURVEY ),
-                templateEntitySetIdMap.get( TIME_RANGE ),
-                templateEntitySetIdMap.get( SUBMISSION ),
-                templateEntitySetIdMap.get( REGISTERED_FOR ),
-                templateEntitySetIdMap.get( RESPONDS_WITH ),
-                templateEntitySetIdMap.get( ADDRESSES ),
-                templateEntitySetIdMap.get( ANSWER ),
-                templateEntitySetIdMap.get( QUESTION )
-        );
-    }
-
-    @Deprecated
-    public ChronicleCoreAppConfig getLegacyChronicleAppConfig( String participantESName ) {
-
-        UUID participantESID = legacyParticipantsEntitySetIds.getOrDefault( participantESName, null);
-        Optional<UUID> optional = participantESID  == null ? Optional.empty() : Optional.of( participantESID );
-
-        return new ChronicleCoreAppConfig(
-                legacyEntitySetIds.get( HAS ),
-                optional,
-                legacyEntitySetIds.get( PARTICIPATED_IN ),
-                legacyEntitySetIds.get( METADATA ),
-                legacyEntitySetIds.get( PART_OF ),
-                legacyEntitySetIds.get( NOTIFICATION ),
-                legacyEntitySetIds.get( STUDIES )
-        );
-    }
-
-    @Deprecated
-    public ChronicleCoreAppConfig getLegacyChronicleAppConfig() {
-
-        return new ChronicleCoreAppConfig(
-                legacyEntitySetIds.get( HAS ),
-                Optional.empty(),
-                legacyEntitySetIds.get( PARTICIPATED_IN ),
-                legacyEntitySetIds.get( METADATA ),
-                legacyEntitySetIds.get( PART_OF ),
-                legacyEntitySetIds.get( NOTIFICATION ),
-                legacyEntitySetIds.get( STUDIES )
-        );
-    }
-
-    @Deprecated
-    public ChronicleDataCollectionAppConfig getLegacyChronicleDataCollectionAppConfig() {
-        return new ChronicleDataCollectionAppConfig(
-                legacyEntitySetIds.get( APP_DICTIONARY ),
-                legacyEntitySetIds.get( RECORDED_BY ),
-                legacyEntitySetIds.get( DEVICE ),
-                legacyEntitySetIds.get( USED_BY ),
-                legacyEntitySetIds.get( USER_APPS ),
-                legacyEntitySetIds.get( PREPROCESSED_DATA ),
-                legacyEntitySetIds.get( APPDATA )
-        );
-    }
-
-    @Deprecated
-    public ChronicleSurveysAppConfig getLegacyChronicleSurveysAppConfig() {
-        return new ChronicleSurveysAppConfig(
-                legacyEntitySetIds.get( SURVEY ),
-                legacyEntitySetIds.get( TIME_RANGE ),
-                legacyEntitySetIds.get( SUBMISSION ),
-                legacyEntitySetIds.get( REGISTERED_FOR ),
-                legacyEntitySetIds.get( RESPONDS_WITH ),
-                legacyEntitySetIds.get( ADDRESSES ),
-                legacyEntitySetIds.get( ANSWER ),
-                legacyEntitySetIds.get( QUESTION )
-        );
+            Preconditions.checkArgument(
+                    orgComponents.containsKey( organizationId ),
+                    "App component %s is not installed for organization %s",
+                    appComponent,
+                    organizationId
+            );
+        } );
     }
 }

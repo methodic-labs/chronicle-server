@@ -117,6 +117,7 @@ class DataDownloadService(private val entitySetIdsManager: EntitySetIdsManager, 
                 .getChronicleAppConfig(organizationId, ChronicleServerUtil.getParticipantEntitySetName(studyId))
         val dataCollectionAppConfig = entitySetIdsManager
                 .getChronicleDataCollectionAppConfig(organizationId)
+
         val participantESID = coreAppConfig.participantEntitySetId
         val dataESID: UUID
         val edgeESID: UUID

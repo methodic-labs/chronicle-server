@@ -2,13 +2,16 @@ package com.openlattice.chronicle.services.delete;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
-import com.google.common.collect.*;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Maps;
+import com.google.common.collect.SetMultimap;
+import com.google.common.collect.Sets;
 import com.openlattice.authorization.AclKey;
 import com.openlattice.authorization.PermissionsApi;
-import com.openlattice.chronicle.data.ChronicleCoreAppConfig;
-import com.openlattice.chronicle.data.ChronicleDataCollectionAppConfig;
+import com.openlattice.chronicle.constants.AppComponent;
+import com.openlattice.chronicle.data.ChronicleAppConfig;
 import com.openlattice.chronicle.data.ChronicleDeleteType;
-import com.openlattice.chronicle.data.ChronicleSurveysAppConfig;
+import com.openlattice.chronicle.data.LegacyChronicleAppConfig;
 import com.openlattice.chronicle.services.ApiCacheManager;
 import com.openlattice.chronicle.services.edm.EdmCacheManager;
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager;
@@ -28,8 +31,6 @@ import org.slf4j.LoggerFactory;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-
-import static com.openlattice.chronicle.util.ChronicleServerUtil.getParticipantEntitySetName;
 
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
@@ -138,25 +139,19 @@ public class DataDeletionService implements DataDeletionManager {
                             "study must exist" );
 
             // entity set ids
-            ChronicleCoreAppConfig coreAppConfig = entitySetIdsManager
-                    .getChronicleAppConfig( organizationId );
-            ChronicleDataCollectionAppConfig dataCollectionAppConfig = entitySetIdsManager
-                    .getChronicleDataCollectionAppConfig( organizationId );
-            ChronicleSurveysAppConfig surveysAppConfig = entitySetIdsManager
-                    .getChronicleSurveysAppConfig( organizationId );
 
-            UUID studiesESID = coreAppConfig.getStudiesEntitySetId();
-            UUID participantsESID = coreAppConfig.getParticipantEntitySetId();
-            UUID appDataESID = dataCollectionAppConfig.getAppDataEntitySetId();
-            UUID preprocessedDataESID = dataCollectionAppConfig.getPreprocessedDataEntitySetId();
-            UUID devicesESID = dataCollectionAppConfig.getDeviceEntitySetId();
-            UUID answersESID = surveysAppConfig.getAnswerEntitySetId();
+            ChronicleAppConfig appConfig = entitySetIdsManager.getChronicleAppConfig( organizationId, Set.of(
+                    AppComponent.CHRONICLE_DATA_COLLECTION, AppComponent.CHRONICLE_SURVEYS ) );
+
+            UUID studiesESID = appConfig.getStudiesEntitySetId();
+            UUID participantsESID = appConfig.getParticipantEntitySetId();
+            UUID appDataESID = appConfig.getAppDataEntitySetId();
+            UUID preprocessedDataESID = appConfig.getPreprocessedDataEntitySetId();
+            UUID devicesESID = appConfig.getDeviceEntitySetId();
+            UUID answersESID = appConfig.getAnswersEntitySetId();
 
             // user needs OWNER on all entity sets in order to delete
-            Set<UUID> allEntitySetIds = Sets.newHashSet( Iterables.concat( coreAppConfig.getAllEntitySetIds(),
-                    dataCollectionAppConfig.getAllEntitySetIds(),
-                    surveysAppConfig.getAllEntitySetIds() ) );
-            ensureUserCanDeleteData( allEntitySetIds, userApiClient.getPermissionsApi() );
+            ensureUserCanDeleteData( appConfig.getAllEntitySetIds(), userApiClient.getPermissionsApi() );
 
             Set<UUID> participantsToDelete = getParticipantsToDelete( organizationId, studyId, participantId );
 
@@ -203,14 +198,14 @@ public class DataDeletionService implements DataDeletionManager {
     }
 
     private void ensureUserCanDeleteData( Set<UUID> entitySetIds, PermissionsApi permissionsApi ) {
-            try {
-                Set<AclKey> aclKeys = entitySetIds.stream().map( AclKey::new ).collect(
-                        Collectors.toSet());
-                permissionsApi.getAcls( aclKeys );
-            } catch ( Exception e ) {
-                logger.error( "Authorization for deleting participant data failed" );
-                throw new ForbiddenException( "insufficient permission to delete participant data" );
-            }
+        try {
+            Set<AclKey> aclKeys = entitySetIds.stream().map( AclKey::new ).collect(
+                    Collectors.toSet() );
+            permissionsApi.getAcls( aclKeys );
+        } catch ( Exception e ) {
+            logger.error( "Authorization for deleting participant data failed" );
+            throw new ForbiddenException( "insufficient permission to delete participant data" );
+        }
     }
 
     private void legacyDeleteStudyData(
@@ -238,21 +233,18 @@ public class DataDeletionService implements DataDeletionManager {
                             "study must exist" );
 
             // entity set ids
-            ChronicleCoreAppConfig coreAppConfig = entitySetIdsManager
-                    .getLegacyChronicleAppConfig( getParticipantEntitySetName( studyId ) );
-            ChronicleDataCollectionAppConfig dataCollectionAppConfig = entitySetIdsManager
-                    .getLegacyChronicleDataCollectionAppConfig();
-            ChronicleSurveysAppConfig surveysAppConfig = entitySetIdsManager.getLegacyChronicleSurveysAppConfig();
 
-            UUID studiesESID = coreAppConfig.getStudiesEntitySetId();
-            UUID participantsESID = coreAppConfig.getParticipantEntitySetId();
-            UUID appDataESID = dataCollectionAppConfig.getAppDataEntitySetId();
-            UUID preprocessedDataESID = dataCollectionAppConfig.getPreprocessedDataEntitySetId();
-            UUID devicesESID = dataCollectionAppConfig.getDeviceEntitySetId();
-            UUID answersESID = surveysAppConfig.getAnswerEntitySetId();
+            LegacyChronicleAppConfig appConfig = entitySetIdsManager.getChronicleLegacyAppConfig( studyId );
+
+            UUID studiesESID = appConfig.getStudiesEntitySetId();
+            UUID participantsESID = appConfig.getParticipantEntitySetId();
+            UUID appDataESID = appConfig.getAppDataEntitySetId();
+            UUID preprocessedDataESID = appConfig.getPreprocessedDataEntitySetId();
+            UUID devicesESID = appConfig.getDeviceEntitySetId();
+            UUID answersESID = appConfig.getAnswerEntitySetId();
 
             // ensure that user has OWNER on participants entity set
-            ensureUserCanDeleteData( ImmutableSet.of(participantsESID), userApiClient.getPermissionsApi() );
+            ensureUserCanDeleteData( ImmutableSet.of( participantsESID ), userApiClient.getPermissionsApi() );
 
             Set<UUID> participantsToDelete = getParticipantsToDelete( null, studyId, participantId );
 
