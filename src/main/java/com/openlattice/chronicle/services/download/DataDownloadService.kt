@@ -6,6 +6,7 @@ import com.openlattice.chronicle.constants.EdmConstants.USER_FQN
 import com.openlattice.chronicle.constants.OutputConstants
 import com.openlattice.chronicle.constants.ParticipantDataType
 import com.openlattice.chronicle.data.EntitySetIdGraph
+import com.openlattice.chronicle.data.EntitySetsConfig
 import com.openlattice.chronicle.services.download.ParticipantDataIterable.NeighborPageSupplier
 import com.openlattice.chronicle.services.edm.EdmCacheManager
 import com.openlattice.chronicle.services.entitysets.EntitySetIdsManager
@@ -113,26 +114,23 @@ class DataDownloadService(private val entitySetIdsManager: EntitySetIdsManager, 
             organizationId: UUID?,
             studyId: UUID?,
             participantDataType: ParticipantDataType): EntitySetIdGraph {
-        val coreAppConfig = entitySetIdsManager
-                .getChronicleAppConfig(organizationId, ChronicleServerUtil.getParticipantEntitySetName(studyId))
-        val dataCollectionAppConfig = entitySetIdsManager
-                .getChronicleDataCollectionAppConfig(organizationId)
+        val entitySetsConfig = entitySetIdsManager.getEntitySetsConfig(organizationId, studyId, ImmutableSet.of(AppComponent.CHRONICLE_DATA_COLLECTION));
 
-        val participantESID = coreAppConfig.participantEntitySetId
+        val participantESID = entitySetsConfig.participantEntitySetId
         val dataESID: UUID
         val edgeESID: UUID
         when (participantDataType) {
             ParticipantDataType.RAW_DATA -> {
-                dataESID = dataCollectionAppConfig.appDataEntitySetId
-                edgeESID = dataCollectionAppConfig.recordedByEntitySetId
+                dataESID = entitySetsConfig.appDataEntitySetId
+                edgeESID = entitySetsConfig.recordedByEntitySetId
             }
             ParticipantDataType.USAGE_DATA -> {
-                dataESID = dataCollectionAppConfig.userAppsEntitySetId
-                edgeESID = dataCollectionAppConfig.usedByEntitySetId
+                dataESID = entitySetsConfig.userAppsEntitySetId
+                edgeESID = entitySetsConfig.usedByEntitySetId
             }
             else -> {
-                dataESID = dataCollectionAppConfig.preprocessedDataEntitySetId
-                edgeESID = dataCollectionAppConfig.recordedByEntitySetId
+                dataESID = entitySetsConfig.preprocessedDataEntitySetId
+                edgeESID = entitySetsConfig.recordedByEntitySetId
             }
         }
         return EntitySetIdGraph(dataESID, edgeESID, participantESID)

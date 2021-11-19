@@ -2,9 +2,8 @@ package com.openlattice.chronicle.services;
 
 import com.dataloom.streams.StreamUtil;
 import com.google.common.collect.*;
-import com.openlattice.chronicle.constants.*;
-import com.openlattice.chronicle.data.ChronicleCoreAppConfig;
-import com.openlattice.chronicle.data.ChronicleDataCollectionAppConfig;
+import com.openlattice.chronicle.constants.RecordType;
+import com.openlattice.chronicle.data.EntitySetsConfig;
 import com.openlattice.chronicle.services.edm.EdmCacheManager;
 import com.openlattice.chronicle.services.entitysets.EntitySetIdsManager;
 import com.openlattice.client.ApiClient;
@@ -26,13 +25,9 @@ import java.util.stream.Collectors;
 
 import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE;
 import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE_DATA_COLLECTION;
-import static com.openlattice.chronicle.constants.EdmConstants.FULL_NAME_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.PERSON_ID_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.RECORD_TYPE_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.STRING_ID_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.*;
 import static com.openlattice.chronicle.util.ChronicleServerUtil.getFirstUUIDOrNull;
 import static com.openlattice.chronicle.util.ChronicleServerUtil.getFirstValueOrNull;
-import static com.openlattice.chronicle.util.ChronicleServerUtil.getParticipantEntitySetName;
 import static com.openlattice.edm.EdmConstants.ID_FQN;
 
 /**
@@ -133,9 +128,11 @@ public class ScheduledTasksManager {
             ApiClient apiClient = apiCacheManager.prodApiClientCache.get( ApiClient.class );
             DataApi dataApi = apiClient.getDataApi();
 
-            ChronicleDataCollectionAppConfig dataCollectionAppConfig = entitySetIdsManager
-                    .getLegacyChronicleDataCollectionAppConfig();
-            UUID appsDictionaryEntitySetId = dataCollectionAppConfig.getAppsDictionaryEntitySetId();
+            EntitySetsConfig entitySetsConfig = entitySetIdsManager.getEntitySetsConfig( null,
+                    null,
+                    ImmutableSet.of() );
+
+            UUID appsDictionaryEntitySetId = entitySetsConfig.getAppDictionaryEntitySetId();
 
             Iterable<SetMultimap<FullQualifiedName, Object>> entitySetData = getEntitySetData(
                     dataApi,
@@ -176,10 +173,11 @@ public class ScheduledTasksManager {
             ApiClient apiClient = apiCacheManager.prodApiClientCache.get( ApiClient.class );
             DataApi dataApi = apiClient.getDataApi();
 
-            ChronicleDataCollectionAppConfig dataCollectionAppConfig = entitySetIdsManager
-                    .getLegacyChronicleDataCollectionAppConfig();
+            EntitySetsConfig entitySetsConfig = entitySetIdsManager.getEntitySetsConfig( null,
+                    null,
+                    ImmutableSet.of() );
 
-            UUID userAppsEntitySetId = dataCollectionAppConfig.getUserAppsEntitySetId();
+            UUID userAppsEntitySetId = entitySetsConfig.getUserAppsEntitySetId();
 
             // load entities from chronicle_user_apps
             Iterable<SetMultimap<FullQualifiedName, Object>> data = getEntitySetData(
@@ -217,9 +215,12 @@ public class ScheduledTasksManager {
 
             orgIds.forEach( orgId -> {
                 // load entities from entity set
-                ChronicleDataCollectionAppConfig appConfig = entitySetIdsManager
-                        .getChronicleDataCollectionAppConfig( orgId );
-                UUID userAppsEntitySetId = appConfig.getUserAppsEntitySetId();
+
+                EntitySetsConfig entitySetsConfig = entitySetIdsManager.getEntitySetsConfig( orgId,
+                        null,
+                        ImmutableSet.of(
+                                CHRONICLE_DATA_COLLECTION ) );
+                UUID userAppsEntitySetId = entitySetsConfig.getUserAppsEntitySetId();
 
                 Iterable<SetMultimap<FullQualifiedName, Object>> data = getEntitySetData(
                         dataApi,
@@ -271,15 +272,13 @@ public class ScheduledTasksManager {
                         .newHashMap(); // studyEKID -> studyId (for lookup when processing neighbors)
 
                 // entity set ids
-                ChronicleCoreAppConfig coreAppConfig = entitySetIdsManager.getChronicleAppConfig( orgId );
+                EntitySetsConfig entitySetsConfig = entitySetIdsManager.getEntitySetsConfig( orgId,
+                        null,
+                        ImmutableSet.of() );
 
-                UUID participatedInESID = coreAppConfig.getParticipatedInEntitySetId();
-                UUID participantsESID = coreAppConfig.getParticipantEntitySetId();
-                UUID studiesESID = coreAppConfig.getStudiesEntitySetId();
-
-                if ( studiesESID == null || participantsESID == null || participatedInESID == null ) {
-                    return;
-                }
+                UUID participatedInESID = entitySetsConfig.getParticipatedInEntitySetId();
+                UUID participantsESID = entitySetsConfig.getParticipantEntitySetId();
+                UUID studiesESID = entitySetsConfig.getStudiesEntitySetId();
 
                 // load studies entities
                 Iterable<SetMultimap<FullQualifiedName, Object>> studyEntities = getEntitySetData(
@@ -376,10 +375,12 @@ public class ScheduledTasksManager {
                     .newHashMap(); // studyID -> participantId -> participantEKID
 
             // entity set ids
-            ChronicleCoreAppConfig coreAppConfig = entitySetIdsManager.getLegacyChronicleAppConfig();
+            EntitySetsConfig entitySetsConfig = entitySetIdsManager.getEntitySetsConfig( null,
+                    null,
+                    ImmutableSet.of() );
 
-            UUID participatedInESID = coreAppConfig.getParticipatedInEntitySetId();
-            UUID studiesESID = coreAppConfig.getStudiesEntitySetId();
+            UUID participatedInESID = entitySetsConfig.getParticipatedInEntitySetId();
+            UUID studiesESID = entitySetsConfig.getStudiesEntitySetId();
 
             // get study entities
             Iterable<SetMultimap<FullQualifiedName, Object>> studyEntities = getEntitySetData(
@@ -401,13 +402,8 @@ public class ScheduledTasksManager {
             } );
 
             studyEKIDById.keySet().forEach( studyId -> {
-                String participantES = getParticipantEntitySetName( studyId );
-
-                ChronicleCoreAppConfig config = entitySetIdsManager.getLegacyChronicleAppConfig( participantES );
-                UUID participantESID = config.getParticipantEntitySetId();
-                if ( participantESID == null ) {
-                    return;
-                }
+                UUID participantESID = entitySetIdsManager.getEntitySetsConfig( null, studyId, ImmutableSet.of() )
+                        .getParticipantEntitySetId();
 
                 Map<UUID, List<NeighborEntityDetails>> studyNeighbors = searchApi.executeFilteredEntityNeighborSearch(
                         studiesESID,
@@ -463,9 +459,10 @@ public class ScheduledTasksManager {
             Map<UUID, Map<String, UUID>> deviceIdsByOrg = Maps.newHashMap();
 
             orgIds.forEach( orgId -> {
-                ChronicleDataCollectionAppConfig appConfig = entitySetIdsManager
-                        .getChronicleDataCollectionAppConfig( orgId );
-                UUID deviceEntitySetId = appConfig.getDeviceEntitySetId();
+                EntitySetsConfig entitySetsConfig = entitySetIdsManager.getEntitySetsConfig( orgId,
+                        null,
+                        ImmutableSet.of( CHRONICLE_DATA_COLLECTION ) );
+                UUID deviceEntitySetId = entitySetsConfig.getDeviceEntitySetId();
 
                 Map<String, UUID> devicesByEKID = getDeviceIdsByEKID(
                         dataApi,
@@ -492,9 +489,10 @@ public class ScheduledTasksManager {
             ApiClient apiClient = apiCacheManager.prodApiClientCache.get( ApiClient.class );
             DataApi dataApi = apiClient.getDataApi();
 
-            ChronicleDataCollectionAppConfig dataCollectionAppConfig = entitySetIdsManager
-                    .getLegacyChronicleDataCollectionAppConfig();
-            UUID deviceEntitySetId = dataCollectionAppConfig.getDeviceEntitySetId();
+            EntitySetsConfig entitySetsConfig = entitySetIdsManager.getEntitySetsConfig( null,
+                    null,
+                    ImmutableSet.of() );
+            UUID deviceEntitySetId = entitySetsConfig.getDeviceEntitySetId();
 
             Map<String, UUID> deviceIdsByEKID = getDeviceIdsByEKID( dataApi, deviceEntitySetId );
 

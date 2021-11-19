@@ -4,6 +4,7 @@ import com.dataloom.streams.StreamUtil;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.*;
 import com.openlattice.ApiUtil;
+import com.openlattice.chronicle.constants.AppComponent;
 import com.openlattice.chronicle.data.*;
 import com.openlattice.chronicle.services.ApiCacheManager;
 import com.openlattice.chronicle.services.edm.EdmCacheManager;
@@ -26,17 +27,9 @@ import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE_SURVEYS;
-import static com.openlattice.chronicle.constants.EdmConstants.COMPLETED_DATE_TIME_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.DATE_TIME_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.END_DATE_TIME_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.OL_ID_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.PERSON_ID_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.START_DATE_TIME_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.STRING_ID_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.TITLE_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.VALUES_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.*;
 import static com.openlattice.chronicle.util.ChronicleServerUtil.getFirstUUIDOrNull;
-import static com.openlattice.chronicle.util.ChronicleServerUtil.getParticipantEntitySetName;
+import static com.openlattice.chronicle.util.ChronicleServerUtil.setDownloadContentType;
 import static com.openlattice.edm.EdmConstants.ID_FQN;
 
 /**
@@ -82,14 +75,12 @@ public class SurveysService implements SurveysManager {
             SearchApi searchApi = apiClient.getSearchApi();
 
             // entity set ids
-            ChronicleSurveysAppConfig surveysAppConfig = entitySetIdsManager
-                    .getChronicleSurveysAppConfig( organizationId );
-            ChronicleCoreAppConfig coreAppConfig = entitySetIdsManager.getChronicleAppConfig( organizationId );
+            EntitySetsConfig entitySetsConfig = entitySetIdsManager.getEntitySetsConfig( organizationId, studyId, ImmutableSet.of(CHRONICLE_SURVEYS) );
 
-            UUID questionnaireESID = surveysAppConfig.getSurveyEntitySetId();
-            UUID studiesESID = coreAppConfig.getStudiesEntitySetId();
-            UUID partOfESID = coreAppConfig.getPartOfEntitySetId();
-            UUID questionESID = surveysAppConfig.getQuestionEntitySetId();
+            UUID questionnaireESID = entitySetsConfig.getSurveysEntitySetId();
+            UUID studiesESID = entitySetsConfig.getStudiesEntitySetId();
+            UUID partOfESID = entitySetsConfig.getPartOfEntitySetId();
+            UUID questionESID = entitySetsConfig.getQuestionsEntitySetId();
 
             // Get questionnaires that neighboring study
             Map<UUID, List<NeighborEntityDetails>> neighbors = searchApi.executeFilteredEntityNeighborSearch(
@@ -190,13 +181,12 @@ public class SurveysService implements SurveysManager {
             SearchApi searchApi = apiClient.getSearchApi();
 
             // entity set ids
-            ChronicleCoreAppConfig coreAppConfig = entitySetIdsManager.getChronicleAppConfig( organizationId );
-            ChronicleSurveysAppConfig surveysAppConfig = entitySetIdsManager
-                    .getChronicleSurveysAppConfig( organizationId );
+            EntitySetsConfig entitySetsConfig = entitySetIdsManager.getEntitySetsConfig( organizationId, studyId, ImmutableSet.of(
+                    CHRONICLE_SURVEYS) );
 
-            UUID questionnaireESID = surveysAppConfig.getSurveyEntitySetId();
-            UUID studiesESID = coreAppConfig.getStudiesEntitySetId();
-            UUID partOfESID = coreAppConfig.getPartOfEntitySetId();
+            UUID questionnaireESID = entitySetsConfig.getSurveysEntitySetId();
+            UUID studiesESID = entitySetsConfig.getStudiesEntitySetId();
+            UUID partOfESID = entitySetsConfig.getPartOfEntitySetId();
 
             // filtered search on questionnaires ES to get neighbors of study
             Map<UUID, List<NeighborEntityDetails>> neighbors = searchApi
@@ -244,16 +234,14 @@ public class SurveysService implements SurveysManager {
             DataApi dataApi = apiClient.getDataApi();
 
             // get entity set ids
-            ChronicleCoreAppConfig coreAppConfig = entitySetIdsManager
-                    .getChronicleAppConfig( organizationId, getParticipantEntitySetName( studyId ) );
-            ChronicleSurveysAppConfig surveysAppConfig = entitySetIdsManager
-                    .getChronicleSurveysAppConfig( organizationId );
+            EntitySetsConfig entitySetsConfig = entitySetIdsManager.getEntitySetsConfig( organizationId, studyId, ImmutableSet.of(
+                    CHRONICLE_SURVEYS) );
 
-            UUID participantESID = coreAppConfig.getParticipantEntitySetId();
-            UUID answersESID = surveysAppConfig.getAnswerEntitySetId();
-            UUID respondsWithESID = surveysAppConfig.getRespondsWithEntitySetId();
-            UUID addressesESID = surveysAppConfig.getAddressesEntitySetId();
-            UUID questionsESID = surveysAppConfig.getQuestionEntitySetId();
+            UUID participantESID = entitySetsConfig.getParticipantEntitySetId();
+            UUID answersESID = entitySetsConfig.getAnswersEntitySetId();
+            UUID respondsWithESID = entitySetsConfig.getRespondsWithEntitySetId();
+            UUID addressesESID = entitySetsConfig.getAddressesEntitySetId();
+            UUID questionsESID = entitySetsConfig.getQuestionsEntitySetId();
 
             // participant must be valid
             UUID participantEKID = Preconditions
@@ -335,10 +323,8 @@ public class SurveysService implements SurveysManager {
             Preconditions.checkArgument( isKnownParticipant, "unknown participant = {}", participantId );
 
             // get entity set ids
-            ChronicleDataCollectionAppConfig dataCollectionAppConfig = entitySetIdsManager
-                    .getChronicleDataCollectionAppConfig( organizationId );
-
-            UUID usedByESID = dataCollectionAppConfig.getUsedByEntitySetId();
+            EntitySetsConfig entitySetsConfig = entitySetIdsManager.getEntitySetsConfig( organizationId, studyId, ImmutableSet.of(AppComponent.CHRONICLE_DATA_COLLECTION) );
+            UUID usedByESID = entitySetsConfig.getUsedByEntitySetId();
 
             // create association data
             Map<UUID, Map<UUID, Set<Object>>> associationData = new HashMap<>();
@@ -396,23 +382,16 @@ public class SurveysService implements SurveysManager {
                             "participant does not exist" );
 
             // get entity set ids
-            ChronicleDataCollectionAppConfig dataCollectionAppConfig = entitySetIdsManager
-                    .getChronicleDataCollectionAppConfig( organizationId );
-            ChronicleCoreAppConfig coreAppConfig = entitySetIdsManager
-                    .getChronicleAppConfig( organizationId, getParticipantEntitySetName( studyId ) );
-
-            UUID participantsESID = coreAppConfig.getParticipantEntitySetId();
-            UUID userAppsESID = dataCollectionAppConfig.getUserAppsEntitySetId();
-            UUID usedByESID = dataCollectionAppConfig.getUsedByEntitySetId();
+            EntitySetsConfig entitySetsConfig = entitySetIdsManager.getEntitySetsConfig( organizationId, studyId, ImmutableSet.of(AppComponent.CHRONICLE_DATA_COLLECTION) );
 
             // search participants to retrieve neighbors in user apps entity set
             Map<UUID, List<NeighborEntityDetails>> participantNeighbors = searchApi.executeFilteredEntityNeighborSearch(
-                    participantsESID,
+                    entitySetsConfig.getParticipantEntitySetId(),
                     new EntityNeighborsFilter(
                             ImmutableSet.of( participantEKID ),
-                            Optional.of( ImmutableSet.of( userAppsESID ) ),
-                            Optional.of( ImmutableSet.of( participantsESID ) ),
-                            Optional.of( ImmutableSet.of( usedByESID ) )
+                            Optional.of( ImmutableSet.of( entitySetsConfig.getUserAppsEntitySetId() ) ),
+                            Optional.of( ImmutableSet.of( entitySetsConfig.getParticipantEntitySetId() ) ),
+                            Optional.of( ImmutableSet.of( entitySetsConfig.getUsedByEntitySetId() ) )
                     )
             );
 
@@ -634,7 +613,7 @@ public class SurveysService implements SurveysManager {
     private Map<EntityKey, UUID> createEntityKeyIdMap(
             Set<EntityKey> entityKeys,
             Set<Triple<EntityKey, EntityKey, EntityKey>> edgesByEntityKey,
-            ChronicleCoreAppConfig coreAppConfig,
+            EntitySetsConfig entitySetsConfig,
             DataIntegrationApi integrationApi,
             UUID studyId,
             UUID studyEKID,
@@ -646,8 +625,8 @@ public class SurveysService implements SurveysManager {
         Set<EntityKey> orderedEntityKeys = Sets.newHashSet( entityKeys );
 
         // entity set ids
-        UUID studyEntitySetId = coreAppConfig.getStudiesEntitySetId();
-        UUID participantEntitySetId = coreAppConfig.getParticipantEntitySetId();
+        UUID studyEntitySetId = entitySetsConfig.getStudiesEntitySetId();
+        UUID participantEntitySetId = entitySetsConfig.getParticipantEntitySetId();
 
         edgesByEntityKey.forEach( triple -> {
             orderedEntityKeys.add( triple.getRight() );
@@ -674,40 +653,29 @@ public class SurveysService implements SurveysManager {
     private ListMultimap<UUID, DataAssociation> getDataAssociations(
             Map<FullQualifiedName, Set<Object>> entity,
             Map<EntityKey, UUID> entityKeyIdMap,
-            ChronicleCoreAppConfig coreAppConfig,
-            ChronicleSurveysAppConfig surveysAppConfig,
+            EntitySetsConfig entitySetsConfig,
             UUID participantEKID,
             UUID submissionEKID,
             OffsetDateTime dateTime,
             int index
     ) {
-        // entity set ids
-        UUID timeRangeESID = surveysAppConfig.getTimeRangeEntitySetId();
-        UUID questionESID = surveysAppConfig.getQuestionEntitySetId();
-        UUID answerESID = surveysAppConfig.getAnswerEntitySetId();
-        UUID addressesESID = surveysAppConfig.getAddressesEntitySetId();
-        UUID registeredForESID = surveysAppConfig.getRegisteredForEntitySetId();
-        UUID submissionESID = surveysAppConfig.getSubmissionEntitySetId();
-        UUID respondsWithESID = surveysAppConfig.getRespondsWithEntitySetId();
-        UUID participantsESID = coreAppConfig.getParticipantEntitySetId();
-
         ListMultimap<UUID, DataAssociation> associations = ArrayListMultimap.create();
 
         Map<UUID, Set<Object>> questionEntityData = getQuestionEntityData( entity );
-        EntityKey questionEK = getQuestionEntityKey( questionESID, questionEntityData );
+        EntityKey questionEK = getQuestionEntityKey( entitySetsConfig.getQuestionsEntitySetId(), questionEntityData );
         UUID questionEKID = entityKeyIdMap.get( questionEK );
 
         Map<UUID, Set<Object>> timeRangeEntityData = getTimeRangeEntity( entity );
-        EntityKey timeRangeEK = getTimeRangeEntityKey( timeRangeESID, timeRangeEntityData );
+        EntityKey timeRangeEK = getTimeRangeEntityKey( entitySetsConfig.getTimeRangeEntitySetId(), timeRangeEntityData );
         UUID timeRangeEKID = entityKeyIdMap.get( timeRangeEK );
 
         // answer -> registeredfor -> timerange
         Map<UUID, Set<Object>> registeredForEntity = getRegisteredForEntity( dateTime );
-        associations.put( surveysAppConfig.getRegisteredForEntitySetId(), new DataAssociation(
-                answerESID,
+        associations.put( entitySetsConfig.getRegisteredForEntitySetId(), new DataAssociation(
+                entitySetsConfig.getAnswersEntitySetId(),
                 Optional.of( index ),
                 Optional.empty(),
-                timeRangeESID,
+                entitySetsConfig.getTimeRangeEntitySetId(),
                 Optional.empty(),
                 Optional.of( timeRangeEKID ),
                 registeredForEntity
@@ -715,22 +683,22 @@ public class SurveysService implements SurveysManager {
 
         // answer -> addresses -> question
         Map<UUID, Set<Object>> addressesEntity = getAddressesEntity( dateTime );
-        associations.put( addressesESID, new DataAssociation(
-                answerESID,
+        associations.put( entitySetsConfig.getAddressesEntitySetId(), new DataAssociation(
+                entitySetsConfig.getAnswersEntitySetId(),
                 Optional.of( index ),
                 Optional.empty(),
-                questionESID,
+                entitySetsConfig.getQuestionsEntitySetId(),
                 Optional.empty(),
                 Optional.of( questionEKID ),
                 addressesEntity
         ) );
 
         // answer -> registeredfor -> submission
-        associations.put( registeredForESID, new DataAssociation(
-                answerESID,
+        associations.put( entitySetsConfig.getRegisteredForEntitySetId(), new DataAssociation(
+                entitySetsConfig.getAnswersEntitySetId(),
                 Optional.of( index ),
                 Optional.empty(),
-                submissionESID,
+                entitySetsConfig.getSubmissionEntitySetId(),
                 Optional.empty(),
                 Optional.of( submissionEKID ),
                 registeredForEntity
@@ -740,11 +708,11 @@ public class SurveysService implements SurveysManager {
         Map<UUID, Set<Object>> respondWithEntity = ImmutableMap.of(
                 edmCacheManager.getPropertyTypeId( DATE_TIME_FQN ), ImmutableSet.of( dateTime )
         );
-        associations.put( respondsWithESID, new DataAssociation(
-                participantsESID,
+        associations.put( entitySetsConfig.getRespondsWithEntitySetId(), new DataAssociation(
+                entitySetsConfig.getParticipantEntitySetId(),
                 Optional.empty(),
                 Optional.of( participantEKID ),
-                answerESID,
+                entitySetsConfig.getAnswersEntitySetId(),
                 Optional.of( index ),
                 Optional.empty(),
                 respondWithEntity
@@ -772,8 +740,7 @@ public class SurveysService implements SurveysManager {
     }
 
     private EntitiesAndEdges getEdgesAndEntityKeys(
-            ChronicleCoreAppConfig coreAppConfig,
-            ChronicleSurveysAppConfig surveysAppConfig,
+            EntitySetsConfig entitySetsConfig,
             List<Map<FullQualifiedName, Set<Object>>> surveyData,
             UUID studyId,
             String participantId,
@@ -782,44 +749,35 @@ public class SurveysService implements SurveysManager {
         Set<Triple<EntityKey, EntityKey, EntityKey>> edgesByEntityKey = Sets.newHashSet(); // <src, association, dst>
         Map<EntityKey, Map<UUID, Set<Object>>> entitiesByEK = Maps.newHashMap();
 
-        // entity set ids
-        UUID surveyEntitySetId = surveysAppConfig.getSurveyEntitySetId();
-        UUID partOfEntitySetId = coreAppConfig.getPartOfEntitySetId();
-        UUID studyEntitySetId = coreAppConfig.getStudiesEntitySetId();
-        UUID participatedInESID = coreAppConfig.getParticipatedInEntitySetId();
-        UUID participantESID = coreAppConfig.getParticipantEntitySetId();
-        UUID submissionESID = surveysAppConfig.getSubmissionEntitySetId();
-        UUID respondsWithESID = surveysAppConfig.getRespondsWithEntitySetId();
-        UUID questionESID = surveysAppConfig.getQuestionEntitySetId();
-        UUID timeRangeESID = surveysAppConfig.getTimeRangeEntitySetId();
-
         // edge: survey -> partof -> study
 
         Map<UUID, Set<Object>> surveyEntityData = getSurveyEntityData();
-        EntityKey surveyEK = getSurveyEntityKey( surveyEntitySetId, surveyEntityData );
+        EntityKey surveyEK = getSurveyEntityKey( entitySetsConfig.getSurveysEntitySetId(), surveyEntityData );
         entitiesByEK.put( surveyEK, surveyEntityData );
 
         Map<UUID, Set<Object>> surveyPartOfEntityData = getSurveyPartOfEntityData( studyId );
-        EntityKey surveyPartOfEK = getSurveyPartOfStudyEntityKey( partOfEntitySetId, surveyPartOfEntityData );
+        EntityKey surveyPartOfEK = getSurveyPartOfStudyEntityKey( entitySetsConfig.getPartOfEntitySetId(),
+                surveyPartOfEntityData );
         entitiesByEK.put( surveyPartOfEK, surveyPartOfEntityData );
 
-        EntityKey studyEK = getStudyEntityKey( studyEntitySetId, studyId );
+        EntityKey studyEK = getStudyEntityKey( entitySetsConfig.getStudiesEntitySetId(), studyId );
         edgesByEntityKey.add( Triple.of( surveyEK, surveyPartOfEK, studyEK ) );
 
         // edge: person -> participatedin -> survey
 
         Map<UUID, Set<Object>> participatedInEntityData = getParticipatedInEntity( studyId, participantId, dateTime );
-        EntityKey participatedInEK = getParticipatedInEntityKey( participatedInESID, participatedInEntityData );
+        EntityKey participatedInEK = getParticipatedInEntityKey( entitySetsConfig.getParticipatedInEntitySetId(),
+                participatedInEntityData );
         entitiesByEK.put( participatedInEK, participatedInEntityData );
 
-        EntityKey participantEK = getParticipantEntityKey( participantESID, participantId );
+        EntityKey participantEK = getParticipantEntityKey( entitySetsConfig.getParticipantEntitySetId(), participantId );
 
         edgesByEntityKey.add( Triple.of( participantEK, participatedInEK, surveyEK ) );
 
         // edge: person -> respondswith -> submission
 
         Map<UUID, Set<Object>> submissionEntityData = getSubmissionEntity( studyId, participantId, dateTime );
-        EntityKey submissionEK = getSubmissionEntityKey( submissionESID, submissionEntityData );
+        EntityKey submissionEK = getSubmissionEntityKey( entitySetsConfig.getSubmissionEntitySetId(), submissionEntityData );
         submissionEntityData.remove( edmCacheManager.getPropertyTypeId( STRING_ID_FQN ) ); // shouldn't be stored
         submissionEntityData.remove( edmCacheManager.getPropertyTypeId( OL_ID_FQN ) ); // shouldn't be stored
         entitiesByEK.put( submissionEK, submissionEntityData );
@@ -827,7 +785,8 @@ public class SurveysService implements SurveysManager {
         Map<UUID, Set<Object>> respondsWithSubmissionEntity = getRespondsWithSubmissionEntity( studyId,
                 participantId,
                 dateTime );
-        EntityKey respondsWithEK = getRespondsWithEntityKey( respondsWithESID, respondsWithSubmissionEntity );
+        EntityKey respondsWithEK = getRespondsWithEntityKey( entitySetsConfig.getRespondsWithEntitySetId(),
+                respondsWithSubmissionEntity );
         respondsWithSubmissionEntity
                 .remove( edmCacheManager.getPropertyTypeId( STRING_ID_FQN ) ); // shouldn't be stored
         entitiesByEK.put( respondsWithEK, respondsWithSubmissionEntity );
@@ -838,11 +797,12 @@ public class SurveysService implements SurveysManager {
                 .forEach( entity -> {
                     // edge: question -> partof -> survey
                     Map<UUID, Set<Object>> questionEntityData = getQuestionEntityData( entity );
-                    EntityKey questionEK = getQuestionEntityKey( questionESID, questionEntityData );
+                    EntityKey questionEK = getQuestionEntityKey( entitySetsConfig.getQuestionsEntitySetId(),
+                            questionEntityData );
                     entitiesByEK.put( questionEK, questionEntityData );
 
                     Map<UUID, Set<Object>> questionPartOfSurveyEntity = getQuestionPartOfEntity( entity );
-                    EntityKey partOfEK = getQuestionPartOfSurveyEntityKey( partOfEntitySetId,
+                    EntityKey partOfEK = getQuestionPartOfSurveyEntityKey( entitySetsConfig.getPartOfEntitySetId(),
                             questionPartOfSurveyEntity );
                     entitiesByEK.put( partOfEK, questionPartOfSurveyEntity );
 
@@ -850,7 +810,8 @@ public class SurveysService implements SurveysManager {
 
                     //edge: answer -> registeredfor -> timerange
                     Map<UUID, Set<Object>> timeRangeEntityData = getTimeRangeEntity( entity );
-                    EntityKey timeRangeEK = getTimeRangeEntityKey( timeRangeESID, timeRangeEntityData );
+                    EntityKey timeRangeEK = getTimeRangeEntityKey( entitySetsConfig.getTimeRangeEntitySetId(),
+                            timeRangeEntityData );
                     entitiesByEK.put( timeRangeEK, timeRangeEntityData );
                 } );
 
@@ -880,12 +841,16 @@ public class SurveysService implements SurveysManager {
                 .collect( Collectors.toSet() );
     }
 
+    // not available for legacy chronicle; should enforce that organizationId is not null
     @Override
     public void submitTimeUseDiarySurvey(
             UUID orgId,
             UUID studyId,
             String participantId,
             List<Map<FullQualifiedName, Set<Object>>> surveyData ) {
+
+        Preconditions.checkNotNull( orgId, "organizationId is required when submitting Time Use Diary" );
+
         logger.info( "attempting to submit time use diary survey: orgId = {}, studyId = {}, participantId = {}",
                 orgId,
                 studyId,
@@ -903,11 +868,8 @@ public class SurveysService implements SurveysManager {
             UUID studyEKID = Preconditions
                     .checkNotNull( enrollmentManager.getStudyEntityKeyId( orgId, studyId ), "study not found" );
 
-            // create entitySetId look up map
-            // entity set id configs
-            ChronicleSurveysAppConfig surveysAppConfig = entitySetIdsManager.getChronicleSurveysAppConfig( orgId );
-            ChronicleCoreAppConfig coreAppConfig = entitySetIdsManager
-                    .getChronicleAppConfig( orgId, getParticipantEntitySetName( studyId ) );
+            // entity set ids
+            EntitySetsConfig entitySetsConfig = entitySetIdsManager.getEntitySetsConfig( orgId, studyId, ImmutableSet.of(CHRONICLE_SURVEYS) );
 
             ListMultimap<UUID, Map<UUID, Set<Object>>> entities = ArrayListMultimap.create();
             ListMultimap<UUID, DataAssociation> associations = ArrayListMultimap.create();
@@ -919,8 +881,7 @@ public class SurveysService implements SurveysManager {
             OffsetDateTime dateTime = OffsetDateTime.now();
 
             EntitiesAndEdges edgesAndEntityKeys = getEdgesAndEntityKeys(
-                    coreAppConfig,
-                    surveysAppConfig,
+                    entitySetsConfig,
                     surveyData,
                     studyId,
                     participantId,
@@ -932,7 +893,7 @@ public class SurveysService implements SurveysManager {
             Map<EntityKey, UUID> entityKeyIdMap = createEntityKeyIdMap(
                     entitiesByEntityKey.keySet(),
                     edgesByEntityKey,
-                    coreAppConfig,
+                    entitySetsConfig,
                     integrationApi,
                     studyId,
                     studyEKID,
@@ -940,7 +901,7 @@ public class SurveysService implements SurveysManager {
                     participantId );
 
             Map<UUID, Set<Object>> submissionEntityData = getSubmissionEntity( studyId, participantId, dateTime );
-            UUID submissionESID = surveysAppConfig.getSubmissionEntitySetId();
+            UUID submissionESID = entitySetsConfig.getSubmissionEntitySetId();
 
             EntityKey submissionEK = getSubmissionEntityKey( submissionESID, submissionEntityData );
             UUID submissionEKID = entityKeyIdMap.get( submissionEK );
@@ -951,8 +912,7 @@ public class SurveysService implements SurveysManager {
                 associations.putAll( getDataAssociations(
                         entity,
                         entityKeyIdMap,
-                        coreAppConfig,
-                        surveysAppConfig,
+                        entitySetsConfig,
                         participantEKID,
                         submissionEKID,
                         dateTime,
@@ -960,7 +920,7 @@ public class SurveysService implements SurveysManager {
 
                 // entities
                 Map<UUID, Set<Object>> answerEntity = getAnswerEntity( entity );
-                entities.put( surveysAppConfig.getAnswerEntitySetId(), answerEntity );
+                entities.put( entitySetsConfig.getAnswersEntitySetId(), answerEntity );
             }
 
             // update entities

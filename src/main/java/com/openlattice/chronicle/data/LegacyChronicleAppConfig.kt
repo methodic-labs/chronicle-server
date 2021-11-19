@@ -7,30 +7,36 @@ import java.util.*
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
  */
-class LegacyChronicleAppConfig(entitySetIds: Map<String, UUID>, val studyId: UUID) {
+class LegacyChronicleAppConfig(entitySetIds: Map<String, UUID>, studyId: UUID) : EntitySetsConfig {
 
     private val participantEntitySetName = ChronicleServerUtil.getParticipantEntitySetName(studyId)
 
     // entity set ids
-    val addressesEntitySetId = entitySetIds.getValue(ADDRESSES_ES)
-    val answerEntitySetId = entitySetIds.getValue(ANSWERS_ES)
-    val appDataEntitySetId = entitySetIds.getValue(DATA_ES)
-    val appDictionaryEntitySetId = entitySetIds.getValue(APPS_DICTIONARY_ES)
-    val deviceEntitySetId = entitySetIds.getValue(DEVICES_ES)
-    val hasEntitySetId = entitySetIds.getValue(HAS_ES)
-    val metadataEntitySeId = entitySetIds.getValue(METADATA_ES)
-    val notificationEntitySetId = entitySetIds.getValue(NOTIFICATION_ES)
-    val partOfEntitySetId = entitySetIds.getValue(PART_OF_ES)
-    val participantEntitySetId = entitySetIds.getValue(participantEntitySetName)
-    val participatedInEntitySetId = entitySetIds.getValue(PARTICIPATED_IN_ES)
-    val preprocessedDataEntitySetId = entitySetIds.getValue(PREPROCESSED_DATA_ES)
-    val questionnaireEntitySetId = entitySetIds.getValue(QUESTIONNAIRE_ES)
-    val registeredForEntitySetId = entitySetIds.getValue(REGISTERED_FOR_ES)
-    val respondsWithEntitySetId = entitySetIds.getValue(RESPONDS_WITH_ES)
-    val studiesEntitySetId = entitySetIds.getValue(STUDY_ES)
-    val submissionEntitySetId = entitySetIds.getValue(SUBMISSION_ES)
-    val timeRangeEntitySetId = entitySetIds.getValue(TIMERANGE_ES)
-    val usedByEntitySetId = entitySetIds.getValue(USED_BY_ES)
-    val userAppsEntitySetId = entitySetIds.getValue(USER_APPS_ES)
+    override val addressesEntitySetId = entitySetIds.getValue(ADDRESSES_ES)
+    override val answersEntitySetId = entitySetIds.getValue(ANSWERS_ES)
+    override val appDataEntitySetId = entitySetIds.getValue(DATA_ES)
+    override val appDictionaryEntitySetId = entitySetIds.getValue(APPS_DICTIONARY_ES)
+    override val deviceEntitySetId = entitySetIds.getValue(DEVICES_ES)
+    override val hasEntitySetId = entitySetIds.getValue(HAS_ES)
+    override val metadataEntitySetId = entitySetIds.getValue(METADATA_ES)
+    override val notificationEntitySetId = entitySetIds.getValue(NOTIFICATION_ES)
+    override val partOfEntitySetId = entitySetIds.getValue(PART_OF_ES)
+    override val participantEntitySetId = entitySetIds.getValue(participantEntitySetName)
+    override val participatedInEntitySetId = entitySetIds.getValue(PARTICIPATED_IN_ES)
+    override val preprocessedDataEntitySetId = entitySetIds.getValue(PREPROCESSED_DATA_ES)
+    override val surveysEntitySetId = entitySetIds.getValue(QUESTIONNAIRE_ES)
+    override val questionsEntitySetId = entitySetIds.getValue(QUESTIONS_ES)
+    override val recordedByEntitySetId = entitySetIds.getValue(RECORDED_BY_ES)
+    override val registeredForEntitySetId = entitySetIds.getValue(REGISTERED_FOR_ES)
+    override val respondsWithEntitySetId = entitySetIds.getValue(RESPONDS_WITH_ES)
+    override val studiesEntitySetId = entitySetIds.getValue(STUDY_ES)
+    override val submissionEntitySetId = entitySetIds.getValue(SUBMISSION_ES)
+    override val timeRangeEntitySetId = entitySetIds.getValue(TIMERANGE_ES)
+    override val usedByEntitySetId = entitySetIds.getValue(USED_BY_ES)
+    override val userAppsEntitySetId = entitySetIds.getValue(USER_APPS_ES)
+
+    override fun getAllEntitySetIds(): Set<UUID> {
+        TODO("Not yet implemented")
+    }
 }
 

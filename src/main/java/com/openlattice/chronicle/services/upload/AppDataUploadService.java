@@ -4,7 +4,8 @@ import com.dataloom.streams.StreamUtil;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.*;
 import com.openlattice.ApiUtil;
-import com.openlattice.chronicle.constants.*;
+import com.openlattice.chronicle.constants.AppComponent;
+import com.openlattice.chronicle.constants.AppUsageFrequencyType;
 import com.openlattice.chronicle.data.*;
 import com.openlattice.chronicle.services.ApiCacheManager;
 import com.openlattice.chronicle.services.ScheduledTasksManager;
@@ -25,21 +26,10 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import static com.openlattice.chronicle.constants.EdmConstants.DATE_LOGGED_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.DATE_TIME_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.END_DATE_TIME_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.FULL_NAME_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.OL_ID_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.PERSON_ID_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.RECORDED_DATE_TIME_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.RECORD_TYPE_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.START_DATE_TIME_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.STRING_ID_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.TITLE_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.*;
 import static com.openlattice.chronicle.constants.OutputConstants.MINIMUM_DATE;
 import static com.openlattice.chronicle.util.ChronicleServerUtil.ORG_STUDY_PARTICIPANT;
 import static com.openlattice.chronicle.util.ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE;
-import static com.openlattice.chronicle.util.ChronicleServerUtil.getParticipantEntitySetName;
 
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
@@ -47,7 +37,7 @@ import static com.openlattice.chronicle.util.ChronicleServerUtil.getParticipantE
 public class AppDataUploadService implements AppDataUploadManager {
     protected final Logger logger = LoggerFactory.getLogger( AppDataUploadService.class );
 
-    private static final String APP_USAGE_FREQUENCY   = "appUsageFrequency";
+    private static final String APP_USAGE_FREQUENCY = "appUsageFrequency";
 
     private final ScheduledTasksManager scheduledTasksManager;
     private final EnrollmentManager     enrollmentManager;
@@ -69,7 +59,7 @@ public class AppDataUploadService implements AppDataUploadManager {
         this.entitySetIdsManager = entitySetIdsManager;
     }
 
-    private String getTruncatedDateTimeHelper(String dateTime, ChronoUnit chronoUnit) {
+    private String getTruncatedDateTimeHelper( String dateTime, ChronoUnit chronoUnit ) {
         if ( dateTime == null ) {
             return null;
         }
@@ -83,8 +73,10 @@ public class AppDataUploadService implements AppDataUploadManager {
         Map<String, Object> settings = entitySetIdsManager
                 .getOrgAppSettings( AppComponent.CHRONICLE_DATA_COLLECTION, organizationId );
 
-        String appUsageFreq = settings.getOrDefault( APP_USAGE_FREQUENCY, AppUsageFrequencyType.DAILY).toString();
-        ChronoUnit chronoUnit = appUsageFreq.equals( AppUsageFrequencyType.HOURLY.toString()) ? ChronoUnit.HOURS : ChronoUnit.DAYS;
+        String appUsageFreq = settings.getOrDefault( APP_USAGE_FREQUENCY, AppUsageFrequencyType.DAILY ).toString();
+        ChronoUnit chronoUnit = appUsageFreq.equals( AppUsageFrequencyType.HOURLY.toString() ) ?
+                ChronoUnit.HOURS :
+                ChronoUnit.DAYS;
 
         return getTruncatedDateTimeHelper( datetime, chronoUnit );
     }
@@ -235,14 +227,13 @@ public class AppDataUploadService implements AppDataUploadManager {
             UUID organizationId,
             UUID studyId,
             UUID participantESID,
+            UUID metadataESID,
+            UUID hasESID,
             UUID participantEKID,
             String participantId
     ) {
         // entity set ids
-        ChronicleCoreAppConfig coreAppConfig = entitySetIdsManager.getChronicleAppConfig( organizationId );
 
-        UUID metadataESID = coreAppConfig.getMetadataEntitySetId();
-        UUID hasESID = coreAppConfig.getHasEntitySetId();
 
         Map<EntityKey, Map<UUID, Set<Object>>> entitiesByEntityKey = Maps.newHashMap();
         Set<Triple<EntityKey, EntityKey, EntityKey>> edgesByEntityKey = Sets.newHashSet();
@@ -466,17 +457,16 @@ public class AppDataUploadService implements AppDataUploadManager {
             UUID participantEKID
     ) {
         // entity set ids
-        ChronicleCoreAppConfig coreAppConfig = entitySetIdsManager
-                .getChronicleAppConfig( organizationId, getParticipantEntitySetName( studyId ) );
-        ChronicleDataCollectionAppConfig dataCollectionAppConfig = entitySetIdsManager
-                .getChronicleDataCollectionAppConfig( organizationId );
+        EntitySetsConfig entitySetsConfig = entitySetIdsManager.getEntitySetsConfig( organizationId, studyId, ImmutableSet.of(AppComponent.CHRONICLE_DATA_COLLECTION) );
 
-        UUID appDataESID = dataCollectionAppConfig.getAppDataEntitySetId();
-        UUID recordedByESID = dataCollectionAppConfig.getRecordedByEntitySetId();
-        UUID devicesESID = dataCollectionAppConfig.getDeviceEntitySetId();
-        UUID usedByESID = dataCollectionAppConfig.getUsedByEntitySetId();
-        UUID userAppsESID = dataCollectionAppConfig.getUserAppsEntitySetId();
-        UUID participantESID = coreAppConfig.getParticipantEntitySetId();
+        UUID appDataESID = entitySetsConfig.getAppDataEntitySetId();
+        UUID recordedByESID = entitySetsConfig.getRecordedByEntitySetId();
+        UUID devicesESID = entitySetsConfig.getDeviceEntitySetId();
+        UUID usedByESID = entitySetsConfig.getUsedByEntitySetId();
+        UUID userAppsESID = entitySetsConfig.getUserAppsEntitySetId();
+        UUID participantESID = entitySetsConfig.getParticipantEntitySetId();
+        UUID hasESID = entitySetsConfig.getHasEntitySetId();
+        UUID metadataESID = entitySetsConfig.getMetadataEntitySetId();
 
         ListMultimap<UUID, Map<UUID, Set<Object>>> appDataEntities = ArrayListMultimap.create();
         ListMultimap<UUID, DataAssociation> appDataAssociations = ArrayListMultimap.create();
@@ -516,7 +506,7 @@ public class AppDataUploadService implements AppDataUploadManager {
             if ( appEntity.containsKey( edmCacheManager.getPropertyTypeId( TITLE_FQN ) ) ) {
                 appName = getFirstValueOrNull( appEntity, TITLE_FQN );
             }
-            
+
             // association 1: user apps => recorded by => device
             Map<UUID, Set<Object>> userAppEntityData = getUserAppsEntity( appPackageName, appName );
             EntityKey userAppEK = getUserAppsEntityKey( userAppsESID, userAppEntityData );
@@ -556,6 +546,8 @@ public class AppDataUploadService implements AppDataUploadManager {
                 organizationId,
                 studyId,
                 participantESID,
+                metadataESID,
+                hasESID,
                 participantEKID,
                 participantId
         );

@@ -10,44 +10,44 @@ import java.util.*
 class ChronicleAppConfig(
         coreEntitySets: Map<CollectionTemplateTypeName, UUID>,
         dataCollectionEntitySets: Map<CollectionTemplateTypeName, UUID>,
-        questionnairesEntitySets: Map<CollectionTemplateTypeName, UUID>) {
+        questionnairesEntitySets: Map<CollectionTemplateTypeName, UUID>) : EntitySetsConfig {
 
     // core entity set ids
-    val hasEntitySetId = coreEntitySets.getValue(CollectionTemplateTypeName.HAS)
-    val metadataEntitySetId = coreEntitySets.getValue(CollectionTemplateTypeName.METADATA)
-    val notificationEntitySetId = coreEntitySets.getValue(CollectionTemplateTypeName.NOTIFICATION)
-    val partOfEntitySetId = coreEntitySets.getValue(CollectionTemplateTypeName.PART_OF)
-    val participantEntitySetId = coreEntitySets.getValue(CollectionTemplateTypeName.PARTICIPANTS)
-    val participatedInEntitySeId = coreEntitySets.getValue(CollectionTemplateTypeName.PARTICIPATED_IN)
-    val studiesEntitySetId = coreEntitySets.getValue(CollectionTemplateTypeName.STUDIES)
+    override val hasEntitySetId = coreEntitySets.getValue(CollectionTemplateTypeName.HAS)
+    override val metadataEntitySetId = coreEntitySets.getValue(CollectionTemplateTypeName.METADATA)
+    override val notificationEntitySetId = coreEntitySets.getValue(CollectionTemplateTypeName.NOTIFICATION)
+    override val partOfEntitySetId = coreEntitySets.getValue(CollectionTemplateTypeName.PART_OF)
+    override val participantEntitySetId = coreEntitySets.getValue(CollectionTemplateTypeName.PARTICIPANTS)
+    override val participatedInEntitySetId = coreEntitySets.getValue(CollectionTemplateTypeName.PARTICIPATED_IN)
+    override val studiesEntitySetId = coreEntitySets.getValue(CollectionTemplateTypeName.STUDIES)
 
     // data collection
-    val appDataEntitySetId = dataCollectionEntitySets[CollectionTemplateTypeName.APPDATA]
-    val appDictionaryEntitySetId = dataCollectionEntitySets[CollectionTemplateTypeName.APP_DICTIONARY]
-    val deviceEntitySetId = dataCollectionEntitySets[CollectionTemplateTypeName.DEVICE]
-    val preprocessedDataEntitySetId = dataCollectionEntitySets[CollectionTemplateTypeName.PREPROCESSED_DATA]
-    val recordedByEntitySetId = dataCollectionEntitySets[CollectionTemplateTypeName.RECORDED_BY]
-    val usedByEntitySetId = dataCollectionEntitySets[CollectionTemplateTypeName.USED_BY]
-    val userAppsEntitySetId = dataCollectionEntitySets[CollectionTemplateTypeName.USER_APPS]
+    override val appDataEntitySetId = dataCollectionEntitySets.getValue(CollectionTemplateTypeName.APPDATA)
+    override val appDictionaryEntitySetId = dataCollectionEntitySets.getValue(CollectionTemplateTypeName.APP_DICTIONARY)
+    override val deviceEntitySetId = dataCollectionEntitySets.getValue(CollectionTemplateTypeName.DEVICE)
+    override val preprocessedDataEntitySetId = dataCollectionEntitySets.getValue(CollectionTemplateTypeName.PREPROCESSED_DATA)
+    override val recordedByEntitySetId = dataCollectionEntitySets.getValue(CollectionTemplateTypeName.RECORDED_BY)
+    override val usedByEntitySetId = dataCollectionEntitySets.getValue(CollectionTemplateTypeName.USED_BY)
+    override val userAppsEntitySetId = dataCollectionEntitySets.getValue(CollectionTemplateTypeName.USER_APPS)
 
     // surveys
-    val addressesEntitySetId = questionnairesEntitySets[CollectionTemplateTypeName.ADDRESSES]
-    val answersEntitySetId = questionnairesEntitySets[CollectionTemplateTypeName.ANSWER]
-    val questionsEntitySetId = questionnairesEntitySets[CollectionTemplateTypeName.QUESTION]
-    val registeredForEntitySetId = questionnairesEntitySets[CollectionTemplateTypeName.REGISTERED_FOR]
-    val respondsWithEntitySetId = questionnairesEntitySets[CollectionTemplateTypeName.RESPONDS_WITH]
-    val submissionEntitySetId = questionnairesEntitySets[CollectionTemplateTypeName.SUBMISSION]
-    val surveysEntitySetId = questionnairesEntitySets[CollectionTemplateTypeName.SURVEY]
-    val timeRangeEntitySetId = questionnairesEntitySets[CollectionTemplateTypeName.TIME_RANGE]
+    override val addressesEntitySetId = questionnairesEntitySets.getValue(CollectionTemplateTypeName.ADDRESSES)
+    override val answersEntitySetId = questionnairesEntitySets.getValue(CollectionTemplateTypeName.ANSWER)
+    override val questionsEntitySetId = questionnairesEntitySets.getValue(CollectionTemplateTypeName.QUESTION)
+    override val registeredForEntitySetId = questionnairesEntitySets.getValue(CollectionTemplateTypeName.REGISTERED_FOR)
+    override val respondsWithEntitySetId = questionnairesEntitySets.getValue(CollectionTemplateTypeName.RESPONDS_WITH)
+    override val submissionEntitySetId = questionnairesEntitySets.getValue(CollectionTemplateTypeName.SUBMISSION)
+    override val surveysEntitySetId = questionnairesEntitySets.getValue(CollectionTemplateTypeName.SURVEY)
+    override val timeRangeEntitySetId = questionnairesEntitySets.getValue(CollectionTemplateTypeName.TIME_RANGE)
 
-    fun getAllEntitySetIds(): Set<UUID> {
+    override fun getAllEntitySetIds(): Set<UUID> {
         return setOf(
                 hasEntitySetId,
                 metadataEntitySetId,
                 notificationEntitySetId,
                 partOfEntitySetId,
                 participantEntitySetId,
-                participatedInEntitySeId,
+                participatedInEntitySetId,
                 appDataEntitySetId,
                 appDictionaryEntitySetId,
                 deviceEntitySetId,

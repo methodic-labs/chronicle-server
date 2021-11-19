@@ -1,6 +1,5 @@
 package com.openlattice.chronicle.services.entitysets;
 
-import com.amazonaws.annotation.Immutable;
 import com.dataloom.streams.StreamUtil;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.*;
@@ -29,14 +28,11 @@ import org.springframework.scheduling.annotation.Scheduled;
 
 import java.util.*;
 import java.util.concurrent.ExecutionException;
-import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE;
 import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE_DATA_COLLECTION;
 import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE_SURVEYS;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.*;
 import static com.openlattice.chronicle.constants.EdmConstants.*;
 import static com.openlattice.chronicle.util.ChronicleServerUtil.getFirstUUIDOrNull;
 
@@ -201,7 +197,17 @@ public class EntitySetIdsService implements EntitySetIdsManager {
         return getOrgAppSettings( component, organizationId );
     }
 
-    @Override public ChronicleAppConfig getChronicleAppConfig(
+
+    @Override public EntitySetsConfig getEntitySetsConfig( UUID organizationId, UUID studyId, Set<AppComponent> components ) {
+        if (organizationId == null) {
+            return getChronicleLegacyAppConfig( studyId );
+        }
+        return getChronicleAppConfig( organizationId, components );
+    }
+
+    // helpers
+
+    private ChronicleAppConfig getChronicleAppConfig(
             UUID organizationId, Set<AppComponent> components ) {
         components.add( CHRONICLE ); // core component required by all organizations
         ensureOrganizationHasComponents( organizationId, components);
@@ -213,11 +219,9 @@ public class EntitySetIdsService implements EntitySetIdsManager {
         return new ChronicleAppConfig( coreEntitySets, dataCollectionEntitySets, questionnairesEntitySets );
     }
 
-    @Override public LegacyChronicleAppConfig getChronicleLegacyAppConfig( UUID studyId ) {
+    private LegacyChronicleAppConfig getChronicleLegacyAppConfig( UUID studyId ) {
         return new LegacyChronicleAppConfig( legacyEntitySetIds, studyId );
     }
-
-    // helpers
 
     private void ensureOrganizationHasComponents(UUID organizationId, Set<AppComponent> components) {
         components.forEach( appComponent -> {
