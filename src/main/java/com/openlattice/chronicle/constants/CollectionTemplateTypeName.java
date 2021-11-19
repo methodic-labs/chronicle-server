@@ -21,6 +21,8 @@ public enum CollectionTemplateTypeName {
     REGISTERED_FOR( "registeredfor" ),
     RESPONDS_WITH( "respondswith" ),
     STUDIES( "studies" ),
+    SENSOR_DATA("sensordata"),
+    SENSOR("sensor"),
     SUBMISSION( "submission" ),
     SURVEY( "survey" ),
     TIME_RANGE( "timerange" ),

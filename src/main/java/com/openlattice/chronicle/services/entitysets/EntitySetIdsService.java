@@ -23,6 +23,7 @@ import com.openlattice.data.requests.EntitySetSelection;
 import com.openlattice.data.requests.FileType;
 import com.openlattice.entitysets.EntitySetsApi;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
+import org.checkerframework.checker.nullness.Opt;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -262,6 +263,8 @@ public class EntitySetIdsService implements EntitySetIdsManager {
         }
 
         return new ChronicleDataCollectionAppConfig(
+                Optional.of( templateEntitySetIdMap.get( SENSOR_DATA ) ),
+                Optional.of( templateEntitySetIdMap.get( SENSOR ) ),
                 templateEntitySetIdMap.get( APP_DICTIONARY ),
                 templateEntitySetIdMap.get( RECORDED_BY ),
                 templateEntitySetIdMap.get( DEVICE ),
@@ -333,6 +336,8 @@ public class EntitySetIdsService implements EntitySetIdsManager {
     @Deprecated
     public ChronicleDataCollectionAppConfig getLegacyChronicleDataCollectionAppConfig() {
         return new ChronicleDataCollectionAppConfig(
+                Optional.empty(),
+                Optional.empty(),
                 legacyEntitySetIds.get( APP_DICTIONARY ),
                 legacyEntitySetIds.get( RECORDED_BY ),
                 legacyEntitySetIds.get( DEVICE ),

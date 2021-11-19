@@ -2,10 +2,9 @@ package com.openlattice.chronicle.data;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.google.common.collect.Sets;
 
-import java.util.Arrays;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -13,20 +12,24 @@ import java.util.stream.Stream;
 
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
- *
+ * <p>
  * POJO for data collection component of chronicle and its associated entity set ids
  */
 public class ChronicleDataCollectionAppConfig {
-    private final UUID recordedByEntitySetId;
-    private final UUID deviceEntitySetId;
-    private final UUID usedByEntitySetId;
-    private final UUID userAppsEntitySetId;
-    private final UUID preprocessedDataEntitySetId;
-    private final UUID appDataEntitySetId;
-    private final UUID appsDictionaryEntitySetId;
+    private final UUID           recordedByEntitySetId;
+    private final UUID           deviceEntitySetId;
+    private final UUID           usedByEntitySetId;
+    private final UUID           userAppsEntitySetId;
+    private final UUID           preprocessedDataEntitySetId;
+    private final UUID           appDataEntitySetId;
+    private final UUID           appsDictionaryEntitySetId;
+    private       Optional<UUID> sensorDataEntitySetId;
+    private       Optional<UUID> sensorEntitySetId;
 
     @JsonCreator
     public ChronicleDataCollectionAppConfig(
+            @JsonProperty( SerializationConstants.ENTITY_SET_ID ) Optional<UUID> sensorDataEntitySetId,
+            @JsonProperty( SerializationConstants.ENTITY_SET_ID ) Optional<UUID> sensorEntitySetId,
             @JsonProperty( SerializationConstants.ENTITY_SET_ID ) UUID appsDictionaryEntitySetId,
             @JsonProperty( SerializationConstants.ENTITY_SET_ID ) UUID recordedByEntitySetId,
             @JsonProperty( SerializationConstants.ENTITY_SET_ID ) UUID deviceEntitySetId,
@@ -35,6 +38,8 @@ public class ChronicleDataCollectionAppConfig {
             @JsonProperty( SerializationConstants.ENTITY_SET_ID ) UUID preprocessedDataEntitySetId,
             @JsonProperty( SerializationConstants.ENTITY_SET_ID ) UUID appDataEntitySetId
     ) {
+        sensorDataEntitySetId.ifPresent( it -> this.sensorDataEntitySetId = Optional.of( it ) );
+        sensorEntitySetId.ifPresent( it -> this.sensorEntitySetId = Optional.of( it ) );
         this.appsDictionaryEntitySetId = appsDictionaryEntitySetId;
         this.recordedByEntitySetId = recordedByEntitySetId;
         this.deviceEntitySetId = deviceEntitySetId;
@@ -77,6 +82,16 @@ public class ChronicleDataCollectionAppConfig {
     @JsonProperty( SerializationConstants.ENTITY_SET_ID )
     public UUID getAppsDictionaryEntitySetId() {
         return appsDictionaryEntitySetId;
+    }
+
+    @JsonProperty( SerializationConstants.ENTITY_SET_ID )
+    public UUID getSensorDataEntitySetId() {
+        return sensorDataEntitySetId.orElse( null );
+    }
+
+    @JsonProperty( SerializationConstants.ENTITY_SET_ID )
+    public UUID getSensorEntitySetId() {
+        return sensorEntitySetId.orElse( null );
     }
 
     @JsonProperty( SerializationConstants.ENTITY_SET_IDS )

@@ -7,6 +7,7 @@ import com.openlattice.chronicle.api.ChronicleApi;
 import com.openlattice.chronicle.data.ChronicleAppsUsageDetails;
 import com.openlattice.chronicle.data.ChronicleQuestionnaire;
 import com.openlattice.chronicle.data.ParticipationStatus;
+import com.openlattice.chronicle.data.SensorDataSample;
 import com.openlattice.chronicle.services.edm.EdmCacheManager;
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager;
 import com.openlattice.chronicle.services.entitysets.EntitySetIdsManager;
@@ -191,7 +192,11 @@ public class ChronicleControllerV2 implements ChronicleApi {
             consumes = MediaType.APPLICATION_JSON_VALUE
     )
     public void uploadIOSSensorData(
-            UUID organizationId, UUID studyId, String participantId, String deviceId, List<Map<UUID, Object>> data ) {
+           @PathVariable (ORGANIZATION_ID) UUID organizationId,
+           @PathVariable (STUDY_ID) UUID studyId,
+           @PathVariable (PARTICIPANT_ID) String participantId,
+           @PathVariable (DATASOURCE_ID) String deviceId,
+           @RequestBody List<SensorDataSample> data ) {
         sensorDataManager.uploadData( organizationId, studyId, participantId, deviceId, data );
     }
 
