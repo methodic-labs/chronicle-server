@@ -209,7 +209,6 @@ public class EntitySetIdsService implements EntitySetIdsManager {
 
     private ChronicleAppConfig getChronicleAppConfig(
             UUID organizationId, Set<AppComponent> components ) {
-        components.add( CHRONICLE ); // core component required by all organizations
         ensureOrganizationHasComponents( organizationId, components);
 
         Map<CollectionTemplateTypeName, UUID> coreEntitySets = getEntitySetIdsByOrgId().get( CHRONICLE ).get( organizationId );

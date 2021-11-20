@@ -25,7 +25,7 @@ class ChronicleAppConfig(
 
     // data collection
     override val appDataEntitySetId = dataCollectionEntitySets.getValue(CollectionTemplateTypeName.APPDATA)
-    override val appDictionaryEntitySetId = dataCollectionEntitySets.getValue(CollectionTemplateTypeName.APP_DICTIONARY)
+    override val appDictionaryEntitySetId = dataCollectionEntitySets[CollectionTemplateTypeName.APP_DICTIONARY]
     override val deviceEntitySetId = dataCollectionEntitySets.getValue(CollectionTemplateTypeName.DEVICE)
     override val preprocessedDataEntitySetId = dataCollectionEntitySets.getValue(CollectionTemplateTypeName.PREPROCESSED_DATA)
     override val recordedByEntitySetId = dataCollectionEntitySets.getValue(CollectionTemplateTypeName.RECORDED_BY)

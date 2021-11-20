@@ -10,18 +10,18 @@ interface EntitySetsConfig {
 
     // core entity set ids
     val hasEntitySetId: UUID
-    val messagesEntitySetId: UUID
+    val messagesEntitySetId: UUID?
     val metadataEntitySetId: UUID
     val notificationEntitySetId: UUID
     val partOfEntitySetId: UUID
-    val participantEntitySetId: UUID
+    val participantEntitySetId: UUID?
     val participatedInEntitySetId: UUID
-    val sentToEntitySetId: UUID
+    val sentToEntitySetId: UUID?
     val studiesEntitySetId: UUID
 
     // data collection
     val appDataEntitySetId:UUID
-    val appDictionaryEntitySetId: UUID
+    val appDictionaryEntitySetId: UUID?
     val deviceEntitySetId: UUID
     val preprocessedDataEntitySetId: UUID
     val recordedByEntitySetId: UUID

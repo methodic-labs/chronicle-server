@@ -7,9 +7,9 @@ import java.util.*
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
  */
-class LegacyChronicleAppConfig(entitySetIds: Map<String, UUID>, studyId: UUID) : EntitySetsConfig {
+class LegacyChronicleAppConfig(entitySetIds: Map<String, UUID>, studyId: UUID?) : EntitySetsConfig {
 
-    private val participantEntitySetName = ChronicleServerUtil.getParticipantEntitySetName(studyId)
+    private val participantEntitySetName = if (studyId != null) ChronicleServerUtil.getParticipantEntitySetName(studyId) else null
 
     // entity set ids
     override val addressesEntitySetId = entitySetIds.getValue(ADDRESSES_ES)
@@ -23,7 +23,7 @@ class LegacyChronicleAppConfig(entitySetIds: Map<String, UUID>, studyId: UUID) :
     override val metadataEntitySetId = entitySetIds.getValue(METADATA_ES)
     override val notificationEntitySetId = entitySetIds.getValue(NOTIFICATION_ES)
     override val partOfEntitySetId = entitySetIds.getValue(PART_OF_ES)
-    override val participantEntitySetId = entitySetIds.getValue(participantEntitySetName)
+    override val participantEntitySetId: UUID? = entitySetIds[participantEntitySetName]
     override val participatedInEntitySetId = entitySetIds.getValue(PARTICIPATED_IN_ES)
     override val sentToEntitySetId: UUID
         get() = TODO("Not yet implemented")
