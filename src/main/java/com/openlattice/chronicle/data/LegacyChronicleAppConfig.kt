@@ -18,11 +18,15 @@ class LegacyChronicleAppConfig(entitySetIds: Map<String, UUID>, studyId: UUID) :
     override val appDictionaryEntitySetId = entitySetIds.getValue(APPS_DICTIONARY_ES)
     override val deviceEntitySetId = entitySetIds.getValue(DEVICES_ES)
     override val hasEntitySetId = entitySetIds.getValue(HAS_ES)
+    override val messagesEntitySetId: UUID
+        get() = TODO("Not yet implemented")
     override val metadataEntitySetId = entitySetIds.getValue(METADATA_ES)
     override val notificationEntitySetId = entitySetIds.getValue(NOTIFICATION_ES)
     override val partOfEntitySetId = entitySetIds.getValue(PART_OF_ES)
     override val participantEntitySetId = entitySetIds.getValue(participantEntitySetName)
     override val participatedInEntitySetId = entitySetIds.getValue(PARTICIPATED_IN_ES)
+    override val sentToEntitySetId: UUID
+        get() = TODO("Not yet implemented")
     override val preprocessedDataEntitySetId = entitySetIds.getValue(PREPROCESSED_DATA_ES)
     override val surveysEntitySetId = entitySetIds.getValue(QUESTIONNAIRE_ES)
     override val questionsEntitySetId = entitySetIds.getValue(QUESTIONS_ES)

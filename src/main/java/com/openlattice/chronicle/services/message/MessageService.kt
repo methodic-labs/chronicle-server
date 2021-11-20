@@ -4,6 +4,7 @@ import com.google.common.collect.ArrayListMultimap
 import com.google.common.collect.ImmutableSet
 import com.google.common.collect.ListMultimap
 import com.openlattice.chronicle.constants.EdmConstants
+import com.openlattice.chronicle.data.EntitySetsConfig
 import com.openlattice.chronicle.data.MessageDetails
 import com.openlattice.chronicle.data.MessageOutcome
 import com.openlattice.chronicle.services.ApiCacheManager
@@ -42,12 +43,12 @@ open class MessageService(
     fun recordMessagesSent(organizationId: UUID?, messageOutcomes: List<MessageOutcome>) {
         val apiClient = apiCacheManager.prodApiClientCache[ApiClient::class.java]
         val dataApi = apiClient.dataApi
-        val coreAppConfig = entitySetIdsManager.getChronicleAppConfig(organizationId)
 
         // entity set ids
-        val messageESID = coreAppConfig.messagesEntitySetId
-        val sentToESID = coreAppConfig.sentToEntitySetId
-        val participantsESID = coreAppConfig.participantEntitySetId
+        val entitySetsConfig = entitySetIdsManager.getEntitySetsConfig(organizationId, null, ImmutableSet.of())
+        val messageESID = entitySetsConfig.messagesEntitySetId
+        val sentToESID = entitySetsConfig.sentToEntitySetId
+        val participantsESID = entitySetsConfig.participantEntitySetId
 
         val entities: ListMultimap<UUID, Map<UUID, Set<Any>>> = ArrayListMultimap.create();
         val associations: ListMultimap<UUID, DataAssociation> = ArrayListMultimap.create()

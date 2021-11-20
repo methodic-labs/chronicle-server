@@ -14,11 +14,13 @@ class ChronicleAppConfig(
 
     // core entity set ids
     override val hasEntitySetId = coreEntitySets.getValue(CollectionTemplateTypeName.HAS)
+    override val messagesEntitySetId = coreEntitySets.getValue(CollectionTemplateTypeName.MESSAGES)
     override val metadataEntitySetId = coreEntitySets.getValue(CollectionTemplateTypeName.METADATA)
     override val notificationEntitySetId = coreEntitySets.getValue(CollectionTemplateTypeName.NOTIFICATION)
     override val partOfEntitySetId = coreEntitySets.getValue(CollectionTemplateTypeName.PART_OF)
     override val participantEntitySetId = coreEntitySets.getValue(CollectionTemplateTypeName.PARTICIPANTS)
     override val participatedInEntitySetId = coreEntitySets.getValue(CollectionTemplateTypeName.PARTICIPATED_IN)
+    override val sentToEntitySetId = coreEntitySets.getValue(CollectionTemplateTypeName.SENT_TO)
     override val studiesEntitySetId = coreEntitySets.getValue(CollectionTemplateTypeName.STUDIES)
 
     // data collection

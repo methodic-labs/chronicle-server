@@ -7,13 +7,16 @@ import java.util.*
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
  */
 interface EntitySetsConfig {
+
     // core entity set ids
     val hasEntitySetId: UUID
+    val messagesEntitySetId: UUID
     val metadataEntitySetId: UUID
     val notificationEntitySetId: UUID
     val partOfEntitySetId: UUID
     val participantEntitySetId: UUID
     val participatedInEntitySetId: UUID
+    val sentToEntitySetId: UUID
     val studiesEntitySetId: UUID
 
     // data collection
