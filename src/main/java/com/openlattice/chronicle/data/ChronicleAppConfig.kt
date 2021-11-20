@@ -8,9 +8,9 @@ import java.util.*
  */
 // ALl chronicle entity set ids
 class ChronicleAppConfig(
-        coreEntitySets: Map<CollectionTemplateTypeName, UUID>,
-        dataCollectionEntitySets: Map<CollectionTemplateTypeName, UUID>,
-        questionnairesEntitySets: Map<CollectionTemplateTypeName, UUID>) : EntitySetsConfig {
+        private val coreEntitySets: Map<CollectionTemplateTypeName, UUID>,
+        private val dataCollectionEntitySets: Map<CollectionTemplateTypeName, UUID>,
+        private val questionnairesEntitySets: Map<CollectionTemplateTypeName, UUID>) : EntitySetsConfig {
 
     // core entity set ids
     override val hasEntitySetId = coreEntitySets.getValue(CollectionTemplateTypeName.HAS)
@@ -41,29 +41,7 @@ class ChronicleAppConfig(
     override val timeRangeEntitySetId = questionnairesEntitySets.getValue(CollectionTemplateTypeName.TIME_RANGE)
 
     override fun getAllEntitySetIds(): Set<UUID> {
-        return setOf(
-                hasEntitySetId,
-                metadataEntitySetId,
-                notificationEntitySetId,
-                partOfEntitySetId,
-                participantEntitySetId,
-                participatedInEntitySetId,
-                appDataEntitySetId,
-                appDictionaryEntitySetId,
-                deviceEntitySetId,
-                preprocessedDataEntitySetId,
-                recordedByEntitySetId,
-                usedByEntitySetId,
-                userAppsEntitySetId,
-                addressesEntitySetId,
-                answersEntitySetId,
-                questionsEntitySetId,
-                registeredForEntitySetId,
-                respondsWithEntitySetId,
-                submissionEntitySetId,
-                surveysEntitySetId,
-                timeRangeEntitySetId
-        ).filterNotNull().toSet()
+        return ( coreEntitySets + dataCollectionEntitySets + questionnairesEntitySets ).values.toSet()
     }
 }
 
