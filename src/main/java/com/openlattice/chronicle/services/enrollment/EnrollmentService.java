@@ -1,7 +1,13 @@
 package com.openlattice.chronicle.services.enrollment;
 
 import com.google.common.base.Optional;
-import com.google.common.collect.*;
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ListMultimap;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import com.openlattice.ApiUtil;
 import com.openlattice.chronicle.constants.AppComponent;
 import com.openlattice.chronicle.data.EntitySetsConfig;
@@ -14,7 +20,13 @@ import com.openlattice.chronicle.sources.AndroidDevice;
 import com.openlattice.chronicle.sources.Datasource;
 import com.openlattice.chronicle.sources.IOSDevice;
 import com.openlattice.client.ApiClient;
-import com.openlattice.data.*;
+import com.openlattice.data.DataApi;
+import com.openlattice.data.DataEdge;
+import com.openlattice.data.DataIntegrationApi;
+import com.openlattice.data.EntityDataKey;
+import com.openlattice.data.EntityKey;
+import com.openlattice.data.PropertyUpdateType;
+import com.openlattice.data.UpdateType;
 import com.openlattice.data.requests.NeighborEntityDetails;
 import com.openlattice.search.SearchApi;
 import com.openlattice.search.requests.EntityNeighborsFilter;
@@ -23,12 +35,24 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.access.AccessDeniedException;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 
 import static com.google.common.base.Preconditions.checkNotNull;
-import static com.openlattice.chronicle.constants.EdmConstants.*;
-import static com.openlattice.chronicle.util.ChronicleServerUtil.*;
+import static com.openlattice.chronicle.constants.EdmConstants.MODEL_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.NAME_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.OL_ID_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.STATUS_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.STRING_ID_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.VERSION_FQN;
+import static com.openlattice.chronicle.util.ChronicleServerUtil.ORG_STUDY_PARTICIPANT;
+import static com.openlattice.chronicle.util.ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE;
+import static com.openlattice.chronicle.util.ChronicleServerUtil.getFirstValueOrNull;
 
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;

@@ -6,14 +6,24 @@ import com.google.common.collect.*;
 import com.openlattice.ApiUtil;
 import com.openlattice.chronicle.constants.AppComponent;
 import com.openlattice.chronicle.constants.AppUsageFrequencyType;
-import com.openlattice.chronicle.data.*;
+import com.openlattice.chronicle.data.EntitiesAndEdges;
+import com.openlattice.chronicle.data.EntitySetsConfig;
+import com.openlattice.chronicle.data.ParticipationStatus;
 import com.openlattice.chronicle.services.ApiCacheManager;
 import com.openlattice.chronicle.services.ScheduledTasksManager;
 import com.openlattice.chronicle.services.edm.EdmCacheManager;
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager;
 import com.openlattice.chronicle.services.entitysets.EntitySetIdsManager;
 import com.openlattice.client.ApiClient;
-import com.openlattice.data.*;
+import com.openlattice.data.DataApi;
+import com.openlattice.data.DataAssociation;
+import com.openlattice.data.DataEdgeKey;
+import com.openlattice.data.DataGraph;
+import com.openlattice.data.DataIntegrationApi;
+import com.openlattice.data.EntityDataKey;
+import com.openlattice.data.EntityKey;
+import com.openlattice.data.PropertyUpdateType;
+import com.openlattice.data.UpdateType;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
 import org.slf4j.Logger;
@@ -22,7 +32,12 @@ import org.slf4j.LoggerFactory;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -233,7 +248,6 @@ public class AppDataUploadService implements AppDataUploadManager {
             String participantId
     ) {
         // entity set ids
-
 
         Map<EntityKey, Map<UUID, Set<Object>>> entitiesByEntityKey = Maps.newHashMap();
         Set<Triple<EntityKey, EntityKey, EntityKey>> edgesByEntityKey = Sets.newHashSet();
@@ -457,7 +471,9 @@ public class AppDataUploadService implements AppDataUploadManager {
             UUID participantEKID
     ) {
         // entity set ids
-        EntitySetsConfig entitySetsConfig = entitySetIdsManager.getEntitySetsConfig( organizationId, studyId, ImmutableSet.of(AppComponent.CHRONICLE_DATA_COLLECTION) );
+        EntitySetsConfig entitySetsConfig = entitySetIdsManager.getEntitySetsConfig( organizationId,
+                studyId,
+                ImmutableSet.of( AppComponent.CHRONICLE_DATA_COLLECTION ) );
 
         UUID appDataESID = entitySetsConfig.getAppDataEntitySetId();
         UUID recordedByESID = entitySetsConfig.getRecordedByEntitySetId();

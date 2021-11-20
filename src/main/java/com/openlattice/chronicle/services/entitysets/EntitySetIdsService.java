@@ -2,13 +2,20 @@ package com.openlattice.chronicle.services.entitysets;
 
 import com.dataloom.streams.StreamUtil;
 import com.google.common.base.Preconditions;
-import com.google.common.collect.*;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Multimaps;
+import com.google.common.collect.SetMultimap;
 import com.openlattice.apps.App;
 import com.openlattice.apps.AppApi;
 import com.openlattice.apps.UserAppConfig;
 import com.openlattice.authorization.securable.AbstractSecurableObject;
-import com.openlattice.chronicle.constants.*;
-import com.openlattice.chronicle.data.*;
+import com.openlattice.chronicle.constants.AppComponent;
+import com.openlattice.chronicle.constants.CollectionTemplateTypeName;
+import com.openlattice.chronicle.data.ChronicleAppConfig;
+import com.openlattice.chronicle.data.EntitySetsConfig;
+import com.openlattice.chronicle.data.LegacyChronicleAppConfig;
 import com.openlattice.chronicle.services.ApiCacheManager;
 import com.openlattice.chronicle.services.edm.EdmCacheManager;
 import com.openlattice.chronicle.util.ChronicleServerUtil;
@@ -26,14 +33,22 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE;
 import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE_DATA_COLLECTION;
 import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE_SURVEYS;
-import static com.openlattice.chronicle.constants.EdmConstants.*;
+import static com.openlattice.chronicle.constants.EdmConstants.LEGACY_ENTITY_SET_NAMES;
+import static com.openlattice.chronicle.constants.EdmConstants.STRING_ID_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.STUDY_ES;
 import static com.openlattice.chronicle.util.ChronicleServerUtil.getFirstUUIDOrNull;
 
 /**
@@ -133,7 +148,7 @@ public class EntitySetIdsService implements EntitySetIdsManager {
                 }
                 orgEntitySetMap.put( userAppConfig.getOrganizationId(), templateTypeNameESIDMap );
 
-                settings.put(userAppConfig.getOrganizationId(), userAppConfig.getSettings());
+                settings.put( userAppConfig.getOrganizationId(), userAppConfig.getSettings() );
             } );
 
             appSettings.put( appComponent, settings );
@@ -187,19 +202,20 @@ public class EntitySetIdsService implements EntitySetIdsManager {
 
     // app settings
     @Override
-    public Map<String, Object> getOrgAppSettings(AppComponent appComponent, UUID organizationId) {
-        return appSettings.getOrDefault( appComponent, ImmutableMap.of() ).getOrDefault( organizationId, ImmutableMap.of() );
+    public Map<String, Object> getOrgAppSettings( AppComponent appComponent, UUID organizationId ) {
+        return appSettings.getOrDefault( appComponent, ImmutableMap.of() )
+                .getOrDefault( organizationId, ImmutableMap.of() );
     }
 
     @Override
-    public Map<String, Object> getOrgAppSettings(String appName, UUID organizationId) {
+    public Map<String, Object> getOrgAppSettings( String appName, UUID organizationId ) {
         AppComponent component = AppComponent.fromString( appName );
         return getOrgAppSettings( component, organizationId );
     }
 
-
-    @Override public EntitySetsConfig getEntitySetsConfig( UUID organizationId, UUID studyId, Set<AppComponent> components ) {
-        if (organizationId == null) {
+    @Override
+    public EntitySetsConfig getEntitySetsConfig( UUID organizationId, UUID studyId, Set<AppComponent> components ) {
+        if ( organizationId == null ) {
             return getChronicleLegacyAppConfig( studyId );
         }
         return getChronicleAppConfig( organizationId, components );
@@ -209,11 +225,16 @@ public class EntitySetIdsService implements EntitySetIdsManager {
 
     private ChronicleAppConfig getChronicleAppConfig(
             UUID organizationId, Set<AppComponent> components ) {
-        ensureOrganizationHasComponents( organizationId, components);
+        ensureOrganizationHasComponents( organizationId, components );
 
-        Map<CollectionTemplateTypeName, UUID> coreEntitySets = getEntitySetIdsByOrgId().get( CHRONICLE ).get( organizationId );
-        Map<CollectionTemplateTypeName, UUID> dataCollectionEntitySets = getEntitySetIdsByOrgId().getOrDefault( CHRONICLE_DATA_COLLECTION, ImmutableMap.of() ).getOrDefault( organizationId, ImmutableMap.of() );
-        Map<CollectionTemplateTypeName, UUID> questionnairesEntitySets = getEntitySetIdsByOrgId().getOrDefault( CHRONICLE_SURVEYS, ImmutableMap.of() ).getOrDefault( organizationId, ImmutableMap.of() );
+        Map<CollectionTemplateTypeName, UUID> coreEntitySets = getEntitySetIdsByOrgId().get( CHRONICLE )
+                .get( organizationId );
+        Map<CollectionTemplateTypeName, UUID> dataCollectionEntitySets = getEntitySetIdsByOrgId().getOrDefault(
+                CHRONICLE_DATA_COLLECTION,
+                ImmutableMap.of() ).getOrDefault( organizationId, ImmutableMap.of() );
+        Map<CollectionTemplateTypeName, UUID> questionnairesEntitySets = getEntitySetIdsByOrgId().getOrDefault(
+                CHRONICLE_SURVEYS,
+                ImmutableMap.of() ).getOrDefault( organizationId, ImmutableMap.of() );
 
         return new ChronicleAppConfig( coreEntitySets, dataCollectionEntitySets, questionnairesEntitySets );
     }
@@ -222,9 +243,11 @@ public class EntitySetIdsService implements EntitySetIdsManager {
         return new LegacyChronicleAppConfig( legacyEntitySetIds, studyId );
     }
 
-    private void ensureOrganizationHasComponents(UUID organizationId, Set<AppComponent> components) {
+    private void ensureOrganizationHasComponents( UUID organizationId, Set<AppComponent> components ) {
         components.forEach( appComponent -> {
-            Map<UUID, Map<CollectionTemplateTypeName, UUID>> orgComponents = getEntitySetIdsByOrgId().getOrDefault( appComponent, ImmutableMap.of() );
+            Map<UUID, Map<CollectionTemplateTypeName, UUID>> orgComponents = getEntitySetIdsByOrgId().getOrDefault(
+                    appComponent,
+                    ImmutableMap.of() );
 
             Preconditions.checkArgument(
                     orgComponents.containsKey( organizationId ),

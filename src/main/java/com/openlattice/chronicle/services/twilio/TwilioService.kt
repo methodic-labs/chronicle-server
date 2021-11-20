@@ -15,7 +15,7 @@ import java.time.OffsetDateTime
  * @author toddbergman &lt;todd@openlattice.com&gt;
  */
 class TwilioService(configuration: TwilioConfiguration) :
-    TwilioManager {
+        TwilioManager {
     companion object {
         protected val logger = LoggerFactory.getLogger(TwilioService::class.java)
     }
@@ -26,21 +26,21 @@ class TwilioService(configuration: TwilioConfiguration) :
 
     private val fromPhoneNumber: PhoneNumber = PhoneNumber(configuration.fromPhone)
 
-    private fun sendMessage(messageDetails: MessageDetails) :MessageOutcome {
+    private fun sendMessage(messageDetails: MessageDetails): MessageOutcome {
         val messageText = "Chronicle device enrollment:  Please download app from your app store and click on ${messageDetails.url} to enroll your device."
         try {
             val message = Message
-                .creator(PhoneNumber(messageDetails.phoneNumber), fromPhoneNumber, messageText)
-                .setStatusCallback(URI.create("https://api.openlattice.com/bifrost/messages/status"))
-                .create()
+                    .creator(PhoneNumber(messageDetails.phoneNumber), fromPhoneNumber, messageText)
+                    .setStatusCallback(URI.create("https://api.openlattice.com/bifrost/messages/status"))
+                    .create()
             return MessageOutcome(
-                messageDetails.messageType,
-                OffsetDateTime.now(),
-                messageDetails.participantId,
-                messageDetails.url,
-                message.status != Message.Status.FAILED,
-                message.sid,
-                messageDetails.studyId
+                    messageDetails.messageType,
+                    OffsetDateTime.now(),
+                    messageDetails.participantId,
+                    messageDetails.url,
+                    message.status != Message.Status.FAILED,
+                    message.sid,
+                    messageDetails.studyId
             )
         } catch (e: ApiException) {
             logger.error("""
@@ -49,13 +49,13 @@ class TwilioService(configuration: TwilioConfiguration) :
                 in study ${messageDetails.studyId}
                 """.trimIndent(), e)
             return MessageOutcome(
-                messageDetails.messageType,
-                OffsetDateTime.now(),
-                messageDetails.participantId,
-                messageDetails.url,
-                false,
-                "message not sent",
-                messageDetails.studyId
+                    messageDetails.messageType,
+                    OffsetDateTime.now(),
+                    messageDetails.participantId,
+                    messageDetails.url,
+                    false,
+                    "message not sent",
+                    messageDetails.studyId
             )
         }
     }

@@ -4,7 +4,6 @@ import com.google.common.collect.ArrayListMultimap
 import com.google.common.collect.ImmutableSet
 import com.google.common.collect.ListMultimap
 import com.openlattice.chronicle.constants.EdmConstants
-import com.openlattice.chronicle.data.EntitySetsConfig
 import com.openlattice.chronicle.data.MessageDetails
 import com.openlattice.chronicle.data.MessageOutcome
 import com.openlattice.chronicle.services.ApiCacheManager

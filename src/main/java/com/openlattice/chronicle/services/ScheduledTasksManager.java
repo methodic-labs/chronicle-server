@@ -218,8 +218,7 @@ public class ScheduledTasksManager {
 
                 EntitySetsConfig entitySetsConfig = entitySetIdsManager.getEntitySetsConfig( orgId,
                         null,
-                        ImmutableSet.of(
-                                CHRONICLE_DATA_COLLECTION ) );
+                        ImmutableSet.of( CHRONICLE_DATA_COLLECTION ) );
                 UUID userAppsEntitySetId = entitySetsConfig.getUserAppsEntitySetId();
 
                 Iterable<SetMultimap<FullQualifiedName, Object>> data = getEntitySetData(

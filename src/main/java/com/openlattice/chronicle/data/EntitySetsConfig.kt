@@ -1,6 +1,5 @@
 package com.openlattice.chronicle.data
 
-import com.openlattice.chronicle.constants.CollectionTemplateTypeName
 import java.util.*
 
 /**
@@ -20,7 +19,7 @@ interface EntitySetsConfig {
     val studiesEntitySetId: UUID
 
     // data collection
-    val appDataEntitySetId:UUID
+    val appDataEntitySetId: UUID
     val appDictionaryEntitySetId: UUID?
     val deviceEntitySetId: UUID
     val preprocessedDataEntitySetId: UUID

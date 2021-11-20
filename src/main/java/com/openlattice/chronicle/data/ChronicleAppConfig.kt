@@ -6,7 +6,7 @@ import java.util.*
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
  */
-// ALl chronicle entity set ids
+// chronicle v2 entity set ids
 class ChronicleAppConfig(
         private val coreEntitySets: Map<CollectionTemplateTypeName, UUID>,
         private val dataCollectionEntitySets: Map<CollectionTemplateTypeName, UUID>,
@@ -43,7 +43,7 @@ class ChronicleAppConfig(
     override val timeRangeEntitySetId = questionnairesEntitySets.getValue(CollectionTemplateTypeName.TIME_RANGE)
 
     override fun getAllEntitySetIds(): Set<UUID> {
-        return ( coreEntitySets + dataCollectionEntitySets + questionnairesEntitySets ).values.toSet()
+        return (coreEntitySets + dataCollectionEntitySets + questionnairesEntitySets).values.toSet()
     }
 }
 

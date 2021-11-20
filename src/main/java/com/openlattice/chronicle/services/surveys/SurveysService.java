@@ -2,16 +2,33 @@ package com.openlattice.chronicle.services.surveys;
 
 import com.dataloom.streams.StreamUtil;
 import com.google.common.base.Preconditions;
-import com.google.common.collect.*;
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ListMultimap;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import com.openlattice.ApiUtil;
 import com.openlattice.chronicle.constants.AppComponent;
-import com.openlattice.chronicle.data.*;
+import com.openlattice.chronicle.data.ChronicleAppsUsageDetails;
+import com.openlattice.chronicle.data.ChronicleQuestionnaire;
+import com.openlattice.chronicle.data.EntitiesAndEdges;
+import com.openlattice.chronicle.data.EntitySetsConfig;
 import com.openlattice.chronicle.services.ApiCacheManager;
 import com.openlattice.chronicle.services.edm.EdmCacheManager;
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager;
 import com.openlattice.chronicle.services.entitysets.EntitySetIdsManager;
 import com.openlattice.client.ApiClient;
-import com.openlattice.data.*;
+import com.openlattice.data.DataApi;
+import com.openlattice.data.DataAssociation;
+import com.openlattice.data.DataEdgeKey;
+import com.openlattice.data.DataGraph;
+import com.openlattice.data.DataIntegrationApi;
+import com.openlattice.data.EntityDataKey;
+import com.openlattice.data.EntityKey;
+import com.openlattice.data.PropertyUpdateType;
+import com.openlattice.data.UpdateType;
 import com.openlattice.data.requests.NeighborEntityDetails;
 import com.openlattice.search.SearchApi;
 import com.openlattice.search.requests.EntityNeighborsFilter;
@@ -22,14 +39,27 @@ import org.slf4j.LoggerFactory;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE_SURVEYS;
-import static com.openlattice.chronicle.constants.EdmConstants.*;
+import static com.openlattice.chronicle.constants.EdmConstants.COMPLETED_DATE_TIME_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.DATE_TIME_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.END_DATE_TIME_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.OL_ID_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.PERSON_ID_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.START_DATE_TIME_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.STRING_ID_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.TITLE_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.VALUES_FQN;
 import static com.openlattice.chronicle.util.ChronicleServerUtil.getFirstUUIDOrNull;
-import static com.openlattice.chronicle.util.ChronicleServerUtil.setDownloadContentType;
 import static com.openlattice.edm.EdmConstants.ID_FQN;
 
 /**
@@ -75,7 +105,9 @@ public class SurveysService implements SurveysManager {
             SearchApi searchApi = apiClient.getSearchApi();
 
             // entity set ids
-            EntitySetsConfig entitySetsConfig = entitySetIdsManager.getEntitySetsConfig( organizationId, studyId, ImmutableSet.of(CHRONICLE_SURVEYS) );
+            EntitySetsConfig entitySetsConfig = entitySetIdsManager.getEntitySetsConfig( organizationId,
+                    studyId,
+                    ImmutableSet.of( CHRONICLE_SURVEYS ) );
 
             UUID questionnaireESID = entitySetsConfig.getSurveysEntitySetId();
             UUID studiesESID = entitySetsConfig.getStudiesEntitySetId();
@@ -181,8 +213,10 @@ public class SurveysService implements SurveysManager {
             SearchApi searchApi = apiClient.getSearchApi();
 
             // entity set ids
-            EntitySetsConfig entitySetsConfig = entitySetIdsManager.getEntitySetsConfig( organizationId, studyId, ImmutableSet.of(
-                    CHRONICLE_SURVEYS) );
+            EntitySetsConfig entitySetsConfig = entitySetIdsManager.getEntitySetsConfig( organizationId,
+                    studyId,
+                    ImmutableSet.of(
+                            CHRONICLE_SURVEYS ) );
 
             UUID questionnaireESID = entitySetsConfig.getSurveysEntitySetId();
             UUID studiesESID = entitySetsConfig.getStudiesEntitySetId();
@@ -234,8 +268,10 @@ public class SurveysService implements SurveysManager {
             DataApi dataApi = apiClient.getDataApi();
 
             // get entity set ids
-            EntitySetsConfig entitySetsConfig = entitySetIdsManager.getEntitySetsConfig( organizationId, studyId, ImmutableSet.of(
-                    CHRONICLE_SURVEYS) );
+            EntitySetsConfig entitySetsConfig = entitySetIdsManager.getEntitySetsConfig( organizationId,
+                    studyId,
+                    ImmutableSet.of(
+                            CHRONICLE_SURVEYS ) );
 
             UUID participantESID = entitySetsConfig.getParticipantEntitySetId();
             UUID answersESID = entitySetsConfig.getAnswersEntitySetId();
@@ -323,7 +359,9 @@ public class SurveysService implements SurveysManager {
             Preconditions.checkArgument( isKnownParticipant, "unknown participant = {}", participantId );
 
             // get entity set ids
-            EntitySetsConfig entitySetsConfig = entitySetIdsManager.getEntitySetsConfig( organizationId, studyId, ImmutableSet.of(AppComponent.CHRONICLE_DATA_COLLECTION) );
+            EntitySetsConfig entitySetsConfig = entitySetIdsManager.getEntitySetsConfig( organizationId,
+                    studyId,
+                    ImmutableSet.of( AppComponent.CHRONICLE_DATA_COLLECTION ) );
             UUID usedByESID = entitySetsConfig.getUsedByEntitySetId();
 
             // create association data
@@ -382,7 +420,9 @@ public class SurveysService implements SurveysManager {
                             "participant does not exist" );
 
             // get entity set ids
-            EntitySetsConfig entitySetsConfig = entitySetIdsManager.getEntitySetsConfig( organizationId, studyId, ImmutableSet.of(AppComponent.CHRONICLE_DATA_COLLECTION) );
+            EntitySetsConfig entitySetsConfig = entitySetIdsManager.getEntitySetsConfig( organizationId,
+                    studyId,
+                    ImmutableSet.of( AppComponent.CHRONICLE_DATA_COLLECTION ) );
 
             // search participants to retrieve neighbors in user apps entity set
             Map<UUID, List<NeighborEntityDetails>> participantNeighbors = searchApi.executeFilteredEntityNeighborSearch(
@@ -666,7 +706,8 @@ public class SurveysService implements SurveysManager {
         UUID questionEKID = entityKeyIdMap.get( questionEK );
 
         Map<UUID, Set<Object>> timeRangeEntityData = getTimeRangeEntity( entity );
-        EntityKey timeRangeEK = getTimeRangeEntityKey( entitySetsConfig.getTimeRangeEntitySetId(), timeRangeEntityData );
+        EntityKey timeRangeEK = getTimeRangeEntityKey( entitySetsConfig.getTimeRangeEntitySetId(),
+                timeRangeEntityData );
         UUID timeRangeEKID = entityKeyIdMap.get( timeRangeEK );
 
         // answer -> registeredfor -> timerange
@@ -770,14 +811,16 @@ public class SurveysService implements SurveysManager {
                 participatedInEntityData );
         entitiesByEK.put( participatedInEK, participatedInEntityData );
 
-        EntityKey participantEK = getParticipantEntityKey( entitySetsConfig.getParticipantEntitySetId(), participantId );
+        EntityKey participantEK = getParticipantEntityKey( entitySetsConfig.getParticipantEntitySetId(),
+                participantId );
 
         edgesByEntityKey.add( Triple.of( participantEK, participatedInEK, surveyEK ) );
 
         // edge: person -> respondswith -> submission
 
         Map<UUID, Set<Object>> submissionEntityData = getSubmissionEntity( studyId, participantId, dateTime );
-        EntityKey submissionEK = getSubmissionEntityKey( entitySetsConfig.getSubmissionEntitySetId(), submissionEntityData );
+        EntityKey submissionEK = getSubmissionEntityKey( entitySetsConfig.getSubmissionEntitySetId(),
+                submissionEntityData );
         submissionEntityData.remove( edmCacheManager.getPropertyTypeId( STRING_ID_FQN ) ); // shouldn't be stored
         submissionEntityData.remove( edmCacheManager.getPropertyTypeId( OL_ID_FQN ) ); // shouldn't be stored
         entitiesByEK.put( submissionEK, submissionEntityData );
@@ -869,7 +912,9 @@ public class SurveysService implements SurveysManager {
                     .checkNotNull( enrollmentManager.getStudyEntityKeyId( orgId, studyId ), "study not found" );
 
             // entity set ids
-            EntitySetsConfig entitySetsConfig = entitySetIdsManager.getEntitySetsConfig( orgId, studyId, ImmutableSet.of(CHRONICLE_SURVEYS) );
+            EntitySetsConfig entitySetsConfig = entitySetIdsManager.getEntitySetsConfig( orgId,
+                    studyId,
+                    ImmutableSet.of( CHRONICLE_SURVEYS ) );
 
             ListMultimap<UUID, Map<UUID, Set<Object>>> entities = ArrayListMultimap.create();
             ListMultimap<UUID, DataAssociation> associations = ArrayListMultimap.create();
