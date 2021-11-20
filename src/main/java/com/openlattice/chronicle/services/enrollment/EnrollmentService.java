@@ -4,8 +4,6 @@ import com.google.common.base.Optional;
 import com.google.common.collect.*;
 import com.openlattice.ApiUtil;
 import com.openlattice.chronicle.constants.AppComponent;
-import com.openlattice.chronicle.data.ChronicleCoreAppConfig;
-import com.openlattice.chronicle.data.ChronicleDataCollectionAppConfig;
 import com.openlattice.chronicle.data.EntitySetsConfig;
 import com.openlattice.chronicle.data.ParticipationStatus;
 import com.openlattice.chronicle.services.ApiCacheManager;
@@ -29,16 +27,8 @@ import java.util.*;
 import java.util.concurrent.ExecutionException;
 
 import static com.google.common.base.Preconditions.checkNotNull;
-import static com.openlattice.chronicle.constants.EdmConstants.MODEL_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.NAME_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.OL_ID_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.STATUS_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.STRING_ID_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.VERSION_FQN;
-import static com.openlattice.chronicle.util.ChronicleServerUtil.ORG_STUDY_PARTICIPANT;
-import static com.openlattice.chronicle.util.ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE;
-import static com.openlattice.chronicle.util.ChronicleServerUtil.getFirstValueOrNull;
-import static com.openlattice.chronicle.util.ChronicleServerUtil.getParticipantEntitySetName;
+import static com.openlattice.chronicle.constants.EdmConstants.*;
+import static com.openlattice.chronicle.util.ChronicleServerUtil.*;
 
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
@@ -126,8 +116,10 @@ public class EnrollmentService implements EnrollmentManager {
             DataIntegrationApi dataIntegrationApi = apiClient.getDataIntegrationApi();
 
             // entity set ids
-            EntitySetsConfig entitySetsConfig = entitySetIdsManager.getEntitySetsConfig( organizationId, studyId, ImmutableSet.of(
-                    AppComponent.CHRONICLE_DATA_COLLECTION) );
+            EntitySetsConfig entitySetsConfig = entitySetIdsManager.getEntitySetsConfig( organizationId,
+                    studyId,
+                    ImmutableSet.of(
+                            AppComponent.CHRONICLE_DATA_COLLECTION ) );
 
             UUID usedByESID = entitySetsConfig.getUsedByEntitySetId();
             UUID studiesESID = entitySetsConfig.getStudiesEntitySetId();
@@ -265,7 +257,9 @@ public class EnrollmentService implements EnrollmentManager {
             ApiClient apiClient = apiCacheManager.prodApiClientCache.get( ApiClient.class );
             DataApi dataApi = apiClient.getDataApi();
 
-            EntitySetsConfig entitySetsConfig = entitySetIdsManager.getEntitySetsConfig( organizationId, null, ImmutableSet.of() );
+            EntitySetsConfig entitySetsConfig = entitySetIdsManager.getEntitySetsConfig( organizationId,
+                    null,
+                    ImmutableSet.of() );
             UUID entitySetId = entitySetsConfig.getParticipantEntitySetId();
 
             Map<FullQualifiedName, Set<Object>> entity = dataApi.getEntity( entitySetId, participantEntityKeyId );
@@ -302,7 +296,9 @@ public class EnrollmentService implements EnrollmentManager {
             SearchApi searchApi = apiClient.getSearchApi();
 
             // entity set ids
-            EntitySetsConfig entitySetsConfig = entitySetIdsManager.getEntitySetsConfig( organizationId, null, ImmutableSet.of() );
+            EntitySetsConfig entitySetsConfig = entitySetIdsManager.getEntitySetsConfig( organizationId,
+                    null,
+                    ImmutableSet.of() );
 
             UUID studiesESID = entitySetsConfig.getStudiesEntitySetId();
             UUID participatedInESID = entitySetsConfig.getParticipatedInEntitySetId();
@@ -368,7 +364,9 @@ public class EnrollmentService implements EnrollmentManager {
             SearchApi searchApi = apiClient.getSearchApi();
 
             // get entity set ids
-            EntitySetsConfig entitySetsConfig = entitySetIdsManager.getEntitySetsConfig( organizationId, null, ImmutableSet.of() );
+            EntitySetsConfig entitySetsConfig = entitySetIdsManager.getEntitySetsConfig( organizationId,
+                    null,
+                    ImmutableSet.of() );
 
             UUID studyESID = entitySetsConfig.getStudiesEntitySetId();
             UUID notificationESID = entitySetsConfig.getNotificationEntitySetId();
