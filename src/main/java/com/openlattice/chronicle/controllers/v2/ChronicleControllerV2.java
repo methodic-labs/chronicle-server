@@ -16,14 +16,17 @@ import com.openlattice.chronicle.services.surveys.SurveysManager;
 import com.openlattice.chronicle.services.upload.AppDataUploadManager;
 import com.openlattice.chronicle.sources.Datasource;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import javax.servlet.http.HttpServletRequest;
 
 import javax.inject.Inject;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
 
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
@@ -178,6 +181,22 @@ public class ChronicleControllerV2 implements ChronicleApi {
             @RequestBody List<MessageDetails> messageDetails
     ) {
         messageService.sendMessages( organizationId, messageDetails);
+    }
+
+    @RequestMapping(
+            path = { ORGANIZATION_ID_PATH + MESSAGE_PATH + STATUS_PATH },
+            method = RequestMethod.POST )
+    @ResponseStatus( HttpStatus.OK )
+    public void updateMessageStatus(
+            @PathVariable ( ORGANIZATION_ID ) UUID organizationId,
+            HttpServletRequest request
+    ) throws ExecutionException {
+        String messageSid = request.getParameter( "MessageId ");
+        String status = request.getParameter( "MessageStatus" );
+
+        if ( status.equals( "undelivered" ) || status.equals( "failed" ) ) {
+            messageService.trackUndeliveredMessage( organizationId, messageSid );
+        }
     }
 
     @RequestMapping(
