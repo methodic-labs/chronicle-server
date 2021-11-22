@@ -4,9 +4,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.kryptnostic.rhizome.configuration.annotation.ReloadableConfiguration;
 import java.util.Objects;
 
-/**
- * @author Matthew Tamayo-Rios &lt;matthew@openlattice.com&gt;
- */
 @ReloadableConfiguration(uri="chronicle.yaml")
 public class ChronicleConfiguration {
     private final String USER_KEY = "user";
