@@ -6,6 +6,6 @@ import java.util.*
 interface MessageManager {
     fun sendMessages(
         organizationId: UUID,
-        messageDetails: List<MessageDetails>
+        messageDetailsList: List<MessageDetails>
     )
 }
