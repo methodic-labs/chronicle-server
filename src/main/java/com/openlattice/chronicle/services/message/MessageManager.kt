@@ -8,4 +8,9 @@ interface MessageManager {
         organizationId: UUID,
         messageDetailsList: List<MessageDetails>
     )
+
+    fun trackUndeliveredMessage(
+        organizationId: UUID,
+        messageSid: String
+    )
 }
