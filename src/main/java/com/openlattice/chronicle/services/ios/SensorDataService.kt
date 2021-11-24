@@ -65,7 +65,16 @@ class SensorDataService(
     private val recordedDatePTID = edmCacheManager.getPropertyTypeId(RECORDED_DATE_TIME_FQN)
     private val datasourcePTID = edmCacheManager.getPropertyTypeId(DATASOURCE_FQN)
 
-    private fun getSensorDataAssociation(timestamp: OffsetDateTime, sampleId: UUID, index: Int, partOfESID: UUID, recordedByESID: UUID, sensorDataESID: UUID, deviceEntityDataKey: EntityDataKey, participantEntityDataKey: EntityDataKey, sensorEntityDataKey: EntityDataKey): ListMultimap<UUID, DataAssociation> {
+    private fun getSensorDataAssociation(
+            timestamp: OffsetDateTime,
+            sampleId: UUID,
+            index: Int,
+            partOfESID: UUID,
+            recordedByESID: UUID,
+            sensorDataESID: UUID,
+            deviceEntityDataKey: EntityDataKey,
+            participantEntityDataKey: EntityDataKey,
+            sensorEntityDataKey: EntityDataKey): ListMultimap<UUID, DataAssociation> {
 
         val associations: ListMultimap<UUID, DataAssociation> = ArrayListMultimap.create()
 
