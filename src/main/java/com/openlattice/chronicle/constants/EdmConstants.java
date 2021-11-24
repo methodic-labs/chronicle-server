@@ -70,10 +70,11 @@ public class EdmConstants {
 
     // property types
     public static final FullQualifiedName COMPLETED_DATE_TIME_FQN = new FullQualifiedName( "date.completeddatetime" );
+    public static final FullQualifiedName DATASOURCE_FQN          = new FullQualifiedName( "ol.datasource" );
     public static final FullQualifiedName DATE_LOGGED_FQN         = new FullQualifiedName( "ol.datelogged" );
     public static final FullQualifiedName DATE_TIME_FQN           = new FullQualifiedName( "ol.datetime" );
     public static final FullQualifiedName END_DATE_TIME_FQN       = new FullQualifiedName( "ol.datetimeend" );
-    public static final FullQualifiedName DELIVERED_FQN       = new FullQualifiedName( "ol.delivered" );
+    public static final FullQualifiedName DELIVERED_FQN           = new FullQualifiedName( "ol.delivered" );
     public static final FullQualifiedName FULL_NAME_FQN           = new FullQualifiedName( "general.fullname" );
     public static final FullQualifiedName MODEL_FQN               = new FullQualifiedName( "vehicle.model" );
     public static final FullQualifiedName OL_ID_FQN               = new FullQualifiedName( "ol.id" );
@@ -85,7 +86,7 @@ public class EdmConstants {
     public static final FullQualifiedName STRING_ID_FQN           = new FullQualifiedName( "general.stringid" );
     public static final FullQualifiedName TIMEZONE_FQN            = new FullQualifiedName( "ol.timezone" );
     public static final FullQualifiedName TITLE_FQN               = new FullQualifiedName( "ol.title" );
-    public static final FullQualifiedName TYPE_FQN               = new FullQualifiedName( "ol.type" );
+    public static final FullQualifiedName TYPE_FQN                = new FullQualifiedName( "ol.type" );
     public static final FullQualifiedName VALUES_FQN              = new FullQualifiedName( "ol.values" );
     public static final FullQualifiedName VERSION_FQN             = new FullQualifiedName( "ol.version" );
     public static final FullQualifiedName DURATION_FQN            = new FullQualifiedName( "general.Duration" );
