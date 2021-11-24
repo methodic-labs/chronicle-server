@@ -15,7 +15,6 @@ import com.openlattice.chronicle.constants.EdmConstants.TIMEZONE_FQN
 import com.openlattice.chronicle.data.EntityUpdateDefinition
 import com.openlattice.chronicle.data.SensorDataSample
 import com.openlattice.chronicle.services.ApiCacheManager
-import com.openlattice.chronicle.services.ScheduledTasksManager
 import com.openlattice.chronicle.services.edm.EdmCacheManager
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import com.openlattice.chronicle.services.entitysets.EntitySetIdsManager
@@ -44,7 +43,6 @@ class SensorDataService(
         val apiCacheManager: ApiCacheManager,
         val edmCacheManager: EdmCacheManager,
         val entitySetIdsManager: EntitySetIdsManager,
-        val scheduledTasksManager: ScheduledTasksManager,
         val enrollmentManager: EnrollmentManager) : SensorDataManager {
 
     companion object {
@@ -53,7 +51,7 @@ class SensorDataService(
 
     private val logger = LoggerFactory.getLogger(SensorDataService::class.java)
 
-    private var enrollmentDetailsStringTemplate: String = ""
+    private var loggerStringTemplate: String = ""
 
     // property type ids
     private val namePTID = edmCacheManager.getPropertyTypeId(NAME_FQN)
@@ -185,7 +183,7 @@ class SensorDataService(
             firstDateTime = if (currentFirstDate != null) minOf(currentFirstDate, firstDateTime) else firstDateTime
             lastDateTime = if (currentLastDate != null) maxOf(currentLastDate, lastDateTime) else lastDateTime
         } catch (e: Exception) {
-            logger.error("error retrieving participant metadata: $enrollmentDetailsStringTemplate")
+            logger.error("error retrieving participant metadata: $loggerStringTemplate")
         }
 
         entities += setOf(
@@ -220,7 +218,7 @@ class SensorDataService(
     override fun uploadData(organizationId: UUID, studyId: UUID, participantId: String, deviceId: String, data: List<SensorDataSample>) {
 
         val timer = Stopwatch.createStarted()
-        this.enrollmentDetailsStringTemplate = "orgId - $organizationId, studyId - $studyId, participantId - $participantId, deviceId - $deviceId"
+        this.loggerStringTemplate = "orgId - $organizationId, studyId - $studyId, participantId - $participantId, deviceId - $deviceId"
 
         val apiClient = apiCacheManager.intApiClientCache.get(ApiClient::class.java)
         val dataIntegrationApi = apiClient.dataIntegrationApi
@@ -239,10 +237,10 @@ class SensorDataService(
         val hasEntitySetId = coreAppConfig.hasEntitySetId
 
         val deviceEKID = enrollmentManager.getDeviceEntityKeyId(organizationId, studyId, participantId, deviceId)
-        checkNotNull(deviceEKID) { "Could not upload sensor data because deviceEntityKeyId is invalid: $enrollmentDetailsStringTemplate" }
+        checkNotNull(deviceEKID) { "Could not upload sensor data because deviceEntityKeyId is invalid: $loggerStringTemplate" }
 
         val participantEKID = enrollmentManager.getParticipantEntityKeyId(organizationId, studyId, participantId)
-        checkNotNull(participantEKID) { "Could not upload data sensor because participant is invalid: $enrollmentDetailsStringTemplate" }
+        checkNotNull(participantEKID) { "Could not upload data sensor because participant is invalid: $loggerStringTemplate" }
 
         val deviceEntityDataKey = EntityDataKey(deviceEntitySetId, deviceEKID)
         val participantEntityDataKey = EntityDataKey(participantEntitySetId, participantEntitySetId)
@@ -253,68 +251,73 @@ class SensorDataService(
         val sensorNames = data.map { it.sensorName }.toSet()
         val dates = data.map { it.dateRecorded }.toSet()
 
-        val (metadataEntities, metadataAssociations) = getMetadataEntitiesAndAssociations(dataIntegrationApi, dataApi, dates.toSortedSet(), metadataEntitySetId, hasEntitySetId, participantEntityDataKey)
-        val sensorEntities = getSensorEntities(sensorNames, sensorEntitySetId)
+        try {
+            val (metadataEntities, metadataAssociations) = getMetadataEntitiesAndAssociations(dataIntegrationApi, dataApi, dates.toSortedSet(), metadataEntitySetId, hasEntitySetId, participantEntityDataKey)
+            val sensorEntities = getSensorEntities(sensorNames, sensorEntitySetId)
 
-        val entityUpdates = sensorEntities + metadataEntities
-        val allEntityKeys = entityUpdates.map { it.entityKey }.toSet()
+            val entityUpdates = sensorEntities + metadataEntities
+            val allEntityKeys = entityUpdates.map { it.entityKey }.toSet()
 
-        // get entity key ids
-        val entityKeyByEntityKeyId: Map<EntityKey, UUID> = generateEntityKeyIdsForEntityKeys(allEntityKeys, participantEntityDataKey, dataIntegrationApi)
+            // get entity key ids
+            val entityKeyByEntityKeyId: Map<EntityKey, UUID> = generateEntityKeyIdsForEntityKeys(allEntityKeys, participantEntityDataKey, dataIntegrationApi)
 
-        val entityUpdateByEntityKeyId: Map<EntityUpdateDefinition, UUID> = entityUpdates.associateWith { entityKeyByEntityKeyId.getValue(it.entityKey) }
-        val entityUpdatesByEntitySetId: Map<UUID, List<EntityUpdateDefinition>> = entityUpdates.groupBy { it.entityKey.entitySetId }
+            val entityUpdateByEntityKeyId: Map<EntityUpdateDefinition, UUID> = entityUpdates.associateWith { entityKeyByEntityKeyId.getValue(it.entityKey) }
+            val entityUpdatesByEntitySetId: Map<UUID, List<EntityUpdateDefinition>> = entityUpdates.groupBy { it.entityKey.entitySetId }
 
-        entityUpdatesByEntitySetId.forEach { (entitySetId, updates) ->
-            run {
-                updates.forEach {
-                    val entity = mapOf(entityUpdateByEntityKeyId.getValue(it) to it.details)
-                    dataApi.updateEntitiesInEntitySet(entitySetId, entity, it.updateType, PropertyUpdateType.Versioned)
+            entityUpdatesByEntitySetId.forEach { (entitySetId, updates) ->
+                run {
+                    updates.forEach {
+                        val entity = mapOf(entityUpdateByEntityKeyId.getValue(it) to it.details)
+                        dataApi.updateEntitiesInEntitySet(entitySetId, entity, it.updateType, PropertyUpdateType.Versioned)
+                    }
                 }
             }
-        }
 
-        val timeStamp = OffsetDateTime.now()
+            val timeStamp = OffsetDateTime.now()
 
-        var index = 0
-        data.forEach { sample ->
+            var index = 0
+            data.forEach { sample ->
 
-            val sensorEntityData = getSensorEntityData(sample.sensorName)
-            val sensorEntityKey = getEntityKey(sensorEntityData, sensorEntitySetId)
-            val sensorEntityKeyId = entityKeyByEntityKeyId.getValue(sensorEntityKey)
+                val sensorEntityData = getSensorEntityData(sample.sensorName)
+                val sensorEntityKey = getEntityKey(sensorEntityData, sensorEntitySetId)
+                val sensorEntityKeyId = entityKeyByEntityKeyId.getValue(sensorEntityKey)
 
-            val sensorEntityDataKey = EntityDataKey(sensorEntitySetId, sensorEntityKeyId)
+                val sensorEntityDataKey = EntityDataKey(sensorEntitySetId, sensorEntityKeyId)
 
-            sample.data.forEach { entity ->
-                val sensorDataEntity = entity.mapValues { entry -> setOf(entry.value) } + mapOf(
-                        idPTID to setOf(sample.id),
-                        dateLoggedPTID to setOf(sample.dateRecorded),
-                        startDateTimePTID to setOf(sample.startDate),
-                        endDateTImePTID to setOf(sample.endDate),
-                        timezonePTID to setOf(sample.timezone)
-                )
+                sample.data.forEach { entity ->
+                    val sensorDataEntity = entity.mapValues { entry -> setOf(entry.value) } + mapOf(
+                            idPTID to setOf(sample.id),
+                            dateLoggedPTID to setOf(sample.dateRecorded),
+                            startDateTimePTID to setOf(sample.startDate),
+                            endDateTImePTID to setOf(sample.endDate),
+                            timezonePTID to setOf(sample.timezone)
+                    )
 
-                entities.put(sensorDataEntitySetId, sensorDataEntity)
-                associations.putAll(getSensorDataAssociation(timeStamp, sample.id, index++, partOfEntitySetId, recordedByEntitySetId, sensorDataEntitySetId, deviceEntityDataKey, participantEntityDataKey, sensorEntityDataKey))
+                    entities.put(sensorDataEntitySetId, sensorDataEntity)
+                    associations.putAll(getSensorDataAssociation(timeStamp, sample.id, index++, partOfEntitySetId, recordedByEntitySetId, sensorDataEntitySetId, deviceEntityDataKey, participantEntityDataKey, sensorEntityDataKey))
+                }
             }
+
+            val dataGraph = DataGraph(entities, associations)
+            dataApi.createEntityAndAssociationData(dataGraph)
+
+            // create edges
+            val dataEdgeKeys = metadataAssociations.map {
+                val src = EntityDataKey(it.src.entitySetId, entityKeyByEntityKeyId.getValue(it.src))
+                val edge = EntityDataKey(it.key.entitySetId, entityKeyByEntityKeyId.getValue(it.key))
+                val dst = EntityDataKey(it.dst.entitySetId, entityKeyByEntityKeyId.getValue(it.dst))
+
+                DataEdgeKey(src, dst, edge)
+            }.toSet()
+
+            dataApi.createEdges(dataEdgeKeys)
+
+            timer.stop()
+
+            logger.info("logging ${data.size} sensor data samples took ${timer.elapsed(TimeUnit.SECONDS)} seconds. $loggerStringTemplate")
+
+        } catch (e: Exception) {
+            logger.error("An error occurred while attempting to upload sensor data: $loggerStringTemplate", e)
         }
-
-        val dataGraph = DataGraph(entities, associations)
-        dataApi.createEntityAndAssociationData(dataGraph)
-
-        // create edges
-        val dataEdgeKeys = metadataAssociations.map {
-            val src = EntityDataKey(it.src.entitySetId, entityKeyByEntityKeyId.getValue(it.src))
-            val edge = EntityDataKey(it.key.entitySetId, entityKeyByEntityKeyId.getValue(it.key))
-            val dst = EntityDataKey(it.dst.entitySetId, entityKeyByEntityKeyId.getValue(it.dst))
-
-            DataEdgeKey(src, dst, edge)
-        }.toSet()
-
-        dataApi.createEdges(dataEdgeKeys)
-
-        timer.stop()
-
-        logger.info("logging ${data.size} sensor data samples took ${timer.elapsed(TimeUnit.SECONDS)} seconds. $enrollmentDetailsStringTemplate")
     }
 }

@@ -180,7 +180,6 @@ public class ChronicleServerServicesPod {
                 apiCacheManager(),
                 edmCacheManager(),
                 entitySetIdsManager(),
-                scheduledTasksManager(),
                 enrollmentManager()
         );
     }
