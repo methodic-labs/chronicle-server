@@ -287,7 +287,7 @@ class SensorDataService(
                 sample.data.forEach { entity ->
                     val sensorDataEntity = entity.mapValues { entry -> setOf(entry.value) } + mapOf(
                             idPTID to setOf(sample.id),
-                            dateLoggedPTID to setOf(sample.dateRecorded),
+                            recordedDatePTID to setOf(sample.dateRecorded),
                             startDateTimePTID to setOf(sample.startDate),
                             endDateTImePTID to setOf(sample.endDate),
                             timezonePTID to setOf(sample.timezone)
