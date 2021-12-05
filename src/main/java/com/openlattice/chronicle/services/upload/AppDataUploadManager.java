@@ -11,7 +11,7 @@ import java.util.UUID;
 public interface AppDataUploadManager {
 
     Integer upload(
-            UUID organizationId,
+            UUID universityId,
             UUID studyId,
             String participantId,
             String datasourceId,
