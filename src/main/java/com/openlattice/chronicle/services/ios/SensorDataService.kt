@@ -318,6 +318,7 @@ class SensorDataService(
 
         } catch (e: Exception) {
             logger.error("An error occurred while attempting to upload sensor data: $loggerStringTemplate", e)
+            throw RuntimeException("An error occurred while attempting to upload sensor data")
         }
     }
 }
