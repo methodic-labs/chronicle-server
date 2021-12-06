@@ -6,10 +6,12 @@ import com.google.common.collect.SetMultimap;
 import com.openlattice.chronicle.api.ChronicleApi;
 import com.openlattice.chronicle.data.ChronicleAppsUsageDetails;
 import com.openlattice.chronicle.data.ChronicleQuestionnaire;
+import com.openlattice.chronicle.data.MessageDetails;
 import com.openlattice.chronicle.data.ParticipationStatus;
 import com.openlattice.chronicle.services.edm.EdmCacheManager;
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager;
 import com.openlattice.chronicle.services.entitysets.EntitySetIdsManager;
+import com.openlattice.chronicle.services.message.MessageService;
 import com.openlattice.chronicle.services.surveys.SurveysManager;
 import com.openlattice.chronicle.services.upload.AppDataUploadManager;
 import com.openlattice.chronicle.sources.Datasource;
@@ -44,6 +46,9 @@ public class ChronicleControllerV2 implements ChronicleApi {
 
     @Inject
     private EntitySetIdsManager entitySetIdsManager;
+
+    @Inject
+    private MessageService messageService;
 
     @Override
     @Timed
@@ -161,6 +166,18 @@ public class ChronicleControllerV2 implements ChronicleApi {
             @PathVariable( STUDY_ID ) UUID studyId ) {
 
         return surveysManager.getStudyQuestionnaires( organizationId, studyId );
+    }
+    
+    @RequestMapping(
+            path = ORGANIZATION_ID_PATH + MESSAGE_PATH,
+            method = RequestMethod.POST,
+            consumes = MediaType.APPLICATION_JSON_VALUE
+    )
+    public void sendMessages(
+            @PathVariable ( ORGANIZATION_ID ) UUID organizationId,
+            @RequestBody List<MessageDetails> messageDetails
+    ) {
+        messageService.sendMessages( organizationId, messageDetails);
     }
 
     @RequestMapping(

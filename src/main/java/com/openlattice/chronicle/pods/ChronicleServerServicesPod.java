@@ -29,6 +29,7 @@ import com.openlattice.auth0.Auth0TokenProvider;
 import com.openlattice.auth0.AwsAuth0TokenProvider;
 import com.openlattice.authentication.Auth0Configuration;
 import com.openlattice.chronicle.configuration.ChronicleConfiguration;
+import com.openlattice.chronicle.configuration.TwilioConfiguration;
 import com.openlattice.chronicle.services.ApiCacheManager;
 import com.openlattice.chronicle.services.ScheduledTasksManager;
 import com.openlattice.chronicle.services.delete.DataDeletionManager;
@@ -41,8 +42,12 @@ import com.openlattice.chronicle.services.enrollment.EnrollmentManager;
 import com.openlattice.chronicle.services.enrollment.EnrollmentService;
 import com.openlattice.chronicle.services.entitysets.EntitySetIdsManager;
 import com.openlattice.chronicle.services.entitysets.EntitySetIdsService;
+import com.openlattice.chronicle.services.message.MessageManager;
+import com.openlattice.chronicle.services.message.MessageService;
 import com.openlattice.chronicle.services.surveys.SurveysManager;
 import com.openlattice.chronicle.services.surveys.SurveysService;
+import com.openlattice.chronicle.services.twilio.TwilioManager;
+import com.openlattice.chronicle.services.twilio.TwilioService;
 import com.openlattice.chronicle.services.upload.AppDataUploadManager;
 import com.openlattice.chronicle.services.upload.AppDataUploadService;
 import com.openlattice.data.serializers.FullQualifiedNameJacksonSerializer;
@@ -65,6 +70,11 @@ public class ChronicleServerServicesPod {
 
     @Inject
     private Auth0Configuration auth0Configuration;
+
+    @Bean( name = "twilioConfiguration" )
+    public TwilioConfiguration getTwilioConfiguration() throws IOException {
+        return configurationService.getConfiguration( TwilioConfiguration.class );
+    }
 
     @Bean
     public ObjectMapper defaultObjectMapper() {
@@ -147,6 +157,22 @@ public class ChronicleServerServicesPod {
                 edmCacheManager(),
                 entitySetIdsManager(),
                 enrollmentManager()
+        );
+    }
+
+    @Bean
+    public TwilioService twilioService() throws IOException, ExecutionException {
+        return new TwilioService( getTwilioConfiguration() );
+    }
+
+    @Bean
+    public MessageService messageService() throws IOException, ExecutionException {
+        return new MessageService(
+                apiCacheManager(),
+                edmCacheManager(),
+                enrollmentManager(),
+                entitySetIdsManager(),
+                twilioService()
         );
     }
 }

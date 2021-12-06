@@ -23,6 +23,7 @@ public class EdmConstants {
     public static final String DATA_ES              = "chronicle_app_data";
     public static final String DEVICES_ES           = "chronicle_device";
     public static final String HAS_ES               = "chronicle_has";
+    public static final String MESSAGES_ES          = "chronicle_messages";
     public static final String METADATA_ES          = "chronicle_metadata";
     public static final String NOTIFICATION_ES      = "chronicle_notifications";
     public static final String PARTICIPANTS_PREFIX  = "chronicle_participants_";
@@ -34,6 +35,7 @@ public class EdmConstants {
     public static final String RECORDED_BY_ES       = "chronicle_recorded_by";
     public static final String REGISTERED_FOR_ES    = "chronicle_registered_for";
     public static final String RESPONDS_WITH_ES     = "chronicle_respondswith";
+    public static final String SENT_TO_ES           = "chronicle_sent_to";
     public static final String STUDY_ES             = "chronicle_study";
     public static final String SUBMISSION_ES        = "chronicle_submission";
     public static final String TIMERANGE_ES         = "chronicle_timerange";
@@ -48,6 +50,7 @@ public class EdmConstants {
                     entry( DATA_ES, APPDATA ),
                     entry( DEVICES_ES, DEVICE ),
                     entry( HAS_ES, HAS ),
+                    entry( MESSAGES_ES, MESSAGES ),
                     entry( METADATA_ES, METADATA ),
                     entry( NOTIFICATION_ES, NOTIFICATION ),
                     entry( PARTICIPATED_IN_ES, PARTICIPATED_IN ),
@@ -58,6 +61,7 @@ public class EdmConstants {
                     entry( RECORDED_BY_ES, RECORDED_BY ),
                     entry( RESPONDS_WITH_ES, RESPONDS_WITH ),
                     entry( REGISTERED_FOR_ES, REGISTERED_FOR ),
+                    entry( SENT_TO_ES, SENT_TO ),
                     entry( STUDY_ES, STUDIES ),
                     entry( SUBMISSION_ES, SUBMISSION ),
                     entry( TIMERANGE_ES, TIME_RANGE ),
@@ -69,6 +73,7 @@ public class EdmConstants {
     public static final FullQualifiedName DATE_LOGGED_FQN         = new FullQualifiedName( "ol.datelogged" );
     public static final FullQualifiedName DATE_TIME_FQN           = new FullQualifiedName( "ol.datetime" );
     public static final FullQualifiedName END_DATE_TIME_FQN       = new FullQualifiedName( "ol.datetimeend" );
+    public static final FullQualifiedName DELIVERED_FQN       = new FullQualifiedName( "ol.delivered" );
     public static final FullQualifiedName FULL_NAME_FQN           = new FullQualifiedName( "general.fullname" );
     public static final FullQualifiedName MODEL_FQN               = new FullQualifiedName( "vehicle.model" );
     public static final FullQualifiedName OL_ID_FQN               = new FullQualifiedName( "ol.id" );
@@ -80,6 +85,7 @@ public class EdmConstants {
     public static final FullQualifiedName STRING_ID_FQN           = new FullQualifiedName( "general.stringid" );
     public static final FullQualifiedName TIMEZONE_FQN            = new FullQualifiedName( "ol.timezone" );
     public static final FullQualifiedName TITLE_FQN               = new FullQualifiedName( "ol.title" );
+    public static final FullQualifiedName TYPE_FQN               = new FullQualifiedName( "ol.type" );
     public static final FullQualifiedName VALUES_FQN              = new FullQualifiedName( "ol.values" );
     public static final FullQualifiedName VERSION_FQN             = new FullQualifiedName( "ol.version" );
     public static final FullQualifiedName DURATION_FQN            = new FullQualifiedName( "general.Duration" );
@@ -88,4 +94,5 @@ public class EdmConstants {
     public static final FullQualifiedName GENERAL_END_TIME_FQN    = new FullQualifiedName( "general.EndTime" );
     public static final FullQualifiedName NEW_PERIOD_FQN          = new FullQualifiedName( "ol.newperiod" );
     public static final FullQualifiedName WARNING_FQN             = new FullQualifiedName( "ol.warning" );
+    public static final FullQualifiedName NAME_FQN                = new FullQualifiedName( "ol.name" );
 }
