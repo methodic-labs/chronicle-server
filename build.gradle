@@ -143,12 +143,14 @@ dependencies {
     if (project.hasProperty('developmentMode') && project.developmentMode) {
         logger.quiet(project.name + " using project dependencies.")
         implementation project(":rhizome")
+        implementation project(":api")
         implementation(project(":chronicle-api")) {
             exclude group: 'com.google.guava', module: 'guava'
         }
     } else {
         logger.quiet(project.name + " using jar dependencies.")
         implementation "com.openlattice:rhizome:${rhizome_version}"
+        implementation "com.openlattice:api:${api_version}"
         implementation("com.openlattice:chronicle-api:${chronicle_api_version}") {
             exclude group: 'com.google.guava', module: 'guava'
         }

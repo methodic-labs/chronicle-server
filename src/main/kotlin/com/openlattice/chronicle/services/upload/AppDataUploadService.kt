@@ -2,23 +2,35 @@ package com.openlattice.chronicle.services.upload
 
 import com.dataloom.streams.StreamUtil
 import com.geekbeast.configuration.postgres.PostgresFlavor
+import com.geekbeast.util.StopWatch
 import com.google.common.base.Stopwatch
 import com.google.common.collect.*
+import com.openlattice.ApiUtil
 import com.openlattice.chronicle.constants.AppComponent
 import com.openlattice.chronicle.constants.AppUsageFrequencyType
 import com.openlattice.chronicle.constants.EdmConstants
+import com.openlattice.chronicle.constants.EdmConstants.*
 import com.openlattice.chronicle.constants.OutputConstants
 import com.openlattice.chronicle.data.EntitiesAndEdges
 import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.services.ScheduledTasksManager
+import com.openlattice.chronicle.services.edm.EdmCacheManager
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import com.openlattice.chronicle.services.entitysets.EntitySetIdsManager
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_PACKAGE_NAME
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.FQNS_TO_COLUMNS
+import com.openlattice.chronicle.storage.RedshiftTables
+import com.openlattice.chronicle.storage.RedshiftTables.Companion.INSERT_USAGE_EVENT_SQL
+import com.openlattice.chronicle.storage.RedshiftTables.Companion.getInsertUsageEventColumnIndex
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.util.ChronicleServerUtil
+import com.openlattice.data.*
+import com.openlattice.postgres.PostgresDatatype
 import com.zaxxer.hikari.HikariDataSource
 import org.apache.commons.lang3.tuple.Triple
 import org.apache.olingo.commons.api.edm.FullQualifiedName
 import org.slf4j.LoggerFactory
+import org.slf4j.event.Level
 import java.security.InvalidParameterException
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
@@ -37,7 +49,8 @@ class AppDataUploadService(
         private val storageResolver: StorageResolver,
         private val entitySetIdsManager: EntitySetIdsManager,
         private val scheduledTasksManager: ScheduledTasksManager,
-        private val enrollmentManager: EnrollmentManager
+        private val enrollmentManager: EnrollmentManager,
+        private val edmCacheManager: EdmCacheManager
 ) : AppDataUploadManager {
     private val logger = LoggerFactory.getLogger(AppDataUploadService::class.java)
 
@@ -254,13 +267,13 @@ class AppDataUploadService(
         try {
             val entity = dataApi.getEntity(metadataESID, metadataEntityKeyId)
             metadataEntityData[edmCacheManager.getPropertyTypeId(
-                    EdmConstants.START_DATE_TIME_FQN
+                    START_DATE_TIME_FQN
             )] = entity.getOrDefault(
-                    EdmConstants.START_DATE_TIME_FQN, java.util.Set.of<Any>(firstDateTime)
+                    START_DATE_TIME_FQN, java.util.Set.of<Any>(firstDateTime)
             )
         } catch (exception: Exception) {
             metadataEntityData[edmCacheManager.getPropertyTypeId(
-                    EdmConstants.START_DATE_TIME_FQN
+                    START_DATE_TIME_FQN
             )] = ImmutableSet.of<Any>(firstDateTime)
             logger.error(
                     "failure while getting metadata entity = {}" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT,
@@ -557,127 +570,143 @@ class AppDataUploadService(
     }
 
     override fun upload(
-        organizationId: UUID,
-        studyId: UUID,
-        participantId: String,
-        dataSourceId: String,
-        data: List<SetMultimap<UUID, Any>>
+            organizationId: UUID,
+            studyId: UUID,
+            participantId: String,
+            dataSourceId: String,
+            data: List<SetMultimap<UUID, Any>>
     ): Int {
-        val (flavor, hds) = storageResolver.resolve(studyId)
-
-        return when ( flavor ) {
-            PostgresFlavor.VANILLA -> writeToPostgres(hds, organizationId, studyId, participantId, dataSourceId, data )
-            PostgresFlavor.REDSHIFT -> writeToRedshift(hds, organizationId, studyId, participantId, dataSourceId, data )
-            else -> throw InvalidParameterException("Only regular postgres and redshift are supported.")
-        }
-
-        val stopwatch = Stopwatch.createStarted()
-        logger.info(
-            "attempting to log data" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE,
-            organizationId,
-            studyId,
-            participantId,
-            dataSourceId
-        )
-        try {
-            val apiClient = apiCacheManager.intApiClientCache[ApiClient::class.java]
-            val dataApi = apiClient.dataApi
-            val dataIntegrationApi = apiClient.dataIntegrationApi
-            val participantEntityKeyId = enrollmentManager
-                    .getParticipantEntityKeyId(organizationId, studyId, participantId)
-            if (participantEntityKeyId == null) {
-                logger.error(
-                    "unable to get participant ekid" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE,
-                    organizationId,
-                    studyId,
-                    participantId,
-                    dataSourceId
-                )
-                return 0
-            }
-            val status = enrollmentManager
-                    .getParticipationStatus(organizationId, studyId, participantId)
-            if (ParticipationStatus.NOT_ENROLLED == status) {
-                logger.warn(
-                    "participant is not enrolled, ignoring upload" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE,
-                    organizationId,
-                    studyId,
-                    participantId,
-                    dataSourceId
-                )
-                return 0
-            }
-            val deviceEntityKeyId = enrollmentManager
-                    .getDeviceEntityKeyId(organizationId, studyId, participantId, dataSourceId)
-            if (deviceEntityKeyId == null) {
-                logger.error(
-                    "data source not found, ignoring upload" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE,
-                    organizationId,
-                    studyId,
-                    participantId,
-                    dataSourceId
-                )
-                return 0
-            }
-            createEntitiesAndAssociations(
-                dataApi,
-                dataIntegrationApi,
-                data,
-                organizationId,
-                studyId,
-                deviceEntityKeyId,
-                participantId,
-                dataSourceId,
-                participantEntityKeyId
-            )
-        } catch (exception: Exception) {
-            logger.error(
-                "error logging data" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE,
+        StopWatch(
+                log = "logging ${data.size} entries for ${ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE}",
+                level = Level.INFO,
+                logger = logger,
+                data.size,
                 organizationId,
                 studyId,
                 participantId,
-                dataSourceId,
-                exception
-            )
-            return 0
+                dataSourceId
+        ).use {
+            try {
+                val (flavor, hds) = storageResolver.resolve(studyId)
+                val participantEntityKeyId = enrollmentManager
+                        .getParticipantEntityKeyId(organizationId, studyId, participantId)
+                if (participantEntityKeyId == null) {
+                    logger.error(
+                            "unable to get participant ekid" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE,
+                            organizationId,
+                            studyId,
+                            participantId,
+                            dataSourceId
+                    )
+                    return 0
+                }
+                val status = enrollmentManager
+                        .getParticipationStatus(organizationId, studyId, participantId)
+                if (ParticipationStatus.NOT_ENROLLED == status) {
+                    logger.warn(
+                            "participant is not enrolled, ignoring upload" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE,
+                            organizationId,
+                            studyId,
+                            participantId,
+                            dataSourceId
+                    )
+                    return 0
+                }
+                val deviceEntityKeyId = enrollmentManager
+                        .getDeviceEntityKeyId(organizationId, studyId, participantId, dataSourceId)
+                if (deviceEntityKeyId == null) {
+                    logger.error(
+                            "data source not found, ignoring upload" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE,
+                            organizationId,
+                            studyId,
+                            participantId,
+                            dataSourceId
+                    )
+                    return 0
+                }
+
+                logger.info(
+                        "attempting to log data" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE,
+                        organizationId,
+                        studyId,
+                        participantId,
+                        dataSourceId
+                )
+
+
+                val written = when (flavor) {
+                    PostgresFlavor.VANILLA -> writeToPostgres(hds, organizationId, studyId, participantId, data)
+                    PostgresFlavor.REDSHIFT -> writeToRedshift(hds, organizationId, studyId, participantId, data)
+                    else -> throw InvalidParameterException("Only regular postgres and redshift are supported.")
+                }
+                if( data.size!=written ) {
+                    //Should probably be an assertion as this should never happen.
+                    logger.warn("Wrote $written entities, but expected to write ${data.size} entities")
+                }
+                return data.size
+            } catch (exception: Exception) {
+                logger.error(
+                        "error logging data" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE,
+                        organizationId,
+                        studyId,
+                        participantId,
+                        dataSourceId,
+                        exception
+                )
+                return 0
+            }
         }
-        stopwatch.stop()
-        val seconds = stopwatch.elapsed(TimeUnit.SECONDS)
-        logger.info(
-            "logging {} entries took {} seconds" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE,
-            data.size,
-            seconds,
-            organizationId,
-            studyId,
-            participantId,
-            dataSourceId
-        )
-        return data.size
     }
 
     fun writeToRedshift(
-        hds: HikariDataSource,
-        organizationId: UUID,
-        studyId: UUID,
-        participantId: String,
-        dataSourceId: String,
-        data: List<SetMultimap<UUID, Any>>
-    ) : Int {
-        hds.connection.use { connection ->
-            connection.prepareStatement()
+            hds: HikariDataSource,
+            organizationId: UUID,
+            studyId: UUID,
+            participantId: String,
+            data: List<SetMultimap<UUID, Any>>
+    ): Int {
+        return hds.connection.use { connection ->
+            connection.prepareStatement(INSERT_USAGE_EVENT_SQL).use { ps ->
+                data.forEach { usageEvent ->
+                    ps.setString(1, organizationId.toString())
+                    ps.setString(2, studyId.toString())
+                    ps.setString(3, participantId)
+                    USAGE_EVENT_COLUMNS.forEach { fqn ->
+                        val col = FQNS_TO_COLUMNS.getValue(fqn)
+                        val colIndex = getInsertUsageEventColumnIndex(col)
+                        val ptId = edmCacheManager.getPropertyTypeId(fqn)
+                        val value = usageEvent[ptId]?.iterator()?.next()
 
+                        //Set insert value to null, if value was not provided.
+                        if (value == null) {
+                            ps.setObject(colIndex, null)
+                        } else {
+                            when (col.datatype) {
+                                PostgresDatatype.TEXT -> ps.setString(colIndex, value as String)
+                                PostgresDatatype.TIMESTAMPTZ -> ps.setObject(
+                                        colIndex,
+                                        OffsetDateTime.parse(value as String?)
+                                )
+                                PostgresDatatype.BIGINT -> ps.setLong(colIndex, value as Long)
+                                else -> ps.setObject(colIndex, value)
+                            }
+                        }
+                    }
+                    ps.addBatch()
+                }
+                ps.executeBatch().sum()
+            }
         }
     }
 
     fun writeToPostgres(
-        hds: HikariDataSource,
-        organizationId: UUID,
-        studyId: UUID,
-        participantId: String,
-        dataSourceId: String,
-        data: List<SetMultimap<UUID, Any>>
-    ) : Int {
-
+            hds: HikariDataSource,
+            organizationId: UUID,
+            studyId: UUID,
+            participantId: String,
+            data: List<SetMultimap<UUID, Any>>
+    ): Int {
+        return writeToRedshift(hds, organizationId, studyId, participantId, data)
     }
 
 
@@ -686,4 +715,22 @@ class AppDataUploadService(
     }
 }
 
-const val
+private val USAGE_EVENT_COLUMNS = listOf(
+        FULL_NAME_FQN,
+        RECORD_TYPE_FQN,
+        DATE_LOGGED_FQN,
+        TIMEZONE_FQN,
+        USER_FQN,
+        TITLE_FQN
+)
+
+private val USAGE_STAT_COLUMNS = listOf(
+        FULL_NAME_FQN,
+        RECORD_TYPE_FQN,
+        START_DATE_TIME_FQN,
+        END_DATE_TIME_FQN,
+        DURATION_FQN,
+        DATE_LOGGED_FQN,
+        TIMEZONE_FQN,
+        TITLE_FQN,
+)
