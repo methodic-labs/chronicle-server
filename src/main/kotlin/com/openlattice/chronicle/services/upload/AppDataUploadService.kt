@@ -25,6 +25,7 @@ import com.openlattice.chronicle.storage.RedshiftTables.Companion.getInsertUsage
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.util.ChronicleServerUtil
 import com.openlattice.data.*
+import com.openlattice.postgres.PostgresColumnDefinition
 import com.openlattice.postgres.PostgresDatatype
 import com.zaxxer.hikari.HikariDataSource
 import org.apache.commons.lang3.tuple.Triple
@@ -529,6 +530,7 @@ class AppDataUploadService(
             val participantEK = getParticipantEntityKey(participantESID, participantId)
             edgesByEntityKey.add(Triple.of(userAppEK, usedByEK, participantEK))
         }
+
         val metadata = getMetadataEntitiesAndEdges(
                 dataApi,
                 dataIntegrationApi,
@@ -633,13 +635,16 @@ class AppDataUploadService(
                         dataSourceId
                 )
 
+                val mappedData = filter(organizationId, mapToStorageModel(data))
 
                 val written = when (flavor) {
-                    PostgresFlavor.VANILLA -> writeToPostgres(hds, organizationId, studyId, participantId, data)
-                    PostgresFlavor.REDSHIFT -> writeToRedshift(hds, organizationId, studyId, participantId, data)
+                    PostgresFlavor.VANILLA -> writeToPostgres(hds, organizationId, studyId, participantId, mappedData)
+                    PostgresFlavor.REDSHIFT -> writeToRedshift(hds, organizationId, studyId, participantId, mappedData)
                     else -> throw InvalidParameterException("Only regular postgres and redshift are supported.")
                 }
-                if( data.size!=written ) {
+
+                //TODO: In reality we are likely to write less entities than were provided and are actually returning number processed so that client knows all is good
+                if (data.size != written) {
                     //Should probably be an assertion as this should never happen.
                     logger.warn("Wrote $written entities, but expected to write ${data.size} entities")
                 }
@@ -658,24 +663,50 @@ class AppDataUploadService(
         }
     }
 
-    fun writeToRedshift(
+    private fun filter(
+            organizationId: UUID, mappedData: Sequence<Map<String, UsageEventColumn>>
+    ): Sequence<Map<String, UsageEventColumn>> {
+        return mappedData.filter { mappedUsageEventCols ->
+            val appName = mappedUsageEventCols[FQNS_TO_COLUMNS.getValue(FULL_NAME_FQN).name]?.value as String
+            val eventDate = mappedUsageEventCols[FQNS_TO_COLUMNS.getValue(DATE_LOGGED_FQN).name]?.value as String
+            val appPackageName = appName
+            val dateLogged = getTruncatedDateTime(eventDate, organizationId)
+            !scheduledTasksManager.systemAppPackageNames.contains(appPackageName) && dateLogged != null
+        }
+    }
+
+    private fun mapToStorageModel(data: List<SetMultimap<UUID, Any>>): Sequence<Map<String, UsageEventColumn>> {
+        return data.asSequence().map { usageEvent ->
+            USAGE_EVENT_COLUMNS.associate { fqn ->
+                val col = FQNS_TO_COLUMNS.getValue(fqn)
+                val colIndex = getInsertUsageEventColumnIndex(col)
+                val ptId = edmCacheManager.getPropertyTypeId(fqn)
+                val value = usageEvent[ptId]?.iterator()?.next()
+                col.name to UsageEventColumn(col, colIndex, value)
+            }
+        }
+    }
+
+    private fun writeToRedshift(
             hds: HikariDataSource,
             organizationId: UUID,
             studyId: UUID,
             participantId: String,
-            data: List<SetMultimap<UUID, Any>>
+            data: Sequence<Map<String, UsageEventColumn>>
     ): Int {
         return hds.connection.use { connection ->
             connection.prepareStatement(INSERT_USAGE_EVENT_SQL).use { ps ->
-                data.forEach { usageEvent ->
-                    ps.setString(1, organizationId.toString())
-                    ps.setString(2, studyId.toString())
-                    ps.setString(3, participantId)
-                    USAGE_EVENT_COLUMNS.forEach { fqn ->
-                        val col = FQNS_TO_COLUMNS.getValue(fqn)
-                        val colIndex = getInsertUsageEventColumnIndex(col)
-                        val ptId = edmCacheManager.getPropertyTypeId(fqn)
-                        val value = usageEvent[ptId]?.iterator()?.next()
+                //Should only need to set these once for prepared statement.
+                ps.setString(1, organizationId.toString())
+                ps.setString(2, studyId.toString())
+                ps.setString(3, participantId)
+
+                data.forEach { usageEventCols ->
+                    usageEventCols.values.forEach { usageEventCol ->
+
+                        val col = usageEventCol.col
+                        val colIndex = usageEventCol.colIndex
+                        val value = usageEventCol.value
 
                         //Set insert value to null, if value was not provided.
                         if (value == null) {
@@ -699,12 +730,12 @@ class AppDataUploadService(
         }
     }
 
-    fun writeToPostgres(
+    private fun writeToPostgres(
             hds: HikariDataSource,
             organizationId: UUID,
             studyId: UUID,
             participantId: String,
-            data: List<SetMultimap<UUID, Any>>
+            data: Sequence<Map<String, UsageEventColumn>>
     ): Int {
         return writeToRedshift(hds, organizationId, studyId, participantId, data)
     }
@@ -714,6 +745,13 @@ class AppDataUploadService(
         private const val APP_USAGE_FREQUENCY = "appUsageFrequency"
     }
 }
+
+
+private data class UsageEventColumn(
+        val col: PostgresColumnDefinition,
+        val colIndex: Int,
+        val value: Any?
+)
 
 private val USAGE_EVENT_COLUMNS = listOf(
         FULL_NAME_FQN,
