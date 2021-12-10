@@ -13,6 +13,7 @@ class RedshiftColumns {
     companion object {
         val APP_PACKAGE_NAME = PostgresColumnDefinition("app_package_name", PostgresDatatype.TEXT)
 
+        val ID = PostgresColumnDefinition("id", PostgresDatatype.TEXT).notNull()
         //IMPORTANCE in client code base
         val INTERACTION_TYPE = PostgresColumnDefinition("interaction_type", PostgresDatatype.TEXT)
         val TIMESTAMP = PostgresColumnDefinition("event_timestamp", PostgresDatatype.TIMESTAMPTZ)
@@ -25,6 +26,7 @@ class RedshiftColumns {
         val DURATION = PostgresColumnDefinition("duration", PostgresDatatype.BIGINT )
 
         val FQNS_TO_COLUMNS: Map<FullQualifiedName, PostgresColumnDefinition> = mapOf(
+                EdmConstants.OL_ID_FQN to ID,
                 EdmConstants.FULL_NAME_FQN to APP_PACKAGE_NAME,
                 EdmConstants.RECORD_TYPE_FQN to INTERACTION_TYPE,
                 EdmConstants.DATE_LOGGED_FQN to TIMESTAMP,
@@ -39,6 +41,7 @@ class RedshiftColumns {
         val ORGANIZATION_ID = PostgresColumnDefinition("organization_id", PostgresDatatype.TEXT).notNull()
         val STUDY_ID = PostgresColumnDefinition("study_id", PostgresDatatype.TEXT).notNull()
         val PARTICIPANT_ID = PostgresColumnDefinition("participant_id", PostgresDatatype.TEXT).notNull()
+
 
         val COMPLETED = PostgresColumnDefinition(EdmConstants.COMPLETED_DATE_TIME_FQN.name, PostgresDatatype.TIMESTAMPTZ)
         val DATE_LOGGED = PostgresColumnDefinition(EdmConstants.DATE_LOGGED_FQN.name, PostgresDatatype.TIMESTAMPTZ)

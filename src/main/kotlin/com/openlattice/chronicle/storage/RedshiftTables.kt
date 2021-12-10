@@ -67,8 +67,9 @@ class RedshiftTables {
          * 9. application_label (text)
          */
         val INSERT_USAGE_EVENT_SQL = """
-        INSERT INTO $CHRONICLE_USAGE_EVENTS (${USAGE_EVENT_COLS}) VALUES (USAGE_EVENT_PARAMS) 
+        INSERT INTO $CHRONICLE_USAGE_EVENTS (${USAGE_EVENT_COLS}) VALUES (USAGE_EVENT_PARAMS) ON CONFLICT DO NOTHING
         """.trimIndent()
+
 
         private val USAGE_STAT_COLS = CHRONICLE_USAGE_STATS.columns.joinToString(",") { it.name }
         private val USAGE_STAT_PARAMS = CHRONICLE_USAGE_STATS.columns.joinToString(",") { "?" }

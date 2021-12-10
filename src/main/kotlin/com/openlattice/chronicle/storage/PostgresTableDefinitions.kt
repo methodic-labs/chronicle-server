@@ -10,10 +10,12 @@ import com.openlattice.postgres.RedshiftTableDefinition
 class PostgresTables {
     companion object {
         val CHRONICLE_USAGE_EVENTS = PostgresTableDefinition("chronicle_usage_events")
-                .addColumns(*RedshiftTables.CHRONICLE_USAGE_EVENTS.columns.toTypedArray())
+            .addColumns(*RedshiftTables.CHRONICLE_USAGE_EVENTS.columns.toTypedArray())
+            .primaryKey(*RedshiftTables.CHRONICLE_USAGE_EVENTS.columns.toTypedArray())
 
         val CHRONICLE_USAGE_STATS = PostgresTableDefinition("chronicle_usage_stats")
-                .addColumns(*RedshiftTables.CHRONICLE_USAGE_STATS.columns.toTypedArray())
+            .addColumns(*RedshiftTables.CHRONICLE_USAGE_STATS.columns.toTypedArray())
+            .primaryKey(*RedshiftTables.CHRONICLE_USAGE_EVENTS.columns.toTypedArray())
     }
 
 

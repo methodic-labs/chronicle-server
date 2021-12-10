@@ -571,6 +571,18 @@ class AppDataUploadService(
         dataApi.createEdges(dataEdgeKeys)
     }
 
+    /**
+     * This routine implements once and only once append of client data.
+     *
+     * Assumptions:
+     * - Client generates a UUID uniformly at random for each event and stores it in the id field.
+     * - Client will retry upload until receives successful acknowledgement from the server.
+     *
+     * Data is first written into a postgres table which is periodically flushed to redshift for long term storage.
+     *
+     * The probability of the same UUID being generated twice for the same organization id/participant id/device
+     * id/timestamp is unlikely to happen in the lifetime of our universe.
+     */
     override fun upload(
             organizationId: UUID,
             studyId: UUID,
