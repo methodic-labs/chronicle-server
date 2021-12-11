@@ -4,6 +4,7 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APPLICATION_L
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_PACKAGE_NAME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DURATION
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.END_TIME
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.INTERACTION_TYPE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.ORGANIZATION_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PARTICIPANT_ID
@@ -55,7 +56,18 @@ class RedshiftTables {
         private val USAGE_EVENT_PARAMS = CHRONICLE_USAGE_EVENTS.columns.joinToString(",") { "?" }
 
         /**
+         * Returns the merge clause for matching duplicate rows on insert.
+         */
+        private fun getMergeClause(srcMergeTableName: String): String {
+            return CHRONICLE_USAGE_EVENTS.columns.joinToString( " AND ") { "${CHRONICLE_USAGE_EVENTS.name}.${it.name} = ${srcMergeTableName}.${it.name}" }
+        }
+
+        /**
          * Inserts a row into the usage events table.
+         * @param srcMergeTableName The name of table that will serve as the source to merge into the
+         * CHRONICLE_USAGE_EVENTS table.
+         *
+         * The bina parameters for this query are in the following order:
          * 1. organization_id (text/uuid)
          * 2. study_id (text/uuid)
          * 3. participant_id (text)
@@ -66,10 +78,22 @@ class RedshiftTables {
          * 8. user (text)
          * 9. application_label (text)
          */
-        val INSERT_USAGE_EVENT_SQL = """
-        INSERT INTO $CHRONICLE_USAGE_EVENTS (${USAGE_EVENT_COLS}) VALUES (USAGE_EVENT_PARAMS) ON CONFLICT DO NOTHING
+        fun getInsertIntoMergeUsageEventsTableSql(srcMergeTableName: String) = """
+        INSERT INTO $srcMergeTableName (${USAGE_EVENT_COLS}) VALUES (${USAGE_EVENT_PARAMS}) ON CONFLICT DO NOTHING
         """.trimIndent()
+        fun getDeleteTempTableEntriesSql(srcMergeTableName: String)  : String {
+            return """
+            DELETE FROM ${CHRONICLE_USAGE_EVENTS.name} 
+                USING $srcMergeTableName 
+                WHERE ${getMergeClause(srcMergeTableName)} 
+            """.trimIndent()
+        }
 
+        fun getAppendTembTableSql(srcMergeTableName: String) : String {
+            return """
+                INSERT INTO ${CHRONICLE_USAGE_EVENTS.name} SELECT * FROM $srcMergeTableName
+            """.trimIndent()
+        }
 
         private val USAGE_STAT_COLS = CHRONICLE_USAGE_STATS.columns.joinToString(",") { it.name }
         private val USAGE_STAT_PARAMS = CHRONICLE_USAGE_STATS.columns.joinToString(",") { "?" }

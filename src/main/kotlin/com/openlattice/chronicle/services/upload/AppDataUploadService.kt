@@ -3,7 +3,6 @@ package com.openlattice.chronicle.services.upload
 import com.dataloom.streams.StreamUtil
 import com.geekbeast.configuration.postgres.PostgresFlavor
 import com.geekbeast.util.StopWatch
-import com.google.common.base.Stopwatch
 import com.google.common.collect.*
 import com.openlattice.ApiUtil
 import com.openlattice.chronicle.constants.AppComponent
@@ -17,10 +16,11 @@ import com.openlattice.chronicle.services.ScheduledTasksManager
 import com.openlattice.chronicle.services.edm.EdmCacheManager
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import com.openlattice.chronicle.services.entitysets.EntitySetIdsManager
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_PACKAGE_NAME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.FQNS_TO_COLUMNS
-import com.openlattice.chronicle.storage.RedshiftTables
-import com.openlattice.chronicle.storage.RedshiftTables.Companion.INSERT_USAGE_EVENT_SQL
+import com.openlattice.chronicle.storage.RedshiftTables.Companion.CHRONICLE_USAGE_EVENTS
+import com.openlattice.chronicle.storage.RedshiftTables.Companion.getAppendTembTableSql
+import com.openlattice.chronicle.storage.RedshiftTables.Companion.getDeleteTempTableEntriesSql
+import com.openlattice.chronicle.storage.RedshiftTables.Companion.getInsertIntoMergeUsageEventsTableSql
 import com.openlattice.chronicle.storage.RedshiftTables.Companion.getInsertUsageEventColumnIndex
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.util.ChronicleServerUtil
@@ -37,7 +37,6 @@ import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.*
-import java.util.concurrent.TimeUnit
 import java.util.function.Consumer
 import java.util.stream.Collectors
 
@@ -649,6 +648,7 @@ class AppDataUploadService(
 
                 val mappedData = filter(organizationId, mapToStorageModel(data))
 
+                StopWatch( log = "Writing ${data.size} entites to DB ")
                 val written = when (flavor) {
                     PostgresFlavor.VANILLA -> writeToPostgres(hds, organizationId, studyId, participantId, mappedData)
                     PostgresFlavor.REDSHIFT -> writeToRedshift(hds, organizationId, studyId, participantId, mappedData)
@@ -707,37 +707,59 @@ class AppDataUploadService(
             data: Sequence<Map<String, UsageEventColumn>>
     ): Int {
         return hds.connection.use { connection ->
-            connection.prepareStatement(INSERT_USAGE_EVENT_SQL).use { ps ->
-                //Should only need to set these once for prepared statement.
-                ps.setString(1, organizationId.toString())
-                ps.setString(2, studyId.toString())
-                ps.setString(3, participantId)
+            //Create the temporary merge table
+            val tempMergeTable = CHRONICLE_USAGE_EVENTS.createTempTable()
+            try {
+                connection.autoCommit = false
 
-                data.forEach { usageEventCols ->
-                    usageEventCols.values.forEach { usageEventCol ->
+                connection.createStatement().use { stmt -> stmt.execute(tempMergeTable.createTableQuery()) }
 
-                        val col = usageEventCol.col
-                        val colIndex = usageEventCol.colIndex
-                        val value = usageEventCol.value
+                val wc = connection
+                        .prepareStatement(getInsertIntoMergeUsageEventsTableSql(tempMergeTable.name)).use { ps ->
+                            //Should only need to set these once for prepared statement.
+                            ps.setString(1, organizationId.toString())
+                            ps.setString(2, studyId.toString())
+                            ps.setString(3, participantId)
 
-                        //Set insert value to null, if value was not provided.
-                        if (value == null) {
-                            ps.setObject(colIndex, null)
-                        } else {
-                            when (col.datatype) {
-                                PostgresDatatype.TEXT -> ps.setString(colIndex, value as String)
-                                PostgresDatatype.TIMESTAMPTZ -> ps.setObject(
-                                        colIndex,
-                                        OffsetDateTime.parse(value as String?)
-                                )
-                                PostgresDatatype.BIGINT -> ps.setLong(colIndex, value as Long)
-                                else -> ps.setObject(colIndex, value)
+                            data.forEach { usageEventCols ->
+                                usageEventCols.values.forEach { usageEventCol ->
+
+                                    val col = usageEventCol.col
+                                    val colIndex = usageEventCol.colIndex
+                                    val value = usageEventCol.value
+
+                                    //Set insert value to null, if value was not provided.
+                                    if (value == null) {
+                                        ps.setObject(colIndex, null)
+                                    } else {
+                                        when (col.datatype) {
+                                            PostgresDatatype.TEXT -> ps.setString(colIndex, value as String)
+                                            PostgresDatatype.TIMESTAMPTZ -> ps.setObject(
+                                                    colIndex,
+                                                    OffsetDateTime.parse(value as String?)
+                                            )
+                                            PostgresDatatype.BIGINT -> ps.setLong(colIndex, value as Long)
+                                            else -> ps.setObject(colIndex, value)
+                                        }
+                                    }
+                                }
+                                ps.addBatch()
                             }
+                            ps.executeBatch().sum()
                         }
-                    }
-                    ps.addBatch()
+
+                connection.createStatement().use { stmt ->
+                    stmt.execute(getDeleteTempTableEntriesSql(tempMergeTable.name))
+                    stmt.executeUpdate(getAppendTembTableSql(tempMergeTable.name))
                 }
-                ps.executeBatch().sum()
+
+                connection.commit()
+                connection.autoCommit = true
+                return@use wc
+            } catch (ex: Exception) {
+                logger.error("Unable to save data to redshift.", ex)
+                connection.rollback()
+                throw ex
             }
         }
     }
