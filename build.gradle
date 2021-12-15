@@ -139,7 +139,7 @@ ext.chronicle_api_version = '0.0.16'
 
 dependencies {
     implementation "com.google.guava:guava:${guava_version}"
-
+    implementation "com.amazon.redshift:redshift-jdbc42:2.1.0.3"
     if (project.hasProperty('developmentMode') && project.developmentMode) {
         logger.quiet(project.name + " using project dependencies.")
         implementation project(":rhizome")

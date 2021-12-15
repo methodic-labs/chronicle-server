@@ -12,11 +12,11 @@ import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import com.openlattice.chronicle.services.legacy.LegacyEdmResolver
 import com.openlattice.chronicle.services.settings.OrganizationSettingsManager
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.FQNS_TO_COLUMNS
-import com.openlattice.chronicle.storage.RedshiftTables.Companion.CHRONICLE_USAGE_EVENTS
-import com.openlattice.chronicle.storage.RedshiftTables.Companion.getAppendTembTableSql
-import com.openlattice.chronicle.storage.RedshiftTables.Companion.getDeleteTempTableEntriesSql
-import com.openlattice.chronicle.storage.RedshiftTables.Companion.getInsertIntoMergeUsageEventsTableSql
-import com.openlattice.chronicle.storage.RedshiftTables.Companion.getInsertUsageEventColumnIndex
+import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.CHRONICLE_USAGE_EVENTS
+import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.getAppendTembTableSql
+import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.getDeleteTempTableEntriesSql
+import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.getInsertIntoMergeUsageEventsTableSql
+import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.getInsertUsageEventColumnIndex
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.util.ChronicleServerUtil
 import com.openlattice.postgres.PostgresColumnDefinition

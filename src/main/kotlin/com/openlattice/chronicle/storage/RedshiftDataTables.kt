@@ -20,8 +20,9 @@ import com.openlattice.postgres.RedshiftTableDefinition
  *
  * @author Matthew Tamayo-Rios &lt;matthew@openlattice.com&gt;
  */
-class RedshiftTables {
+class RedshiftDataTables {
     companion object {
+        const val REDSHIFT_ENVIRONMENT = "environment"
         val CHRONICLE_USAGE_EVENTS = RedshiftTableDefinition("chronicle_usage_events")
                 .sortKey(STUDY_ID)
                 .addColumns(
