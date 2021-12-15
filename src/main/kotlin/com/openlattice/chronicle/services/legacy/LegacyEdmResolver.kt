@@ -23,5 +23,9 @@ class LegacyEdmResolver() {
         fun getPropertyTypeIds(
                 fqns: Collection<FullQualifiedName>
         ): Map<FullQualifiedName, UUID> = fqns.associateWith { propertyTypes.getValue(it) }
+
+        fun getLegacyPropertyTypeIds(fqns: Set<String>): Map<String, UUID> {
+            TODO("Return FQNs")
+        }
     }
 }

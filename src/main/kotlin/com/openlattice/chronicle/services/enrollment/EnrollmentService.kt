@@ -109,4 +109,12 @@ class EnrollmentService(
     override fun studyExists(organizationId: UUID, studyId: UUID): Boolean {
         TODO("Not yet implemented")
     }
+
+    override fun getOrganizationIdForStudy(studyId: UUID): UUID {
+        TODO("Not yet implemented")
+    }
+
+    override fun getOrganizationIdForLegacyStudy(studyId: UUID): UUID {
+        TODO("Not yet implemented")
+    }
 }

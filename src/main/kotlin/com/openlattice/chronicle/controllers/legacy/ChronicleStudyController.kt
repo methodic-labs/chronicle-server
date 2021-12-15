@@ -1,4 +1,4 @@
-package kotlin.com.openlattice.chronicle.controllers.legacy
+package com.openlattice.chronicle.controllers.legacy
 
 import com.codahale.metrics.annotation.Timed
 import com.google.common.base.Optional
@@ -34,12 +34,13 @@ class ChronicleStudyController : ChronicleStudyApi {
             method = [RequestMethod.POST], consumes = [MediaType.APPLICATION_JSON_VALUE]
     )
     override fun enrollSource(
-            @PathVariable(ChronicleStudyApi.STUDY_ID) studyId: UUID?,
-            @PathVariable(ChronicleStudyApi.PARTICIPANT_ID) participantId: String?,
-            @PathVariable(ChronicleStudyApi.DATASOURCE_ID) datasourceId: String?,
-            @RequestBody datasource: Optional<Datasource?>?
+            @PathVariable(ChronicleStudyApi.STUDY_ID) studyId: UUID,
+            @PathVariable(ChronicleStudyApi.PARTICIPANT_ID) participantId: String,
+            @PathVariable(ChronicleStudyApi.DATASOURCE_ID) datasourceId: String,
+            @RequestBody datasource: Optional<Datasource>
     ): UUID {
-        return enrollmentManager.registerDatasource(null, studyId, participantId, datasourceId, datasource)
+        val organizationId = enrollmentManager.getOrganizationIdForLegacyStudy( studyId )
+        return enrollmentManager.registerDatasource(organizationId, studyId, participantId, datasourceId, datasource)
     }
 
     @Timed
@@ -48,14 +49,15 @@ class ChronicleStudyController : ChronicleStudyApi {
             method = [RequestMethod.GET], produces = [MediaType.APPLICATION_JSON_VALUE]
     )
     override fun isKnownDatasource(
-            @PathVariable(ChronicleStudyApi.STUDY_ID) studyId: UUID?,
-            @PathVariable(ChronicleStudyApi.PARTICIPANT_ID) participantId: String?,
-            @PathVariable(ChronicleStudyApi.DATASOURCE_ID) datasourceId: String?
+            @PathVariable(ChronicleStudyApi.STUDY_ID) studyId: UUID,
+            @PathVariable(ChronicleStudyApi.PARTICIPANT_ID) participantId: String,
+            @PathVariable(ChronicleStudyApi.DATASOURCE_ID) datasourceId: String
     ): Boolean {
+        val organizationId = enrollmentManager.getOrganizationIdForLegacyStudy( studyId )
         //  validate that this device belongs to this participant in this study
-        //  look up in association entitySet between device and participant, and device and study to see if it exists?
+        //  look up in association entitySet between device and participant, and device and study to see if it exists
         //  DataApi.getEntity(entitySetId :UUID, entityKeyId :UUID)
-        return enrollmentManager.isKnownDatasource(null, studyId, participantId, datasourceId)
+        return enrollmentManager.isKnownDatasource(organizationId, studyId, participantId, datasourceId)
     }
 
     @Timed
@@ -64,11 +66,12 @@ class ChronicleStudyController : ChronicleStudyApi {
             method = [RequestMethod.GET], produces = [MediaType.APPLICATION_JSON_VALUE]
     )
     override fun getParticipantAppsUsageData(
-            @PathVariable(ChronicleStudyApi.STUDY_ID) studyId: UUID?,
-            @PathVariable(ChronicleStudyApi.PARTICIPANT_ID) participantId: String?,
-            @RequestParam(value = ChronicleStudyApi.DATE) date: String?
+            @PathVariable(ChronicleStudyApi.STUDY_ID) studyId: UUID,
+            @PathVariable(ChronicleStudyApi.PARTICIPANT_ID) participantId: String,
+            @RequestParam(value = ChronicleStudyApi.DATE) date: String
     ): List<ChronicleAppsUsageDetails> {
-        return surveysManager.getParticipantAppsUsageData(null, studyId, participantId, date)
+        val organizationId = enrollmentManager.getOrganizationIdForLegacyStudy( studyId )
+        return surveysManager.getParticipantAppsUsageData(organizationId, studyId, participantId, date)
     }
 
     @Timed
@@ -76,9 +79,10 @@ class ChronicleStudyController : ChronicleStudyApi {
             path = [ChronicleStudyApi.STUDY_ID_PATH + ChronicleStudyApi.NOTIFICATIONS], method = [RequestMethod.GET]
     )
     override fun isNotificationsEnabled(
-            @PathVariable(ChronicleStudyApi.STUDY_ID) studyId: UUID?
+            @PathVariable(ChronicleStudyApi.STUDY_ID) studyId: UUID
     ): Boolean {
-        return enrollmentManager.isNotificationsEnabled(null, studyId)
+        val organizationId = enrollmentManager.getOrganizationIdForLegacyStudy( studyId )
+        return enrollmentManager.isNotificationsEnabled(organizationId, studyId)
     }
 
     @Timed
@@ -87,10 +91,11 @@ class ChronicleStudyController : ChronicleStudyApi {
             method = [RequestMethod.GET]
     )
     override fun getParticipationStatus(
-            @PathVariable(ChronicleStudyApi.STUDY_ID) studyId: UUID?,
-            @PathVariable(ChronicleStudyApi.PARTICIPANT_ID) participantId: String?
+            @PathVariable(ChronicleStudyApi.STUDY_ID) studyId: UUID,
+            @PathVariable(ChronicleStudyApi.PARTICIPANT_ID) participantId: String
     ): ParticipationStatus {
-        return enrollmentManager.getParticipationStatus(null, studyId, participantId)
+        val organizationId = enrollmentManager.getOrganizationIdForLegacyStudy( studyId )
+        return enrollmentManager.getParticipationStatus(organizationId, studyId, participantId)
     }
 
     @RequestMapping(
@@ -98,11 +103,12 @@ class ChronicleStudyController : ChronicleStudyApi {
             method = [RequestMethod.POST], consumes = [MediaType.APPLICATION_JSON_VALUE]
     )
     override fun submitAppUsageSurvey(
-            @PathVariable(ChronicleStudyApi.STUDY_ID) studyId: UUID?,
-            @PathVariable(ChronicleStudyApi.PARTICIPANT_ID) participantId: String?,
-            @RequestBody associationDetails: Map<UUID?, Map<FullQualifiedName?, Set<Any?>?>?>?
+            @PathVariable(ChronicleStudyApi.STUDY_ID) studyId: UUID,
+            @PathVariable(ChronicleStudyApi.PARTICIPANT_ID) participantId: String,
+            @RequestBody associationDetails: Map<UUID, Map<FullQualifiedName, Set<Any>>>
     ) {
-        surveysManager.submitAppUsageSurvey(null, studyId, participantId, associationDetails)
+        val organizationId = enrollmentManager.getOrganizationIdForLegacyStudy( studyId )
+        surveysManager.submitAppUsageSurvey(organizationId, studyId, participantId, associationDetails)
     }
 
     @Timed
@@ -111,10 +117,11 @@ class ChronicleStudyController : ChronicleStudyApi {
             method = [RequestMethod.GET], produces = [MediaType.APPLICATION_JSON_VALUE]
     )
     override fun getChronicleQuestionnaire(
-            @PathVariable(ChronicleStudyApi.STUDY_ID) studyId: UUID?,
-            @PathVariable(ChronicleStudyApi.ENTITY_KEY_ID) questionnaireEKID: UUID?
+            @PathVariable(ChronicleStudyApi.STUDY_ID) studyId: UUID,
+            @PathVariable(ChronicleStudyApi.ENTITY_KEY_ID) questionnaireEKID: UUID
     ): ChronicleQuestionnaire {
-        return surveysManager.getQuestionnaire(null, studyId, questionnaireEKID)
+        val organizationId = enrollmentManager.getOrganizationIdForLegacyStudy( studyId )
+        return surveysManager.getQuestionnaire(organizationId, studyId, questionnaireEKID)
     }
 
     @Timed
@@ -123,11 +130,12 @@ class ChronicleStudyController : ChronicleStudyApi {
             method = [RequestMethod.POST], consumes = [MediaType.APPLICATION_JSON_VALUE]
     )
     override fun submitQuestionnaire(
-            @PathVariable(ChronicleStudyApi.STUDY_ID) studyId: UUID?,
-            @PathVariable(ChronicleStudyApi.PARTICIPANT_ID) participantId: String?,
-            @RequestBody questionnaireResponses: Map<UUID?, Map<FullQualifiedName?, Set<Any?>?>?>?
+            @PathVariable(ChronicleStudyApi.STUDY_ID) studyId: UUID,
+            @PathVariable(ChronicleStudyApi.PARTICIPANT_ID) participantId: String,
+            @RequestBody questionnaireResponses: Map<UUID, Map<FullQualifiedName, Set<Any>>>
     ) {
-        surveysManager.submitQuestionnaire(null, studyId, participantId, questionnaireResponses)
+        val organizationId = enrollmentManager.getOrganizationIdForLegacyStudy( studyId )
+        surveysManager.submitQuestionnaire(organizationId, studyId, participantId, questionnaireResponses)
     }
 
     @Timed
@@ -136,9 +144,10 @@ class ChronicleStudyController : ChronicleStudyApi {
             produces = [MediaType.APPLICATION_JSON_VALUE]
     )
     override fun getStudyQuestionnaires(
-            @PathVariable(ChronicleStudyApi.STUDY_ID) studyId: UUID?
+            @PathVariable(ChronicleStudyApi.STUDY_ID) studyId: UUID
     ): Map<UUID, Map<FullQualifiedName, Set<Any>>> {
-        return surveysManager.getStudyQuestionnaires(null, studyId)
+        val organizationId = enrollmentManager.getOrganizationIdForLegacyStudy( studyId )
+        return surveysManager.getStudyQuestionnaires(organizationId, studyId)
     }
 
     @RequestMapping(
@@ -146,10 +155,11 @@ class ChronicleStudyController : ChronicleStudyApi {
             method = [RequestMethod.POST], consumes = [MediaType.APPLICATION_JSON_VALUE]
     )
     override fun submitTimeUseDiarySurvey(
-            @PathVariable(ChronicleStudyApi.STUDY_ID) studyId: UUID?,
-            @PathVariable(ChronicleStudyApi.PARTICIPANT_ID) participantId: String?,
-            @RequestBody surveyData: List<Map<FullQualifiedName?, Set<Any?>?>?>?
+            @PathVariable(ChronicleStudyApi.STUDY_ID) studyId: UUID,
+            @PathVariable(ChronicleStudyApi.PARTICIPANT_ID) participantId: String,
+            @RequestBody surveyData: List<Map<FullQualifiedName, Set<Any>>>
     ) {
-        surveysManager.submitTimeUseDiarySurvey(null, studyId, participantId, surveyData)
+        val organizationId = enrollmentManager.getOrganizationIdForLegacyStudy( studyId )
+        surveysManager.submitTimeUseDiarySurvey(organizationId, studyId, participantId, surveyData)
     }
 }

@@ -1,9 +1,10 @@
-package kotlin.com.openlattice.chronicle.controllers.legacy
+package com.openlattice.chronicle.controllers.legacy
 
 import com.codahale.metrics.annotation.Timed
 import com.google.common.collect.SetMultimap
 import com.openlattice.chronicle.ChronicleApi
-import com.openlattice.chronicle.services.edm.EdmCacheManager
+import com.openlattice.chronicle.services.enrollment.EnrollmentManager
+import com.openlattice.chronicle.services.legacy.LegacyEdmResolver
 import com.openlattice.chronicle.services.upload.AppDataUploadManager
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.*
@@ -21,7 +22,7 @@ class ChronicleController : ChronicleApi {
     private lateinit var dataUploadManager: AppDataUploadManager
 
     @Inject
-    private lateinit var edmCacheManager: EdmCacheManager
+    private lateinit var enrollmentManager: EnrollmentManager
 
     @Timed
     @RequestMapping(
@@ -29,12 +30,13 @@ class ChronicleController : ChronicleApi {
             method = [RequestMethod.POST], consumes = [MediaType.APPLICATION_JSON_VALUE]
     )
     override fun upload(
-            @PathVariable(ChronicleApi.STUDY_ID) studyId: UUID?,
-            @PathVariable(ChronicleApi.PARTICIPANT_ID) participantId: String?,
-            @PathVariable(ChronicleApi.DATASOURCE_ID) datasourceId: String?,
-            @RequestBody data: List<SetMultimap<UUID?, Any?>?>?
+            @PathVariable(ChronicleApi.STUDY_ID) studyId: UUID,
+            @PathVariable(ChronicleApi.PARTICIPANT_ID) participantId: String,
+            @PathVariable(ChronicleApi.DATASOURCE_ID) datasourceId: String,
+            @RequestBody data: List<SetMultimap<UUID, Any>>
     ): Int {
-        return dataUploadManager.upload(null, studyId, participantId, datasourceId, data)
+        val organizationId = enrollmentManager.getOrganizationIdForLegacyStudy( studyId )
+        return dataUploadManager.upload(organizationId, studyId, participantId, datasourceId, data)
     }
 
     @Timed
@@ -42,8 +44,8 @@ class ChronicleController : ChronicleApi {
             path = [ChronicleApi.EDM_PATH], method = [RequestMethod.POST],
             consumes = [MediaType.APPLICATION_JSON_VALUE], produces = [MediaType.APPLICATION_JSON_VALUE]
     )
-    override fun getPropertyTypeIds(@RequestBody propertyTypeFqns: Set<String?>?): Map<String, UUID> {
-        return edmCacheManager.getLegacyPropertyTypeIds(propertyTypeFqns)
+    override fun getPropertyTypeIds(@RequestBody propertyTypeFqns: Set<String>): Map<String, UUID> {
+        return LegacyEdmResolver.getLegacyPropertyTypeIds(propertyTypeFqns)
     }
 
     @Timed

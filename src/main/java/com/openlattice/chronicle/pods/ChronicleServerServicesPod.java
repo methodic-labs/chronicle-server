@@ -35,6 +35,9 @@ import com.openlattice.chronicle.services.download.DataDownloadManager;
 import com.openlattice.chronicle.services.download.DataDownloadService;
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager;
 import com.openlattice.chronicle.services.enrollment.EnrollmentService;
+import com.openlattice.chronicle.services.settings.OrganizationSettings;
+import com.openlattice.chronicle.services.settings.OrganizationSettingsManager;
+import com.openlattice.chronicle.services.settings.OrganizationSettingsService;
 import com.openlattice.chronicle.services.surveys.SurveysManager;
 import com.openlattice.chronicle.services.surveys.SurveysService;
 import com.openlattice.chronicle.services.upload.AppDataUploadManager;
@@ -43,8 +46,10 @@ import com.openlattice.chronicle.storage.StorageResolver;
 import com.openlattice.data.serializers.FullQualifiedNameJacksonSerializer;
 import com.openlattice.jdbc.DataSourceManager;
 import java.io.IOException;
+import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import javax.inject.Inject;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
@@ -107,8 +112,16 @@ public class ChronicleServerServicesPod {
     }
 
     @Bean
+    public OrganizationSettingsManager organizationSettingsManager() {
+        return new OrganizationSettingsService();
+    }
+
+    @Bean
     public AppDataUploadManager appDataUploadManager() throws IOException, ExecutionException {
-        return new AppDataUploadService( storageResolver(), scheduledTasksManager(), enrollmentManager() );
+        return new AppDataUploadService( storageResolver(),
+                scheduledTasksManager(),
+                enrollmentManager(),
+                organizationSettingsManager() );
     }
 
     @Bean

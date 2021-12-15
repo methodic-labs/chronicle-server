@@ -14,4 +14,5 @@ interface AppDataUploadManager {
         datasourceId: String,
         data: List<SetMultimap<UUID, Any>>
     ): Int
+
 }

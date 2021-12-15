@@ -1,4 +1,4 @@
-package kotlin.com.openlattice.chronicle.controllers.legacy
+package com.openlattice.chronicle.controllers.legacy
 
 import com.codahale.metrics.annotation.Timed
 import com.openlattice.chronicle.UserAuthenticatedApi
@@ -40,13 +40,12 @@ class UserAuthenticatedController : UserAuthenticatedApi {
             method = [RequestMethod.DELETE]
     )
     override fun deleteParticipantAndAllNeighbors(
-            @PathVariable(UserAuthenticatedApi.STUDY_ID) studyId: UUID?,
-            @PathVariable(UserAuthenticatedApi.PARTICIPANT_ID) participantId: String?,
-            @RequestParam(UserAuthenticatedApi.TYPE) chronicleDeleteType: ChronicleDeleteType?
+            @PathVariable(UserAuthenticatedApi.STUDY_ID) studyId: UUID,
+            @PathVariable(UserAuthenticatedApi.PARTICIPANT_ID) participantId: String,
+            @RequestParam(UserAuthenticatedApi.TYPE) chronicleDeleteType: ChronicleDeleteType
     ): Void? {
-        val token = ChronicleServerUtil.getTokenFromContext()
-        dataDeletionManager
-                .deleteParticipantAndAllNeighbors(null, studyId, participantId, chronicleDeleteType, token)
+        val organizationId = enrollmentManager.getOrganizationIdForLegacyStudy( studyId )
+        dataDeletionManager.deleteParticipantData(organizationId, studyId, participantId, chronicleDeleteType)
         return null
     }
 
@@ -59,18 +58,18 @@ class UserAuthenticatedController : UserAuthenticatedApi {
             HttpStatus.OK
     )
     override fun deleteStudyAndAllNeighbors(
-            @PathVariable(UserAuthenticatedApi.STUDY_ID) studyId: UUID?,
-            @RequestParam(UserAuthenticatedApi.TYPE) chronicleDeleteType: ChronicleDeleteType?
+            @PathVariable(UserAuthenticatedApi.STUDY_ID) studyId: UUID,
+            @RequestParam(UserAuthenticatedApi.TYPE) chronicleDeleteType: ChronicleDeleteType
     ): Void? {
-        val token = ChronicleServerUtil.getTokenFromContext()
-        dataDeletionManager.deleteStudyAndAllNeighbors(null, studyId, chronicleDeleteType, token)
+        val organizationId = enrollmentManager.getOrganizationIdForLegacyStudy( studyId )
+        dataDeletionManager.deleteStudyData(organizationId, studyId, chronicleDeleteType)
         return null
     }
 
     override fun getAllPreprocessedParticipantData(
-            studyId: UUID?,
-            participantEntityKeyId: UUID?,
-            fileType: FileType?
+            studyId: UUID,
+            participantEntityKeyId: UUID,
+            fileType: FileType
     ): Iterable<Map<String, Set<Any>>> {
         val token = ChronicleServerUtil.getTokenFromContext()
         return dataDownloadManager
@@ -85,10 +84,10 @@ class UserAuthenticatedController : UserAuthenticatedApi {
             produces = [MediaType.APPLICATION_JSON_VALUE, CustomMediaType.TEXT_CSV_VALUE]
     )
     fun getAllPreprocessedParticipantData(
-            @PathVariable(UserAuthenticatedApi.STUDY_ID) studyId: UUID?,
-            @PathVariable(UserAuthenticatedApi.ENTITY_KEY_ID) participantEntityKeyId: UUID?,
-            @RequestParam(value = UserAuthenticatedApi.FILE_TYPE, required = false) fileType: FileType?,
-            response: HttpServletResponse?
+            @PathVariable(UserAuthenticatedApi.STUDY_ID) studyId: UUID,
+            @PathVariable(UserAuthenticatedApi.ENTITY_KEY_ID) participantEntityKeyId: UUID,
+            @RequestParam(value = UserAuthenticatedApi.FILE_TYPE, required = false) fileType: FileType,
+            response: HttpServletResponse
     ): Iterable<Map<String, Set<Any>>> {
         val data = getAllPreprocessedParticipantData(
                 studyId,
@@ -108,9 +107,9 @@ class UserAuthenticatedController : UserAuthenticatedApi {
     }
 
     override fun getAllParticipantData(
-            studyId: UUID?,
-            participantEntityKeyId: UUID?,
-            fileType: FileType?
+            studyId: UUID,
+            participantEntityKeyId: UUID,
+            fileType: FileType
     ): Iterable<Map<String, Set<Any>>> {
         val token = ChronicleServerUtil.getTokenFromContext()
         return dataDownloadManager
@@ -124,10 +123,10 @@ class UserAuthenticatedController : UserAuthenticatedApi {
             produces = [MediaType.APPLICATION_JSON_VALUE, CustomMediaType.TEXT_CSV_VALUE]
     )
     fun getAllParticipantData(
-            @PathVariable(UserAuthenticatedApi.STUDY_ID) studyId: UUID?,
-            @PathVariable(UserAuthenticatedApi.ENTITY_KEY_ID) participantEntityKeyId: UUID?,
-            @RequestParam(value = UserAuthenticatedApi.FILE_TYPE, required = false) fileType: FileType?,
-            response: HttpServletResponse?
+            @PathVariable(UserAuthenticatedApi.STUDY_ID) studyId: UUID,
+            @PathVariable(UserAuthenticatedApi.ENTITY_KEY_ID) participantEntityKeyId: UUID,
+            @RequestParam(value = UserAuthenticatedApi.FILE_TYPE, required = false) fileType: FileType,
+            response: HttpServletResponse
     ): Iterable<Map<String, Set<Any>>> {
         val data = getAllParticipantData(
                 studyId,
@@ -147,9 +146,9 @@ class UserAuthenticatedController : UserAuthenticatedApi {
     }
 
     override fun getAllParticipantAppsUsageData(
-            studyId: UUID?,
-            participantEntityKeyId: UUID?,
-            fileType: FileType?
+            studyId: UUID,
+            participantEntityKeyId: UUID,
+            fileType: FileType
     ): Iterable<Map<String, Set<Any>>> {
         val token = ChronicleServerUtil.getTokenFromContext()
         return dataDownloadManager
@@ -163,10 +162,10 @@ class UserAuthenticatedController : UserAuthenticatedApi {
             method = [RequestMethod.GET], produces = [MediaType.APPLICATION_JSON_VALUE, CustomMediaType.TEXT_CSV_VALUE]
     )
     fun getAllParticipantAppsUsageData(
-            @PathVariable(UserAuthenticatedApi.STUDY_ID) studyId: UUID?,
-            @PathVariable(UserAuthenticatedApi.ENTITY_KEY_ID) participantEntityKeyId: UUID?,
-            @RequestParam(value = UserAuthenticatedApi.FILE_TYPE, required = false) fileType: FileType?,
-            response: HttpServletResponse?
+            @PathVariable(UserAuthenticatedApi.STUDY_ID) studyId: UUID,
+            @PathVariable(UserAuthenticatedApi.ENTITY_KEY_ID) participantEntityKeyId: UUID,
+            @RequestParam(value = UserAuthenticatedApi.FILE_TYPE, required = false) fileType: FileType,
+            response: HttpServletResponse
     ): Iterable<Map<String, Set<Any>>> {
         val data = getAllParticipantAppsUsageData(
                 studyId,
