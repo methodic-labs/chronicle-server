@@ -1,6 +1,8 @@
 package com.openlattice.chronicle.services.settings
 
+import com.openlattice.chronicle.constants.AppComponent
 import com.openlattice.chronicle.constants.AppUsageFrequency
+import java.util.*
 
 /**
  *
@@ -11,5 +13,6 @@ data class ChronicleDataCollectionSettings(
 )
 
 data class OrganizationSettings(
-        val chronicleDataCollection: ChronicleDataCollectionSettings
+        val chronicleDataCollection: ChronicleDataCollectionSettings,
+        val appSettings: Map<AppComponent,Map<String,Any>> = mutableMapOf()
 )

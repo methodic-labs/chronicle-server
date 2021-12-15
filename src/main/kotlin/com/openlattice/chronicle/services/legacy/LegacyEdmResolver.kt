@@ -18,5 +18,10 @@ class LegacyEdmResolver() {
 
         @JvmStatic
         fun getPropertyTypeId(fqn: FullQualifiedName): UUID = propertyTypes.getValue(fqn)
+
+        @JvmStatic
+        fun getPropertyTypeIds(
+                fqns: Collection<FullQualifiedName>
+        ): Map<FullQualifiedName, UUID> = fqns.associateWith { propertyTypes.getValue(it) }
     }
 }
