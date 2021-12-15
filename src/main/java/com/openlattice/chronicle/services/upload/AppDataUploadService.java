@@ -39,6 +39,7 @@ import static com.openlattice.chronicle.constants.EdmConstants.RECORD_TYPE_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.START_DATE_TIME_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.STRING_ID_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.TITLE_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.USER_FQN;
 import static com.openlattice.chronicle.constants.OutputConstants.MINIMUM_DATE;
 import static com.openlattice.chronicle.util.ChronicleServerUtil.ORG_STUDY_PARTICIPANT;
 import static com.openlattice.chronicle.util.ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE;
@@ -101,7 +102,8 @@ public class AppDataUploadService implements AppDataUploadManager {
                         ImmutableList.of(
                                 edmCacheManager.getPropertyTypeId( FULL_NAME_FQN ),
                                 edmCacheManager.getPropertyTypeId( DATE_TIME_FQN ),
-                                edmCacheManager.getPropertyTypeId( PERSON_ID_FQN )
+                                edmCacheManager.getPropertyTypeId( PERSON_ID_FQN ),
+                                edmCacheManager.getPropertyTypeId( USER_FQN )
                         ),
                         entityData
                 )
@@ -154,13 +156,13 @@ public class AppDataUploadService implements AppDataUploadManager {
     }
 
     // HELPER METHODS: upload
-    private Map<UUID, Set<Object>> getUsedByEntity( String appPackageName, String dateLogged, String participantId ) {
+    private Map<UUID, Set<Object>> getUsedByEntity( String appPackageName, String dateLogged, String participantId, String deviceUser ) {
         Map<UUID, Set<Object>> entity = Maps.newHashMap();
 
         entity.put( edmCacheManager.getPropertyTypeId( DATE_TIME_FQN ), ImmutableSet.of( dateLogged ) );
         entity.put( edmCacheManager.getPropertyTypeId( FULL_NAME_FQN ), ImmutableSet.of( appPackageName ) );
         entity.put( edmCacheManager.getPropertyTypeId( PERSON_ID_FQN ), ImmutableSet.of( participantId ) );
-
+        entity.put( edmCacheManager.getPropertyTypeId( USER_FQN ), ImmutableSet.of(deviceUser) );
         return entity;
     }
 
@@ -519,7 +521,7 @@ public class AppDataUploadService implements AppDataUploadManager {
             if ( appEntity.containsKey( edmCacheManager.getPropertyTypeId( TITLE_FQN ) ) ) {
                 appName = getFirstValueOrNull( appEntity, TITLE_FQN );
             }
-            
+
             // association 1: user apps => recorded by => device
             Map<UUID, Set<Object>> userAppEntityData = getUserAppsEntity( appPackageName, appName );
             EntityKey userAppEK = getUserAppsEntityKey( userAppsESID, userAppEntityData );
@@ -538,7 +540,9 @@ public class AppDataUploadService implements AppDataUploadManager {
             edgesByEntityKey.add( Triple.of( userAppEK, recordedByEK, deviceEK ) );
 
             // association 2: user apps => used by => participant
-            Map<UUID, Set<Object>> usedByEntityData = getUsedByEntity( appPackageName, dateLogged, participantId );
+            String deviceUser = getFirstValueOrNull( appEntity, USER_FQN );
+            deviceUser = deviceUser == null ? "" : deviceUser;
+            Map<UUID, Set<Object>> usedByEntityData = getUsedByEntity( appPackageName, dateLogged, participantId, deviceUser );
             EntityKey usedByEK = getUsedByEntityKey( usedByESID, usedByEntityData );
             usedByEntityData.remove( edmCacheManager
                     .getPropertyTypeId( FULL_NAME_FQN ) ); // FULL_NAME_FQN shouldn't be stored
