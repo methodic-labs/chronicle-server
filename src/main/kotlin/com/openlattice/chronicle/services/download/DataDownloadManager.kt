@@ -5,6 +5,7 @@ import java.util.*
 
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
+ * @author Matthew Tamayo-Rios &lt;matthew@openlattice.com&gt;
  */
 interface DataDownloadManager {
 

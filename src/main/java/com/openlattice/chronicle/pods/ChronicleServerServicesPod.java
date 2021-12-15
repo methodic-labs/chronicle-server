@@ -28,30 +28,26 @@ import com.openlattice.auth0.Auth0TokenProvider;
 import com.openlattice.auth0.AwsAuth0TokenProvider;
 import com.openlattice.authentication.Auth0Configuration;
 import com.openlattice.chronicle.configuration.ChronicleConfiguration;
-import com.openlattice.chronicle.services.ApiCacheManager;
 import com.openlattice.chronicle.services.ScheduledTasksManager;
 import com.openlattice.chronicle.services.delete.DataDeletionManager;
 import com.openlattice.chronicle.services.delete.DataDeletionService;
 import com.openlattice.chronicle.services.download.DataDownloadManager;
 import com.openlattice.chronicle.services.download.DataDownloadService;
-import com.openlattice.chronicle.services.edm.EdmCacheManager;
-import com.openlattice.chronicle.services.edm.EdmCacheService;
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager;
 import com.openlattice.chronicle.services.enrollment.EnrollmentService;
-import com.openlattice.chronicle.services.entitysets.EntitySetIdsManager;
-import com.openlattice.chronicle.services.entitysets.EntitySetIdsService;
 import com.openlattice.chronicle.services.surveys.SurveysManager;
 import com.openlattice.chronicle.services.surveys.SurveysService;
 import com.openlattice.chronicle.services.upload.AppDataUploadManager;
 import com.openlattice.chronicle.services.upload.AppDataUploadService;
+import com.openlattice.chronicle.storage.StorageResolver;
 import com.openlattice.data.serializers.FullQualifiedNameJacksonSerializer;
+import com.openlattice.jdbc.DataSourceManager;
+import java.io.IOException;
+import java.util.concurrent.ExecutionException;
+import javax.inject.Inject;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
-
-import javax.inject.Inject;
-import java.io.IOException;
-import java.util.concurrent.ExecutionException;
 
 @Configuration
 @Import( {
@@ -64,6 +60,9 @@ public class ChronicleServerServicesPod {
 
     @Inject
     private Auth0Configuration auth0Configuration;
+
+    @Inject
+    private DataSourceManager dataSourceManager;
 
     @Bean
     public ObjectMapper defaultObjectMapper() {
@@ -83,68 +82,37 @@ public class ChronicleServerServicesPod {
     }
 
     @Bean
-    public ApiCacheManager apiCacheManager() throws IOException {
-        return new ApiCacheManager( getChronicleConfiguration(), auth0Configuration );
-    }
-
-    @Bean
-    public EdmCacheManager edmCacheManager() throws IOException, ExecutionException {
-        return new EdmCacheService( apiCacheManager() );
-    }
-
-    @Bean
-    public EntitySetIdsManager entitySetIdsManager() throws ExecutionException, IOException {
-        return new EntitySetIdsService( apiCacheManager(), edmCacheManager() );
-    }
-
-    @Bean
     public ScheduledTasksManager scheduledTasksManager() throws IOException, ExecutionException {
-        return new ScheduledTasksManager( apiCacheManager(), edmCacheManager(), entitySetIdsManager() );
+        return new ScheduledTasksManager();
     }
 
     @Bean
     public DataDeletionManager dataDeletionManager() throws IOException, ExecutionException {
-        return new DataDeletionService(
-                edmCacheManager(),
-                apiCacheManager(),
-                entitySetIdsManager(),
-                enrollmentManager()
-        );
+        return new DataDeletionService( enrollmentManager() );
     }
 
     @Bean
     public DataDownloadManager dataDownloadManager() throws IOException, ExecutionException {
-        return new DataDownloadService( entitySetIdsManager(), edmCacheManager() );
+        return new DataDownloadService();
     }
 
     @Bean
     public EnrollmentManager enrollmentManager() throws IOException, ExecutionException {
-        return new EnrollmentService(
-                apiCacheManager(),
-                edmCacheManager(),
-                entitySetIdsManager(),
-                scheduledTasksManager()
-        );
+        return new EnrollmentService( scheduledTasksManager() );
+    }
+
+    @Bean
+    public StorageResolver storageResolver() {
+        return new StorageResolver( dataSourceManager, "" );
     }
 
     @Bean
     public AppDataUploadManager appDataUploadManager() throws IOException, ExecutionException {
-        return new AppDataUploadService(
-                apiCacheManager(),
-                edmCacheManager(),
-                entitySetIdsManager(),
-                scheduledTasksManager(),
-                enrollmentManager()
-        );
+        return new AppDataUploadService( storageResolver(), scheduledTasksManager(), enrollmentManager() );
     }
 
     @Bean
     public SurveysManager surveysManager() throws IOException, ExecutionException {
-        return new SurveysService(
-                apiCacheManager(),
-                edmCacheManager(),
-                entitySetIdsManager(),
-                enrollmentManager()
-        );
+        return new SurveysService( enrollmentManager() );
     }
 }

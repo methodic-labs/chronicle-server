@@ -63,11 +63,8 @@ public class ChronicleServerUtil {
             UUID participantEntityKeyId ) {
         String participantId = enrollmentManager
                 .getParticipantEntity( organizationId, studyId, participantEntityKeyId )
-                .get( PERSON_ID_FQN )
-                .stream()
-                .findFirst()
-                .orElse( "" )
-                .toString();
+                .getParticipantId();
+
         StringBuilder fileNameBuilder = new StringBuilder()
                 .append( fileNamePrefix )
                 .append( LocalDate.now().format( DateTimeFormatter.BASIC_ISO_DATE ) )
