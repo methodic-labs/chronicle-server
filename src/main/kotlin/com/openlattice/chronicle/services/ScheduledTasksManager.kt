@@ -93,14 +93,4 @@ class ScheduledTasksManager {
         logger.info("refreshing devices info for legacy devices")
         TODO("Not yet implemented")
     }
-
-    init {
-        refreshAllOrgsUserAppFullNames()
-        legacyRefreshUserAppsFullNames()
-        refreshAllOrgsStudyInformation()
-        refreshSystemApps()
-        legacyRefreshDevicesCache()
-        refreshAllOrgsDevicesCache()
-        legacyRefreshStudyInformation()
-    }
 }

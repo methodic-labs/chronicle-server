@@ -4,6 +4,7 @@ import com.codahale.metrics.annotation.Timed
 import com.openlattice.chronicle.data.ChronicleDeleteType
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import org.slf4j.LoggerFactory
+import org.springframework.stereotype.Service
 import java.util.*
 
 /**
@@ -13,6 +14,7 @@ import java.util.*
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
  */
+@Service
 class DataDeletionService(
         private val enrollmentManager: EnrollmentManager
 ) : DataDeletionManager {
