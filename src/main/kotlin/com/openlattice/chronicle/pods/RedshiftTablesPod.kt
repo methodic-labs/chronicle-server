@@ -2,10 +2,15 @@ package com.openlattice.chronicle.pods
 
 import com.openlattice.chronicle.storage.RedshiftDataTables
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.REDSHIFT_ENVIRONMENT
+import com.openlattice.postgres.PostgresTableDefinition
 import com.openlattice.postgres.PostgresTables
+import com.openlattice.postgres.RedshiftTableDefinition
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Profile
+import java.lang.reflect.Field
+import java.lang.reflect.Modifier
+import java.util.*
 import java.util.stream.Stream
 
 /**
@@ -19,10 +24,23 @@ class RedshiftTablesPod {
     @Bean
     fun redshiftTables(): PostgresTables {
         return PostgresTables {
-            Stream.of(
-                    RedshiftDataTables.CHRONICLE_USAGE_EVENTS,
-                    RedshiftDataTables.CHRONICLE_USAGE_STATS
-            )
+            Stream.of(*RedshiftDataTables::class.java.fields)
+                    .filter { field: Field ->
+                        (Modifier.isStatic(field.modifiers) && Modifier.isFinal(field.modifiers))
+                    }.filter { field: Field ->
+                        PostgresTableDefinition::class.java.isAssignableFrom(field.type)
+                    }
+                    .map { field: Field ->
+                        try {
+                            return@map field[null] as PostgresTableDefinition
+                        } catch (e: IllegalAccessException) {
+                            return@map null
+                        }
+                    }.filter { obj: PostgresTableDefinition? ->
+                        Objects.nonNull(
+                                obj
+                        )
+                    }
         }
     }
 }

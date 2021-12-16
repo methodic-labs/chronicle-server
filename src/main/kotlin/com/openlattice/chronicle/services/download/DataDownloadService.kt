@@ -1,13 +1,6 @@
 package com.openlattice.chronicle.services.download
 
-import com.google.common.collect.ImmutableSet
-import com.openlattice.chronicle.constants.OutputConstants
 import com.openlattice.chronicle.constants.ParticipantDataType
-import com.openlattice.chronicle.util.ChronicleServerUtil
-import com.openlattice.client.ApiClient
-import com.openlattice.client.RetrofitFactory
-import com.openlattice.edm.set.EntitySetPropertyMetadata
-import org.apache.olingo.commons.api.edm.FullQualifiedName
 import org.slf4j.LoggerFactory
 import java.util.*
 
@@ -28,10 +21,6 @@ class DataDownloadService() : DataDownloadManager {
             token: String?): Iterable<Map<String, Set<Any>>> {
 
         return try {
-            val apiClient = ApiClient(RetrofitFactory.Environment.PROD_INTEGRATION) { token }
-            val entitySetsApi = apiClient.entitySetsApi
-            val graphApi = apiClient.graphApi
-
             val srcPropertiesToInclude = DownloadTypePropertyTypeFqns.SRC.getValue(dataType)
             val edgePropertiesToInclude = DownloadTypePropertyTypeFqns.EDGE.getValue(dataType)
             TODO("Not yet implemented")

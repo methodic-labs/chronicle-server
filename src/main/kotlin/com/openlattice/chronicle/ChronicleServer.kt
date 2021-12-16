@@ -9,13 +9,10 @@ import com.kryptnostic.rhizome.hazelcast.serializers.RhizomeUtils.Pods
 import com.kryptnostic.rhizome.pods.hazelcast.RegistryBasedHazelcastInstanceConfigurationPod
 import com.openlattice.auth0.Auth0Pod
 import com.openlattice.aws.AwsS3Pod
-import com.openlattice.chronicle.pods.ChronicleServerSecurityPod
-import com.openlattice.chronicle.pods.ChronicleServerServicesPod
-import com.openlattice.chronicle.pods.ChronicleServerServletsPod
-import com.openlattice.chronicle.storage.PostgresDataTables
-import com.openlattice.chronicle.storage.RedshiftDataTables
-import com.openlattice.data.serializers.FullQualifiedNameJacksonSerializer
+import com.openlattice.chronicle.pods.*
+import com.openlattice.chronicle.serializers.FullQualifiedNameJacksonSerializer
 import com.openlattice.jdbc.JdbcPod
+import com.openlattice.postgres.PostgresPod
 
 /**
  *
@@ -43,8 +40,9 @@ class ChronicleServer(vararg pods: Class<*>?) : BaseRhizomeServer(
                 AwsS3Pod::class.java,
                 JdbcPod::class.java,
                 ChronicleServerServicesPod::class.java,
-                PostgresDataTables::class.java,
-                RedshiftDataTables::class.java
+                PostgresPod::class.java,
+                PostgresTablesPod::class.java,
+                RedshiftTablesPod::class.java
         )
 
         @Throws(Exception::class)
@@ -55,7 +53,7 @@ class ChronicleServer(vararg pods: Class<*>?) : BaseRhizomeServer(
         }
 
         init {
-            ObjectMappers.foreach { mapper: ObjectMapper? ->
+            ObjectMappers.foreach { mapper: ObjectMapper ->
                 FullQualifiedNameJacksonSerializer.registerWithMapper(
                         mapper
                 )
@@ -69,7 +67,7 @@ class ChronicleServer(vararg pods: Class<*>?) : BaseRhizomeServer(
     }
 
     @Throws(Exception::class)
-    override fun start(vararg profiles: String?) {
+    override fun start(vararg profiles: String) {
         super.start(*profiles)
     }
 }

@@ -9,6 +9,15 @@ import com.openlattice.postgres.PostgresDatatype
  */
 class PostgresColumns {
     companion object {
-        val ID = PostgresColumnDefinition("id", PostgresDatatype.UUID).primaryKey().notNull()
+        val ORGANIZATION_ID = PostgresColumnDefinition("organization_id", PostgresDatatype.UUID).notNull()
+        val STUDY_ID = PostgresColumnDefinition("study_id", PostgresDatatype.UUID).notNull()
+        val PARTICIPANT_ID = PostgresColumnDefinition("particpant_id", PostgresDatatype.TEXT).notNull()
+        val TITLE = PostgresColumnDefinition("title", PostgresDatatype.TEXT)
+        val DESCRIPTION = PostgresColumnDefinition("title", PostgresDatatype.TEXT)
+        val SETTINGS = PostgresColumnDefinition("settings", PostgresDatatype.JSONB)
+        val NAME = PostgresColumnDefinition("name", PostgresDatatype.TEXT)
+        val FIRST_NAME = PostgresColumnDefinition("first_name", PostgresDatatype.TEXT)
+        val LAST_NAME = PostgresColumnDefinition("last_name", PostgresDatatype.TEXT)
+        val DATE_OF_BIRTH = PostgresColumnDefinition( "dob", PostgresDatatype.DATE )
     }
 }

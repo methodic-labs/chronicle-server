@@ -25,14 +25,6 @@ package com.openlattice.chronicle.authorization;
 import com.codahale.metrics.annotation.Timed;
 import com.google.common.collect.SetMultimap;
 import com.hazelcast.query.Predicate;
-import com.openlattice.authorization.AccessCheck;
-import com.openlattice.authorization.AceKey;
-import com.openlattice.authorization.Acl;
-import com.openlattice.authorization.AclKey;
-import com.openlattice.authorization.Authorization;
-import com.openlattice.authorization.Permission;
-import com.openlattice.authorization.Principal;
-import com.openlattice.authorization.securable.SecurableObjectType;
 import java.time.OffsetDateTime;
 import java.util.Collection;
 import java.util.EnumMap;
@@ -86,6 +78,7 @@ public interface AuthorizationManager {
             Set<Permission> permissions,
             OffsetDateTime expirationDate );
 
+    @Timed
     void addPermission(
             AclKey aclKeys,
             Principal principal,

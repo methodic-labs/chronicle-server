@@ -13,12 +13,12 @@ class RedshiftColumns {
     companion object {
         val APP_PACKAGE_NAME = PostgresColumnDefinition("app_package_name", PostgresDatatype.TEXT)
 
-        val ID = PostgresColumnDefinition("id", PostgresDatatype.TEXT).notNull()
+        val ID = PostgresColumnDefinition("id", PostgresDatatype.TEXT_UUID).notNull()
         //IMPORTANCE in client code base
         val INTERACTION_TYPE = PostgresColumnDefinition("interaction_type", PostgresDatatype.TEXT)
         val TIMESTAMP = PostgresColumnDefinition("event_timestamp", PostgresDatatype.TIMESTAMPTZ)
         val TIMEZONE = PostgresColumnDefinition("timezone", PostgresDatatype.TEXT)
-        val USER = PostgresColumnDefinition("user", PostgresDatatype.TIMESTAMPTZ)
+        val USERNAME = PostgresColumnDefinition("username", PostgresDatatype.TEXT)
         val APPLICATION_LABEL = PostgresColumnDefinition("application_label", PostgresDatatype.TEXT)
         val START_TIME = PostgresColumnDefinition("start_time", PostgresDatatype.TIMESTAMPTZ )
         val END_TIME = PostgresColumnDefinition("end_time", PostgresDatatype.TIMESTAMPTZ )
@@ -26,20 +26,21 @@ class RedshiftColumns {
         val DURATION = PostgresColumnDefinition("duration", PostgresDatatype.BIGINT )
 
         val FQNS_TO_COLUMNS: Map<FullQualifiedName, PostgresColumnDefinition> = mapOf(
-                EdmConstants.OL_ID_FQN to ID,
+//                EdmConstants.OL_ID_FQN to ID,
+                EdmConstants.STRING_ID_FQN to ID,
                 EdmConstants.FULL_NAME_FQN to APP_PACKAGE_NAME,
                 EdmConstants.RECORD_TYPE_FQN to INTERACTION_TYPE,
                 EdmConstants.DATE_LOGGED_FQN to TIMESTAMP,
                 EdmConstants.TIMEZONE_FQN to TIMEZONE,
-                EdmConstants.USER_FQN to USER,
+                EdmConstants.USER_FQN to USERNAME,
                 EdmConstants.TITLE_FQN to APPLICATION_LABEL,
                 EdmConstants.START_DATE_TIME_FQN to START_TIME,
                 EdmConstants.END_DATE_TIME_FQN to END_TIME,
                 EdmConstants.DURATION_FQN to DURATION,
         )
 
-        val ORGANIZATION_ID = PostgresColumnDefinition("organization_id", PostgresDatatype.TEXT).notNull()
-        val STUDY_ID = PostgresColumnDefinition("study_id", PostgresDatatype.TEXT).notNull()
+        val ORGANIZATION_ID = PostgresColumnDefinition("organization_id", PostgresDatatype.TEXT_UUID).notNull()
+        val STUDY_ID = PostgresColumnDefinition("study_id", PostgresDatatype.TEXT_UUID).notNull()
         val PARTICIPANT_ID = PostgresColumnDefinition("participant_id", PostgresDatatype.TEXT).notNull()
 
 

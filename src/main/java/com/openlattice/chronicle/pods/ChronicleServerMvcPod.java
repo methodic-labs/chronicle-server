@@ -20,14 +20,15 @@
 package com.openlattice.chronicle.pods;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.openlattice.chronicle.constants.*;
+import com.openlattice.chronicle.constants.CustomMediaType;
 import com.openlattice.chronicle.controllers.legacy.ChronicleController;
 import com.openlattice.chronicle.controllers.v2.ChronicleControllerV2;
 import com.openlattice.chronicle.converters.IterableCsvHttpMessageConverter;
 import com.openlattice.chronicle.converters.YamlHttpMessageConverter;
 import com.openlattice.chronicle.util.ChronicleServerExceptionHandler;
-import com.openlattice.data.DataApi;
 import com.ryantenney.metrics.spring.config.annotation.EnableMetrics;
+import java.util.List;
+import javax.inject.Inject;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
@@ -40,9 +41,6 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.web.servlet.config.annotation.ContentNegotiationConfigurer;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurationSupport;
-
-import javax.inject.Inject;
-import java.util.List;
 
 @Configuration
 @ComponentScan(
@@ -63,7 +61,7 @@ import java.util.List;
 @EnableMetrics(
         proxyTargetClass = true )
 public class ChronicleServerMvcPod extends WebMvcConfigurationSupport {
-
+    public static final String FILE_TYPE = "fileType";
     @Inject
     private ObjectMapper defaultObjectMapper;
 
@@ -96,7 +94,7 @@ public class ChronicleServerMvcPod extends WebMvcConfigurationSupport {
 
     @Override
     protected void configureContentNegotiation( ContentNegotiationConfigurer configurer ) {
-        configurer.parameterName( DataApi.FILE_TYPE )
+        configurer.parameterName( FILE_TYPE )
                 .favorParameter( true )
                 .mediaType( "csv", CustomMediaType.TEXT_CSV )
                 .mediaType( "json", MediaType.APPLICATION_JSON )
