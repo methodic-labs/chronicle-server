@@ -4,7 +4,7 @@ import com.codahale.metrics.annotation.Timed
 import com.google.common.base.Optional
 import com.google.common.collect.SetMultimap
 import com.openlattice.chronicle.api.ChronicleApi
-import com.openlattice.chronicle.constants.AppComponent
+import com.openlattice.chronicle.settings.AppComponent
 import com.openlattice.chronicle.data.ChronicleAppsUsageDetails
 import com.openlattice.chronicle.data.ChronicleQuestionnaire
 import com.openlattice.chronicle.data.ParticipationStatus

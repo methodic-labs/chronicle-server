@@ -1,5 +1,6 @@
 package com.openlattice.chronicle.services.settings
 
+import com.openlattice.chronicle.organizations.OrganizationSettings
 import java.util.*
 
 /**

@@ -52,6 +52,12 @@ interface AuthorizingComponent {
         }
     }
 
+    fun ensureAuthenticated() {
+        if (!Principals.getCurrentPrincipals().contains(SystemRole.AUTHENTICATED_USER.principal)) {
+            throw ForbiddenException("User is not authenticated.")
+        }
+    }
+
     fun isAuthorized(
             requiredPermission: Permission,
             vararg requiredPermissions: Permission
@@ -118,7 +124,8 @@ interface AuthorizingComponent {
 
     val isAdmin: Boolean
         get() = Principals.getCurrentPrincipals().contains(
-                Principals.getAdminRole())
+                Principals.getAdminRole()
+        )
 
     fun ensureAdminAccess() {
         if (!isAdmin) {

@@ -14,7 +14,7 @@ class StorageResolver(
         private val defaultStorage: String
 ) {
     private val datasourceMappings: Map<UUID, String> = mutableMapOf()
-    fun resolve(studyId: UUID ) : Pair<PostgresFlavor, HikariDataSource> {
+    fun resolve(studyId: UUID) : Pair<PostgresFlavor, HikariDataSource> {
         val dataSourceName = datasourceMappings[studyId] ?: defaultStorage
         return dataSourceManager.getFlavor(dataSourceName) to dataSourceManager.getDataSource(dataSourceName )
     }

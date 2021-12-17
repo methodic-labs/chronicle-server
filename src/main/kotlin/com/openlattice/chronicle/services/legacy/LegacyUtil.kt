@@ -1,7 +1,7 @@
 package com.openlattice.chronicle.services.legacy
 
-import com.openlattice.chronicle.services.settings.ChronicleDataCollectionSettings
-import com.openlattice.chronicle.services.settings.OrganizationSettings
+import com.openlattice.chronicle.organizations.ChronicleDataCollectionSettings
+import com.openlattice.chronicle.organizations.OrganizationSettings
 
 /**
  *
