@@ -3,7 +3,6 @@ package com.openlattice.chronicle.services.upload
 import com.geekbeast.configuration.postgres.PostgresFlavor
 import com.geekbeast.util.StopWatch
 import com.google.common.collect.*
-import com.openlattice.chronicle.constants.AppUsageFrequency
 import com.openlattice.chronicle.constants.EdmConstants.*
 import com.openlattice.chronicle.constants.OutputConstants
 import com.openlattice.chronicle.data.ParticipationStatus
@@ -11,6 +10,7 @@ import com.openlattice.chronicle.services.ScheduledTasksManager
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import com.openlattice.chronicle.services.legacy.LegacyEdmResolver
 import com.openlattice.chronicle.services.settings.OrganizationSettingsManager
+import com.openlattice.chronicle.settings.AppUsageFrequency
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.FQNS_TO_COLUMNS
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.CHRONICLE_USAGE_EVENTS
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.getAppendTembTableSql

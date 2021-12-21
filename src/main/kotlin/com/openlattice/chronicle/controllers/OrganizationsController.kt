@@ -25,7 +25,7 @@ class OrganizationsController @Inject constructor(
 
     override fun createOrganization(organizationPrincipal: OrganizationPrincipal): UUID {
         ensureAuthenticated()
-        chronicleOrganizationService.createOrganization(organizationPrincipal)
+        return chronicleOrganizationService.createOrganization(organizationPrincipal)
     }
 
     override fun searchOrganizations(): Collection<OrganizationPrincipal> {
