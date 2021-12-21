@@ -4,10 +4,7 @@ import com.codahale.metrics.annotation.Timed;
 import com.google.common.base.Optional;
 import com.google.common.collect.SetMultimap;
 import com.openlattice.chronicle.api.ChronicleApi;
-import com.openlattice.chronicle.data.ChronicleAppsUsageDetails;
-import com.openlattice.chronicle.data.ChronicleQuestionnaire;
-import com.openlattice.chronicle.data.MessageDetails;
-import com.openlattice.chronicle.data.ParticipationStatus;
+import com.openlattice.chronicle.data.*;
 import com.openlattice.chronicle.services.edm.EdmCacheManager;
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager;
 import com.openlattice.chronicle.services.entitysets.EntitySetIdsManager;
@@ -186,16 +183,15 @@ public class ChronicleControllerV2 implements ChronicleApi {
     @RequestMapping(
             path = { ORGANIZATION_ID_PATH + MESSAGE_PATH + STATUS_PATH },
             method = RequestMethod.POST )
-    @ResponseStatus( HttpStatus.OK )
+    @ResponseStatus( HttpStatus.NO_CONTENT )
     public void updateMessageStatus(
             @PathVariable ( ORGANIZATION_ID ) UUID organizationId,
-            HttpServletRequest request
+            @RequestParam ( MESSAGE_ID ) String messageId,
+            @RequestParam ( MESSAGE_STATUS ) MessageStatus messageStatus
     ) throws ExecutionException {
-        String messageSid = request.getParameter( "MessageId ");
-        String status = request.getParameter( "MessageStatus" );
 
-        if ( status.equals( "undelivered" ) || status.equals( "failed" ) ) {
-            messageService.trackUndeliveredMessage( organizationId, messageSid );
+        if ( messageStatus.equals( MessageStatus.undelivered ) || messageStatus.equals( MessageStatus.failed ) ) {
+            messageService.trackUndeliveredMessage( organizationId, messageId );
         }
     }
 
