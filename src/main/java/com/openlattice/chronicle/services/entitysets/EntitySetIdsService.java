@@ -257,18 +257,17 @@ public class EntitySetIdsService implements EntitySetIdsManager {
                 .getOrDefault( organizationId, ImmutableMap.of() );
 
         if ( templateEntitySetIdMap.isEmpty() ) {
-            logger.error( "organization {} does not have chronicle data collection app installed ", organizationId );
-            return null;
+            logger.warn( "organization {} does not have chronicle data collection app installed ", organizationId );
         }
 
         return new ChronicleDataCollectionAppConfig(
-                templateEntitySetIdMap.get( APP_DICTIONARY ),
-                templateEntitySetIdMap.get( RECORDED_BY ),
-                templateEntitySetIdMap.get( DEVICE ),
-                templateEntitySetIdMap.get( USED_BY ),
-                templateEntitySetIdMap.get( USER_APPS ),
-                templateEntitySetIdMap.get( PREPROCESSED_DATA ),
-                templateEntitySetIdMap.get( APPDATA )
+                templateEntitySetIdMap.getOrDefault( APP_DICTIONARY, null ),
+                templateEntitySetIdMap.getOrDefault( RECORDED_BY, null ),
+                templateEntitySetIdMap.getOrDefault( DEVICE, null ),
+                templateEntitySetIdMap.getOrDefault( USED_BY, null ),
+                templateEntitySetIdMap.getOrDefault( USER_APPS, null ),
+                templateEntitySetIdMap.getOrDefault( PREPROCESSED_DATA, null ),
+                templateEntitySetIdMap.getOrDefault( APPDATA, null )
         );
     }
 
@@ -283,19 +282,18 @@ public class EntitySetIdsService implements EntitySetIdsManager {
                 .getOrDefault( organizationId, ImmutableMap.of() );
 
         if ( templateEntitySetIdMap.isEmpty() ) {
-            logger.error( "organization {} does not have chronicle surveys app installed ", organizationId );
-            return null;
+            logger.warn( "organization {} does not have chronicle surveys app installed ", organizationId );
         }
 
         return new ChronicleSurveysAppConfig(
-                templateEntitySetIdMap.get( SURVEY ),
-                templateEntitySetIdMap.get( TIME_RANGE ),
-                templateEntitySetIdMap.get( SUBMISSION ),
-                templateEntitySetIdMap.get( REGISTERED_FOR ),
-                templateEntitySetIdMap.get( RESPONDS_WITH ),
-                templateEntitySetIdMap.get( ADDRESSES ),
-                templateEntitySetIdMap.get( ANSWER ),
-                templateEntitySetIdMap.get( QUESTION )
+                templateEntitySetIdMap.getOrDefault( SURVEY, null ),
+                templateEntitySetIdMap.getOrDefault( TIME_RANGE, null ),
+                templateEntitySetIdMap.getOrDefault( SUBMISSION, null ),
+                templateEntitySetIdMap.getOrDefault( REGISTERED_FOR, null ),
+                templateEntitySetIdMap.getOrDefault( RESPONDS_WITH, null ),
+                templateEntitySetIdMap.getOrDefault( ADDRESSES, null ),
+                templateEntitySetIdMap.getOrDefault( ANSWER, null ),
+                templateEntitySetIdMap.getOrDefault( QUESTION, null )
         );
     }
 
