@@ -38,8 +38,10 @@ import static com.openlattice.chronicle.constants.EdmConstants.RECORDED_DATE_TIM
 import static com.openlattice.chronicle.constants.EdmConstants.RECORD_TYPE_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.START_DATE_TIME_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.STRING_ID_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.TIMEZONE_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.TITLE_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.USER_FQN;
+import static com.openlattice.chronicle.constants.OutputConstants.DEFAULT_TIMEZONE;
 import static com.openlattice.chronicle.constants.OutputConstants.MINIMUM_DATE;
 import static com.openlattice.chronicle.util.ChronicleServerUtil.ORG_STUDY_PARTICIPANT;
 import static com.openlattice.chronicle.util.ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE;
@@ -543,11 +545,15 @@ public class AppDataUploadService implements AppDataUploadManager {
             String deviceUser = getFirstValueOrNull( appEntity, USER_FQN );
             deviceUser = deviceUser == null ? "" : deviceUser;
             Map<UUID, Set<Object>> usedByEntityData = getUsedByEntity( appPackageName, dateLogged, participantId, deviceUser );
+
             EntityKey usedByEK = getUsedByEntityKey( usedByESID, usedByEntityData );
             usedByEntityData.remove( edmCacheManager
                     .getPropertyTypeId( FULL_NAME_FQN ) ); // FULL_NAME_FQN shouldn't be stored
             usedByEntityData.remove( edmCacheManager
                     .getPropertyTypeId( PERSON_ID_FQN ) ); // PERSON_ID_FQN shouldn't be stored
+            String timezone = getFirstValueOrNull( appEntity, TIMEZONE_FQN );
+            timezone = timezone == null ? DEFAULT_TIMEZONE : timezone;
+            usedByEntityData.put( edmCacheManager.getPropertyTypeId( TIMEZONE_FQN ), ImmutableSet.of(timezone) );
 
             // we generate the entity key id using a truncated date to enforce uniqueness, but we'll store the actual datetime value
             usedByEntityData.put( edmCacheManager.getPropertyTypeId( DATE_TIME_FQN ), ImmutableSet.of( eventDate ) );
