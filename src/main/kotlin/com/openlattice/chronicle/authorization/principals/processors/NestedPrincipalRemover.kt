@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017. OpenLattice, Inc
+ * Copyright (C) 2018. OpenLattice, Inc.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,9 +17,16 @@
  * You can contact the owner of the copyright at support@openlattice.com
  *
  */
-package com.openlattice.chronicle.authorization
+package com.openlattice.chronicle.authorization.principals.processors
 
-/**
- * @author Matthew Tamayo-Rios &lt;matthew@openlattice.com&gt;
- */
-class AclKeySet(s: MutableSet<AclKey> = mutableSetOf()) : MutableSet<AclKey> by s
+import com.kryptnostic.rhizome.hazelcast.processors.AbstractRemover
+import com.openlattice.chronicle.authorization.AclKey
+import com.openlattice.chronicle.authorization.AclKeySet
+
+class NestedPrincipalRemover(principalsToRemove: Iterable<AclKey>) : AbstractRemover<AclKey, AclKeySet, AclKey>(
+        principalsToRemove
+) {
+    companion object {
+        private const val serialVersionUID = 6100482436786837269L
+    }
+}

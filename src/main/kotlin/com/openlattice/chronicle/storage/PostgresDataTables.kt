@@ -10,14 +10,15 @@ class PostgresDataTables {
     companion object {
         const val POSTGRES_DATA_ENVIRONMENT = "postgres_data"
 
-        @JvmStatic
+        @JvmField
         val CHRONICLE_USAGE_EVENTS = PostgresTableDefinition("chronicle_usage_events")
             .addColumns(*RedshiftDataTables.CHRONICLE_USAGE_EVENTS.columns.toTypedArray())
             .primaryKey(*RedshiftDataTables.CHRONICLE_USAGE_EVENTS.columns.toTypedArray())
 
-        @JvmStatic
+        @JvmField
         val CHRONICLE_USAGE_STATS = PostgresTableDefinition("chronicle_usage_stats")
             .addColumns(*RedshiftDataTables.CHRONICLE_USAGE_STATS.columns.toTypedArray())
             .primaryKey(*RedshiftDataTables.CHRONICLE_USAGE_EVENTS.columns.toTypedArray())
+
     }
 }

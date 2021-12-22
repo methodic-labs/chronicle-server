@@ -1,12 +1,21 @@
 package com.openlattice.chronicle.storage
 
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DATE_OF_BIRTH
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DESCRIPTION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.FIRST_NAME
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LAST_NAME
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.LSB
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.MSB
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.NAME
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTITION_INDEX
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_OF_ACL_KEY
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_TYPE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECTID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_TYPE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SETTINGS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TITLE
@@ -63,5 +72,46 @@ class ChroniclePostgresTables {
                         SETTINGS
                 )
                 .primaryKey(PARTICIPANT_ID)
+
+        /**
+         * Authorization tables
+         *
+         */
+
+        /**
+         * Table containing all securable principals
+         */
+        @JvmField
+        val PRINCIPALS = PostgresTableDefinition("principals")
+                .addColumns(ACL_KEY, PRINCIPAL_TYPE, PRINCIPAL_ID, TITLE, DESCRIPTION)
+                .primaryKey(ACL_KEY)
+                .setUnique(PRINCIPAL_TYPE, PRINCIPAL_ID)
+
+        @JvmField
+        val PRINCIPAL_TREES = PostgresTableDefinition("principal_trees")
+                .addColumns(ACL_KEY, PRINCIPAL_OF_ACL_KEY)
+                .primaryKey(ACL_KEY, PRINCIPAL_OF_ACL_KEY)
+
+        @JvmField
+        val ID_GENERATION = PostgresTableDefinition("id_gen")
+                .primaryKey(PARTITION_INDEX)
+                .addColumns(PARTITION_INDEX, MSB, LSB)
+
+        @JvmField
+        val PERMISSIONS = PostgresTableDefinition("permissions")
+                .addColumns(
+                        ACL_KEY,
+                        PRINCIPAL_TYPE,
+                        PRINCIPAL_ID,
+                        PostgresColumns.PERMISSIONS,
+                        PostgresColumns.EXPIRATION_DATE
+                )
+                .primaryKey(ACL_KEY, PRINCIPAL_TYPE, PRINCIPAL_ID)
+
+        val SECURABLE_OBJECTS = PostgresTableDefinition("securable_objects")
+                .addColumns(ACL_KEY, SECURABLE_OBJECT_TYPE,SECURABLE_OBJECTID, NAME)
+                .setUnique(SECURABLE_OBJECTID)
+                .primaryKey(ACL_KEY)
+
     }
 }

@@ -17,9 +17,27 @@
  * You can contact the owner of the copyright at support@openlattice.com
  *
  */
-package com.openlattice.chronicle.authorization
+
+package com.openlattice.chronicle.mapstores.ids;
+
+import com.hazelcast.core.Offloadable;
+import com.kryptnostic.rhizome.hazelcast.processors.AbstractRhizomeEntryProcessor;
+import java.util.Map.Entry;
+import java.util.UUID;
 
 /**
  * @author Matthew Tamayo-Rios &lt;matthew@openlattice.com&gt;
  */
-class AclKeySet(s: MutableSet<AclKey> = mutableSetOf()) : MutableSet<AclKey> by s
+public class IdGeneratingEntryProcessor extends AbstractRhizomeEntryProcessor<Integer, Range, UUID>
+        implements Offloadable {
+    @Override
+    public UUID process( Entry<Integer, Range> entry ) {
+        final Range range = entry.getValue(); //Range should never be null in the EP.
+        return range.nextId();
+    }
+
+    @Override public String getExecutorName() {
+        return OFFLOADABLE_EXECUTOR;
+    }
+}
+
