@@ -187,7 +187,7 @@ public class ChronicleControllerV2 implements ChronicleApi {
             @PathVariable ( ORGANIZATION_ID ) UUID organizationId,
             @RequestParam ( MESSAGE_ID ) String messageId,
             @RequestParam ( MESSAGE_STATUS ) MessageStatus messageStatus
-    ) throws ExecutionException {
+    ) {
 
         if ( messageStatus.equals( MessageStatus.undelivered ) || messageStatus.equals( MessageStatus.failed ) ) {
             messageService.trackUndeliveredMessage( organizationId, messageId );
