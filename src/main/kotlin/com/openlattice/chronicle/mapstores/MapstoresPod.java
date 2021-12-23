@@ -27,68 +27,24 @@ import com.geekbeast.rhizome.jobs.DistributableJob;
 import com.geekbeast.rhizome.jobs.PostgresJobsMapStore;
 import com.google.common.eventbus.EventBus;
 import com.kryptnostic.rhizome.mapstores.SelfRegisteringMapStore;
-import com.openlattice.apps.App;
-import com.openlattice.apps.AppConfigKey;
-import com.openlattice.apps.AppTypeSetting;
-import com.openlattice.assembler.EntitySetAssemblyKey;
-import com.openlattice.assembler.MaterializedEntitySet;
-import com.openlattice.assembler.OrganizationAssembly;
-import com.openlattice.auditing.AuditRecordEntitySetConfiguration;
 import com.openlattice.auth0.Auth0Pod;
 import com.openlattice.auth0.Auth0TokenProvider;
 import com.openlattice.auth0.AwsAuth0TokenProvider;
 import com.openlattice.authentication.Auth0Configuration;
-import com.openlattice.authorization.AceKey;
-import com.openlattice.authorization.AceValue;
-import com.openlattice.authorization.AclKey;
-import com.openlattice.authorization.SecurablePrincipal;
-import com.openlattice.authorization.securable.SecurableObjectType;
 import com.openlattice.chronicle.authorization.AceKey;
 import com.openlattice.chronicle.authorization.AceValue;
 import com.openlattice.chronicle.authorization.AclKey;
-import com.openlattice.chronicle.authorization.SecurableObjectType;
 import com.openlattice.chronicle.authorization.SecurablePrincipal;
 import com.openlattice.chronicle.authorization.principals.PrincipalMapstore;
 import com.openlattice.chronicle.mapstores.authorization.PermissionMapstore;
+import com.openlattice.chronicle.mapstores.authorization.PrincipalTreesMapstore;
 import com.openlattice.chronicle.mapstores.ids.IdGenerationMapstore;
 import com.openlattice.chronicle.mapstores.ids.Range;
-import com.openlattice.chronicle.mapstores.principals.PrincipalTreesMapstore;
-import com.openlattice.collaborations.mapstores.CollaborationMapstore;
-import com.openlattice.collaborations.mapstores.ProjectedTablesMapstore;
-import com.openlattice.collections.CollectionTemplateKey;
-import com.openlattice.collections.EntitySetCollection;
-import com.openlattice.collections.EntityTypeCollection;
-import com.openlattice.collections.mapstores.EntitySetCollectionConfigMapstore;
-import com.openlattice.collections.mapstores.EntitySetCollectionMapstore;
-import com.openlattice.collections.mapstores.EntityTypeCollectionMapstore;
-import com.openlattice.datasets.ObjectMetadataMapstore;
-import com.openlattice.directory.MaterializedViewAccount;
-import com.openlattice.edm.EntitySet;
-import com.openlattice.edm.type.AssociationType;
-import com.openlattice.edm.type.EntityType;
-import com.openlattice.edm.type.PropertyType;
-import com.openlattice.entitysets.DeletedEntitySetMapstore;
-import com.openlattice.hazelcast.mapstores.shuttle.IntegrationJobsMapstore;
-import com.openlattice.hazelcast.mapstores.shuttle.IntegrationsMapstore;
-import com.openlattice.ids.IdGenerationMapstore;
-import com.openlattice.ids.Range;
 import com.openlattice.ids.mapstores.LongIdsMapstore;
-import com.openlattice.linking.mapstores.LinkingFeedbackMapstore;
-import com.openlattice.notifications.sms.SmsInformationMapstore;
-import com.openlattice.organization.ExternalColumn;
-import com.openlattice.organization.ExternalTable;
 import com.openlattice.organizations.Organization;
-import com.openlattice.organizations.mapstores.ExternalColumnsMapstore;
-import com.openlattice.organizations.mapstores.ExternalTablesMapstore;
-import com.openlattice.organizations.mapstores.OrganizationDatabasesMapstore;
 import com.openlattice.organizations.mapstores.OrganizationsMapstore;
-import com.openlattice.organizations.mapstores.WarehousesMapstore;
 import com.openlattice.postgres.PostgresPod;
 import com.openlattice.postgres.PostgresTableManager;
-import com.openlattice.requests.Status;
-import com.openlattice.scheduling.mapstores.ScheduledTasksMapstore;
-import com.openlattice.shuttle.Integration;
-import com.openlattice.shuttle.IntegrationJob;
 import com.zaxxer.hikari.HikariDataSource;
 import java.util.UUID;
 import javax.inject.Inject;
@@ -129,23 +85,17 @@ public class MapstoresPod {
         return new PermissionMapstore( hikariDataSource, eventBus );
     }
 
-    @Bean
-    public SelfRegisteringMapStore<AclKey, SecurableObjectType> securableObjectTypeMapstore() {
-        return new SecurableObjectTypeMapstore( hikariDataSource );
-    }
+//    @Bean
+//    public SelfRegisteringMapStore<AclKey, SecurableObjectType> securableObjectTypeMapstore() {
+//        return new SecurableObjectTypeMapstore( hikariDataSource );
+//    }
 
-    @Bean
-    public SelfRegisteringMapStore<String, UUID> aclKeysMapstore() {
-        return new AclKeysMapstore( hikariDataSource );
-    }
+//    @Bean
+//    public SelfRegisteringMapStore<String, UUID> aclKeysMapstore() {
+//        return new AclKeysMapstore( hikariDataSource );
+//    }
 
-    @Bean
-    public SelfRegisteringMapStore<UUID, String> namesMapstore() {
-        return new NamesMapstore( hikariDataSource );
-    }
-
-
-    @Bean
+        @Bean
     public SelfRegisteringMapStore<AclKey, SecurablePrincipal> principalsMapstore() {
         return new PrincipalMapstore( hikariDataSource );
     }
@@ -183,11 +133,11 @@ public class MapstoresPod {
         return new PrincipalTreesMapstore( hikariDataSource );
     }
 
-
-    @Bean
-    public SecurablePrincipalsMapLoader securablePrincipalsMapLoader() {
-        return new SecurablePrincipalsMapLoader();
-    }
+//
+//    @Bean
+//    public SecurablePrincipalsMapLoader securablePrincipalsMapLoader() {
+//        return new SecurablePrincipalsMapLoader();
+//    }
 
     @Bean
     public ResolvedPrincipalTreesMapLoader resolvedPrincipalTreesMapLoader() {

@@ -33,7 +33,16 @@ class PostgresColumns {
         val EXPIRATION_DATE = PostgresColumnDefinition("expiration_date", PostgresDatatype.TIMESTAMPTZ)
                 .withDefault("'infinity'")
                 .notNull()
-        val SECURABLE_OBJECTID = PostgresColumnDefinition("securable_objectid", PostgresDatatype.UUID).notNull()
-        val SECURABLE_OBJECT_TYPE = PostgresColumnDefinition("securable_object_type", PostgresDatatype.TEXT).notNull()
+
+
+        val SECURABLE_OBJECT_NAME = PostgresColumnDefinition("name", PostgresDatatype.TEXT)
+                .notNull()
+                .unique()
+        val SECURABLE_OBJECT_ID = PostgresColumnDefinition("id", PostgresDatatype.UUID)
+                .unique()
+                .notNull()
+
+        val SECURABLE_OBJECT_TYPE = PostgresColumnDefinition("securable_object_type", PostgresDatatype.TEXT)
+                .notNull()
     }
 }

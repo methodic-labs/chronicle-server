@@ -32,11 +32,15 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.DESCRIPTION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LSB
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.MSB
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.NAME
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTITION_INDEX
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PERMISSIONS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_OF_ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_TYPE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_NAME
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_TYPE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TITLE
 import com.openlattice.postgres.PostgresArrays
 import org.slf4j.LoggerFactory
@@ -150,7 +154,7 @@ class ResultSetAdapters {
         @Throws(SQLException::class)
         fun linkedHashSetUUID(rs: ResultSet, colName: String?): LinkedHashSet<UUID> {
             //Curious what happens if a null slips in here
-            return linkedSetOf( *(rs.getArray(colName).array as Array<UUID>))
+            return linkedSetOf(*(rs.getArray(colName).array as Array<UUID>))
         }
 
         @Throws(SQLException::class)
@@ -195,17 +199,22 @@ class ResultSetAdapters {
 
         @Throws(SQLException::class)
         fun securableObjectId(rs: ResultSet): UUID {
-            return rs.getObject(SECURABLE_OBJECTID.getName(), UUID::class.java)
+            return rs.getObject(SECURABLE_OBJECT_ID.name, UUID::class.java)
+        }
+
+        @Throws(SQLException::class)
+        fun securableObjectName(rs: ResultSet): String {
+            return rs.getString(SECURABLE_OBJECT_NAME.name)
         }
 
         @Throws(SQLException::class)
         fun organizationId(rs: ResultSet): UUID {
-            return rs.getObject(ORGANIZATION_ID.getName(), UUID::class.java)
+            return rs.getObject(ORGANIZATION_ID.name, UUID::class.java)
         }
 
         @Throws(SQLException::class)
         fun securableObjectType(rs: ResultSet): SecurableObjectType {
-            return SecurableObjectType.valueOf(rs.getString(SECURABLE_OBJECT_TYPE.getName()))
+            return SecurableObjectType.valueOf(rs.getString(SECURABLE_OBJECT_TYPE.name))
         }
 
         @Throws(SQLException::class)

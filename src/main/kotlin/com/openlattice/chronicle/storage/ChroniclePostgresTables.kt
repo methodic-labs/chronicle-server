@@ -14,7 +14,8 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTITION_IND
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_OF_ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_TYPE
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECTID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_NAME
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_TYPE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SETTINGS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
@@ -109,8 +110,7 @@ class ChroniclePostgresTables {
                 .primaryKey(ACL_KEY, PRINCIPAL_TYPE, PRINCIPAL_ID)
 
         val SECURABLE_OBJECTS = PostgresTableDefinition("securable_objects")
-                .addColumns(ACL_KEY, SECURABLE_OBJECT_TYPE,SECURABLE_OBJECTID, NAME)
-                .setUnique(SECURABLE_OBJECTID)
+                .addColumns(ACL_KEY, SECURABLE_OBJECT_TYPE, SECURABLE_OBJECT_ID, SECURABLE_OBJECT_NAME)
                 .primaryKey(ACL_KEY)
 
     }
