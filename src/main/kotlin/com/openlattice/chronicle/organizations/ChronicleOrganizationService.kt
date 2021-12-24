@@ -1,5 +1,6 @@
 package com.openlattice.chronicle.organizations
 
+import com.openlattice.chronicle.authorization.Principal
 import com.openlattice.chronicle.storage.StorageResolver
 import java.util.*
 
@@ -10,6 +11,10 @@ import java.util.*
 class ChronicleOrganizationService(val storageResolver: StorageResolver) {
     fun createOrganization(organizationPrincipal: OrganizationPrincipal): UUID {
 
+        TODO("Not yet implemented")
+    }
+
+    fun maybeGetOrganization( principal: Principal) : Optional<Organization> {
         TODO("Not yet implemented")
     }
 }
