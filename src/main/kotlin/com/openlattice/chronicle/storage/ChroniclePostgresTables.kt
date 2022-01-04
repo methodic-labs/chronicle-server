@@ -10,6 +10,9 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_I
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SETTINGS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TITLE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION_DATE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_DATA
 import com.openlattice.postgres.PostgresTableDefinition
 
 /**
@@ -63,5 +66,17 @@ class ChroniclePostgresTables {
                         SETTINGS
                 )
                 .primaryKey(PARTICIPANT_ID)
+
+        @JvmField
+        val TIME_USE_DIARY = com.openlattice.postgres.C("time_use_diary")
+                .addColumns(
+                        TUD_ID,
+                        ORGANIZATION_ID,
+                        STUDY_ID,
+                        PARTICIPANT_ID,
+                        SUBMISSION_DATE,
+                        TUD_DATA
+                )
+                .primaryKey(TUD_ID)
     }
 }

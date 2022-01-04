@@ -19,5 +19,8 @@ class PostgresColumns {
         val FIRST_NAME = PostgresColumnDefinition("first_name", PostgresDatatype.TEXT)
         val LAST_NAME = PostgresColumnDefinition("last_name", PostgresDatatype.TEXT)
         val DATE_OF_BIRTH = PostgresColumnDefinition( "dob", PostgresDatatype.DATE )
+        val TUD_ID = PostgresColumnDefinition("tud_id", PostgresDatatype.UUID).notNull()
+        val SUBMISSION_DATE = PostgresColumnDefinition("submission_date", PostgresDatatype.DATE)
+        val TUD_DATA = PostgresColumnDefinition("tud_data", PostgresDatatype.JSONB)
     }
 }

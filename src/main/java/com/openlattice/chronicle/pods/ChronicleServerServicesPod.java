@@ -41,6 +41,8 @@ import com.openlattice.chronicle.services.settings.OrganizationSettingsManager;
 import com.openlattice.chronicle.services.settings.OrganizationSettingsService;
 import com.openlattice.chronicle.services.surveys.SurveysManager;
 import com.openlattice.chronicle.services.surveys.SurveysService;
+import com.openlattice.chronicle.services.timeusediary.TimeUseDiaryManager;
+import com.openlattice.chronicle.services.timeusediary.TimeUseDiaryService;
 import com.openlattice.chronicle.services.upload.AppDataUploadManager;
 import com.openlattice.chronicle.services.upload.AppDataUploadService;
 import com.openlattice.chronicle.storage.StorageResolver;
@@ -127,5 +129,10 @@ public class ChronicleServerServicesPod {
     @Bean
     public SurveysManager surveysManager() throws IOException, ExecutionException {
         return new SurveysService( enrollmentManager() );
+    }
+
+    @Bean
+    public TimeUseDiaryManager timeUseDiaryManager() throws IOException, ExecutionException {
+        return new TimeUseDiaryService(storageResolver());
     }
 }
