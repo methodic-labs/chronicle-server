@@ -44,5 +44,14 @@ class PostgresColumns {
 
         val SECURABLE_OBJECT_TYPE = PostgresColumnDefinition("securable_object_type", PostgresDatatype.TEXT)
                 .notNull()
+
+        val SCOPE = PostgresColumnDefinition("scope", PostgresDatatype.TEXT).notNull()
+        val BASE = PostgresColumnDefinition("base", PostgresDatatype.BIGINT).notNull()
+        val URL = PostgresColumnDefinition("url", PostgresDatatype.TEXT)
+        val CATEGORY = PostgresColumnDefinition("category", PostgresDatatype.TEXT).notNull()
+        val EXPIRATION = PostgresColumnDefinition("expiration", PostgresDatatype.BIGINT)
+        val USER_DATA = PostgresColumnDefinition("user_data", PostgresDatatype.JSONB)
+        val USER_ID = PostgresColumnDefinition("user_id", PostgresDatatype.TEXT).notNull()
+
     }
 }

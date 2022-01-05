@@ -1,8 +1,10 @@
 package com.openlattice.chronicle.storage
 
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.BASE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DATE_OF_BIRTH
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DESCRIPTION
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.EXPIRATION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.FIRST_NAME
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LAST_NAME
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LSB
@@ -14,12 +16,15 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTITION_IND
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_OF_ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_TYPE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.SCOPE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_NAME
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_TYPE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SETTINGS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TITLE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_DATA
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_ID
 import com.openlattice.postgres.PostgresTableDefinition
 
 /**
@@ -74,6 +79,11 @@ class ChroniclePostgresTables {
                 )
                 .primaryKey(PARTICIPANT_ID)
 
+        @JvmField
+        val BASE_LONG_IDS: PostgresTableDefinition = PostgresTableDefinition("base_long_ids")
+                .addColumns(SCOPE, BASE)
+                .primaryKey(SCOPE)
+
         /**
          * Authorization tables
          *
@@ -113,5 +123,9 @@ class ChroniclePostgresTables {
                 .addColumns(ACL_KEY, SECURABLE_OBJECT_TYPE, SECURABLE_OBJECT_ID, SECURABLE_OBJECT_NAME)
                 .primaryKey(ACL_KEY)
 
+        val USERS = PostgresTableDefinition("users")
+                .addColumns(USER_ID, USER_DATA, EXPIRATION)
+                .primaryKey(USER_ID)
+                .overwriteOnConflict()
     }
 }

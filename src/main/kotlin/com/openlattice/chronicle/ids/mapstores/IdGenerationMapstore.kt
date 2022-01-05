@@ -17,13 +17,14 @@
  * You can contact the owner of the copyright at support@openlattice.com
  *
  */
-package com.openlattice.chronicle.mapstores.ids
+package com.openlattice.chronicle.ids.mapstores
 
 import com.hazelcast.config.InMemoryFormat
 import com.hazelcast.config.MapConfig
 import com.hazelcast.config.MapStoreConfig
 import com.hazelcast.config.MapStoreConfig.InitialLoadMode
 import com.openlattice.chronicle.hazelcast.HazelcastMap
+import com.openlattice.chronicle.mapstores.ids.Range
 import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.ID_GENERATION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTITION_INDEX

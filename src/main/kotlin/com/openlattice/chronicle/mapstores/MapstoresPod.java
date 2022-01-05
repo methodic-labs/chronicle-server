@@ -35,14 +35,13 @@ import com.openlattice.chronicle.authorization.AceKey;
 import com.openlattice.chronicle.authorization.AceValue;
 import com.openlattice.chronicle.authorization.AclKey;
 import com.openlattice.chronicle.authorization.SecurablePrincipal;
+import com.openlattice.chronicle.authorization.mapstores.UserMapstore;
 import com.openlattice.chronicle.authorization.principals.PrincipalMapstore;
+import com.openlattice.chronicle.ids.mapstores.IdGenerationMapstore;
+import com.openlattice.chronicle.ids.mapstores.LongIdsMapstore;
 import com.openlattice.chronicle.mapstores.authorization.PermissionMapstore;
 import com.openlattice.chronicle.mapstores.authorization.PrincipalTreesMapstore;
-import com.openlattice.chronicle.mapstores.ids.IdGenerationMapstore;
 import com.openlattice.chronicle.mapstores.ids.Range;
-import com.openlattice.ids.mapstores.LongIdsMapstore;
-import com.openlattice.organizations.Organization;
-import com.openlattice.organizations.mapstores.OrganizationsMapstore;
 import com.openlattice.postgres.PostgresPod;
 import com.openlattice.postgres.PostgresTableManager;
 import com.zaxxer.hikari.HikariDataSource;
@@ -109,11 +108,11 @@ public class MapstoresPod {
     public SelfRegisteringMapStore<String, User> userMapstore() {
         return new UserMapstore( hikariDataSource );
     }
-
-    @Bean
-    public SelfRegisteringMapStore<UUID, Organization> organizationsMapstore() {
-        return new OrganizationsMapstore( hikariDataSource );
-    }
+//
+//    @Bean
+//    public SelfRegisteringMapStore<UUID, Organization> organizationsMapstore() {
+//        return new OrganizationsMapstore( hikariDataSource );
+//    }
 
 
     @Bean
@@ -138,10 +137,10 @@ public class MapstoresPod {
 //    public SecurablePrincipalsMapLoader securablePrincipalsMapLoader() {
 //        return new SecurablePrincipalsMapLoader();
 //    }
-
-    @Bean
-    public ResolvedPrincipalTreesMapLoader resolvedPrincipalTreesMapLoader() {
-        return new ResolvedPrincipalTreesMapLoader();
-    }
+//
+//    @Bean
+//    public ResolvedPrincipalTreesMapLoader resolvedPrincipalTreesMapLoader() {
+//        return new ResolvedPrincipalTreesMapLoader();
+//    }
 
 }

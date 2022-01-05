@@ -21,16 +21,10 @@
 
 package com.openlattice.chronicle.tasks
 
+import com.openlattice.chronicle.hazelcast.serializers.decorators.ByteBlobDataManagerAware
+import com.openlattice.chronicle.ids.IdGenerationServiceDependent
 import com.openlattice.chronicle.storage.ByteBlobDataManager
-import com.openlattice.data.DataGraphService
-import com.openlattice.data.storage.DataSourceResolver
-import com.openlattice.hazelcast.serializers.decorators.ByteBlobDataManagerAware
-import com.openlattice.hazelcast.serializers.decorators.DataGraphAware
-import com.openlattice.hazelcast.serializers.decorators.MetastoreAware
-import com.openlattice.ids.HazelcastIdGenerationService
-import com.openlattice.ids.IdGenerationServiceDependent
-import com.openlattice.ioc.providers.LateInitAware
-import com.openlattice.ioc.providers.LateInitProvider
+import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.tasks.HazelcastInitializationTask
 import com.openlattice.tasks.HazelcastTaskDependencies
 import com.openlattice.tasks.Task
@@ -41,7 +35,7 @@ import javax.inject.Inject
 private val logger = LoggerFactory.getLogger(PostConstructInitializerTaskDependencies::class.java)
 
 /**
- * This class is a more structed equivalent ot using @PostConstruct which being deprecated.
+ * This class is a more structed equivalent ot using @PostConstruct which is being deprecated.
  * @author Matthew Tamayo-Rios &lt;matthew@openlattice.com&gt;
  */
 @Component

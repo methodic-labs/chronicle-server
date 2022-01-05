@@ -28,8 +28,9 @@ import com.openlattice.chronicle.authorization.*
 import com.openlattice.chronicle.hazelcast.HazelcastMap
 import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.storage.ChroniclePostgresTables
+import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.PERMISSIONS
+import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.SECURABLE_OBJECTS
 import com.openlattice.chronicle.storage.PostgresColumns
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.PERMISSIONS
 import com.openlattice.chronicle.util.TestDataFactory
 import com.openlattice.postgres.PostgresArrays.createTextArray
 import com.openlattice.postgres.PostgresArrays.createUuidArray
@@ -44,14 +45,13 @@ import java.sql.ResultSet
 import java.sql.SQLException
 import java.time.OffsetDateTime
 import java.util.*
-import java.util.function.Function
 import java.util.stream.Collectors
 
 /**
  * @author Matthew Tamayo-Rios &lt;matthew@openlattice.com&gt;
  */
 class PermissionMapstore(
-        hds: HikariDataSource?, private val eventBus: EventBus
+        hds: HikariDataSource, private val eventBus: EventBus
 ) : AbstractBasePostgresMapstore<AceKey, AceValue>(HazelcastMap.PERMISSIONS, PERMISSIONS, hds) {
     @Throws(SQLException::class)
     protected override fun bind(
@@ -178,7 +178,7 @@ class PermissionMapstore(
                 .append(
                         whereToSelect.stream()
                                 .map { col: PostgresColumnDefinition ->
-                                    getTableColumn(ChroniclePostgresTables.PERMISSIONS, col)
+                                    getTableColumn(PERMISSIONS, col)
                                 }
                                 .collect(Collectors.joining(","))
                 )
@@ -191,9 +191,9 @@ class PermissionMapstore(
     private fun selectInnerJoinQuery(): StringBuilder {
         return StringBuilder("SELECT * FROM ").append(PERMISSIONS.getName())
                 .append(" INNER JOIN ")
-                .append(PostgresTable.SECURABLE_OBJECTS.getName()).append(" ON ")
-                .append(getTableColumn(ChroniclePostgresTables.PERMISSIONS, PostgresColumns.ACL_KEY)).append(" = ")
-                .append(getTableColumn(PostgresTable.SECURABLE_OBJECTS, PostgresColumns.ACL_KEY))
+                .append(SECURABLE_OBJECTS.name).append(" ON ")
+                .append(getTableColumn(PERMISSIONS, PostgresColumns.ACL_KEY)).append(" = ")
+                .append(getTableColumn(SECURABLE_OBJECTS, PostgresColumns.ACL_KEY))
     }
 
     private fun getTableColumn(table: PostgresTableDefinition, column: PostgresColumnDefinition): String {
