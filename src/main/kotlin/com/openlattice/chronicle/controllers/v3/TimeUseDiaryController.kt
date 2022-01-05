@@ -92,8 +92,8 @@ class TimeUseDiaryController : TimeUseDiaryApi {
         @PathVariable(ORGANIZATION_ID) organizationId: UUID,
         @PathVariable(STUDY_ID) studyId: UUID,
         @PathVariable(PARTICIPANT_ID) participantId: String,
-        @RequestParam(START_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) startDateTime: LocalDate,
-        @RequestParam(END_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) endDateTime: LocalDate
+        @RequestParam(START_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) startDateTime: OffsetDateTime,
+        @RequestParam(END_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) endDateTime: OffsetDateTime
     ): Map<LocalDate, Set<UUID>> {
         return timeUseDiaryManager.getSubmissionByDate(
             organizationId,

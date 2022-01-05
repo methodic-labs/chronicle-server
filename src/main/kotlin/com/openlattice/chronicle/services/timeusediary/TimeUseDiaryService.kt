@@ -11,9 +11,9 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_I
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION_DATE
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.TIME_USE_DIARY
 import org.slf4j.LoggerFactory
-import java.util.UUID
 import java.time.LocalDate
-import java.time.temporal.ChronoUnit
+import java.time.OffsetDateTime
+import java.util.*
 
 /**
  * @author Andrew Carter andrew@openlattice.com
@@ -25,6 +25,7 @@ class TimeUseDiaryService(
     companion object {
         private val logger = LoggerFactory.getLogger(TimeUseDiaryService::class.java)
         private val objectMapper = ObjectMapper()
+        private val cal = Calendar.getInstance()
     }
 
     override fun submitTimeUseDiary(
@@ -55,10 +56,12 @@ class TimeUseDiaryService(
         organizationId: UUID,
         studyId: UUID,
         participantId: String,
-        startDate: LocalDate,
-        endDate: LocalDate
+        startDate: OffsetDateTime,
+        endDate: OffsetDateTime
     ): Map<LocalDate, Set<UUID>> {
         val submissionsByDate = mutableMapOf<LocalDate,MutableSet<UUID>>()
+        // Use Calendar to convert response to user's timezone
+        cal.timeZone = TimeZone.getTimeZone("GMT${startDate.offset.id}")
         /*
          * Query all submission UUIDs in date range then populate Map by iterating over ResultSet
          * If this method brings too much data into memory, it can be modified to query on a per-day basis
@@ -75,9 +78,9 @@ class TimeUseDiaryService(
                         )
                     )
             while (result.next()) {
-                val currentDate = result.getDate(1).toLocalDate()
-                val currentUUID = UUID.fromString(result.getString(2))
-                // If new date encountered, initialize a set
+                val currentDate = result.getDate(SUBMISSION_DATE.name, cal).toLocalDate()
+                val currentUUID = UUID.fromString(result.getString(TUD_ID.name))
+                // If new date encountered, initialize a new set in the map
                 if (submissionsByDate[currentDate].isNullOrEmpty()) {
                     submissionsByDate[currentDate] = mutableSetOf(currentUUID)
                 } else {
@@ -113,7 +116,7 @@ class TimeUseDiaryService(
                 '${organizationId}',
                 '${studyId}',
                 '${participantId}',
-                '${LocalDate.now()}',
+                '${OffsetDateTime.now()}',
                 '${objectMapper.writeValueAsString(responses)}')
             """.trimIndent()
     }
@@ -122,8 +125,8 @@ class TimeUseDiaryService(
         organizationId: UUID,
         studyId: UUID,
         participantId: String,
-        startDate: LocalDate,
-        endDate: LocalDate
+        startDate: OffsetDateTime,
+        endDate: OffsetDateTime
     ): String {
         return """
                 SELECT ${SUBMISSION_DATE.name}, ${TUD_ID.name} 
