@@ -68,7 +68,7 @@ class ChroniclePostgresTables {
                 .primaryKey(PARTICIPANT_ID)
 
         @JvmField
-        val TIME_USE_DIARY = com.openlattice.postgres.C("time_use_diary")
+        val TIME_USE_DIARY = PostgresTableDefinition("time_use_diary")
                 .addColumns(
                         TUD_ID,
                         ORGANIZATION_ID,
