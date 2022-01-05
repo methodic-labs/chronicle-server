@@ -28,7 +28,7 @@ import com.openlattice.auth0.Auth0TokenProvider;
 import com.openlattice.auth0.AwsAuth0TokenProvider;
 import com.openlattice.authentication.Auth0Configuration;
 import com.openlattice.chronicle.configuration.ChronicleConfiguration;
-import com.openlattice.chronicle.serializers.FullQualifiedNameJacksonSerializer;
+import com.openlattice.chronicle.serialization.FullQualifiedNameJacksonSerializer;
 import com.openlattice.chronicle.services.ScheduledTasksManager;
 import com.openlattice.chronicle.services.delete.DataDeletionManager;
 import com.openlattice.chronicle.services.delete.DataDeletionService;
@@ -110,7 +110,7 @@ public class ChronicleServerServicesPod {
 
     @Bean
     public StorageResolver storageResolver() {
-        return new StorageResolver( dataSourceManager, "" );
+        return new StorageResolver( dataSourceManager, "default" );
     }
 
     @Bean

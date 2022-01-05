@@ -10,7 +10,7 @@ import com.kryptnostic.rhizome.pods.hazelcast.RegistryBasedHazelcastInstanceConf
 import com.openlattice.auth0.Auth0Pod
 import com.openlattice.aws.AwsS3Pod
 import com.openlattice.chronicle.pods.*
-import com.openlattice.chronicle.serializers.FullQualifiedNameJacksonSerializer
+import com.openlattice.chronicle.serialization.FullQualifiedNameJacksonSerializer
 import com.openlattice.jdbc.JdbcPod
 import com.openlattice.postgres.PostgresPod
 
