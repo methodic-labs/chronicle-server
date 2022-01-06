@@ -58,5 +58,6 @@ class PostgresColumns {
         val STARTED_AT = PostgresColumnDefinition("started_at", PostgresDatatype.TIMESTAMPTZ).notNull().withDefault("NOW()")
         val UPDATED_AT = PostgresColumnDefinition("updated_at", PostgresDatatype.TIMESTAMPTZ).notNull().withDefault("NOW()")
         val VERSION = PostgresColumnDefinition("version", PostgresDatatype.TEXT)
+        val LOCATION = PostgresColumnDefinition("location", PostgresDatatype.POINT)
     }
 }

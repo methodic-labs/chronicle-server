@@ -9,6 +9,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.ENDED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.EXPIRATION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.FIRST_NAME
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LAST_NAME
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.LOCATION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LSB
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.MSB
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.NAME
@@ -61,6 +62,7 @@ class ChroniclePostgresTables {
                         UPDATED_AT,
                         STARTED_AT,
                         ENDED_AT,
+                        LOCATION,
                         VERSION,
                         SETTINGS,
                 )
