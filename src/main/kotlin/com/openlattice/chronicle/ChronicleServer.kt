@@ -9,10 +9,15 @@ import com.kryptnostic.rhizome.hazelcast.serializers.RhizomeUtils.Pods
 import com.kryptnostic.rhizome.pods.hazelcast.RegistryBasedHazelcastInstanceConfigurationPod
 import com.openlattice.auth0.Auth0Pod
 import com.openlattice.aws.AwsS3Pod
+import com.openlattice.chronicle.hazelcast.pods.SharedStreamSerializersPod
 import com.openlattice.chronicle.pods.*
 import com.openlattice.chronicle.serializers.FullQualifiedNameJacksonSerializer
+import com.openlattice.chronicle.storage.pods.ByteBlobServicePod
+import com.openlattice.ioc.providers.LateInitProvidersPod
 import com.openlattice.jdbc.JdbcPod
 import com.openlattice.postgres.PostgresPod
+import com.openlattice.tasks.TaskService
+import com.openlattice.tasks.pods.TaskSchedulerPod
 
 /**
  *
@@ -37,12 +42,16 @@ class ChronicleServer(vararg pods: Class<*>?) : BaseRhizomeServer(
                 Auth0Pod::class.java
         )
         val chronicleServerPods = arrayOf(
-                AwsS3Pod::class.java,
-                JdbcPod::class.java,
-                ChronicleServerServicesPod::class.java,
-                PostgresPod::class.java,
-                PostgresTablesPod::class.java,
-                RedshiftTablesPod::class.java
+            AwsS3Pod::class.java,
+            JdbcPod::class.java,
+            ChronicleServerServicesPod::class.java,
+            PostgresPod::class.java,
+            PostgresTablesPod::class.java,
+            RedshiftTablesPod::class.java,
+            TaskSchedulerPod::class.java,
+            SharedStreamSerializersPod::class.java,
+            ByteBlobServicePod::class.java,
+            LateInitProvidersPod::class.java
         )
 
         @Throws(Exception::class)
