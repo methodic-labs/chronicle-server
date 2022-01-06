@@ -12,13 +12,10 @@ import com.openlattice.chronicle.api.TimeUseDiaryApi.Companion.ORGANIZATION_ID_P
 import com.openlattice.chronicle.api.TimeUseDiaryApi.Companion.PARTICIPANT_ID_PATH
 import com.openlattice.chronicle.api.TimeUseDiaryApi.Companion.STUDY_ID_PATH
 import com.openlattice.chronicle.api.TimeUseDiaryApi.Companion.STATUS_PATH
-import com.openlattice.chronicle.authorization.AuthorizingComponent
 import com.codahale.metrics.annotation.Timed
 import com.openlattice.chronicle.services.timeusediary.TimeUseDiaryManager
-import com.openlattice.chronicle.services.timeusediary.TimeUseDiaryService
-import com.openlattice.chronicle.tud.TudDownloadDataType
-import com.openlattice.chronicle.tud.TudResponse
-import org.springframework.http.HttpStatus
+import com.openlattice.chronicle.tud.TimeUseDiaryDownloadDataType
+import com.openlattice.chronicle.tud.TimeUseDiaryResponse
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.*
 import org.springframework.format.annotation.*
@@ -26,8 +23,6 @@ import org.slf4j.LoggerFactory
 import java.time.LocalDate
 import java.util.UUID
 import java.time.OffsetDateTime
-import java.util.Date
-import java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME
 import javax.inject.Inject
 
 /**
@@ -53,7 +48,7 @@ class TimeUseDiaryController : TimeUseDiaryApi {
         @PathVariable(ORGANIZATION_ID) organizationId: UUID,
         @PathVariable(STUDY_ID) studyId: UUID,
         @PathVariable(PARTICIPANT_ID) participantId: String,
-        @RequestParam(DATA_TYPE) type: TudDownloadDataType,
+        @RequestParam(DATA_TYPE) type: TimeUseDiaryDownloadDataType,
         @RequestBody submissionIds: Set<UUID>
     ) {
         logger.info("OrganizationId $organizationId")
@@ -73,7 +68,7 @@ class TimeUseDiaryController : TimeUseDiaryApi {
         @PathVariable(ORGANIZATION_ID) organizationId: UUID,
         @PathVariable(STUDY_ID) studyId: UUID,
         @PathVariable(PARTICIPANT_ID) participantId: String,
-        @RequestBody responses: List<TudResponse>
+        @RequestBody responses: List<TimeUseDiaryResponse>
     ): UUID {
         return timeUseDiaryManager.submitTimeUseDiary(
             organizationId,

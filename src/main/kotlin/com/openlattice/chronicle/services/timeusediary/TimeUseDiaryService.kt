@@ -2,8 +2,8 @@ package com.openlattice.chronicle.services.timeusediary
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.openlattice.chronicle.storage.StorageResolver
-import com.openlattice.chronicle.tud.TudDownloadDataType
-import com.openlattice.chronicle.tud.TudResponse
+import com.openlattice.chronicle.tud.TimeUseDiaryDownloadDataType
+import com.openlattice.chronicle.tud.TimeUseDiaryResponse
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
@@ -32,7 +32,7 @@ class TimeUseDiaryService(
         organizationId: UUID,
         studyId: UUID,
         participantId: String,
-        responses: List<TudResponse>
+        responses: List<TimeUseDiaryResponse>
     ): UUID {
         val tudId = UUID.randomUUID()
         try {
@@ -97,7 +97,7 @@ class TimeUseDiaryService(
         organizationId: UUID,
         studyId: UUID,
         participantId: String,
-        type: TudDownloadDataType,
+        type: TimeUseDiaryDownloadDataType,
         submissionsIds: Set<UUID>
     ) {
         // TODO("Not yet implemented")
@@ -108,7 +108,7 @@ class TimeUseDiaryService(
         organizationId: UUID,
         studyId: UUID,
         participantId: String,
-        responses: List<TudResponse>
+        responses: List<TimeUseDiaryResponse>
     ): String {
         return """
             INSERT INTO ${TIME_USE_DIARY.name} VALUES (
