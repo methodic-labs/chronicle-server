@@ -17,7 +17,7 @@
  * You can contact the owner of the copyright at support@openlattice.com
  *
  */
-package com.openlattice.chronicle.authorization.objects
+package com.openlattice.chronicle.authorization.reservations
 
 import com.geekbeast.util.LinearBackoff
 import com.geekbeast.util.attempt

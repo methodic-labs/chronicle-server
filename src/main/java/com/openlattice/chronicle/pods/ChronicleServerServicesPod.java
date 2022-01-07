@@ -20,9 +20,12 @@
 
 package com.openlattice.chronicle.pods;
 
+import com.auth0.client.mgmt.ManagementAPI;
+import com.auth0.json.mgmt.users.User;
 import com.dataloom.mappers.ObjectMappers;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.geekbeast.hazelcast.HazelcastClientProvider;
+import com.google.common.eventbus.EventBus;
 import com.google.common.util.concurrent.ListeningExecutorService;
 import com.hazelcast.core.HazelcastInstance;
 import com.kryptnostic.rhizome.configuration.ConfigurationConstants;
@@ -31,6 +34,11 @@ import com.openlattice.auth0.Auth0Pod;
 import com.openlattice.auth0.Auth0TokenProvider;
 import com.openlattice.auth0.AwsAuth0TokenProvider;
 import com.openlattice.authentication.Auth0Configuration;
+import com.openlattice.chronicle.authorization.AuthorizationManager;
+import com.openlattice.chronicle.authorization.HazelcastAuthorizationService;
+import com.openlattice.chronicle.authorization.principals.HazelcastPrincipalsMapManager;
+import com.openlattice.chronicle.authorization.principals.PrincipalsMapManager;
+import com.openlattice.chronicle.authorization.reservations.AclKeyReservationService;
 import com.openlattice.chronicle.authorization.principals.HazelcastPrincipalService;
 import com.openlattice.chronicle.authorization.principals.SecurePrincipalsManager;
 import com.openlattice.chronicle.configuration.ChronicleConfiguration;
@@ -49,7 +57,6 @@ import com.openlattice.chronicle.services.surveys.SurveysManager;
 import com.openlattice.chronicle.services.surveys.SurveysService;
 import com.openlattice.chronicle.services.upload.AppDataUploadManager;
 import com.openlattice.chronicle.services.upload.AppDataUploadService;
-import com.openlattice.chronicle.storage.ByteBlobDataManager;
 import com.openlattice.chronicle.storage.StorageResolver;
 import com.openlattice.chronicle.tasks.PostConstructInitializerTaskDependencies;
 import com.openlattice.chronicle.tasks.PostConstructInitializerTaskDependencies.PostConstructInitializerTask;
@@ -58,11 +65,18 @@ import com.openlattice.jdbc.DataSourceManager;
 import com.openlattice.users.Auth0SyncService;
 import com.openlattice.users.Auth0SyncTask;
 import com.openlattice.users.Auth0SyncTaskDependencies;
+import com.openlattice.users.Auth0UserListingService;
 import com.openlattice.users.DefaultAuth0SyncTask;
 import com.openlattice.users.LocalAuth0SyncTask;
+import com.openlattice.users.LocalUserListingService;
+import com.openlattice.users.UserListingService;
+import com.openlattice.users.export.Auth0ApiExtension;
 import java.io.IOException;
+import java.time.Instant;
 import java.util.concurrent.ExecutionException;
 import javax.inject.Inject;
+import kotlin.sequences.Sequence;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
@@ -75,9 +89,10 @@ import org.springframework.context.annotation.Profile;
         Auth0Pod.class,
 } )
 public class ChronicleServerServicesPod {
-    private static final Logger               logger = LoggerFactory.getLogger( ChronicleServerServicesPod.class );
+    private static final Logger logger = LoggerFactory.getLogger( ChronicleServerServicesPod.class );
+
     @Inject
-    private              ConfigurationService configurationService;
+    private ConfigurationService configurationService;
 
     @Inject
     private Auth0Configuration auth0Configuration;
@@ -93,6 +108,9 @@ public class ChronicleServerServicesPod {
 
     @Inject
     private HazelcastInstance hazelcast;
+
+    @Inject
+    private EventBus eventBus;
 
     @Bean
     public ObjectMapper defaultObjectMapper() {
@@ -134,7 +152,6 @@ public class ChronicleServerServicesPod {
         return new DefaultAuth0SyncTask();
     }
 
-
     @Bean( name = "auth0SyncInitializationTask" )
     @Profile( { ConfigurationConstants.Profiles.LOCAL_CONFIGURATION_PROFILE } )
     public Auth0SyncInitializationTask localAuth0SyncInitializationTask() {
@@ -150,8 +167,6 @@ public class ChronicleServerServicesPod {
     public Auth0SyncInitializationTask defaultAuth0SyncInitializationTask() {
         return new Auth0SyncInitializationTask<DefaultAuth0SyncTask>( DefaultAuth0SyncTask.class );
     }
-
-
 
     @Bean
     public DataDeletionManager dataDeletionManager() throws IOException, ExecutionException {
@@ -206,10 +221,24 @@ public class ChronicleServerServicesPod {
         return new HazelcastIdGenerationService( hazelcastClientProvider );
     }
 
+
+    @Bean public PrincipalsMapManager principalsMapManager() {
+        return new HazelcastPrincipalsMapManager( hazelcast, aclKeyReservationService() );
+    }
+
+    @Bean
+    public AclKeyReservationService aclKeyReservationService() {
+        return new AclKeyReservationService( dataSourceManager );
+    }
+
+    @Bean
+    public AuthorizationManager authorizationManager() {
+        return new HazelcastAuthorizationService( hazelcast, eventBus, principalsMapManager() );
+    }
+
     @Bean
     public SecurePrincipalsManager principalsManager() {
-        return new HazelcastPrincipalService( hazelcast,
-                aclK)
+        return new HazelcastPrincipalService( hazelcast, aclKeyReservationService(), authorizationManager(),principalsMapManager() );
     }
 
     @Bean
@@ -218,10 +247,20 @@ public class ChronicleServerServicesPod {
     }
 
     @Bean
-    public Auth0SyncTaskDependencies auth0SyncTaskDependencies() {
-        return new Auth0SyncTaskDependencies( auth0SyncService(),
-                userListingService() ,
-                executor
+    public UserListingService userListingService() {
+        if ( auth0Configuration.getManagementApiUrl().contains( Auth0Configuration.NO_SYNC_URL ) ) {
+            return new LocalUserListingService( auth0Configuration );
+        }
+
+        var auth0Token = auth0TokenProvider().getToken();
+        return new Auth0UserListingService(
+                new ManagementAPI( auth0Configuration.getDomain(), auth0Token ),
+                new Auth0ApiExtension( auth0Configuration.getDomain(), auth0Token )
         );
+    }
+
+    @Bean
+    public Auth0SyncTaskDependencies auth0SyncTaskDependencies() {
+        return new Auth0SyncTaskDependencies( auth0SyncService(), userListingService(), executor );
     }
 }

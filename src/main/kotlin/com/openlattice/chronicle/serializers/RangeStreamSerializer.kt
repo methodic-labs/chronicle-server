@@ -18,7 +18,7 @@
  *
  *
  */
-package com.openlattice.chronicle.hazelcast.serializers
+package com.openlattice.chronicle.serializers
 
 import com.kryptnostic.rhizome.pods.hazelcast.SelfRegisteringStreamSerializer
 import kotlin.Throws

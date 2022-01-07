@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017. OpenLattice, Inc
+ * Copyright (C) 2018. OpenLattice, Inc.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,11 +17,10 @@
  * You can contact the owner of the copyright at support@openlattice.com
  *
  */
-package com.openlattice.chronicle.authorization
+package com.openlattice.chronicle.serializers
 
 /**
+ * This class is just hear for component scanning in SelfRegisteringStreamSerializer
  * @author Matthew Tamayo-Rios &lt;matthew@openlattice.com&gt;
  */
-class AclKeySet(s: MutableSet<AclKey> = mutableSetOf()) : MutableSet<AclKey> by s {
-    constructor(size: Int) : this(LinkedHashSet<AclKey>(size))
-}
+class SharedStreamSerializers private constructor()

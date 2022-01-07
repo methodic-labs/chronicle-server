@@ -1,9 +1,8 @@
 package com.openlattice.chronicle.util
 
-import com.openlattice.chronicle.authorization.AclKey
-import com.openlattice.chronicle.authorization.Principal
-import com.openlattice.chronicle.authorization.PrincipalType
-import com.openlattice.chronicle.authorization.Role
+import com.google.common.collect.ImmutableList
+import com.openlattice.chronicle.authorization.*
+import com.openlattice.chronicle.postgres.ResultSetAdapters.Companion.securableObjectType
 import org.apache.commons.text.CharacterPredicates
 import org.apache.commons.text.RandomStringGenerator
 import java.util.*
@@ -14,16 +13,20 @@ import java.util.*
  */
 class TestDataFactory {
     companion object {
+        private val actions = Action.values()
+        private val r = Random()
+        private val permissions = Permission.values()
+        private val securableObjectTypes = SecurableObjectType.values()
         private val allowedDigitsAndLetters = arrayOf(
-                charArrayOf('a', 'z'), charArrayOf('A', 'Z'), charArrayOf('0', '9')
+            charArrayOf('a', 'z'), charArrayOf('A', 'Z'), charArrayOf('0', '9')
         )
         private val randomAlphaNumeric: RandomStringGenerator = org.apache.commons.text.RandomStringGenerator.Builder()
-                .withinRange(*TestDataFactory.allowedDigitsAndLetters)
-                .filteredBy(CharacterPredicates.LETTERS, CharacterPredicates.DIGITS)
-                .build()
+            .withinRange(*TestDataFactory.allowedDigitsAndLetters)
+            .filteredBy(CharacterPredicates.LETTERS, CharacterPredicates.DIGITS)
+            .build()
 
-        fun randomAlphanumeric( length : Int ) : String {
-            return randomAlphaNumeric.generate( length );
+        fun randomAlphanumeric(length: Int): String {
+            return randomAlphaNumeric.generate(length)
         }
 
         fun aclKey(): AclKey {
@@ -32,29 +35,78 @@ class TestDataFactory {
 
         fun role(): Role {
             return Role(
-                    Optional.of(UUID.randomUUID()),
-                    UUID.randomUUID(),
-                    rolePrincipal(),
-                    randomAlphanumeric(5),
-                    Optional.of<String>(randomAlphanumeric(5))
+                Optional.of(UUID.randomUUID()),
+                UUID.randomUUID(),
+                rolePrincipal(),
+                randomAlphanumeric(5),
+                Optional.of<String>(randomAlphanumeric(5))
             )
         }
 
         fun role(organizationId: UUID): Role {
             return Role(
-                    Optional.of(UUID.randomUUID()),
-                    organizationId,
-                    rolePrincipal(),
-                    randomAlphanumeric(5),
-                    Optional.of<String>(randomAlphanumeric(5))
+                Optional.of(UUID.randomUUID()),
+                organizationId,
+                rolePrincipal(),
+                randomAlphanumeric(5),
+                Optional.of<String>(randomAlphanumeric(5))
             )
         }
 
         fun rolePrincipal(): Principal {
             return Principal(
-                    PrincipalType.ROLE,
-                    randomAlphanumeric(5)
+                PrincipalType.ROLE,
+                randomAlphanumeric(5)
             )
+        }
+
+        fun userPrincipal(): Principal {
+            return Principal(PrincipalType.USER, randomAlphanumeric(10))
+        }
+
+        fun ace(): Ace {
+            return Ace(
+                userPrincipal(),
+                permissions()
+            )
+        }
+
+        fun aceValue(): AceValue {
+            return AceValue(
+                permissions(),
+                securableObjectType()
+            )
+        }
+
+        fun acl(): Acl {
+            return Acl(
+                AclKey(UUID.randomUUID(), UUID.randomUUID()),
+                ImmutableList.of(ace(), ace(), ace(), ace())
+            )
+        }
+
+        fun aclData(): AclData {
+            return AclData(acl(), actions[r.nextInt(actions.size)])
+        }
+
+        @JvmStatic
+        fun permissions(): EnumSet<Permission> {
+            return permissions
+                .filter { r.nextBoolean() }
+                .toCollection(EnumSet.noneOf(Permission::class.java))
+        }
+
+        fun nonEmptyPermissions(): EnumSet<Permission> {
+            var ps: EnumSet<Permission> = permissions()
+            while (ps.isEmpty()) {
+                ps = permissions()
+            }
+            return ps
+        }
+
+        fun securableObjectType(): SecurableObjectType {
+            return securableObjectTypes[r.nextInt(securableObjectTypes.size)]
+
         }
     }
 }

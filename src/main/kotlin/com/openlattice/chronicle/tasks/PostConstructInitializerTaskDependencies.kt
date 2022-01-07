@@ -21,7 +21,7 @@
 
 package com.openlattice.chronicle.tasks
 
-import com.openlattice.chronicle.hazelcast.serializers.decorators.ByteBlobDataManagerAware
+import com.openlattice.chronicle.serializers.decorators.ByteBlobDataManagerAware
 import com.openlattice.chronicle.ids.IdGenerationServiceDependent
 import com.openlattice.chronicle.storage.ByteBlobDataManager
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService

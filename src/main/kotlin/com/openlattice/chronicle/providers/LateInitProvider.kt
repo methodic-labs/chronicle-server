@@ -1,6 +1,6 @@
 package com.openlattice.chronicle.providers
 
-import com.openlattice.chronicle.hazelcast.serializers.decorators.ByteBlobDataManagerAware
+import com.openlattice.chronicle.serializers.decorators.ByteBlobDataManagerAware
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.ids.IdGenerationServiceDependent
 import com.openlattice.chronicle.storage.ByteBlobDataManager

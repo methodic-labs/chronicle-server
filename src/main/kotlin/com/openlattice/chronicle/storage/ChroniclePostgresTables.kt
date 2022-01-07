@@ -119,10 +119,12 @@ class ChroniclePostgresTables {
                 )
                 .primaryKey(ACL_KEY, PRINCIPAL_TYPE, PRINCIPAL_ID)
 
+        @JvmField
         val SECURABLE_OBJECTS = PostgresTableDefinition("securable_objects")
                 .addColumns(ACL_KEY, SECURABLE_OBJECT_TYPE, SECURABLE_OBJECT_ID, SECURABLE_OBJECT_NAME)
                 .primaryKey(ACL_KEY)
 
+        @JvmField
         val USERS = PostgresTableDefinition("users")
                 .addColumns(USER_ID, USER_DATA, EXPIRATION)
                 .primaryKey(USER_ID)

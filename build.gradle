@@ -149,6 +149,8 @@ dependencies {
         implementation(project(":chronicle-api")) {
             exclude group: 'com.google.guava', module: 'guava'
         }
+        testImplementation(project(path: ":rhizome", configuration: "tests"))
+        testImplementation(project(path: ":rhizome-client", configuration: "tests"))
     } else {
         logger.quiet(project.name + " using jar dependencies.")
         implementation "com.openlattice:rhizome:${rhizome_version}"
@@ -156,6 +158,8 @@ dependencies {
         implementation("com.openlattice:chronicle-api:${chronicle_api_version}") {
             exclude group: 'com.google.guava', module: 'guava'
         }
+        testImplementation "com.openlattice:rhizome:${rhizome_version}:tests"
+        testImplementation "com.openlattice:rhizome-client:${rhizome_client_version}:tests"
     }
 
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
@@ -164,7 +168,7 @@ dependencies {
      * TESTING
      */
     testImplementation "junit:junit:${junit_version}"
-    testImplementation "com.openlattice:conductor-client:${conductor_client_version}"
+    //testImplementation "com.openlattice:conductor-client:${conductor_client_version}"
     testImplementation("org.mockito:mockito-all:${mockito_version}") {
         exclude module: 'hamcrest'
         exclude module: 'hamcrest-core'

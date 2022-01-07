@@ -24,7 +24,7 @@ package com.openlattice.chronicle.hazelcast.pods;
 
 import com.kryptnostic.rhizome.hazelcast.serializers.ListStreamSerializers.DelegatedUUIDListStreamSerializer;
 import com.openlattice.chronicle.hazelcast.StreamSerializerTypeIds;
-import com.openlattice.chronicle.hazelcast.serializers.SharedStreamSerializers;
+import com.openlattice.chronicle.serializers.SharedStreamSerializers;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;

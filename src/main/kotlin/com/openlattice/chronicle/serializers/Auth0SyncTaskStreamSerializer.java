@@ -19,7 +19,7 @@
  *
  */
 
-package com.openlattice.chronicle.hazelcast.serializers;
+package com.openlattice.chronicle.serializers;
 
 import com.hazelcast.nio.ObjectDataInput;
 import com.hazelcast.nio.ObjectDataOutput;

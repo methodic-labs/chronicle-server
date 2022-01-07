@@ -16,11 +16,19 @@
  *
  * You can contact the owner of the copyright at support@openlattice.com
  *
+ *
  */
-package com.openlattice.chronicle.hazelcast.serializers
+package com.openlattice.chronicle.serializers
+
+import com.openlattice.hazelcast.serializers.Jdk8StreamSerializers
+import org.springframework.stereotype.Component
 
 /**
- * This class is just hear for component scanning in SelfRegisteringStreamSerializer
  * @author Matthew Tamayo-Rios &lt;matthew@openlattice.com&gt;
  */
-class SharedStreamSerializers private constructor()
+@Component
+class OffsetDateTimeStreamSerializer : Jdk8StreamSerializers.AbstractOffsetDateTimeStreamSerializer() {
+    override fun getTypeId(): Int {
+        return com.openlattice.chronicle.hazelcast.StreamSerializerTypeIds.OFFSET_DATETIME.ordinal
+    }
+}

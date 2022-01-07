@@ -26,7 +26,7 @@ import com.hazelcast.core.HazelcastInstance
 import com.hazelcast.query.Predicate
 import com.hazelcast.query.Predicates
 import com.openlattice.chronicle.authorization.*
-import com.openlattice.chronicle.authorization.objects.AclKeyReservationService
+import com.openlattice.chronicle.authorization.reservations.AclKeyReservationService
 import com.openlattice.chronicle.authorization.principals.processors.*
 import com.openlattice.chronicle.hazelcast.HazelcastMap
 import com.openlattice.chronicle.mapstores.authorization.PrincipalTreesMapstore
