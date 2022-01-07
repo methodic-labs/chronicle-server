@@ -40,25 +40,6 @@ class TimeUseDiaryController : TimeUseDiaryApi {
     }
 
     @Timed
-    @GetMapping(
-        path = [ORGANIZATION_ID_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH],
-        consumes = [MediaType.APPLICATION_JSON_VALUE]
-    )
-    override fun downloadTimeUseDiaryData(
-        @PathVariable(ORGANIZATION_ID) organizationId: UUID,
-        @PathVariable(STUDY_ID) studyId: UUID,
-        @PathVariable(PARTICIPANT_ID) participantId: String,
-        @RequestParam(DATA_TYPE) type: TimeUseDiaryDownloadDataType,
-        @RequestBody submissionIds: Set<UUID>
-    ) {
-        logger.info("OrganizationId $organizationId")
-        logger.info("StudyId $studyId")
-        logger.info("ParticipantId $participantId")
-        logger.info("Type $type")
-        logger.info("SubmissionIds $submissionIds")
-    }
-
-    @Timed
     @PostMapping(
         path = [ORGANIZATION_ID_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH],
         consumes = [MediaType.APPLICATION_JSON_VALUE],
@@ -97,6 +78,21 @@ class TimeUseDiaryController : TimeUseDiaryApi {
             startDateTime,
             endDateTime
         )
+    }
+
+    @Timed
+    @GetMapping(
+        path = [ORGANIZATION_ID_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH],
+        consumes = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    override fun downloadTimeUseDiaryData(
+        @PathVariable(ORGANIZATION_ID) organizationId: UUID,
+        @PathVariable(STUDY_ID) studyId: UUID,
+        @PathVariable(PARTICIPANT_ID) participantId: String,
+        @RequestParam(DATA_TYPE) type: TimeUseDiaryDownloadDataType,
+        @RequestBody submissionIds: Set<UUID>
+    ) {
+        TODO("Not yet implemented")
     }
 
     @Timed

@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.util.*
+import java.sql.Types
 
 /**
  * @author Andrew Carter andrew@openlattice.com
@@ -37,15 +38,16 @@ class TimeUseDiaryService(
         val tudId = UUID.randomUUID()
         try {
             val (flavor, hds) = storageResolver.resolve(studyId)
-            hds.connection.createStatement().execute(
+            val preparedStatement = hds.connection.prepareStatement(
                         insertTimeUseDiarySql(
                             tudId,
                             organizationId,
                             studyId,
-                            participantId,
-                            responses
                         )
                     )
+            preparedStatement.setString(1, participantId)
+            preparedStatement.setObject(2, objectMapper.writeValueAsString(responses), Types.OTHER)
+            preparedStatement.execute()
         } catch(e: Exception) {
             logger.error("hds error: $e")
         }
@@ -107,17 +109,15 @@ class TimeUseDiaryService(
         tudId: UUID,
         organizationId: UUID,
         studyId: UUID,
-        participantId: String,
-        responses: List<TimeUseDiaryResponse>
     ): String {
         return """
             INSERT INTO ${TIME_USE_DIARY.name} VALUES (
                 '${tudId}',
                 '${organizationId}',
                 '${studyId}',
-                '${participantId}',
+                 ?,
                 '${OffsetDateTime.now()}',
-                '${objectMapper.writeValueAsString(responses)}')
+                 ?)
             """.trimIndent()
     }
 
