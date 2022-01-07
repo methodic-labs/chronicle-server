@@ -48,7 +48,8 @@ class AclKeyReservationService(private val dsm: DataSourceManager) {
                 .joinToString(",") { it.name }
 
         private val INSERT_SQL = """
-        INSERT INTO ${SECURABLE_OBJECTS.name} ($INSERT_COLS) VALUES (?,?,?,?) ON CONFLICT DO NOTHING
+        INSERT INTO ${SECURABLE_OBJECTS.name} ($INSERT_COLS) VALUES (?,?,?,?) ON CONFLICT DO NOTHING 
+            RETURNING ${SECURABLE_OBJECT_ID.name}
     """
 
         /***
@@ -190,7 +191,7 @@ class AclKeyReservationService(private val dsm: DataSourceManager) {
     ): UUID {
         val proposedName = nameExtractor(obj)
         //Back off 50ms each attempt for a maximum of 10 attempts, waiting no more than a second.
-        attempt(LinearBackoff(500, 25), 10) {
+        for ( i in 0 until 10 ) {
             dsm.getDefaultDataSource().connection.use { conn ->
                 val aclKey = AclKey(prefix + obj.id)
                 conn.prepareStatement(INSERT_SQL).use { ps ->
@@ -204,14 +205,13 @@ class AclKeyReservationService(private val dsm: DataSourceManager) {
                         obj.id = ResultSetAdapters.securableObjectId(rs)
                         return obj.id
                     } else {
-                        val ex = AlreadyBoundException("${obj.id} has already been bound.")
-                        //Attempt will retry with a diffferent id
+                        //Retry with a diffferent id
                         obj.id = UUID.randomUUID()
-                        throw ex
                     }
                 }
             }
         }
+        throw IllegalStateException("Unable to assign an id for object ${obj.title} of type ${obj.category}")
     }
 
     /**

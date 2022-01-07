@@ -2,7 +2,7 @@ package com.openlattice.chronicle.util
 
 import com.google.common.collect.ImmutableList
 import com.openlattice.chronicle.authorization.*
-import com.openlattice.chronicle.postgres.ResultSetAdapters.Companion.securableObjectType
+import com.openlattice.chronicle.organizations.OrganizationPrincipal
 import org.apache.commons.text.CharacterPredicates
 import org.apache.commons.text.RandomStringGenerator
 import java.util.*
@@ -107,6 +107,39 @@ class TestDataFactory {
         fun securableObjectType(): SecurableObjectType {
             return securableObjectTypes[r.nextInt(securableObjectTypes.size)]
 
+        }
+
+        fun securablePrincipal(type: PrincipalType): SecurablePrincipal {
+            val principal: Principal = when (type) {
+                PrincipalType.ROLE -> rolePrincipal()
+                PrincipalType.ORGANIZATION -> organizationPrincipal()
+                PrincipalType.USER -> userPrincipal()
+                else -> userPrincipal()
+            }
+            return SecurablePrincipal(
+                AclKey(UUID.randomUUID()),
+                principal,
+                randomAlphanumeric(10),
+                Optional.of<String>(randomAlphanumeric(10))
+            )
+        }
+
+        fun organizationPrincipal(): Principal {
+            return Principal(
+                PrincipalType.ORGANIZATION,
+                randomAlphanumeric(
+                    10
+                )
+            )
+        }
+
+        fun securableOrganizationPrincipal(): OrganizationPrincipal {
+            return OrganizationPrincipal(
+                Optional.of(UUID.randomUUID()),
+                organizationPrincipal(),
+                randomAlphanumeric(5),
+                Optional.of<String>(randomAlphanumeric(10))
+            )
         }
     }
 }
