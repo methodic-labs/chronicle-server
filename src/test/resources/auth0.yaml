@@ -17,5 +17,4 @@ configurations:
     base64EncodedSecret: false
     signingAlgorithm: "HS256"
 domain: "openlattice.auth0.com"
-issuer: "https://openlattice.auth0.com/"
 managementApiUrl: "https://openlattice.auth0.com/api/v2/"
