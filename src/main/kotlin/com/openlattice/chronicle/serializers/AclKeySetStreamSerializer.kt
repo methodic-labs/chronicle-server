@@ -34,7 +34,7 @@ import com.openlattice.chronicle.hazelcast.StreamSerializerTypeIds
 import org.springframework.stereotype.Component
 
 @Component
-class AclKeySetStreamSerializer : TestableSelfRegisteringStreamSerializer<AclKeySet?> {
+class AclKeySetStreamSerializer : TestableSelfRegisteringStreamSerializer<AclKeySet> {
     override fun getClazz(): Class<out AclKeySet> {
         return AclKeySet::class.java
     }

@@ -22,6 +22,23 @@ package com.openlattice.chronicle.authorization
 /**
  * @author Matthew Tamayo-Rios &lt;matthew@openlattice.com&gt;
  */
-class AclKeySet(s: MutableSet<AclKey> = mutableSetOf()) : MutableSet<AclKey> by s {
+data class AclKeySet(val s: MutableSet<AclKey> = mutableSetOf()) : MutableSet<AclKey> by s {
     constructor(size: Int) : this(LinkedHashSet<AclKey>(size))
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as AclKeySet
+
+        if (s != other.s) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        return s.hashCode()
+    }
+
+
 }
