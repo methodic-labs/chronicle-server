@@ -23,6 +23,7 @@ package com.openlattice.chronicle.pods;
 import com.dataloom.mappers.ObjectMappers;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kryptnostic.rhizome.configuration.service.ConfigurationService;
+import com.kryptnostic.rhizome.pods.AsyncPod;
 import com.openlattice.auth0.Auth0Pod;
 import com.openlattice.auth0.Auth0TokenProvider;
 import com.openlattice.auth0.AwsAuth0TokenProvider;
@@ -77,6 +78,7 @@ public class ChronicleServerServicesPod {
 
     @Bean
     public ObjectMapper defaultObjectMapper() {
+
         ObjectMapper mapper = ObjectMappers.getJsonMapper();
         FullQualifiedNameJacksonSerializer.registerWithMapper( mapper );
         return mapper;

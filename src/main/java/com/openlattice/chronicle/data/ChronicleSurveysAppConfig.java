@@ -4,8 +4,11 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableSet;
 
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
@@ -85,7 +88,7 @@ public class ChronicleSurveysAppConfig {
 
     @JsonProperty( SerializationConstants.ENTITY_SET_IDS )
     public Set<UUID> getAllEntitySetIds() {
-        return ImmutableSet.of(
+        return Stream.of(
                 surveyEntitySetId,
                 timeRangeEntitySetId,
                 submissionEntitySetId,
@@ -94,6 +97,6 @@ public class ChronicleSurveysAppConfig {
                 addressesEntitySetId,
                 questionEntitySetId,
                 answerEntitySetId
-        );
+        ).filter( Objects::nonNull ).collect( Collectors.toSet());
     }
 }
