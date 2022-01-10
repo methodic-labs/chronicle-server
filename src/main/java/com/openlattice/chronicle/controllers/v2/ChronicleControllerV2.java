@@ -7,6 +7,7 @@ import com.openlattice.chronicle.api.ChronicleApi;
 import com.openlattice.chronicle.data.ChronicleAppsUsageDetails;
 import com.openlattice.chronicle.data.ChronicleQuestionnaire;
 import com.openlattice.chronicle.data.MessageDetails;
+import com.openlattice.chronicle.data.MessageStatus;
 import com.openlattice.chronicle.data.ParticipationStatus;
 import com.openlattice.chronicle.data.SensorDataSample;
 import com.openlattice.chronicle.services.edm.EdmCacheManager;
@@ -17,6 +18,7 @@ import com.openlattice.chronicle.services.message.MessageService;
 import com.openlattice.chronicle.services.surveys.SurveysManager;
 import com.openlattice.chronicle.services.upload.AppDataUploadManager;
 import com.openlattice.chronicle.sources.Datasource;
+import org.apache.commons.lang3.NotImplementedException;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -188,6 +190,12 @@ public class ChronicleControllerV2 implements ChronicleApi {
             @RequestBody List<MessageDetails> messageDetails
     ) {
         messageService.sendMessages( organizationId, messageDetails );
+    }
+
+    @Override public void updateMessageStatus(
+            UUID organizationId, String messageId, MessageStatus messageStatus ) {
+        // Todd to implement this
+        throw new NotImplementedException( "Awaiting implementation!" );
     }
 
     @RequestMapping(
