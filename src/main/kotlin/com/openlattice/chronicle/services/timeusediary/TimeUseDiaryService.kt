@@ -11,6 +11,8 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_I
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION_DATE
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.TIME_USE_DIARY
 import org.slf4j.LoggerFactory
+import java.sql.Connection
+import java.sql.ResultSet
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.util.*
@@ -38,16 +40,16 @@ class TimeUseDiaryService(
         val tudId = UUID.randomUUID()
         try {
             val (flavor, hds) = storageResolver.resolve(studyId)
-            val preparedStatement = hds.connection.prepareStatement(
-                        insertTimeUseDiarySql(
-                            tudId,
-                            organizationId,
-                            studyId,
-                        )
-                    )
-            preparedStatement.setString(1, participantId)
-            preparedStatement.setObject(2, objectMapper.writeValueAsString(responses), Types.OTHER)
-            preparedStatement.execute()
+            hds.connection.use { conn ->
+                executeInsertTimeUseDiarySql(
+                    conn,
+                    tudId,
+                    organizationId,
+                    studyId,
+                    participantId,
+                    responses
+                )
+            }
         } catch(e: Exception) {
             logger.error("hds error: $e")
         }
@@ -64,25 +66,21 @@ class TimeUseDiaryService(
         val submissionsByDate = mutableMapOf<LocalDate,MutableSet<UUID>>()
         // Use Calendar to convert response to user's timezone
         cal.timeZone = TimeZone.getTimeZone("GMT${startDate.offset.id}")
-        /*
-         * Query all submission UUIDs in date range then populate Map by iterating over ResultSet
-         * If this method brings too much data into memory, it can be modified to query on a per-day basis
-         */
         try {
             val (flavor, hds) = storageResolver.resolve(studyId)
-            val result = hds.connection.createStatement().executeQuery(
-                        getSubmissionByDateSql(
-                            organizationId,
-                            studyId,
-                            participantId,
-                            startDate,
-                            endDate
-                        )
-                    )
+            val result = hds.connection.use { connection ->
+                executeGetSubmissionByDateSql(
+                    connection,
+                    organizationId,
+                    studyId,
+                    participantId,
+                    startDate,
+                    endDate
+                )
+            }
             while (result.next()) {
                 val currentDate = result.getDate(SUBMISSION_DATE.name, cal).toLocalDate()
                 val currentUUID = UUID.fromString(result.getString(TUD_ID.name))
-                // If new date encountered, initialize a new set in the map
                 if (submissionsByDate[currentDate].isNullOrEmpty()) {
                     submissionsByDate[currentDate] = mutableSetOf(currentUUID)
                 } else {
@@ -102,40 +100,58 @@ class TimeUseDiaryService(
         type: TimeUseDiaryDownloadDataType,
         submissionsIds: Set<UUID>
     ) {
-        // TODO("Not yet implemented")
+        TODO("Not yet implemented")
     }
 
-    private fun insertTimeUseDiarySql(
+    /* -------- SQL helpers -------- */
+
+    private fun executeInsertTimeUseDiarySql(
+        connection: Connection,
         tudId: UUID,
         organizationId: UUID,
         studyId: UUID,
-    ): String {
-        return """
-            INSERT INTO ${TIME_USE_DIARY.name} VALUES (
-                '${tudId}',
-                '${organizationId}',
-                '${studyId}',
-                 ?,
-                '${OffsetDateTime.now()}',
-                 ?)
+        participantId: String,
+        responses: List<TimeUseDiaryResponse>
+    ) {
+
+       val preparedStatement = connection.prepareStatement("""
+            INSERT INTO ${TIME_USE_DIARY.name} 
+            VALUES ( ?, ?, ?, ?, '${OffsetDateTime.now()}', ? )
             """.trimIndent()
+        )
+        var index = 1
+        preparedStatement.setObject(index++, tudId)
+        preparedStatement.setObject(index++, organizationId)
+        preparedStatement.setObject(index++, studyId)
+        preparedStatement.setString(index++, participantId)
+        preparedStatement.setObject(index, objectMapper.writeValueAsString(responses), Types.OTHER)
+        preparedStatement.execute()
     }
 
-    private fun getSubmissionByDateSql(
+    private fun executeGetSubmissionByDateSql(
+        connection: Connection,
         organizationId: UUID,
         studyId: UUID,
         participantId: String,
         startDate: OffsetDateTime,
         endDate: OffsetDateTime
-    ): String {
-        return """
+    ): ResultSet {
+        val preparedStatement = connection.prepareStatement("""
                 SELECT ${SUBMISSION_DATE.name}, ${TUD_ID.name} 
                 FROM ${TIME_USE_DIARY.name}
-                WHERE ${ORGANIZATION_ID.name} = '${organizationId}'
-                AND ${STUDY_ID.name} = '${studyId}'
-                AND ${PARTICIPANT_ID.name} = '${participantId}'
-                AND ${SUBMISSION_DATE.name} BETWEEN '${startDate}' AND '${endDate}'
+                WHERE ${ORGANIZATION_ID.name} = ?
+                AND ${STUDY_ID.name} = ?
+                AND ${PARTICIPANT_ID.name} = ?
+                AND ${SUBMISSION_DATE.name} BETWEEN ? AND ?
                 ORDER BY ${SUBMISSION_DATE.name} ASC
             """.trimIndent()
+        )
+        var index = 1
+        preparedStatement.setObject(index++, organizationId)
+        preparedStatement.setObject(index++, studyId)
+        preparedStatement.setString(index++, participantId)
+        preparedStatement.setObject(index++, startDate)
+        preparedStatement.setObject(index, endDate)
+        return preparedStatement.executeQuery()
     }
 }
