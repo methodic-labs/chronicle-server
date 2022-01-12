@@ -4,7 +4,7 @@ import com.codahale.metrics.annotation.Timed
 import com.openlattice.chronicle.api.v3.StudiesApi
 import com.openlattice.chronicle.api.v3.StudiesApi.Companion.CONTROLLER
 import com.openlattice.chronicle.api.v3.StudiesApi.Companion.ORGANIZATION_ID_PATH
-import com.openlattice.chronicle.services.studies.StudiesManager
+import com.openlattice.chronicle.services.studies.StudiesService
 import com.openlattice.chronicle.study.Study
 import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
@@ -21,7 +21,7 @@ import javax.inject.Inject
 @RequestMapping(CONTROLLER)
 class StudiesController : StudiesApi {
     @Inject
-    private lateinit var studiesManager: StudiesManager
+    private lateinit var studiesService: StudiesService
 
     companion object {
         private val logger = LoggerFactory.getLogger(StudiesController::class.java)!!
@@ -38,6 +38,6 @@ class StudiesController : StudiesApi {
         @RequestBody study: Study
     ): UUID {
         logger.info("Submitting Study $study for organization $organizationId")
-        return studiesManager.submitStudy(organizationId, study);
+        return studiesService.submitStudy(organizationId, study);
     }
 }
