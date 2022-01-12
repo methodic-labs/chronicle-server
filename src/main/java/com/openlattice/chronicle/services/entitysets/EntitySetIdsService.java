@@ -299,8 +299,8 @@ public class EntitySetIdsService implements EntitySetIdsManager {
         }
 
         return new ChronicleDataCollectionAppConfig(
-                Optional.of( templateEntitySetIdMap.get( SENSOR_DATA ) ),
-                Optional.of( templateEntitySetIdMap.get( SENSOR ) ),
+                Optional.of( templateEntitySetIdMap.getOrDefault( SENSOR_DATA, null ) ),
+                Optional.of( templateEntitySetIdMap.getOrDefault( SENSOR, null ) ),
                 templateEntitySetIdMap.getOrDefault( APP_DICTIONARY, null ),
                 templateEntitySetIdMap.getOrDefault( RECORDED_BY, null ),
                 templateEntitySetIdMap.getOrDefault( DEVICE, null ),
