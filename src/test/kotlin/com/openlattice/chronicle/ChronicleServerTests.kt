@@ -6,6 +6,7 @@ import com.kryptnostic.rhizome.core.RhizomeApplicationServer
 import com.kryptnostic.rhizome.hazelcast.serializers.RhizomeUtils
 import com.openlattice.chronicle.constants.ChronicleProfiles
 import com.openlattice.chronicle.storage.StorageResolver
+import com.openlattice.jdbc.DataSourceManager
 import com.openlattice.postgres.PostgresPod
 import com.zaxxer.hikari.HikariDataSource
 
@@ -13,7 +14,7 @@ import com.zaxxer.hikari.HikariDataSource
  *
  * @author Matthew Tamayo-Rios &lt;matthew@openlattice.com&gt;
  */
-class ChronicleServerTests {
+open class ChronicleServerTests {
     companion object {
 
         @JvmField
@@ -36,6 +37,9 @@ class ChronicleServerTests {
         @JvmField
         val sr: StorageResolver
 
+        @JvmField
+        val dsm: DataSourceManager
+
         init {
             testServer.sprout(
                 ConfigurationConstants.Profiles.LOCAL_CONFIGURATION_PROFILE,
@@ -47,6 +51,7 @@ class ChronicleServerTests {
             //This should work as tests aren't sharded all will all share the default datasource
             hds = testServer.context.getBean(HikariDataSource::class.java)
             sr = testServer.context.getBean(StorageResolver::class.java)
+            dsm = testServer.context.getBean(DataSourceManager::class.java)
         }
     }
 }

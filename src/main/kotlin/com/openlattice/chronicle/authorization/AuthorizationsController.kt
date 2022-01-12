@@ -41,7 +41,7 @@ class AuthorizationsController : AuthorizationsApi, AuthorizingComponent {
     override fun checkAuthorizations(@RequestBody queries: Set<AccessCheck>): Iterable<Authorization> {
         return Iterable {
             authorizationManager.accessChecksForPrincipals(
-                    queries, Principals.getCurrentPrincipals()
+                    queries, Principals.currentPrincipals
             ).iterator()
         }
     }
@@ -54,9 +54,9 @@ class AuthorizationsController : AuthorizationsApi, AuthorizingComponent {
             @RequestParam(value = AuthorizationsApi.PAGING_TOKEN, required = false) pagingToken: String
     ): AuthorizedObjectsSearchResult {
         val authorizedAclKeys = authorizationManager.getAuthorizedObjectsOfType(
-                Principals.getCurrentPrincipals(),
-                objectType,
-                EnumSet.of(permission)
+            Principals.currentPrincipals,
+            objectType,
+            EnumSet.of(permission)
         ).collect(Collectors.toSet())
         return AuthorizedObjectsSearchResult("", authorizedAclKeys)
     }

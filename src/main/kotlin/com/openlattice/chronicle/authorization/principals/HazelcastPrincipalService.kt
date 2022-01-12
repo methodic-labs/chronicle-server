@@ -367,7 +367,7 @@ class HazelcastPrincipalService(
     }
 
     override fun getCurrentUserId(): UUID {
-        return getSecurablePrincipal(Principals.getCurrentUser().id).id
+        return getSecurablePrincipal(Principals.currentUser.id).id
     }
 
     override fun getAllRoles(): Set<Role> {

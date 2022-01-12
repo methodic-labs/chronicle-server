@@ -16,14 +16,13 @@ import com.openlattice.chronicle.storage.pods.ByteBlobServicePod
 import com.openlattice.ioc.providers.LateInitProvidersPod
 import com.openlattice.jdbc.JdbcPod
 import com.openlattice.postgres.PostgresPod
-import com.openlattice.tasks.TaskService
 import com.openlattice.tasks.pods.TaskSchedulerPod
 
 /**
  *
  * @author Matthew Tamayo-Rios &lt;matthew@openlattice.com&gt;
  */
-class ChronicleServer(vararg pods: Class<*>?) : BaseRhizomeServer(
+class ChronicleServer(vararg pods: Class<*>) : BaseRhizomeServer(
         *Pods.concatenate(
                 pods,
                 webPods,

@@ -53,7 +53,7 @@ interface AuthorizingComponent {
     }
 
     fun ensureAuthenticated() {
-        if (!Principals.getCurrentPrincipals().contains(SystemRole.AUTHENTICATED_USER.principal)) {
+        if (!Principals.currentPrincipals.contains(SystemRole.AUTHENTICATED_USER.principal)) {
             throw ForbiddenException("User is not authenticated.")
         }
     }
@@ -68,9 +68,9 @@ interface AuthorizingComponent {
     fun isAuthorized(requiredPermissions: EnumSet<Permission>): Predicate<AclKey> {
         return Predicate { aclKey: AclKey ->
             authorizationManager.checkIfHasPermissions(
-                    aclKey,
-                    Principals.getCurrentPrincipals(),
-                    requiredPermissions
+                aclKey,
+                Principals.currentPrincipals,
+                requiredPermissions
             )
         }
     }
@@ -123,7 +123,7 @@ interface AuthorizingComponent {
     }
 
     val isAdmin: Boolean
-        get() = Principals.getCurrentPrincipals().contains(
+        get() = Principals.currentPrincipals.contains(
                 Principals.getAdminRole()
         )
 
@@ -135,14 +135,14 @@ interface AuthorizingComponent {
 
     fun authorize(
             requiredPermissionsByAclKey: Map<AclKey, EnumSet<Permission>>,
-            principals: Set<Principal> = Principals.getCurrentPrincipals()
+            principals: Set<Principal> = Principals.currentPrincipals
     ): Map<AclKey, EnumMap<Permission, Boolean>> {
         return authorizationManager.authorize(requiredPermissionsByAclKey, principals)
     }
 
     fun accessCheck(requiredPermissionsByAclKey: Map<AclKey, EnumSet<Permission>>) {
         val authorized = authorizationManager
-                .authorize(requiredPermissionsByAclKey, Principals.getCurrentPrincipals())
+                .authorize(requiredPermissionsByAclKey, Principals.currentPrincipals)
                 .values.stream().allMatch(
                         Predicate { m: EnumMap<Permission, Boolean> ->
                             m.values.stream().allMatch(
@@ -156,9 +156,9 @@ interface AuthorizingComponent {
 
     fun accessCheck(aclKey: AclKey, requiredPermissions: EnumSet<Permission>) {
         if (!authorizationManager.checkIfHasPermissions(
-                        aclKey,
-                        Principals.getCurrentPrincipals(),
-                        requiredPermissions
+                aclKey,
+                Principals.currentPrincipals,
+                requiredPermissions
                 )) {
             throw ForbiddenException("Object $aclKey is not accessible.")
         }
@@ -169,9 +169,9 @@ interface AuthorizingComponent {
             requiredPermissions: EnumSet<Permission>
     ): Stream<AclKey> {
         return authorizationManager.getAuthorizedObjectsOfType(
-                Principals.getCurrentPrincipals(),
-                securableObjectType,
-                requiredPermissions
+            Principals.currentPrincipals,
+            securableObjectType,
+            requiredPermissions
         )
     }
 
@@ -181,10 +181,10 @@ interface AuthorizingComponent {
             additionalFilters: com.hazelcast.query.Predicate<*, *>
     ): Stream<AclKey> {
         return authorizationManager.getAuthorizedObjectsOfType(
-                Principals.getCurrentPrincipals(),
-                securableObjectType,
-                requiredPermissions,
-                additionalFilters
+            Principals.currentPrincipals,
+            securableObjectType,
+            requiredPermissions,
+            additionalFilters
         )
     }
 
