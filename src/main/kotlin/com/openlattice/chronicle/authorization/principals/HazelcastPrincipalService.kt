@@ -117,15 +117,15 @@ class HazelcastPrincipalService(
         principals.executeOnKey(aclKey, PrincipalDescriptionUpdater(description))
     }
 
-    override fun getSecurablePrincipal(aclKey: AclKey): SecurablePrincipal? {
-        return principalsMapManager.getSecurablePrincipal(aclKey)
+    override fun getSecurablePrincipal(aclKey: AclKey): SecurablePrincipal {
+        return principalsMapManager.getSecurablePrincipal(aclKey)!!
     }
 
     override fun lookup(p: Principal): AclKey {
         return getFirstSecurablePrincipal(findPrincipal(p)).aclKey
     }
 
-    override fun lookup(p: MutableSet<Principal>): MutableMap<Principal, AclKey> {
+    override fun lookup(p: Set<Principal>): MutableMap<Principal, AclKey> {
         return principals.entrySet(findPrincipals(p)).associate { it.value.principal to it.key }.toMutableMap()
     }
 
@@ -246,7 +246,7 @@ class HazelcastPrincipalService(
         return childrenToParents
     }
 
-    override fun getOrganizationMembers(organizationIds: MutableSet<UUID>): Map<UUID, Set<SecurablePrincipal>> {
+    override fun getOrganizationMembers(organizationIds: Set<UUID>): Map<UUID, Set<SecurablePrincipal>> {
         val orgAclKeys = organizationIds.map { AclKey(it) }.toSet()
         val orgMembers = getParentPrincipalsOfPrincipals(orgAclKeys)
         return orgAclKeys

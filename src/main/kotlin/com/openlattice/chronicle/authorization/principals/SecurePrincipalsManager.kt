@@ -85,8 +85,8 @@ interface SecurePrincipalsManager {
     fun getSecurablePrincipals(members: Collection<Principal>): Collection<SecurablePrincipal>
     fun getAllPrincipals(sp: SecurablePrincipal): Collection<SecurablePrincipal>
     fun bulkGetUnderlyingPrincipals(sps: Set<SecurablePrincipal>): Map<SecurablePrincipal, Set<Principal>>
-    val currentUserId: UUID
+    fun getCurrentUserId(): UUID
     fun ensurePrincipalsExist(aclKeys: Set<AclKey>)
-    val allRoles: Set<Role>
-    val allUsers: Set<SecurablePrincipal>
+    fun getAllRoles(): Set<Role>
+    fun getAllUsers(): Set<SecurablePrincipal>
 }

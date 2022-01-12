@@ -24,10 +24,7 @@ import com.google.common.base.Preconditions
 import com.google.common.collect.ImmutableSortedSet
 import com.hazelcast.core.HazelcastInstance
 import com.hazelcast.map.IMap
-import com.openlattice.chronicle.authorization.Principal
-import com.openlattice.chronicle.authorization.PrincipalType
-import com.openlattice.chronicle.authorization.SecurablePrincipal
-import com.openlattice.chronicle.authorization.SortedPrincipalSet
+import com.openlattice.chronicle.authorization.*
 import com.openlattice.chronicle.hazelcast.HazelcastMap
 import org.slf4j.LoggerFactory
 import org.springframework.security.core.Authentication
@@ -38,82 +35,90 @@ import java.util.concurrent.locks.Lock
 import java.util.concurrent.locks.ReentrantLock
 import javax.annotation.Nonnull
 
-object Principals {
-    private val logger = LoggerFactory
-        .getLogger(Principals::class.java)
-    private val startupLock: Lock = ReentrantLock()
-    private lateinit var securablePrincipals: IMap<String, SecurablePrincipal>
-    private lateinit var principals: IMap<String, SortedPrincipalSet>
-    fun init(spm: SecurePrincipalsManager, hazelcastInstance: HazelcastInstance) {
-        if (startupLock.tryLock()) {
-            securablePrincipals = HazelcastMap.SECURABLE_PRINCIPALS.getMap(
-                hazelcastInstance!!
-            )
-            principals = HazelcastMap.RESOLVED_PRINCIPAL_TREES.getMap(
-                hazelcastInstance
-            )
-        } else {
-            logger.error("Principals security processing can only be initialized once.")
-            throw IllegalStateException("Principals context already initialized.")
+class Principals {
+    companion object {
+        private val logger = LoggerFactory
+            .getLogger(Principals::class.java)
+        private val startupLock: Lock = ReentrantLock()
+        private lateinit var securablePrincipals: IMap<String, SecurablePrincipal>
+        private lateinit var principals: IMap<String, SortedPrincipalSet>
+
+        fun init(spm: SecurePrincipalsManager, hazelcastInstance: HazelcastInstance) {
+            if (startupLock.tryLock()) {
+                securablePrincipals = HazelcastMap.SECURABLE_PRINCIPALS.getMap(
+                    hazelcastInstance!!
+                )
+                principals = HazelcastMap.RESOLVED_PRINCIPAL_TREES.getMap(
+                    hazelcastInstance
+                )
+            } else {
+                logger.error("Principals security processing can only be initialized once.")
+                throw IllegalStateException("Principals context already initialized.")
+            }
         }
-    }
 
-    fun ensureRole(principal: Principal) {
-        Preconditions.checkArgument(
-            principal.type == PrincipalType.ROLE,
-            "Only role principal type allowed."
-        )
-    }
+        fun ensureRole(principal: Principal) {
+            Preconditions.checkArgument(
+                principal.type == PrincipalType.ROLE,
+                "Only role principal type allowed."
+            )
+        }
 
-    fun ensureUser(principal: Principal) {
-        Preconditions.checkState(principal.type == PrincipalType.USER, "Only user principal type allowed.")
-    }
+        fun ensureUser(principal: Principal) {
+            Preconditions.checkState(principal.type == PrincipalType.USER, "Only user principal type allowed.")
+        }
 
-    fun ensureUserOrRole(principal: Principal) {
-        Preconditions.checkState(
-            principal.type == PrincipalType.USER || (principal.type
-                    == PrincipalType.ROLE), "Only user and role principal types allowed."
-        )
-    }
+        fun ensureUserOrRole(principal: Principal) {
+            Preconditions.checkState(
+                principal.type == PrincipalType.USER || (principal.type
+                        == PrincipalType.ROLE), "Only user and role principal types allowed."
+            )
+        }
 
-    /**
-     * This will retrieve the current user. If auth information isn't present an NPE is thrown (by design). If the wrong
-     * type of auth is present a ClassCast exception will be thrown (by design).
-     *
-     * @return The principal for the current request.
-     */
-    @get:Nonnull
-    val currentUser: Principal
-        get() = getUserPrincipal(currentPrincipalId)
-    val currentSecurablePrincipal: SecurablePrincipal
-        get() = securablePrincipals[currentPrincipalId]!!
+        /**
+         * This will retrieve the current user. If auth information isn't present an NPE is thrown (by design). If the wrong
+         * type of auth is present a ClassCast exception will be thrown (by design).
+         *
+         * @return The principal for the current request.
+         */
+        @get:Nonnull
+        val currentUser: Principal
+            get() = getUserPrincipal(currentPrincipalId)
+        val currentSecurablePrincipal: SecurablePrincipal
+            get() = securablePrincipals[currentPrincipalId]!!
 
-    fun getUserPrincipal(principalId: String): Principal {
-        return Principal(PrincipalType.USER, principalId)
-    }
 
-    fun getUserPrincipals(principalId: String): NavigableSet<Principal> {
-        return principals[principalId]!!
-    }
+        fun getAdminRole(): Principal {
+            return SystemRole.adminRole
+        }
 
-    val currentPrincipals: NavigableSet<Principal>
-        get() = MoreObjects.firstNonNull(
-            principals!![currentPrincipalId], ImmutableSortedSet.of()
-        )
+        fun getUserPrincipal(principalId: String): Principal {
+            return Principal(PrincipalType.USER, principalId)
+        }
 
-    fun fromPrincipal(p: Principal): SimpleGrantedAuthority {
-        return SimpleGrantedAuthority(p.type.name + "|" + p.id)
-    }
+        fun getUserPrincipals(principalId: String): NavigableSet<Principal> {
+            return principals[principalId]!!
+        }
 
-    private fun getPrincipalId(authentication: Authentication): String {
-        return authentication.principal.toString()
-    }
+        val currentPrincipals: NavigableSet<Principal>
+            get() = MoreObjects.firstNonNull(
+                principals!![currentPrincipalId], ImmutableSortedSet.of()
+            )
 
-    private val currentPrincipalId: String
-        private get() = getPrincipalId(SecurityContextHolder.getContext().authentication)
+        fun fromPrincipal(p: Principal): SimpleGrantedAuthority {
+            return SimpleGrantedAuthority(p.type.name + "|" + p.id)
+        }
 
-    fun invalidatePrincipalCache(principalId: String) {
-        securablePrincipals!!.evict(principalId)
-        principals!!.evict(principalId)
+        private fun getPrincipalId(authentication: Authentication): String {
+            return authentication.principal.toString()
+        }
+
+        private val currentPrincipalId: String
+            private get() = getPrincipalId(SecurityContextHolder.getContext().authentication)
+
+        fun invalidatePrincipalCache(principalId: String) {
+            securablePrincipals!!.evict(principalId)
+            principals!!.evict(principalId)
+        }
     }
 }
