@@ -52,6 +52,7 @@ import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import com.openlattice.chronicle.services.enrollment.EnrollmentService
 import com.openlattice.chronicle.services.settings.OrganizationSettingsManager
 import com.openlattice.chronicle.services.settings.OrganizationSettingsService
+import com.openlattice.chronicle.services.studies.StudiesService
 import com.openlattice.chronicle.services.surveys.SurveysManager
 import com.openlattice.chronicle.services.surveys.SurveysService
 import com.openlattice.chronicle.services.upload.AppDataUploadManager
@@ -253,6 +254,11 @@ class ChronicleServerServicesPod {
             ManagementAPI(auth0Configuration.domain, auth0Token),
             Auth0ApiExtension(auth0Configuration.domain, auth0Token)
         )
+    }
+
+    @Bean
+    fun studiesService(): StudiesService {
+        return StudiesService(storageResolver())
     }
 
     @Bean
