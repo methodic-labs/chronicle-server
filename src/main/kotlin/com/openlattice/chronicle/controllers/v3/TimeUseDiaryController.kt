@@ -21,8 +21,8 @@ import org.springframework.web.bind.annotation.*
 import org.springframework.format.annotation.*
 import org.slf4j.LoggerFactory
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.util.UUID
-import java.time.OffsetDateTime
 import javax.inject.Inject
 
 /**
@@ -68,8 +68,8 @@ class TimeUseDiaryController : TimeUseDiaryApi {
         @PathVariable(ORGANIZATION_ID) organizationId: UUID,
         @PathVariable(STUDY_ID) studyId: UUID,
         @PathVariable(PARTICIPANT_ID) participantId: String,
-        @RequestParam(START_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) startDateTime: OffsetDateTime,
-        @RequestParam(END_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) endDateTime: OffsetDateTime
+        @RequestParam(START_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) startDateTime: LocalDateTime,
+        @RequestParam(END_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) endDateTime: LocalDateTime
     ): Map<LocalDate, Set<UUID>> {
         return timeUseDiaryManager.getSubmissionByDate(
             organizationId,
