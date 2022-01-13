@@ -13,7 +13,7 @@ class PostgresColumns {
         val STUDY_ID = PostgresColumnDefinition("study_id", PostgresDatatype.UUID).notNull()
         val PARTICIPANT_ID = PostgresColumnDefinition("particpant_id", PostgresDatatype.TEXT).notNull()
         val TITLE = PostgresColumnDefinition("title", PostgresDatatype.TEXT)
-        val DESCRIPTION = PostgresColumnDefinition("title", PostgresDatatype.TEXT)
+        val DESCRIPTION = PostgresColumnDefinition("description", PostgresDatatype.TEXT)
         val SETTINGS = PostgresColumnDefinition("settings", PostgresDatatype.JSONB)
         val NAME = PostgresColumnDefinition("name", PostgresDatatype.TEXT)
         val FIRST_NAME = PostgresColumnDefinition("first_name", PostgresDatatype.TEXT)
@@ -53,5 +53,12 @@ class PostgresColumns {
         val USER_DATA = PostgresColumnDefinition("user_data", PostgresDatatype.JSONB)
         val USER_ID = PostgresColumnDefinition("user_id", PostgresDatatype.TEXT).notNull()
 
+        val CREATED_AT = PostgresColumnDefinition("created_at", PostgresDatatype.TIMESTAMPTZ).notNull().withDefault("NOW()")
+        val ENDED_AT = PostgresColumnDefinition("ended_at", PostgresDatatype.TIMESTAMPTZ).notNull().withDefault("NOW()")
+        val STARTED_AT = PostgresColumnDefinition("started_at", PostgresDatatype.TIMESTAMPTZ).notNull().withDefault("NOW()")
+        val UPDATED_AT = PostgresColumnDefinition("updated_at", PostgresDatatype.TIMESTAMPTZ).notNull().withDefault("NOW()")
+        val STUDY_GROUP = PostgresColumnDefinition("study_group", PostgresDatatype.TEXT)
+        val VERSION = PostgresColumnDefinition("version", PostgresDatatype.TEXT)
+        val LOCATION = PostgresColumnDefinition("location", PostgresDatatype.POINT)
     }
 }
