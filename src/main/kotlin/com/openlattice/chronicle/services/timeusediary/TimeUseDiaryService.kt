@@ -17,6 +17,8 @@ import java.time.LocalDate
 import java.util.*
 import java.sql.Types
 import java.time.LocalDateTime
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
 
 /**
  * @author Andrew Carter andrew@openlattice.com
@@ -61,9 +63,12 @@ class TimeUseDiaryService(
         studyId: UUID,
         participantId: String,
         startDate: LocalDateTime,
-        endDate: LocalDateTime
+        endDate: LocalDateTime,
+        zoneOffset: ZoneOffset
     ): Map<LocalDate, Set<UUID>> {
         val submissionsByDate = mutableMapOf<LocalDate,MutableSet<UUID>>()
+        // Use Calendar to convert response to user's timezone
+        cal.timeZone = TimeZone.getTimeZone("GMT${zoneOffset.id}")
         try {
             val (flavor, hds) = storageResolver.resolve(studyId)
             val result = hds.connection.use { connection ->
@@ -72,8 +77,8 @@ class TimeUseDiaryService(
                     organizationId,
                     studyId,
                     participantId,
-                    startDate,
-                    endDate
+                    startDate.atOffset(zoneOffset),
+                    endDate.atOffset(zoneOffset)
                 )
             }
             while (result.next()) {
@@ -126,8 +131,8 @@ class TimeUseDiaryService(
         organizationId: UUID,
         studyId: UUID,
         participantId: String,
-        startDate: LocalDateTime,
-        endDate: LocalDateTime
+        startDate: OffsetDateTime,
+        endDate: OffsetDateTime
     ): ResultSet {
         val preparedStatement = connection.prepareStatement(getSubmissionsByDateSql)
         var index = 1

@@ -13,6 +13,7 @@ import com.openlattice.chronicle.api.TimeUseDiaryApi.Companion.PARTICIPANT_ID_PA
 import com.openlattice.chronicle.api.TimeUseDiaryApi.Companion.STUDY_ID_PATH
 import com.openlattice.chronicle.api.TimeUseDiaryApi.Companion.STATUS_PATH
 import com.codahale.metrics.annotation.Timed
+import com.openlattice.chronicle.api.TimeUseDiaryApi.Companion.ZONE_OFFSET
 import com.openlattice.chronicle.services.timeusediary.TimeUseDiaryManager
 import com.openlattice.chronicle.tud.TimeUseDiaryDownloadDataType
 import com.openlattice.chronicle.tud.TimeUseDiaryResponse
@@ -22,6 +23,7 @@ import org.springframework.format.annotation.*
 import org.slf4j.LoggerFactory
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.ZoneOffset
 import java.util.UUID
 import javax.inject.Inject
 
@@ -37,6 +39,7 @@ class TimeUseDiaryController : TimeUseDiaryApi {
 
     companion object {
         private val logger = LoggerFactory.getLogger(TimeUseDiaryController::class.java)!!
+        private const val pstOffset = "-08:00"
     }
 
     @Timed
@@ -69,14 +72,16 @@ class TimeUseDiaryController : TimeUseDiaryApi {
         @PathVariable(STUDY_ID) studyId: UUID,
         @PathVariable(PARTICIPANT_ID) participantId: String,
         @RequestParam(START_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) startDateTime: LocalDateTime,
-        @RequestParam(END_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) endDateTime: LocalDateTime
+        @RequestParam(END_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) endDateTime: LocalDateTime,
+        @RequestParam(value = ZONE_OFFSET, defaultValue = pstOffset) @DateTimeFormat(pattern = "Z") zoneOffset: ZoneOffset
     ): Map<LocalDate, Set<UUID>> {
         return timeUseDiaryManager.getSubmissionByDate(
             organizationId,
             studyId,
             participantId,
             startDateTime,
-            endDateTime
+            endDateTime,
+            zoneOffset
         )
     }
 
