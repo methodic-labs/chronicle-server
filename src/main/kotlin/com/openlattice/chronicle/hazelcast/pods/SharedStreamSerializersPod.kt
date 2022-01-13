@@ -33,13 +33,4 @@ import org.springframework.stereotype.Component
     basePackageClasses = [SharedStreamSerializers::class],
     includeFilters = [ComponentScan.Filter(value = [Component::class], type = FilterType.ANNOTATION)]
 )
-class SharedStreamSerializersPod {
-    @Bean
-    fun delegatedUUIDListStreamSerializer(): ListStreamSerializers.DelegatedUUIDListStreamSerializer {
-        return object : ListStreamSerializers.DelegatedUUIDListStreamSerializer() {
-            override fun getTypeId(): Int {
-                return StreamSerializerTypeIds.DELEGATED_UUID_LIST.ordinal
-            }
-        }
-    }
-}
+class SharedStreamSerializersPod
