@@ -6,9 +6,6 @@ import java.util.UUID
 /**
  * @author Solomon Tang <solomon@openlattice.com>
  */
-interface StudiesManager {
-    fun submitStudy(
-        organizationId: UUID,
-        study: Study
-    ): UUID
+interface StudyManager {
+    fun createStudy(study: Study): UUID
 }

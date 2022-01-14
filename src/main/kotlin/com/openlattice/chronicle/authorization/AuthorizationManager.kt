@@ -22,6 +22,7 @@ package com.openlattice.chronicle.authorization
 import com.codahale.metrics.annotation.Timed
 import com.google.common.collect.SetMultimap
 import com.hazelcast.query.Predicate
+import java.sql.Connection
 import java.time.OffsetDateTime
 import java.util.EnumSet
 import java.util.EnumMap
@@ -41,6 +42,27 @@ import java.util.stream.Stream
  * @author Matthew Tamayo-Rios &lt;matthew@openlattice.com&gt;
  */
 interface AuthorizationManager {
+    /**
+     * Creates a securable object, registers it's type, and ensures that the creating principal at least has at least
+     * owner permissions so they can manage the ACL via the API.
+     *
+     * NOTE: There is still a failure mode here if the principal is a role that is not assigned to anyone.
+     *
+     * @param connection The SQL connection to be used for ensuring the creation of object happens transactionally
+     * along with any other required operations.
+     * @param aclKey The unique acl key for the object.
+     * @param principal The creating principal.
+     * @param permissions The permissions to grant to that principal.
+     */
+    @Timed
+    fun createSecurableObject(
+        connection: Connection,
+        aclKey: AclKey,
+        principal: Principal,
+        permissions: EnumSet<Permission> = EnumSet.allOf(Permission::class.java),
+        objectType: SecurableObjectType
+    )
+
     /**
      * Bulk function for setting or initializing securable object types.
      *

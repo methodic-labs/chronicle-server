@@ -14,7 +14,7 @@ class PostgresColumns {
         val PARTICIPANT_ID = PostgresColumnDefinition("particpant_id", PostgresDatatype.TEXT).notNull()
         val TITLE = PostgresColumnDefinition("title", PostgresDatatype.TEXT)
         val DESCRIPTION = PostgresColumnDefinition("description", PostgresDatatype.TEXT)
-        val SETTINGS = PostgresColumnDefinition("settings", PostgresDatatype.JSONB)
+        val SETTINGS = PostgresColumnDefinition("settings", PostgresDatatype.JSONB).withDefault("'{}'")
         val NAME = PostgresColumnDefinition("name", PostgresDatatype.TEXT)
         val FIRST_NAME = PostgresColumnDefinition("first_name", PostgresDatatype.TEXT)
         val LAST_NAME = PostgresColumnDefinition("last_name", PostgresDatatype.TEXT)
@@ -22,8 +22,8 @@ class PostgresColumns {
 
         val ACL_KEY = PostgresColumnDefinition("acl_key", PostgresDatatype.UUID_ARRAY)
         val PRINCIPAL_ID = PostgresColumnDefinition("principal_id", PostgresDatatype.TEXT)
-        val PRINCIPAL_OF_ACL_KEY = PostgresColumnDefinition("principal_of_acl_key", PostgresDatatype.UUID_ARRAY)
         val PRINCIPAL_TYPE = PostgresColumnDefinition("principal_type", PostgresDatatype.TEXT)
+        val PRINCIPAL_OF_ACL_KEY = PostgresColumnDefinition("principal_of_acl_key", PostgresDatatype.UUID_ARRAY)
         val PARTITION_INDEX = PostgresColumnDefinition("partition_index", PostgresDatatype.BIGINT).notNull()
         val MSB = PostgresColumnDefinition("msb", PostgresDatatype.BIGINT).notNull()
         val LSB = PostgresColumnDefinition("lsb", PostgresDatatype.BIGINT).notNull()
@@ -41,7 +41,6 @@ class PostgresColumns {
         val SECURABLE_OBJECT_ID = PostgresColumnDefinition("id", PostgresDatatype.UUID)
                 .unique()
                 .notNull()
-
         val SECURABLE_OBJECT_TYPE = PostgresColumnDefinition("securable_object_type", PostgresDatatype.TEXT)
                 .notNull()
 
@@ -53,12 +52,15 @@ class PostgresColumns {
         val USER_DATA = PostgresColumnDefinition("user_data", PostgresDatatype.JSONB)
         val USER_ID = PostgresColumnDefinition("user_id", PostgresDatatype.TEXT).notNull()
 
-        val CREATED_AT = PostgresColumnDefinition("created_at", PostgresDatatype.TIMESTAMPTZ).notNull().withDefault("NOW()")
-        val ENDED_AT = PostgresColumnDefinition("ended_at", PostgresDatatype.TIMESTAMPTZ).notNull().withDefault("NOW()")
-        val STARTED_AT = PostgresColumnDefinition("started_at", PostgresDatatype.TIMESTAMPTZ).notNull().withDefault("NOW()")
-        val UPDATED_AT = PostgresColumnDefinition("updated_at", PostgresDatatype.TIMESTAMPTZ).notNull().withDefault("NOW()")
+        val CREATED_AT = PostgresColumnDefinition("created_at", PostgresDatatype.TIMESTAMPTZ).notNull().withDefault("now()")
+        val ENDED_AT = PostgresColumnDefinition("ended_at", PostgresDatatype.TIMESTAMPTZ).notNull().withDefault("infinity")
+        val STARTED_AT = PostgresColumnDefinition("started_at", PostgresDatatype.TIMESTAMPTZ).notNull().withDefault("now()")
+        val UPDATED_AT = PostgresColumnDefinition("updated_at", PostgresDatatype.TIMESTAMPTZ).notNull().withDefault("now()")
         val STUDY_GROUP = PostgresColumnDefinition("study_group", PostgresDatatype.TEXT)
-        val VERSION = PostgresColumnDefinition("version", PostgresDatatype.TEXT)
-        val LOCATION = PostgresColumnDefinition("location", PostgresDatatype.POINT)
+        val STUDY_VERSION = PostgresColumnDefinition("study_version", PostgresDatatype.TEXT)
+
+        //It is fine to use double for lat/lon since we won't be doing computation on these
+        val LAT = PostgresColumnDefinition("lat", PostgresDatatype.DOUBLE)
+        val LON = PostgresColumnDefinition("lat", PostgresDatatype.DOUBLE)
     }
 }

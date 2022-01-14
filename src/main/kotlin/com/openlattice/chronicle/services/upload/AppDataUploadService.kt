@@ -37,10 +37,10 @@ import java.util.function.Consumer
  */
 
 class AppDataUploadService(
-        private val storageResolver: StorageResolver,
-        private val scheduledTasksManager: ScheduledTasksManager,
-        private val enrollmentManager: EnrollmentManager,
-        private val organizationSettingsManager: OrganizationSettingsManager
+    private val storageResolver: StorageResolver,
+    private val scheduledTasksManager: ScheduledTasksManager,
+    private val enrollmentManager: EnrollmentManager,
+    private val organizationSettingsManager: OrganizationSettingsManager
 ) : AppDataUploadManager {
     private val logger = LoggerFactory.getLogger(AppDataUploadService::class.java)
 
@@ -48,8 +48,8 @@ class AppDataUploadService(
         return if (dateTime == null) {
             null
         } else OffsetDateTime.parse(dateTime)
-                .truncatedTo(chronoUnit)
-                .toString()
+            .truncatedTo(chronoUnit)
+            .toString()
     }
 
     private fun getTruncatedDateTime(datetime: String, organizationId: UUID): String? {
@@ -63,18 +63,18 @@ class AppDataUploadService(
     private fun getDateTimeValuesFromDeviceData(data: List<SetMultimap<UUID, Any>>): Set<OffsetDateTime> {
         val dateTimes: MutableSet<OffsetDateTime> = Sets.newHashSet()
         data.forEach(
-                Consumer { entity: SetMultimap<UUID, Any> ->
-                    // most date properties in the entity are of length 1
-                    for (date in entity[LegacyEdmResolver.getPropertyTypeId(DATE_LOGGED_FQN)]) {
-                        val parsedDateTime = OffsetDateTime
-                                .parse(date.toString())
+            Consumer { entity: SetMultimap<UUID, Any> ->
+                // most date properties in the entity are of length 1
+                for (date in entity[LegacyEdmResolver.getPropertyTypeId(DATE_LOGGED_FQN)]) {
+                    val parsedDateTime = OffsetDateTime
+                        .parse(date.toString())
 
-                        // filter out problematic entities with dates in the sixties
-                        if (parsedDateTime.isAfter(OutputConstants.MINIMUM_DATE)) {
-                            dateTimes.add(parsedDateTime)
-                        }
+                    // filter out problematic entities with dates in the sixties
+                    if (parsedDateTime.isAfter(OutputConstants.MINIMUM_DATE)) {
+                        dateTimes.add(parsedDateTime)
                     }
                 }
+            }
         )
         return dateTimes
     }
@@ -85,10 +85,10 @@ class AppDataUploadService(
         return value?.toString()
     }
 
-   private fun hasUserAppPackageName(organizationId: UUID?, packageName: String?): Boolean {
+    private fun hasUserAppPackageName(organizationId: UUID?, packageName: String?): Boolean {
         return if (organizationId != null) {
             scheduledTasksManager.userAppsFullNamesByOrg.getOrDefault(packageName, ImmutableSet.of())
-                    .contains(organizationId)
+                .contains(organizationId)
         } else scheduledTasksManager.userAppsFullNameValues.contains(packageName)
     }
 
@@ -106,57 +106,56 @@ class AppDataUploadService(
      * id/timestamp is unlikely to happen in the lifetime of our universe.
      */
     override fun upload(
-            organizationId: UUID,
-            studyId: UUID,
-            participantId: String,
-            dataSourceId: String,
-            data: List<SetMultimap<UUID, Any>>
+        organizationId: UUID,
+        studyId: UUID,
+        participantId: String,
+        dataSourceId: String,
+        data: List<SetMultimap<UUID, Any>>
     ): Int {
         StopWatch(
-                log = "logging ${data.size} entries for ${ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE}",
-                level = Level.INFO,
-                logger = logger,
-                data.size,
-                organizationId,
-                studyId,
-                participantId,
-                dataSourceId
+            log = "logging ${data.size} entries for ${ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE}",
+            level = Level.INFO,
+            logger = logger,
+            data.size,
+            organizationId,
+            studyId,
+            participantId,
+            dataSourceId
         ).use {
             try {
                 val (flavor, hds) = storageResolver.resolve(studyId)
 
-                val status = enrollmentManager
-                        .getParticipationStatus(organizationId, studyId, participantId)
+                val status = enrollmentManager.getParticipationStatus(organizationId, studyId, participantId)
                 if (ParticipationStatus.NOT_ENROLLED == status) {
                     logger.warn(
-                            "participant is not enrolled, ignoring upload" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE,
-                            organizationId,
-                            studyId,
-                            participantId,
-                            dataSourceId
+                        "participant is not enrolled, ignoring upload" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE,
+                        organizationId,
+                        studyId,
+                        participantId,
+                        dataSourceId
                     )
                     return 0
                 }
                 val isDeviceEnrolled = enrollmentManager.isKnownDatasource(
-                        organizationId, studyId, participantId, dataSourceId
+                    organizationId, studyId, participantId, dataSourceId
                 )
                 if (isDeviceEnrolled) {
                     logger.error(
-                            "data source not found, ignoring upload" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE,
-                            organizationId,
-                            studyId,
-                            participantId,
-                            dataSourceId
+                        "data source not found, ignoring upload" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE,
+                        organizationId,
+                        studyId,
+                        participantId,
+                        dataSourceId
                     )
                     return 0
                 }
 
                 logger.info(
-                        "attempting to log data" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE,
-                        organizationId,
-                        studyId,
-                        participantId,
-                        dataSourceId
+                    "attempting to log data" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE,
+                    organizationId,
+                    studyId,
+                    participantId,
+                    dataSourceId
                 )
 
                 val mappedData = filter(organizationId, mapToStorageModel(data))
@@ -176,12 +175,12 @@ class AppDataUploadService(
                 return data.size
             } catch (exception: Exception) {
                 logger.error(
-                        "error logging data" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE,
-                        organizationId,
-                        studyId,
-                        participantId,
-                        dataSourceId,
-                        exception
+                    "error logging data" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE,
+                    organizationId,
+                    studyId,
+                    participantId,
+                    dataSourceId,
+                    exception
                 )
                 return 0
             }
@@ -189,7 +188,7 @@ class AppDataUploadService(
     }
 
     private fun filter(
-            organizationId: UUID, mappedData: Sequence<Map<String, UsageEventColumn>>
+        organizationId: UUID, mappedData: Sequence<Map<String, UsageEventColumn>>
     ): Sequence<Map<String, UsageEventColumn>> {
         return mappedData.filter { mappedUsageEventCols ->
             val appName = mappedUsageEventCols[FQNS_TO_COLUMNS.getValue(FULL_NAME_FQN).name]?.value as String
@@ -212,11 +211,11 @@ class AppDataUploadService(
     }
 
     private fun writeToRedshift(
-            hds: HikariDataSource,
-            organizationId: UUID,
-            studyId: UUID,
-            participantId: String,
-            data: Sequence<Map<String, UsageEventColumn>>
+        hds: HikariDataSource,
+        organizationId: UUID,
+        studyId: UUID,
+        participantId: String,
+        data: Sequence<Map<String, UsageEventColumn>>
     ): Int {
         return hds.connection.use { connection ->
             //Create the temporary merge table
@@ -227,38 +226,38 @@ class AppDataUploadService(
                 connection.createStatement().use { stmt -> stmt.execute(tempMergeTable.createTableQuery()) }
 
                 val wc = connection
-                        .prepareStatement(getInsertIntoMergeUsageEventsTableSql(tempMergeTable.name)).use { ps ->
-                            //Should only need to set these once for prepared statement.
-                            ps.setString(1, organizationId.toString())
-                            ps.setString(2, studyId.toString())
-                            ps.setString(3, participantId)
+                    .prepareStatement(getInsertIntoMergeUsageEventsTableSql(tempMergeTable.name)).use { ps ->
+                        //Should only need to set these once for prepared statement.
+                        ps.setString(1, organizationId.toString())
+                        ps.setString(2, studyId.toString())
+                        ps.setString(3, participantId)
 
-                            data.forEach { usageEventCols ->
-                                usageEventCols.values.forEach { usageEventCol ->
+                        data.forEach { usageEventCols ->
+                            usageEventCols.values.forEach { usageEventCol ->
 
-                                    val col = usageEventCol.col
-                                    val colIndex = usageEventCol.colIndex
-                                    val value = usageEventCol.value
+                                val col = usageEventCol.col
+                                val colIndex = usageEventCol.colIndex
+                                val value = usageEventCol.value
 
-                                    //Set insert value to null, if value was not provided.
-                                    if (value == null) {
-                                        ps.setObject(colIndex, null)
-                                    } else {
-                                        when (col.datatype) {
-                                            PostgresDatatype.TEXT -> ps.setString(colIndex, value as String)
-                                            PostgresDatatype.TIMESTAMPTZ -> ps.setObject(
-                                                    colIndex,
-                                                    OffsetDateTime.parse(value as String?)
-                                            )
-                                            PostgresDatatype.BIGINT -> ps.setLong(colIndex, value as Long)
-                                            else -> ps.setObject(colIndex, value)
-                                        }
+                                //Set insert value to null, if value was not provided.
+                                if (value == null) {
+                                    ps.setObject(colIndex, null)
+                                } else {
+                                    when (col.datatype) {
+                                        PostgresDatatype.TEXT -> ps.setString(colIndex, value as String)
+                                        PostgresDatatype.TIMESTAMPTZ -> ps.setObject(
+                                            colIndex,
+                                            OffsetDateTime.parse(value as String?)
+                                        )
+                                        PostgresDatatype.BIGINT -> ps.setLong(colIndex, value as Long)
+                                        else -> ps.setObject(colIndex, value)
                                     }
                                 }
-                                ps.addBatch()
                             }
-                            ps.executeBatch().sum()
+                            ps.addBatch()
                         }
+                        ps.executeBatch().sum()
+                    }
 
                 connection.createStatement().use { stmt ->
                     stmt.execute(getDeleteTempTableEntriesSql(tempMergeTable.name))
@@ -277,11 +276,11 @@ class AppDataUploadService(
     }
 
     private fun writeToPostgres(
-            hds: HikariDataSource,
-            organizationId: UUID,
-            studyId: UUID,
-            participantId: String,
-            data: Sequence<Map<String, UsageEventColumn>>
+        hds: HikariDataSource,
+        organizationId: UUID,
+        studyId: UUID,
+        participantId: String,
+        data: Sequence<Map<String, UsageEventColumn>>
     ): Int {
         return writeToRedshift(hds, organizationId, studyId, participantId, data)
     }
@@ -294,27 +293,27 @@ class AppDataUploadService(
 
 
 private data class UsageEventColumn(
-        val col: PostgresColumnDefinition,
-        val colIndex: Int,
-        val value: Any?
+    val col: PostgresColumnDefinition,
+    val colIndex: Int,
+    val value: Any?
 )
 
 private val USAGE_EVENT_COLUMNS = listOf(
-        FULL_NAME_FQN,
-        RECORD_TYPE_FQN,
-        DATE_LOGGED_FQN,
-        TIMEZONE_FQN,
-        USER_FQN,
-        TITLE_FQN
+    FULL_NAME_FQN,
+    RECORD_TYPE_FQN,
+    DATE_LOGGED_FQN,
+    TIMEZONE_FQN,
+    USER_FQN,
+    TITLE_FQN
 )
 
 private val USAGE_STAT_COLUMNS = listOf(
-        FULL_NAME_FQN,
-        RECORD_TYPE_FQN,
-        START_DATE_TIME_FQN,
-        END_DATE_TIME_FQN,
-        DURATION_FQN,
-        DATE_LOGGED_FQN,
-        TIMEZONE_FQN,
-        TITLE_FQN,
+    FULL_NAME_FQN,
+    RECORD_TYPE_FQN,
+    START_DATE_TIME_FQN,
+    END_DATE_TIME_FQN,
+    DURATION_FQN,
+    DATE_LOGGED_FQN,
+    TIMEZONE_FQN,
+    TITLE_FQN,
 )

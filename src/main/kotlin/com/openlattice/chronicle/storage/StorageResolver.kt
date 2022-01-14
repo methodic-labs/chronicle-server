@@ -10,13 +10,18 @@ import java.util.*
  * @author Matthew Tamayo-Rios &lt;matthew@openlattice.com&gt;
  */
 class StorageResolver(
-        private val dataSourceManager: DataSourceManager,
-        private val defaultStorage: String
+    private val dataSourceManager: DataSourceManager,
+    private val defaultStorage: String,
+    private val auditStorage: String = "chronicle"
 ) {
     private val datasourceMappings: Map<UUID, String> = mutableMapOf()
-    fun resolve(studyId: UUID) : Pair<PostgresFlavor, HikariDataSource> {
+    fun resolve(studyId: UUID): Pair<PostgresFlavor, HikariDataSource> {
         val dataSourceName = datasourceMappings[studyId] ?: defaultStorage
-        return dataSourceManager.getFlavor(dataSourceName) to dataSourceManager.getDataSource(dataSourceName )
+        return dataSourceManager.getFlavor(dataSourceName) to dataSourceManager.getDataSource(dataSourceName)
+    }
+
+    fun getAuditStorage(): Pair<PostgresFlavor, HikariDataSource> {
+        return dataSourceManager.getFlavor(auditStorage) to dataSourceManager.getDataSource(auditStorage)
     }
 }
 

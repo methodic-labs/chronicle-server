@@ -64,5 +64,13 @@ class RedshiftColumns {
         val GENERAL_END_TIME = PostgresColumnDefinition(EdmConstants.GENERAL_END_TIME_FQN.name, PostgresDatatype.TIMESTAMPTZ)
         val NEW_PERIOD = PostgresColumnDefinition(EdmConstants.NEW_PERIOD_FQN.name, PostgresDatatype.TIMESTAMPTZ)
         val WARNING = PostgresColumnDefinition(EdmConstants.WARNING_FQN.name, PostgresDatatype.TIMESTAMPTZ)
+
+        //AUDIT
+        val SECURABLE_PRINCIPAL_ID = PostgresColumnDefinition("id", PostgresDatatype.TEXT_UUID).notNull()
+        val PRINCIPAL_ID = PostgresColumnDefinition("principal_id", PostgresDatatype.TEXT_256).notNull()
+        val ACL_KEY = PostgresColumnDefinition("acl_key", PostgresDatatype.TEXT_256).notNull()
+        val AUDIT_EVENT_TYPE = PostgresColumnDefinition("audit_event_type", PostgresDatatype.TEXT_256).notNull()
+        val DESCRIPTION = PostgresColumnDefinition("description", PostgresDatatype.TEXT_256).notNull()
+        val DATA = PostgresColumnDefinition("data", PostgresDatatype.VARCHAR_MAX).notNull()
     }
 }

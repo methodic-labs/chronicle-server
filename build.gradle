@@ -80,7 +80,7 @@ if (CS_XMX == 'null' || CS_XMX == null || CS_XMX == "") {
 }
 
 if (CS_ARGS == 'null' || CS_ARGS == null || CS_ARGS == "") {
-    CS_ARGS = 'local postgres'
+    CS_ARGS = 'local postgres medialocal'
 }
 
 

@@ -23,7 +23,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.openlattice.chronicle.constants.CustomMediaType;
 import com.openlattice.chronicle.controllers.legacy.ChronicleController;
 import com.openlattice.chronicle.controllers.v2.ChronicleControllerV2;
-import com.openlattice.chronicle.controllers.v3.StudiesController;
+import com.openlattice.chronicle.controllers.v3.StudyController;
 import com.openlattice.chronicle.converters.IterableCsvHttpMessageConverter;
 import com.openlattice.chronicle.converters.YamlHttpMessageConverter;
 import com.openlattice.chronicle.util.ChronicleServerExceptionHandler;
@@ -49,7 +49,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurationSupp
                 ChronicleController.class,
                 ChronicleServerExceptionHandler.class,
                 ChronicleControllerV2.class,
-                StudiesController.class,
+                StudyController.class,
         },
         includeFilters = @ComponentScan.Filter(
                 value = {

@@ -1,5 +1,8 @@
 package com.openlattice.chronicle.storage
 
+import com.fasterxml.jackson.annotation.JsonProperty
+import com.openlattice.chronicle.auditing.AuditEventType
+import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.BASE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CREATED_AT
@@ -10,7 +13,8 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.EXPIRATION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.FIRST_NAME
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_GROUP
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LAST_NAME
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.LOCATION
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.LAT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.LON
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LSB
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.MSB
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.NAME
@@ -31,8 +35,11 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.TITLE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPDATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_DATA
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_ID
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.VERSION
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_VERSION
+import com.openlattice.chronicle.util.JsonFields
 import com.openlattice.postgres.PostgresTableDefinition
+import java.time.OffsetDateTime
+import java.util.*
 
 /**
  *
@@ -55,20 +62,30 @@ class ChroniclePostgresTables {
         @JvmField
         val STUDIES = PostgresTableDefinition("studies")
                 .addColumns(
-                        ORGANIZATION_ID,
-                        STUDY_ID,
-                        TITLE,
-                        DESCRIPTION,
-                        CREATED_AT,
-                        UPDATED_AT,
-                        STARTED_AT,
-                        ENDED_AT,
-                        LOCATION,
-                        STUDY_GROUP,
-                        VERSION,
-                        SETTINGS,
+                    STUDY_ID,
+                    TITLE,
+                    DESCRIPTION,
+                    CREATED_AT,
+                    UPDATED_AT,
+                    STARTED_AT,
+                    ENDED_AT,
+                    LAT,
+                    LON,
+                    STUDY_GROUP,
+                    STUDY_VERSION,
+                    SETTINGS,
                 )
                 .primaryKey(STUDY_ID)
+        @JvmField
+        val ORGANIZATION_STUDIES = PostgresTableDefinition("studies")
+            .addColumns(
+                ORGANIZATION_ID,
+                STUDY_ID,
+                USER_ID,
+                CREATED_AT,
+                SETTINGS
+            )
+            .primaryKey(ORGANIZATION_ID, STUDY_ID)
 
         @JvmField
         val STUDY_PARTICIPATION = PostgresTableDefinition("study_participation")
@@ -143,5 +160,7 @@ class ChroniclePostgresTables {
                 .addColumns(USER_ID, USER_DATA, EXPIRATION)
                 .primaryKey(USER_ID)
                 .overwriteOnConflict()
+
+
     }
 }

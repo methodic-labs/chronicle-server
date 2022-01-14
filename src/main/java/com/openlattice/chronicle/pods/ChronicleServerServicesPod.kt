@@ -32,6 +32,8 @@ import com.openlattice.auth0.Auth0Pod
 import com.openlattice.auth0.Auth0TokenProvider
 import com.openlattice.auth0.AwsAuth0TokenProvider
 import com.openlattice.authentication.Auth0Configuration
+import com.openlattice.chronicle.auditing.AuditingManager
+import com.openlattice.chronicle.auditing.RedshiftAuditingManager
 import com.openlattice.chronicle.authorization.AuthorizationManager
 import com.openlattice.chronicle.authorization.HazelcastAuthorizationService
 import com.openlattice.chronicle.authorization.principals.HazelcastPrincipalService
@@ -41,7 +43,6 @@ import com.openlattice.chronicle.authorization.principals.SecurePrincipalsManage
 import com.openlattice.chronicle.authorization.reservations.AclKeyReservationService
 import com.openlattice.chronicle.configuration.ChronicleConfiguration
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
-import com.openlattice.chronicle.pods.ChronicleServerServicesPod
 import com.openlattice.chronicle.serializers.FullQualifiedNameJacksonSerializer.registerWithMapper
 import com.openlattice.chronicle.services.ScheduledTasksManager
 import com.openlattice.chronicle.services.delete.DataDeletionManager
@@ -52,7 +53,7 @@ import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import com.openlattice.chronicle.services.enrollment.EnrollmentService
 import com.openlattice.chronicle.services.settings.OrganizationSettingsManager
 import com.openlattice.chronicle.services.settings.OrganizationSettingsService
-import com.openlattice.chronicle.services.studies.StudiesService
+import com.openlattice.chronicle.services.studies.StudyService
 import com.openlattice.chronicle.services.surveys.SurveysManager
 import com.openlattice.chronicle.services.surveys.SurveysService
 import com.openlattice.chronicle.services.upload.AppDataUploadManager
@@ -95,6 +96,7 @@ class ChronicleServerServicesPod {
 
     @Inject
     private lateinit var eventBus: EventBus
+
     @Bean
     fun defaultObjectMapper(): ObjectMapper {
         val mapper = ObjectMappers.getJsonMapper()
@@ -257,13 +259,30 @@ class ChronicleServerServicesPod {
     }
 
     @Bean
-    fun studiesService(): StudiesService {
-        return StudiesService(storageResolver())
+    fun authorizationService(): AuthorizationManager {
+        return HazelcastAuthorizationService(hazelcast, eventBus, principalsMapManager())
+    }
+
+    @Bean
+    fun studiesService(): StudyService {
+        return StudyService(
+            storageResolver(),
+            aclKeyReservationService(),
+            idGenerationService(),
+            authorizationService(),
+            auditingManager()
+        )
     }
 
     @Bean
     fun auth0SyncTaskDependencies(): Auth0SyncTaskDependencies {
-        return Auth0SyncTaskDependencies(auth0SyncService(), userListingService(), executor!!)
+        return Auth0SyncTaskDependencies(auth0SyncService(), userListingService(), executor)
+    }
+
+
+    @Bean
+    fun auditingManager(): AuditingManager {
+        return RedshiftAuditingManager(storageResolver())
     }
 
     companion object {

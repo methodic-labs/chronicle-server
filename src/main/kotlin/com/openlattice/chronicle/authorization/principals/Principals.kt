@@ -19,7 +19,6 @@
  */
 package com.openlattice.chronicle.authorization.principals
 
-import com.google.common.base.MoreObjects
 import com.google.common.base.Preconditions
 import com.google.common.collect.ImmutableSortedSet
 import com.hazelcast.core.HazelcastInstance
@@ -33,7 +32,6 @@ import org.springframework.security.core.context.SecurityContextHolder
 import java.util.*
 import java.util.concurrent.locks.Lock
 import java.util.concurrent.locks.ReentrantLock
-import javax.annotation.Nonnull
 
 class Principals {
     companion object {
@@ -81,12 +79,9 @@ class Principals {
          *
          * @return The principal for the current request.
          */
-        @get:Nonnull
-        val currentUser: Principal
-            get() = getUserPrincipal(currentPrincipalId)
-        val currentSecurablePrincipal: SecurablePrincipal
-            get() = securablePrincipals[currentPrincipalId]!!
 
+        fun getCurrentUser(): Principal = getUserPrincipal(getCurrentPrincipalId())
+        fun getCurrentSecurablePrincipal(): SecurablePrincipal = securablePrincipals[getCurrentPrincipalId()]!!
 
         fun getAdminRole(): Principal {
             return SystemRole.adminRole
@@ -100,21 +95,18 @@ class Principals {
             return principals[principalId]!!
         }
 
-        val currentPrincipals: NavigableSet<Principal>
-            get() = MoreObjects.firstNonNull(
-                principals!![currentPrincipalId], ImmutableSortedSet.of()
-            )
+        fun getCurrentPrincipals(): NavigableSet<Principal> =
+            principals[getCurrentPrincipalId()] ?: ImmutableSortedSet.of()
 
-        fun fromPrincipal(p: Principal): SimpleGrantedAuthority {
-            return SimpleGrantedAuthority(p.type.name + "|" + p.id)
-        }
+
+        fun fromPrincipal(p: Principal): SimpleGrantedAuthority = SimpleGrantedAuthority(p.type.name + "|" + p.id)
+
 
         private fun getPrincipalId(authentication: Authentication): String {
             return authentication.principal.toString()
         }
 
-        private val currentPrincipalId: String
-            private get() = getPrincipalId(SecurityContextHolder.getContext().authentication)
+        private fun getCurrentPrincipalId(): String = getPrincipalId(SecurityContextHolder.getContext().authentication)
 
         fun invalidatePrincipalCache(principalId: String) {
             securablePrincipals!!.evict(principalId)

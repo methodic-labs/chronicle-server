@@ -43,24 +43,24 @@ interface AuthorizingComponent {
     val authorizationManager: AuthorizationManager
 
     fun <T : AbstractSecurableObject> isAuthorizedObject(
-            requiredPermission: Permission,
-            vararg requiredPermissions: Permission
+        requiredPermission: Permission,
+        vararg requiredPermissions: Permission
     ): Predicate<T> {
         return Predicate { abs: T ->
             isAuthorized(requiredPermission, *requiredPermissions)
-                    .test(AclKey(abs.id))
+                .test(AclKey(abs.id))
         }
     }
 
     fun ensureAuthenticated() {
-        if (!Principals.currentPrincipals.contains(SystemRole.AUTHENTICATED_USER.principal)) {
+        if (!isAuthenticated()) {
             throw ForbiddenException("User is not authenticated.")
         }
     }
 
     fun isAuthorized(
-            requiredPermission: Permission,
-            vararg requiredPermissions: Permission
+        requiredPermission: Permission,
+        vararg requiredPermissions: Permission
     ): Predicate<AclKey> {
         return isAuthorized(EnumSet.of<Permission>(requiredPermission, *requiredPermissions))
     }
@@ -69,7 +69,7 @@ interface AuthorizingComponent {
         return Predicate { aclKey: AclKey ->
             authorizationManager.checkIfHasPermissions(
                 aclKey,
-                Principals.currentPrincipals,
+                Principals.getCurrentPrincipals(),
                 requiredPermissions
             )
         }
@@ -77,9 +77,9 @@ interface AuthorizingComponent {
 
     fun owns(aclKey: AclKey): Boolean {
         return isAuthorized(Permission.OWNER).test(
-                AclKey(
-                        aclKey!!
-                )
+            AclKey(
+                aclKey!!
+            )
         )
     }
 
@@ -93,9 +93,9 @@ interface AuthorizingComponent {
 
     fun ensureReadAccess(keys: Set<AclKey>) {
         accessCheck(
-                keys.stream().collect(
-                        Collectors.toMap(Function.identity(), Function { aclKey: AclKey -> READ_PERMISSION })
-                )
+            keys.stream().collect(
+                Collectors.toMap(Function.identity(), Function { aclKey: AclKey -> READ_PERMISSION })
+            )
         )
     }
 
@@ -110,11 +110,11 @@ interface AuthorizingComponent {
     fun ensureOwnerAccess(keys: Set<AclKey>) {
         val owner: EnumSet<Permission> = EnumSet.of<Permission>(Permission.OWNER)
         accessCheck(
-                keys.stream().collect(
-                        Collectors.toMap<AclKey, AclKey, EnumSet<Permission>>(
-                                Function.identity(),
-                                Function<AclKey, EnumSet<Permission>> { aclKey: AclKey -> owner })
-                )
+            keys.stream().collect(
+                Collectors.toMap<AclKey, AclKey, EnumSet<Permission>>(
+                    Function.identity(),
+                    Function<AclKey, EnumSet<Permission>> { aclKey: AclKey -> owner })
+            )
         )
     }
 
@@ -122,32 +122,31 @@ interface AuthorizingComponent {
         accessCheck(aclKey, EnumSet.of<Permission>(Permission.LINK))
     }
 
-    val isAdmin: Boolean
-        get() = Principals.currentPrincipals.contains(
-                Principals.getAdminRole()
-        )
+    fun isAdmin(): Boolean = Principals.getCurrentPrincipals().contains(Principals.getAdminRole())
+    fun isAuthenticated(): Boolean =
+        Principals.getCurrentPrincipals().contains(SystemRole.AUTHENTICATED_USER.principal)
 
     fun ensureAdminAccess() {
-        if (!isAdmin) {
+        if (!isAdmin()) {
             throw ForbiddenException("Only admins are allowed to perform this action.")
         }
     }
 
     fun authorize(
-            requiredPermissionsByAclKey: Map<AclKey, EnumSet<Permission>>,
-            principals: Set<Principal> = Principals.currentPrincipals
+        requiredPermissionsByAclKey: Map<AclKey, EnumSet<Permission>>,
+        principals: Set<Principal> = Principals.getCurrentPrincipals()
     ): Map<AclKey, EnumMap<Permission, Boolean>> {
         return authorizationManager.authorize(requiredPermissionsByAclKey, principals)
     }
 
     fun accessCheck(requiredPermissionsByAclKey: Map<AclKey, EnumSet<Permission>>) {
         val authorized = authorizationManager
-                .authorize(requiredPermissionsByAclKey, Principals.currentPrincipals)
-                .values.stream().allMatch(
-                        Predicate { m: EnumMap<Permission, Boolean> ->
-                            m.values.stream().allMatch(
-                                    Predicate { v: Boolean -> v!! })
-                        })
+            .authorize(requiredPermissionsByAclKey, Principals.getCurrentPrincipals())
+            .values.stream().allMatch(
+                Predicate { m: EnumMap<Permission, Boolean> ->
+                    m.values.stream().allMatch(
+                        Predicate { v: Boolean -> v!! })
+                })
         if (!authorized) {
             logger.warn("Authorization failed for required permissions: {}", requiredPermissionsByAclKey)
             throw ForbiddenException("Insufficient permissions to perform operation.")
@@ -157,31 +156,32 @@ interface AuthorizingComponent {
     fun accessCheck(aclKey: AclKey, requiredPermissions: EnumSet<Permission>) {
         if (!authorizationManager.checkIfHasPermissions(
                 aclKey,
-                Principals.currentPrincipals,
+                Principals.getCurrentPrincipals(),
                 requiredPermissions
-                )) {
+            )
+        ) {
             throw ForbiddenException("Object $aclKey is not accessible.")
         }
     }
 
     fun getAccessibleObjects(
-            securableObjectType: SecurableObjectType,
-            requiredPermissions: EnumSet<Permission>
+        securableObjectType: SecurableObjectType,
+        requiredPermissions: EnumSet<Permission>
     ): Stream<AclKey> {
         return authorizationManager.getAuthorizedObjectsOfType(
-            Principals.currentPrincipals,
+            Principals.getCurrentPrincipals(),
             securableObjectType,
             requiredPermissions
         )
     }
 
     fun getAccessibleObjects(
-            securableObjectType: SecurableObjectType,
-            requiredPermissions: EnumSet<Permission>,
-            additionalFilters: com.hazelcast.query.Predicate<*, *>
+        securableObjectType: SecurableObjectType,
+        requiredPermissions: EnumSet<Permission>,
+        additionalFilters: com.hazelcast.query.Predicate<*, *>
     ): Stream<AclKey> {
         return authorizationManager.getAuthorizedObjectsOfType(
-            Principals.currentPrincipals,
+            Principals.getCurrentPrincipals(),
             securableObjectType,
             requiredPermissions,
             additionalFilters
@@ -191,7 +191,7 @@ interface AuthorizingComponent {
     fun ensureObjectCanBeDeleted(objectId: UUID) {
         if (internalIds.contains(objectId)) {
             throw ForbiddenException(
-                    "Object " + objectId.toString() + " cannot be deleted because this id is reserved."
+                "Object " + objectId.toString() + " cannot be deleted because this id is reserved."
             )
         }
     }

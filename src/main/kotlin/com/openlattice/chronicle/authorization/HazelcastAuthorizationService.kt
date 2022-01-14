@@ -27,6 +27,7 @@ import com.openlattice.chronicle.mapstores.authorization.PermissionMapstore.Comp
 import com.openlattice.chronicle.util.toAceKeys
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import java.sql.Connection
 import java.time.OffsetDateTime
 import java.util.*
 import java.util.function.Function
@@ -98,6 +99,16 @@ class HazelcastAuthorizationService(
         private fun hasPrincipalType(type: PrincipalType): Predicate<AceKey, AceValue> {
             return Predicates.equal(PRINCIPAL_TYPE_INDEX, type)
         }
+    }
+
+    override fun createSecurableObject(
+        connection: Connection,
+        aclKey: AclKey,
+        principal: Principal,
+        permissions: EnumSet<Permission>,
+        objectType: SecurableObjectType
+    ) {
+        TODO("Not yet implemented")
     }
 
     /** Set Securable Object Type **/
