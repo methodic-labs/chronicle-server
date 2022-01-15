@@ -79,7 +79,7 @@ class HazelcastAuthorizationService(
          *  5. expiration date
          */
         private val INSERT_ACES = """
-            INSERT INTO ${PERMISSIONS.name} VALUES (?,?,?,?)
+            INSERT INTO ${PERMISSIONS.name} VALUES (?,?,?,?,?)
         """.trimIndent()
 
         private fun noAccess(permissions: EnumSet<Permission>): EnumMap<Permission, Boolean> {
