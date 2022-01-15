@@ -39,6 +39,7 @@ import com.openlattice.postgres.PostgresTableDefinition
 import com.openlattice.postgres.mapstores.AbstractBasePostgresMapstore
 import com.zaxxer.hikari.HikariDataSource
 import org.apache.commons.lang3.StringUtils
+import org.springframework.stereotype.Component
 import java.sql.Array
 import java.sql.PreparedStatement
 import java.sql.ResultSet
@@ -50,6 +51,7 @@ import java.util.stream.Collectors
 /**
  * @author Matthew Tamayo-Rios &lt;matthew@openlattice.com&gt;
  */
+@Component
 class PermissionMapstore(
         hds: HikariDataSource, private val eventBus: EventBus
 ) : AbstractBasePostgresMapstore<AceKey, AceValue>(HazelcastMap.PERMISSIONS, PERMISSIONS, hds) {

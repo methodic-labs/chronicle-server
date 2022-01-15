@@ -19,7 +19,7 @@
  *
  */
 
-package com.openlattice.users
+package com.openlattice.chronicle.users
 
 import com.auth0.client.mgmt.ManagementAPI
 import com.auth0.json.mgmt.users.User
@@ -30,6 +30,9 @@ import com.openlattice.users.export.Auth0ApiExtension
 import com.openlattice.chronicle.users.export.JobStatus
 import com.openlattice.chronicle.users.export.UserExportJobRequest
 import com.openlattice.chronicle.users.export.UserExportJobResult
+import com.openlattice.users.AUTH0_USER_FIELDS
+import com.openlattice.users.UserListingService
+import com.openlattice.users.getUpdatedUsersPage
 import org.slf4j.LoggerFactory
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -100,7 +103,7 @@ class Auth0UserListingService(
             // if at any point we have too many users, we might have to download the file
             return buffered.lines().map { line -> mapper.readValue(line, User::class.java) }.collect(Collectors.toList())
         } catch (e: Exception) {
-            logger.error("Couldn't read list of users from download url $downloadUrl.",e)
+            logger.error("Couldn't read list of users from download url $downloadUrl.", e)
             throw e
         }
     }

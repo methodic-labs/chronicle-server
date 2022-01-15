@@ -16,8 +16,8 @@ import java.util.*
  * @author Matthew Tamayo-Rios &lt;matthew@openlattice.com&gt;
  */
 class Auth0SyncService(
-        hazelcastInstance: HazelcastInstance,
-        private val spm: SecurePrincipalsManager,
+    hazelcastInstance: HazelcastInstance,
+    private val spm: SecurePrincipalsManager,
 ) {
     companion object {
         private val logger = LoggerFactory.getLogger(Auth0SyncService::class.java)
@@ -80,12 +80,13 @@ class Auth0SyncService(
     private fun updateUsers(allUsers: Sequence<User>) {
         logger.info("Updating users in bulk")
         allUsers.chunked(1_000).forEach {
-            val chunk = it.map { user ->
-                ensureSecurablePrincipalExists(user)
-                //Update the user in the users table
-                user.id to user
-            }.toMap()
-            users.putAll( chunk )
+            val chunk = //Update the user in the users table
+                it.associateBy { user ->
+                    ensureSecurablePrincipalExists(user)
+                    //Update the user in the users table
+                    user.id
+                }
+            users.putAll(chunk)
         }
     }
 
@@ -128,10 +129,10 @@ class Auth0SyncService(
     fun syncAuthenticationCacheForPrincipalIds(principalIds: Set<String>) {
         val principalsById = principalIds.associateWith { Principal(PrincipalType.USER, it) }
         val securablePrincipals = principals.entrySet(
-                Predicates.`in`(
-                        PrincipalMapstore.PRINCIPAL_INDEX,
-                        *principalsById.values.toTypedArray()
-                )
+            Predicates.`in`(
+                PrincipalMapstore.PRINCIPAL_INDEX,
+                *principalsById.values.toTypedArray()
+            )
         ).associate { it.value.principal.id to it.value }
         authnPrincipalCache.putAll(securablePrincipals)
         authnRolesCache.putAll(getPrincipalTreesByPrincipalId(securablePrincipals.values.toSet()))
@@ -139,10 +140,10 @@ class Auth0SyncService(
 
     private fun syncAuthenticationCache(principalId: String) {
         val sp = principals.values(
-                Predicates.equal(
-                        PrincipalMapstore.PRINCIPAL_INDEX,
-                        Principal(PrincipalType.USER, principalId)
-                )
+            Predicates.equal(
+                PrincipalMapstore.PRINCIPAL_INDEX,
+                Principal(PrincipalType.USER, principalId)
+            )
         ).firstOrNull() ?: return
         authnPrincipalCache.set(principalId, sp)
         val securablePrincipals = getAllPrincipals(sp)
@@ -150,9 +151,9 @@ class Auth0SyncService(
         val currentPrincipals: NavigableSet<Principal> = TreeSet()
         currentPrincipals.add(sp.principal)
         securablePrincipals
-                .asSequence()
-                .map { it.principal }
-                .forEach { currentPrincipals.add(it) }
+            .asSequence()
+            .map { it.principal }
+            .forEach { currentPrincipals.add(it) }
 
         authnRolesCache.set(principalId, SortedPrincipalSet(currentPrincipals))
     }
@@ -162,7 +163,7 @@ class Auth0SyncService(
     }
 
     private fun getPrincipalTreesByPrincipalId(sps: Set<SecurablePrincipal>): Map<String, SortedPrincipalSet> {
-        val aclKeyPrincipals = mutableMapOf<AclKey,AclKeySet>()
+        val aclKeyPrincipals = mutableMapOf<AclKey, AclKeySet>()
 
         // Bulk load all relevant principal trees from hazelcast
         var nextLayer = sps.mapTo(mutableSetOf()) { it.aclKey }
@@ -181,7 +182,7 @@ class Auth0SyncService(
             val childAclKeys = mutableSetOf(sp.aclKey) //Need to include self.
             aclKeyPrincipals.getOrDefault(sp.aclKey, AclKeySet()).forEach { childAclKeys.add(it) }
 
-            var nextAclKeyLayer : Set<AclKey> = childAclKeys
+            var nextAclKeyLayer: Set<AclKey> = childAclKeys
 
             while (nextAclKeyLayer.isNotEmpty()) {
                 nextAclKeyLayer = (nextAclKeyLayer.flatMapTo(mutableSetOf()) {
@@ -223,8 +224,8 @@ class Auth0SyncService(
             }
 
             spm.createSecurablePrincipalIfNotExists(
-                    principal,
-                    SecurablePrincipal(Optional.empty(), principal, title, Optional.empty())
+                principal,
+                SecurablePrincipal(Optional.empty(), principal, title, Optional.empty())
             )
 
         } catch (e: Exception) {

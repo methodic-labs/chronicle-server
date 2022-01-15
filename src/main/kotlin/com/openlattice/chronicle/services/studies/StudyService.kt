@@ -1,12 +1,16 @@
 package com.openlattice.chronicle.services.studies
 
+import com.dataloom.mappers.ObjectMappers
 import com.openlattice.chronicle.storage.StorageResolver
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.geekbeast.configuration.postgres.PostgresFlavor
 import com.openlattice.chronicle.auditing.AuditingComponent
 import com.openlattice.chronicle.auditing.AuditingManager
+import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.authorization.AuthorizationManager
 import com.openlattice.chronicle.authorization.HazelcastAuthorizationService
+import com.openlattice.chronicle.authorization.SecurableObjectType
+import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.authorization.reservations.AclKeyReservationService
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.ORGANIZATION_STUDIES
@@ -15,6 +19,7 @@ import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.STUDI
 import com.openlattice.chronicle.storage.PostgresColumns
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import java.sql.Connection
 import java.util.UUID
 
 /**
@@ -28,6 +33,7 @@ class StudyService(
     private val authorizationService: AuthorizationManager,
     override val auditingManager: AuditingManager
 ) : StudyManager, AuditingComponent {
+    private val mapper = ObjectMappers.newJsonMapper()
 
     companion object {
         private val logger = LoggerFactory.getLogger(StudyService::class.java)
@@ -40,14 +46,15 @@ class StudyService(
             PostgresColumns.LON,
             PostgresColumns.STUDY_GROUP,
             PostgresColumns.STUDY_VERSION,
-            PostgresColumns.SETTINGS).joinToString(",") { it.name  }
+            PostgresColumns.SETTINGS
+        ).joinToString(",") { it.name }
 
         private val ORG_STUDIES_COLS = listOf(
             PostgresColumns.ORGANIZATION_ID,
             PostgresColumns.STUDY_ID,
             PostgresColumns.USER_ID,
             PostgresColumns.SETTINGS
-        ).joinToString(",") { it.name  }
+        ).joinToString(",") { it.name }
 
         /**
          * 1. study id
@@ -60,8 +67,9 @@ class StudyService(
          * 8. settings
          */
         private val INSERT_STUDY_SQL = """
-            INSERT INTO ${STUDIES.name} VALUES (?,?,?,?,?,?,?,?)
+            INSERT INTO ${STUDIES.name} ($STUDY_COLUMNS) VALUES (?,?,?,?,?,?,?,?::jsonb)
         """.trimIndent()
+
         /**
          * 1. organization_id
          * 2. study_id
@@ -78,22 +86,41 @@ class StudyService(
         study.id = idGenerationService.getNextId()
         try {
             val (flavor, hds) = storageResolver.resolve(study.id)
-            check( flavor == PostgresFlavor.VANILLA) { "Only vanilla postgres is supported for studies."}
-            val ps = hds.connection.prepareStatement(INSERT_STUDY_SQL)
-            ps.setObject(1, study.id)
-            ps.setObject(2, study.title)
-            ps.setObject(3, study.description)
-            ps.setObject(4, study.lat)
-            ps.setObject(5, study.lon)
-            ps.setObject(6, study.group)
-            ps.setObject(7, study.version)
-            ps.setObject(7, study.settings)
-            val insertCount = ps.executeUpdate()
+            check(flavor == PostgresFlavor.VANILLA) { "Only vanilla postgres is supported for studies." }
+            val connection = hds.connection
+            connection.autoCommit = false
+            try {
+                insertStudy(connection, study)
+                authorizationService.createSecurableObject(
+                    connection = connection,
+                    aclKey = AclKey(study.id),
+                    principal = Principals.getCurrentUser(),
+                    objectType = SecurableObjectType.Study
+                )
+                connection.commit()
+            } catch (ex: Exception) {
+                logger.error("Failed to create study $study.", ex)
+                connection.rollback()
+                throw ex
+            } finally {
+                connection.autoCommit = true
+            }
         } catch (e: Exception) {
             logger.error("hds error: $e")
         }
         return study.id
     }
 
-
+    private fun insertStudy(connection: Connection, study: Study): Int {
+        val ps = connection.prepareStatement(INSERT_STUDY_SQL)
+        ps.setObject(1, study.id)
+        ps.setObject(2, study.title)
+        ps.setObject(3, study.description)
+        ps.setObject(4, study.lat)
+        ps.setObject(5, study.lon)
+        ps.setObject(6, study.group)
+        ps.setObject(7, study.version)
+        ps.setString(8, mapper.writeValueAsString(study.settings))
+        return ps.executeUpdate()
+    }
 }

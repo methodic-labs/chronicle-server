@@ -10,6 +10,7 @@ import com.kryptnostic.rhizome.pods.hazelcast.RegistryBasedHazelcastInstanceConf
 import com.openlattice.auth0.Auth0Pod
 import com.openlattice.aws.AwsS3Pod
 import com.openlattice.chronicle.hazelcast.pods.SharedStreamSerializersPod
+import com.openlattice.chronicle.mapstores.MapstoresPod
 import com.openlattice.chronicle.pods.*
 import com.openlattice.chronicle.serializers.FullQualifiedNameJacksonSerializer
 import com.openlattice.chronicle.storage.pods.ByteBlobServicePod
@@ -37,10 +38,12 @@ class ChronicleServer(vararg pods: Class<*>) : BaseRhizomeServer(
                 ChronicleServerSecurityPod::class.java
         )
         val rhizomePods = arrayOf(
+                MapstoresPod::class.java,
                 RegistryBasedHazelcastInstanceConfigurationPod::class.java,
                 Auth0Pod::class.java
         )
         val chronicleServerPods = arrayOf(
+            ChronicleStoragePod::class.java,
             AwsS3Pod::class.java,
             JdbcPod::class.java,
             ChronicleServerServicesPod::class.java,
@@ -50,7 +53,7 @@ class ChronicleServer(vararg pods: Class<*>) : BaseRhizomeServer(
             TaskSchedulerPod::class.java,
             SharedStreamSerializersPod::class.java,
             ByteBlobServicePod::class.java,
-            LateInitProvidersPod::class.java
+            LateInitProvidersPod::class.java,
         )
 
         @Throws(Exception::class)

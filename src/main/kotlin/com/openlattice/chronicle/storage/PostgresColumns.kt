@@ -14,7 +14,7 @@ class PostgresColumns {
         val PARTICIPANT_ID = PostgresColumnDefinition("particpant_id", PostgresDatatype.TEXT).notNull()
         val TITLE = PostgresColumnDefinition("title", PostgresDatatype.TEXT)
         val DESCRIPTION = PostgresColumnDefinition("description", PostgresDatatype.TEXT)
-        val SETTINGS = PostgresColumnDefinition("settings", PostgresDatatype.JSONB).withDefault("'{}'")
+        val SETTINGS = PostgresColumnDefinition("settings", PostgresDatatype.JSONB).withDefault("'{}'::jsonb")
         val NAME = PostgresColumnDefinition("name", PostgresDatatype.TEXT)
         val FIRST_NAME = PostgresColumnDefinition("first_name", PostgresDatatype.TEXT)
         val LAST_NAME = PostgresColumnDefinition("last_name", PostgresDatatype.TEXT)
@@ -53,7 +53,7 @@ class PostgresColumns {
         val USER_ID = PostgresColumnDefinition("user_id", PostgresDatatype.TEXT).notNull()
 
         val CREATED_AT = PostgresColumnDefinition("created_at", PostgresDatatype.TIMESTAMPTZ).notNull().withDefault("now()")
-        val ENDED_AT = PostgresColumnDefinition("ended_at", PostgresDatatype.TIMESTAMPTZ).notNull().withDefault("infinity")
+        val ENDED_AT = PostgresColumnDefinition("ended_at", PostgresDatatype.TIMESTAMPTZ).notNull().withDefault("'infinity'")
         val STARTED_AT = PostgresColumnDefinition("started_at", PostgresDatatype.TIMESTAMPTZ).notNull().withDefault("now()")
         val UPDATED_AT = PostgresColumnDefinition("updated_at", PostgresDatatype.TIMESTAMPTZ).notNull().withDefault("now()")
         val STUDY_GROUP = PostgresColumnDefinition("study_group", PostgresDatatype.TEXT)
@@ -61,6 +61,6 @@ class PostgresColumns {
 
         //It is fine to use double for lat/lon since we won't be doing computation on these
         val LAT = PostgresColumnDefinition("lat", PostgresDatatype.DOUBLE)
-        val LON = PostgresColumnDefinition("lat", PostgresDatatype.DOUBLE)
+        val LON = PostgresColumnDefinition("lon", PostgresDatatype.DOUBLE)
     }
 }

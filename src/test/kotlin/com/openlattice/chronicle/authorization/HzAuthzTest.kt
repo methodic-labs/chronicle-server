@@ -29,6 +29,7 @@ import com.openlattice.chronicle.authorization.principals.HazelcastPrincipalsMap
 import com.openlattice.chronicle.authorization.principals.PrincipalsMapManager
 import com.openlattice.chronicle.authorization.principals.SecurePrincipalsManager
 import com.openlattice.chronicle.authorization.reservations.AclKeyReservationService
+import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.util.TestDataFactory
 import org.junit.Assert
 import org.junit.BeforeClass
@@ -415,6 +416,7 @@ open class HzAuthzTest : ChronicleServerTests() {
 
             hzAuthz = HazelcastAuthorizationService(
                 hazelcastInstance,
+                testServer.context.getBean(StorageResolver::class.java),
                 testServer.context.getBean(EventBus::class.java),
                 principalsMapManager
             )

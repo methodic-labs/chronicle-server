@@ -123,8 +123,7 @@ interface AuthorizingComponent {
     }
 
     fun isAdmin(): Boolean = Principals.getCurrentPrincipals().contains(Principals.getAdminRole())
-    fun isAuthenticated(): Boolean =
-        Principals.getCurrentPrincipals().contains(SystemRole.AUTHENTICATED_USER.principal)
+    fun isAuthenticated(): Boolean = Principals.getCurrentSecurablePrincipal().principal.type == PrincipalType.USER
 
     fun ensureAdminAccess() {
         if (!isAdmin()) {

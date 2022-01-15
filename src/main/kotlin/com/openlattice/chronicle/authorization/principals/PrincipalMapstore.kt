@@ -29,6 +29,7 @@ import com.openlattice.chronicle.util.TestDataFactory
 import com.openlattice.postgres.PostgresArrays
 import com.openlattice.postgres.mapstores.AbstractBasePostgresMapstore
 import com.zaxxer.hikari.HikariDataSource
+import org.springframework.stereotype.Component
 import java.sql.PreparedStatement
 import java.sql.ResultSet
 import java.sql.SQLException
@@ -36,6 +37,7 @@ import java.sql.SQLException
 /**
  * @author Matthew Tamayo-Rios &lt;matthew@openlattice.com&gt;
  */
+@Component
 class PrincipalMapstore(hds: HikariDataSource) : AbstractBasePostgresMapstore<AclKey, SecurablePrincipal>(
         HazelcastMap.PRINCIPALS,
         PRINCIPALS,

@@ -60,7 +60,8 @@ interface AuthorizationManager {
         aclKey: AclKey,
         principal: Principal,
         permissions: EnumSet<Permission> = EnumSet.allOf(Permission::class.java),
-        objectType: SecurableObjectType
+        objectType: SecurableObjectType,
+        expirationDate: OffsetDateTime =  OffsetDateTime.MAX
     )
 
     /**

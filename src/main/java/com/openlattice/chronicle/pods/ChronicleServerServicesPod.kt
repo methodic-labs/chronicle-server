@@ -36,10 +36,7 @@ import com.openlattice.chronicle.auditing.AuditingManager
 import com.openlattice.chronicle.auditing.RedshiftAuditingManager
 import com.openlattice.chronicle.authorization.AuthorizationManager
 import com.openlattice.chronicle.authorization.HazelcastAuthorizationService
-import com.openlattice.chronicle.authorization.principals.HazelcastPrincipalService
-import com.openlattice.chronicle.authorization.principals.HazelcastPrincipalsMapManager
-import com.openlattice.chronicle.authorization.principals.PrincipalsMapManager
-import com.openlattice.chronicle.authorization.principals.SecurePrincipalsManager
+import com.openlattice.chronicle.authorization.principals.*
 import com.openlattice.chronicle.authorization.reservations.AclKeyReservationService
 import com.openlattice.chronicle.configuration.ChronicleConfiguration
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
@@ -61,6 +58,7 @@ import com.openlattice.chronicle.services.upload.AppDataUploadService
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.tasks.PostConstructInitializerTaskDependencies
 import com.openlattice.chronicle.users.Auth0SyncInitializationTask
+import com.openlattice.chronicle.users.Auth0UserListingService
 import com.openlattice.jdbc.DataSourceManager
 import com.openlattice.users.*
 import com.openlattice.users.export.Auth0ApiExtension
@@ -71,14 +69,12 @@ import org.springframework.context.annotation.Import
 import org.springframework.context.annotation.Profile
 import java.io.IOException
 import java.util.concurrent.ExecutionException
+import javax.annotation.PostConstruct
 import javax.inject.Inject
 
 @Configuration
 @Import(Auth0Pod::class)
 class ChronicleServerServicesPod {
-    @Inject
-    private lateinit var configurationService: ConfigurationService
-
     @Inject
     private lateinit var auth0Configuration: Auth0Configuration
 
@@ -97,17 +93,18 @@ class ChronicleServerServicesPod {
     @Inject
     private lateinit var eventBus: EventBus
 
+    @Inject
+    private lateinit var storageResolver: StorageResolver
+
+    @Inject
+    private lateinit var chronicleConfiguration: ChronicleConfiguration
+
     @Bean
     fun defaultObjectMapper(): ObjectMapper {
         val mapper = ObjectMappers.getJsonMapper()
         registerWithMapper(mapper)
         return mapper
     }
-
-    @get:Throws(IOException::class)
-    @get:Bean(name = ["chronicleConfiguration"])
-    val chronicleConfiguration: ChronicleConfiguration
-        get() = configurationService.getConfiguration(ChronicleConfiguration::class.java)!!
 
     @Bean
     fun auth0TokenProvider(): Auth0TokenProvider {
@@ -174,10 +171,6 @@ class ChronicleServerServicesPod {
         return EnrollmentService(scheduledTasksManager())
     }
 
-    @Bean
-    fun storageResolver(): StorageResolver {
-        return StorageResolver(dataSourceManager!!, "")
-    }
 
     @Bean
     fun organizationSettingsManager(): OrganizationSettingsManager {
@@ -188,7 +181,7 @@ class ChronicleServerServicesPod {
     @Throws(IOException::class, ExecutionException::class)
     fun appDataUploadManager(): AppDataUploadManager {
         return AppDataUploadService(
-            storageResolver(),
+            storageResolver,
             scheduledTasksManager(),
             enrollmentManager(),
             organizationSettingsManager()
@@ -228,7 +221,7 @@ class ChronicleServerServicesPod {
 
     @Bean
     fun authorizationManager(): AuthorizationManager {
-        return HazelcastAuthorizationService(hazelcast!!, eventBus!!, principalsMapManager())
+        return HazelcastAuthorizationService(hazelcast!!, storageResolver, eventBus!!, principalsMapManager())
     }
 
     @Bean
@@ -259,17 +252,12 @@ class ChronicleServerServicesPod {
     }
 
     @Bean
-    fun authorizationService(): AuthorizationManager {
-        return HazelcastAuthorizationService(hazelcast, eventBus, principalsMapManager())
-    }
-
-    @Bean
     fun studiesService(): StudyService {
         return StudyService(
-            storageResolver(),
+            storageResolver,
             aclKeyReservationService(),
             idGenerationService(),
-            authorizationService(),
+            authorizationManager(),
             auditingManager()
         )
     }
@@ -279,13 +267,22 @@ class ChronicleServerServicesPod {
         return Auth0SyncTaskDependencies(auth0SyncService(), userListingService(), executor)
     }
 
+    @Bean
+    fun auth0SyncInitializationTask(): Auth0SyncInitializationTask<Auth0SyncTask> {
+        return Auth0SyncInitializationTask(Auth0SyncTask::class.java)
+    }
 
     @Bean
     fun auditingManager(): AuditingManager {
-        return RedshiftAuditingManager(storageResolver())
+        return RedshiftAuditingManager(storageResolver)
     }
 
     companion object {
         private val logger = LoggerFactory.getLogger(ChronicleServerServicesPod::class.java)
+    }
+
+    @PostConstruct
+    fun init() {
+        Principals.init(principalsManager(), hazelcast)
     }
 }

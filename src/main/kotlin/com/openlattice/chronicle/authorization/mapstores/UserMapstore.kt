@@ -36,6 +36,7 @@ import com.openlattice.postgres.mapstores.AbstractBasePostgresMapstore
 import com.zaxxer.hikari.HikariDataSource
 import org.apache.commons.lang3.RandomStringUtils
 import org.apache.commons.lang3.RandomUtils
+import org.springframework.stereotype.Component
 import java.sql.PreparedStatement
 import java.sql.ResultSet
 import java.sql.SQLException
@@ -48,13 +49,14 @@ import java.sql.SQLException
  *
  * @author Matthew Tamayo-Rios &lt;matthew@openlattice.com&gt;
  */
+@Component
 class UserMapstore(hds: HikariDataSource) : AbstractBasePostgresMapstore<String, User>(
         HazelcastMap.USERS, USERS, hds
 ) {
     private val mapper: ObjectMapper = ObjectMappers.newJsonMapper()
 
     @Throws(SQLException::class)
-    protected override fun bind(ps: PreparedStatement, key: String, offset: Int): Int {
+    override fun bind(ps: PreparedStatement, key: String, offset: Int): Int {
         ps.setString(offset, key)
         return offset + 1
     }
@@ -96,7 +98,7 @@ class UserMapstore(hds: HikariDataSource) : AbstractBasePostgresMapstore<String,
     override fun getMapConfig(): MapConfig {
         return super.getMapConfig()
                 .setInMemoryFormat(InMemoryFormat.BINARY)
-                .setMapStoreConfig(mapStoreConfig)
+                .setMapStoreConfig(getMapStoreConfig())
     }
 
     override fun getMapStoreConfig(): MapStoreConfig {

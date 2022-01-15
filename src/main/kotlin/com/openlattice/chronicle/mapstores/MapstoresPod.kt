@@ -43,6 +43,7 @@ import com.openlattice.chronicle.ids.mapstores.LongIdsMapstore
 import com.openlattice.chronicle.mapstores.authorization.PermissionMapstore
 import com.openlattice.chronicle.mapstores.authorization.PrincipalTreesMapstore
 import com.openlattice.chronicle.mapstores.ids.Range
+import com.openlattice.chronicle.storage.StorageResolver
 import com.zaxxer.hikari.HikariDataSource
 import org.slf4j.LoggerFactory
 import org.springframework.context.annotation.Bean
@@ -55,6 +56,9 @@ import javax.inject.Inject
 class MapstoresPod {
     @Inject
     private lateinit var hikariDataSource: HikariDataSource
+    
+    @Inject
+    private lateinit var storageResolver: StorageResolver
 
     @Inject
     private lateinit var ptMgr: PostgresTableManager
@@ -70,12 +74,12 @@ class MapstoresPod {
 
     @Bean
     fun jobsMapstore(): SelfRegisteringMapStore<UUID, DistributableJob<*>> {
-        return PostgresJobsMapStore(hikariDataSource!!)
+        return PostgresJobsMapStore(hikariDataSource)
     }
 
     @Bean
     fun permissionMapstore(): SelfRegisteringMapStore<AceKey, AceValue> {
-        return PermissionMapstore(hikariDataSource!!, eventBus!!)
+        return PermissionMapstore(hikariDataSource, eventBus)
     }
 
     //    @Bean
@@ -88,17 +92,17 @@ class MapstoresPod {
     //    }
     @Bean
     fun principalsMapstore(): SelfRegisteringMapStore<AclKey, SecurablePrincipal> {
-        return PrincipalMapstore(hikariDataSource!!)
+        return PrincipalMapstore(hikariDataSource)
     }
 
     @Bean
     fun longIdsMapstore(): SelfRegisteringMapStore<String, Long> {
-        return LongIdsMapstore(hikariDataSource!!)
+        return LongIdsMapstore(hikariDataSource)
     }
 
     @Bean
     fun userMapstore(): SelfRegisteringMapStore<String, User> {
-        return UserMapstore(hikariDataSource!!)
+        return UserMapstore(hikariDataSource)
     }
 
     //
@@ -108,7 +112,7 @@ class MapstoresPod {
     //    }
     @Bean
     fun idGenerationMapstore(): SelfRegisteringMapStore<Long, Range> {
-        return IdGenerationMapstore(hikariDataSource!!)
+        return IdGenerationMapstore(hikariDataSource)
     }
 
     @Bean
@@ -118,7 +122,7 @@ class MapstoresPod {
 
     @Bean
     fun principalTreesMapstore(): PrincipalTreesMapstore {
-        return PrincipalTreesMapstore(hikariDataSource!!)
+        return PrincipalTreesMapstore(hikariDataSource)
     } //
 
     //    @Bean
