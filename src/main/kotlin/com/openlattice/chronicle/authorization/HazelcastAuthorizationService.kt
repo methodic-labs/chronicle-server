@@ -147,7 +147,7 @@ class HazelcastAuthorizationService(
         insertSecObj.setArray(1, aclKeyArray)
         insertSecObj.setString(2, objectType.name)
         insertSecObj.setObject(3, aclKey.last())
-        insertSecObj.setString(3, aclKey.last().toString())
+        insertSecObj.setString(4, aclKey.last().toString())
         insertSecObj.executeUpdate()
 
         val insertPermissions = connection.prepareStatement(INSERT_ACES)
