@@ -49,8 +49,19 @@ class StudyController @Inject constructor(
         logger.info("Creating study associated with organizations ${study.organizationIds}")
         val studyId = studyService.createStudy(study)
 
-        study.organizationIds.forEach { organizationId ->
-            recordEvent(
+        recordEvents(
+            listOf(
+                AuditableEvent(
+                    AclKey(studyId),
+                    Principals.getCurrentSecurablePrincipal().id,
+                    Principals.getCurrentUser().id,
+                    AuditEventType.CREATE_STUDY,
+                    "",
+                    studyId,
+                    UUID(0, 0),
+                    mapOf()
+                )
+            ) + study.organizationIds.map { organizationId ->
                 AuditableEvent(
                     AclKey(studyId),
                     Principals.getCurrentSecurablePrincipal().id,
@@ -61,8 +72,7 @@ class StudyController @Inject constructor(
                     organizationId,
                     mapOf()
                 )
-            )
-        }
+            })
         return studyId
     }
 

@@ -67,6 +67,7 @@ class RedshiftDataTables {
 
         @JvmField
         val AUDIT = RedshiftTableDefinition("audit")
+            .sortKey(ACL_KEY)
             .addColumns(
                         ACL_KEY,
                         SECURABLE_PRINCIPAL_ID,
@@ -77,6 +78,7 @@ class RedshiftDataTables {
                         DESCRIPTION,
                         DATA,
                         TIMESTAMP)
+            .addDataSourceNames(REDSHIFT_DATASOURCE_NAME)
         private val USAGE_EVENT_COLS = CHRONICLE_USAGE_EVENTS.columns.joinToString(",") { it.name }
         private val USAGE_EVENT_PARAMS = CHRONICLE_USAGE_EVENTS.columns.joinToString(",") { "?" }
 
