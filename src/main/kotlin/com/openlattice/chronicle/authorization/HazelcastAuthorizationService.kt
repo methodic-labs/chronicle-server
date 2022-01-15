@@ -151,7 +151,7 @@ class HazelcastAuthorizationService(
         insertSecObj.executeUpdate()
 
         val insertPermissions = connection.prepareStatement(INSERT_ACES)
-        insertSecObj.setArray(1, aclKeyArray)
+        insertPermissions.setArray(1, aclKeyArray)
         insertPermissions.setString(2, principal.type.name)
         insertPermissions.setString(3, principal.id)
         insertPermissions.setArray(4, PostgresArrays.createTextArray(connection, permissions.map { it.name }))
