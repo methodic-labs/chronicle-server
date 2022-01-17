@@ -73,16 +73,16 @@ open class PagingSecurableObjectsTest : HzAuthzTest() {
             currentPrincipals.add(r1)
             currentPrincipals.add(r2)
             currentPrincipals.add(r3)
-            hzAuthz!!.addPermission(
+            hzAuthz.addPermission(
                 key1, u1, EnumSet.allOf(
                     Permission::class.java
                 )
             )
-            hzAuthz!!.setSecurableObjectType(key1, SecurableObjectType.Study)
-            hzAuthz!!.addPermission(key2, r1, EnumSet.of(Permission.READ, Permission.WRITE))
-            hzAuthz!!.setSecurableObjectType(key2, SecurableObjectType.Study)
-            hzAuthz!!.addPermission(key3, r2, EnumSet.of(Permission.READ))
-            hzAuthz!!.setSecurableObjectType(key3, SecurableObjectType.Study)
+            hzAuthz.setSecurableObjectType(key1, SecurableObjectType.Study)
+            hzAuthz.addPermission(key2, r1, EnumSet.of(Permission.READ, Permission.WRITE))
+            hzAuthz.setSecurableObjectType(key2, SecurableObjectType.Study)
+            hzAuthz.addPermission(key3, r2, EnumSet.of(Permission.READ))
+            hzAuthz.setSecurableObjectType(key3, SecurableObjectType.Study)
         }
     }
 }

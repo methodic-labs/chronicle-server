@@ -3,11 +3,6 @@ clientSecret: "tjAwhBit0deVUor3lcd7YRlHRc_4FJwv_fcLp_ozO2-D2Lh38066IUoGPL4zx1vP"
 configurations:
   - issuer: "https://openlattice.auth0.com/"
     audience: "KTzgyxs6KBcJHB872eSMe2cpTHzhxS99"
-    secret: "ignored"
-    base64EncodedSecret: false
-    signingAlgorithm: "RS256"
-  - issuer: "https://openlattice.auth0.com/"
-    audience: "KTzgyxs6KBcJHB872eSMe2cpTHzhxS99"
     secret: "tjAwhBit0deVUor3lcd7YRlHRc_4FJwv_fcLp_ozO2-D2Lh38066IUoGPL4zx1vP"
     base64EncodedSecret: false
     signingAlgorithm: "HS256"
@@ -17,4 +12,8 @@ configurations:
     base64EncodedSecret: false
     signingAlgorithm: "HS256"
 domain: "openlattice.auth0.com"
-managementApiUrl: "https://openlattice.auth0.com/api/v2/"
+users:
+  - user_id: "test_user"
+    email: "tests@openlattice.com"
+    email_verified: true
+managementApiUrl: "localhost"

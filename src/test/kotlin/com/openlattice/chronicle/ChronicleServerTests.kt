@@ -5,6 +5,8 @@ import com.kryptnostic.rhizome.configuration.ConfigurationConstants
 import com.kryptnostic.rhizome.core.RhizomeApplicationServer
 import com.kryptnostic.rhizome.hazelcast.serializers.RhizomeUtils
 import com.openlattice.chronicle.constants.ChronicleProfiles
+import com.openlattice.chronicle.pods.PostgresDataTablesPod
+import com.openlattice.chronicle.storage.PostgresDataTables
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.jdbc.DataSourceManager
 import com.openlattice.postgres.PostgresPod
@@ -16,6 +18,16 @@ import com.zaxxer.hikari.HikariDataSource
  */
 open class ChronicleServerTests {
     companion object {
+        private val LOCAL_TEST_PROFILES = arrayOf(ConfigurationConstants.Profiles.LOCAL_CONFIGURATION_PROFILE,
+                                                  PostgresDataTables.POSTGRES_DATA_ENVIRONMENT,
+                                                  PostgresPod.PROFILE,
+                                                  ChronicleProfiles.MEDIA_LOCAL_PROFILE)
+        private val AWS_TEST_PROFILES = arrayOf(
+            ConfigurationConstants.Profiles.AWS_TESTING_PROFILE,
+            PostgresDataTables.POSTGRES_DATA_ENVIRONMENT,
+            PostgresPod.PROFILE,
+            ChronicleProfiles.MEDIA_LOCAL_PROFILE
+        )
 
         @JvmField
         val testServer = RhizomeApplicationServer(
@@ -41,11 +53,7 @@ open class ChronicleServerTests {
         val dsm: DataSourceManager
 
         init {
-            testServer.sprout(
-                ConfigurationConstants.Profiles.LOCAL_CONFIGURATION_PROFILE,
-                PostgresPod.PROFILE,
-                ChronicleProfiles.MEDIA_LOCAL_PROFILE
-            )
+            testServer.sprout(*LOCAL_TEST_PROFILES)
 
             hazelcastInstance = testServer.context.getBean(HazelcastInstance::class.java)
             //This should work as tests aren't sharded all will all share the default datasource

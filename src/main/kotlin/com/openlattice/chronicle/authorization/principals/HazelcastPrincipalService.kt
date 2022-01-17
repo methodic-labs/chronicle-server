@@ -85,6 +85,16 @@ class HazelcastPrincipalService(
         return true
     }
 
+    override fun createSecurablePrincipalIfNotExists(principal: SecurablePrincipal): Boolean {
+        if (reservations.isReserved(principal.name)) {
+            logger.warn("Securable Principal {} already exists", principal)
+            return false
+        }
+
+        createSecurablePrincipal(principal.principal, principal)
+        return true
+    }
+
     private fun createSecurablePrincipal(owner: Principal, principal: SecurablePrincipal) {
         val aclKey = principal.aclKey
         try {

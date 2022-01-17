@@ -19,10 +19,12 @@
  *
  */
 
-package com.openlattice.users
+package com.openlattice.chronicle.users
 
 import com.google.common.util.concurrent.ListeningExecutorService
 import com.openlattice.tasks.HazelcastTaskDependencies
+import com.openlattice.users.Auth0SyncService
+import com.openlattice.users.UserListingService
 
 data class Auth0SyncTaskDependencies(
         val users: Auth0SyncService,

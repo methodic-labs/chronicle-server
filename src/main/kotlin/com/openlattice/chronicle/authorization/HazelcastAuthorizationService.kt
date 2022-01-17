@@ -206,7 +206,6 @@ class HazelcastAuthorizationService(
     ) {
         ensurePrincipalsExist(setOf(principal))
         aces.executeOnKey(AceKey(key, principal), PermissionMerger(permissions, securableObjectType, expirationDate))
-
     }
 
     override fun addPermissions(

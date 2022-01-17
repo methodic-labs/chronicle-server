@@ -12,9 +12,8 @@ hazelcast:
     password: "trellis"
     cp-member-count: 0
     seed-nodes:
-        - "localhost"
+        - "127.0.0.1:5710"
     port: 5710
-
 hazelcast-clients:
     IDS:
         server: false
@@ -23,11 +22,10 @@ hazelcast-clients:
         cp-member-count: 0
         seed-nodes:
             - "127.0.0.1:5710"
-
 postgres:
     citus: false
     hikari:
-        jdbcUrl: "jdbc:postgresql://localhost:5432/openlattice"
+        jdbcUrl: "jdbc:postgresql://localhost:5432/chronicle"
         username: "oltest"
         password: "test"
         maximumPoolSize: 10

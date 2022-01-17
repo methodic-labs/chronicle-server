@@ -89,4 +89,5 @@ interface SecurePrincipalsManager {
     fun ensurePrincipalsExist(aclKeys: Set<AclKey>)
     fun getAllRoles(): Set<Role>
     fun getAllUsers(): Set<SecurablePrincipal>
+    fun createSecurablePrincipalIfNotExists(principal: SecurablePrincipal): Boolean
 }

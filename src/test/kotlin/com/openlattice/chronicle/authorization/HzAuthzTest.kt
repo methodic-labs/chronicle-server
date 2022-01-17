@@ -77,23 +77,19 @@ open class HzAuthzTest : ChronicleServerTests() {
     }
 
     @Test
-    fun testTypeMistmatchPermission() {
-        val key: AclKey = AclKey(UUID.randomUUID())
-        val permissions: EnumSet<Permission> = EnumSet.of<Permission>(Permission.DISCOVER, Permission.READ)
-        Assert.assertFalse(
-            hzAuthz!!.checkIfHasPermissions(key, ImmutableSet.of(p), permissions)
-        )
-        hzAuthz!!.setSecurableObjectType(key, SecurableObjectType.Study)
-        hzAuthz!!.addPermission(key, p, permissions)
+    fun testTypeMismatchPermission() {
+        val key = AclKey(UUID.randomUUID())
+        val permissions: EnumSet<Permission> = EnumSet.of(Permission.DISCOVER, Permission.READ)
+        Assert.assertFalse(hzAuthz.checkIfHasPermissions(key, ImmutableSet.of(p), permissions))
+        hzAuthz.setSecurableObjectType(key, SecurableObjectType.Study)
+        hzAuthz.addPermission(key, p, permissions)
         val badkey: UUID = UUID.randomUUID()
-        Assert.assertFalse(
-            hzAuthz!!.checkIfHasPermissions(AclKey(badkey), ImmutableSet.of(p), permissions)
-        )
+        Assert.assertFalse(hzAuthz.checkIfHasPermissions(AclKey(badkey), ImmutableSet.of(p), permissions))
     }
 
     @Test
     fun testRemovePermissions() {
-        val key: AclKey = AclKey(UUID.randomUUID())
+        val key = AclKey(UUID.randomUUID())
         val permissions: EnumSet<Permission> =
             EnumSet.of<Permission>(Permission.DISCOVER, Permission.READ, Permission.OWNER)
         Assert.assertFalse(
@@ -292,16 +288,16 @@ open class HzAuthzTest : ChronicleServerTests() {
 
     @Test
     fun testGetAuthorizedPrincipalsOnSecurableObject() {
-        val key: AclKey = AclKey(UUID.randomUUID())
+        val key = AclKey(UUID.randomUUID())
         val user1 = initializePrincipal(TestDataFactory.userPrincipal())
         val user2 = initializePrincipal(TestDataFactory.userPrincipal())
-        val permissions: EnumSet<Permission> = EnumSet.of<Permission>(Permission.READ)
-        hzAuthz!!.addPermission(key, user1, permissions)
-        hzAuthz!!.addPermission(key, user2, permissions)
+        val permissions = EnumSet.of(Permission.READ)
+        hzAuthz.addPermission(key, user1, permissions)
+        hzAuthz.addPermission(key, user2, permissions)
         val authorizedPrincipals = PrincipalSet(
-            hzAuthz!!.getAuthorizedPrincipalsOnSecurableObject(key, permissions).toMutableSet()
+            hzAuthz.getAuthorizedPrincipalsOnSecurableObject(key, permissions).toMutableSet()
         )
-        Assert.assertEquals(java.util.Set.of(user1, user2), authorizedPrincipals)
+        Assert.assertEquals(setOf(user1, user2), authorizedPrincipals)
     }
 
     @Test
@@ -364,6 +360,7 @@ open class HzAuthzTest : ChronicleServerTests() {
     companion object {
         private val ORG_ID = UUID.randomUUID()
         private val logger = LoggerFactory.getLogger(HzAuthzTest::class.java)
+        private val adminPrincipal = initializePrincipal(SystemRole.ADMIN.principal)
         private val p = initializePrincipal(
             Principal(
                 PrincipalType.USER,
@@ -377,9 +374,11 @@ open class HzAuthzTest : ChronicleServerTests() {
             )
         )
         private var isInitialized = false
+
         @JvmStatic
         protected lateinit var hzAuthz: HazelcastAuthorizationService
         protected lateinit var spm: SecurePrincipalsManager
+
         @JvmStatic
         fun initializePrincipal(principal: Principal): Principal {
             init()
@@ -395,7 +394,7 @@ open class HzAuthzTest : ChronicleServerTests() {
                 Optional.empty<String>()
             )
             try {
-                spm.createSecurablePrincipalIfNotExists(SystemRole.ADMIN.principal, sp)
+                spm.createSecurablePrincipalIfNotExists(sp)
             } catch (e: Exception) {
                 logger.debug("could not initialize principal {}", principal, e)
             }
@@ -426,7 +425,7 @@ open class HzAuthzTest : ChronicleServerTests() {
                 hzAuthz,
                 principalsMapManager
             )
-//            spm.createSecurablePrincipalIfNotExists(SystemRole.ADMIN.principal, GLOBAL_ADMIN_ROLE)
+
             isInitialized = true
         }
     }

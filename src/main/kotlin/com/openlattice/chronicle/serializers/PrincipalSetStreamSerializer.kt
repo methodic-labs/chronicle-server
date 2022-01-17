@@ -16,44 +16,40 @@
  *
  * You can contact the owner of the copyright at support@openlattice.com
  *
- *
  */
 package com.openlattice.chronicle.serializers
 
+import com.google.common.collect.Sets
 import com.hazelcast.nio.ObjectDataInput
 import com.hazelcast.nio.ObjectDataOutput
-import com.kryptnostic.rhizome.pods.hazelcast.SelfRegisteringStreamSerializer
+import com.openlattice.chronicle.authorization.Principal
+import com.openlattice.chronicle.authorization.PrincipalSet
 import com.openlattice.chronicle.hazelcast.StreamSerializerTypeIds
-import com.openlattice.chronicle.users.LocalAuth0SyncTask
-import com.openlattice.users.Auth0SyncTask
-import com.openlattice.users.DefaultAuth0SyncTask
+import com.openlattice.chronicle.util.TestDataFactory
+import com.openlattice.hazelcast.serializers.SetStreamSerializer
 import org.springframework.stereotype.Component
 import java.io.IOException
 
-/**
- * Stream
- */
 @Component
-class Auth0SyncTaskStreamSerializer : SelfRegisteringStreamSerializer<Auth0SyncTask> {
-    override fun getClazz(): Class<Auth0SyncTask> {
-        return Auth0SyncTask::class.java
+class PrincipalSetStreamSerializer : SetStreamSerializer<PrincipalSet, Principal>(PrincipalSet::class.java) {
+
+    override fun newInstanceWithExpectedSize(size: Int): PrincipalSet {
+        return PrincipalSet(Sets.newHashSetWithExpectedSize(size))
     }
 
     @Throws(IOException::class)
-    override fun write(out: ObjectDataOutput, `object`: Auth0SyncTask) {
-        out.writeBoolean(`object`.isLocal)
+    override fun readSingleElement(`in`: ObjectDataInput): Principal {
+        return PrincipalStreamSerializer.deserialize(`in`)
     }
 
     @Throws(IOException::class)
-    override fun read(`in`: ObjectDataInput): Auth0SyncTask {
-        return if (`in`.readBoolean()) {
-            LocalAuth0SyncTask()
-        } else DefaultAuth0SyncTask()
+    override fun writeSingleElement(out: ObjectDataOutput, element: Principal) {
+        PrincipalStreamSerializer.serialize(out, element)
     }
 
-    override fun getTypeId(): Int {
-        return StreamSerializerTypeIds.AUTH0_SYNC_TASK.ordinal
+    override fun generateTestValue(): PrincipalSet {
+        return PrincipalSet(mutableSetOf(TestDataFactory.rolePrincipal(), TestDataFactory.userPrincipal()))
     }
 
-    override fun destroy() {}
+    override fun getTypeId():Int = StreamSerializerTypeIds.PRINCIPAL_SET.ordinal
 }

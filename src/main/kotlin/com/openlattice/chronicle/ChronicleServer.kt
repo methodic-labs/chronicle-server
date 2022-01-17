@@ -50,6 +50,7 @@ class ChronicleServer(vararg pods: Class<*>) : BaseRhizomeServer(
             PostgresPod::class.java,
             PostgresTablesPod::class.java,
             RedshiftTablesPod::class.java,
+            PostgresDataTablesPod::class.java,
             TaskSchedulerPod::class.java,
             SharedStreamSerializersPod::class.java,
             ByteBlobServicePod::class.java,
