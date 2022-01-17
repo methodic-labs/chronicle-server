@@ -1,6 +1,6 @@
 package com.openlattice.chronicle.configuration
 
-import com.openlattice.jdbc.DataSourceManager
+import com.geekbeast.jdbc.DataSourceManager
 
 /**
  *

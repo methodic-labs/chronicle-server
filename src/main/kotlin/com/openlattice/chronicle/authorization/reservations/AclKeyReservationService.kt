@@ -32,7 +32,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJ
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_TYPE
 import com.geekbeast.controllers.exceptions.TypeExistsException
 import com.geekbeast.controllers.exceptions.UniqueIdConflictException
-import com.openlattice.jdbc.DataSourceManager
+import com.geekbeast.jdbc.DataSourceManager
 import com.geekbeast.postgres.PostgresArrays
 import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier

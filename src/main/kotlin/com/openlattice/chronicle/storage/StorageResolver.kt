@@ -2,7 +2,7 @@ package com.openlattice.chronicle.storage
 
 import com.geekbeast.configuration.postgres.PostgresFlavor
 import com.openlattice.chronicle.configuration.ChronicleStorageConfiguration
-import com.openlattice.jdbc.DataSourceManager
+import com.geekbeast.jdbc.DataSourceManager
 import com.zaxxer.hikari.HikariDataSource
 import java.util.*
 

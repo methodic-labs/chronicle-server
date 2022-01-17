@@ -7,7 +7,7 @@ import com.geekbeast.rhizome.hazelcast.serializers.RhizomeUtils
 import com.openlattice.chronicle.constants.ChronicleProfiles
 import com.openlattice.chronicle.storage.PostgresDataTables
 import com.openlattice.chronicle.storage.StorageResolver
-import com.openlattice.jdbc.DataSourceManager
+import com.geekbeast.jdbc.DataSourceManager
 import com.geekbeast.postgres.PostgresPod
 import com.zaxxer.hikari.HikariDataSource
 

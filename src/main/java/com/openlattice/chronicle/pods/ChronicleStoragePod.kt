@@ -4,7 +4,7 @@ import com.geekbeast.rhizome.pods.ConfigurationLoader
 import com.geekbeast.ResourceConfigurationLoader
 import com.openlattice.chronicle.configuration.ChronicleConfiguration
 import com.openlattice.chronicle.storage.StorageResolver
-import com.openlattice.jdbc.DataSourceManager
+import com.geekbeast.jdbc.DataSourceManager
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import java.io.IOException

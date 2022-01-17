@@ -57,7 +57,7 @@ import com.openlattice.chronicle.services.upload.AppDataUploadService
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.tasks.PostConstructInitializerTaskDependencies
 import com.openlattice.chronicle.users.*
-import com.openlattice.jdbc.DataSourceManager
+import com.geekbeast.jdbc.DataSourceManager
 import com.openlattice.users.*
 import com.openlattice.users.export.Auth0ApiExtension
 import org.slf4j.LoggerFactory
