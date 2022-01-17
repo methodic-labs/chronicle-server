@@ -6,7 +6,7 @@ import com.hazelcast.nio.ObjectDataOutput
 import com.openlattice.chronicle.ChronicleServerTests.Companion.testServer
 import com.openlattice.chronicle.serializers.KotlinDelegatedUUIDSetStreamSerializer
 import com.geekbeast.hazelcast.serializers.TestableSelfRegisteringStreamSerializer
-import com.openlattice.rhizome.KotlinDelegatedUUIDSet
+import com.geekbeast.rhizome.KotlinDelegatedUUIDSet
 import org.junit.Assert
 import org.junit.Test
 import org.junit.runner.RunWith
