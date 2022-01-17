@@ -1,6 +1,6 @@
 package com.openlattice.chronicle.storage
 
-import com.openlattice.postgres.PostgresTableDefinition
+import com.geekbeast.postgres.PostgresTableDefinition
 
 /**
  *

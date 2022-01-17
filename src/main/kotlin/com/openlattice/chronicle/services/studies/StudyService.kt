@@ -1,6 +1,6 @@
 package com.openlattice.chronicle.services.studies
 
-import com.dataloom.mappers.ObjectMappers
+import com.geekbeast.mappers.mappers.ObjectMappers
 import com.openlattice.chronicle.storage.StorageResolver
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.geekbeast.configuration.postgres.PostgresFlavor
@@ -8,7 +8,6 @@ import com.openlattice.chronicle.auditing.AuditingComponent
 import com.openlattice.chronicle.auditing.AuditingManager
 import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.authorization.AuthorizationManager
-import com.openlattice.chronicle.authorization.HazelcastAuthorizationService
 import com.openlattice.chronicle.authorization.SecurableObjectType
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.authorization.reservations.AclKeyReservationService
@@ -84,27 +83,29 @@ class StudyService(
 
     override fun createStudy(study: Study): UUID {
         study.id = idGenerationService.getNextId()
-        
-            val (flavor, hds) = storageResolver.resolve(study.id)
-            check(flavor == PostgresFlavor.VANILLA) { "Only vanilla postgres is supported for studies." }
-            val connection = hds.connection
-            connection.autoCommit = false
-            try {
-                insertStudy(connection, study)
-                authorizationService.createSecurableObject(
-                    connection = connection,
-                    aclKey = AclKey(study.id),
-                    principal = Principals.getCurrentUser(),
-                    objectType = SecurableObjectType.Study
-                )
-                connection.commit()
-            } catch (ex: Exception) {
-                logger.error("Failed to create study $study.", ex)
-                connection.rollback()
-                throw ex
-            } finally {
-                connection.autoCommit = true
-            }
+
+        val (flavor, hds) = storageResolver.resolve(study.id)
+        check(flavor == PostgresFlavor.VANILLA) { "Only vanilla postgres is supported for studies." }
+        val connection = hds.connection
+        connection.autoCommit = false
+        try {
+            insertStudy(connection, study)
+            authorizationService.createSecurableObject(
+                connection = connection,
+                aclKey = AclKey(study.id),
+                principal = Principals.getCurrentUser(),
+                objectType = SecurableObjectType.Study
+            )
+
+            connection.commit()
+        } catch (ex: Exception) {
+            logger.error("Failed to create study $study.", ex)
+            connection.rollback()
+            throw ex
+        } finally {
+            connection.autoCommit = true
+        }
+
         return study.id
     }
 

@@ -21,12 +21,12 @@ package com.openlattice.chronicle.serializers
 
 import com.hazelcast.nio.ObjectDataInput
 import com.hazelcast.nio.ObjectDataOutput
-import com.kryptnostic.rhizome.pods.hazelcast.SelfRegisteringStreamSerializer
+import com.geekbeast.rhizome.pods.hazelcast.SelfRegisteringStreamSerializer
 import com.openlattice.chronicle.authorization.Permission
 import com.openlattice.chronicle.authorization.processors.PermissionMerger
 import com.openlattice.chronicle.hazelcast.StreamSerializerTypeIds
 import com.openlattice.chronicle.serializers.AceValueStreamSerializer.Companion.serialize
-import com.openlattice.hazelcast.serializers.Jdk8StreamSerializers.AbstractOffsetDateTimeStreamSerializer
+import com.geekbeast.serializers.Jdk8StreamSerializers.AbstractOffsetDateTimeStreamSerializer
 import org.springframework.stereotype.Component
 import java.io.IOException
 import java.time.OffsetDateTime

@@ -5,7 +5,7 @@ import com.openlattice.chronicle.authorization.AceKey
 import com.openlattice.chronicle.authorization.AceValue
 import com.openlattice.chronicle.authorization.DelegatedPermissionEnumSet
 import com.openlattice.chronicle.authorization.Permission
-import com.openlattice.rhizome.hazelcast.entryprocessors.AbstractReadOnlyRhizomeEntryProcessor
+import com.geekbeast.rhizome.hazelcast.entryprocessors.AbstractReadOnlyRhizomeEntryProcessor
 import java.util.*
 
 class AuthorizationEntryProcessor : AbstractReadOnlyRhizomeEntryProcessor<AceKey, AceValue, DelegatedPermissionEnumSet>(), Offloadable {

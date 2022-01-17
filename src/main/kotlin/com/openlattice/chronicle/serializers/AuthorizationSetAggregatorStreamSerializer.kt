@@ -22,7 +22,7 @@ package com.openlattice.chronicle.serializers
 
 import com.hazelcast.nio.ObjectDataInput
 import com.hazelcast.nio.ObjectDataOutput
-import com.kryptnostic.rhizome.pods.hazelcast.SelfRegisteringStreamSerializer
+import com.geekbeast.rhizome.pods.hazelcast.SelfRegisteringStreamSerializer
 import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.authorization.Permission
 import com.openlattice.chronicle.authorization.aggregators.AuthorizationSetAggregator

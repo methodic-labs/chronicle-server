@@ -4,7 +4,7 @@ import com.hazelcast.core.Offloadable
 import com.hazelcast.spi.impl.executionservice.ExecutionService
 import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.authorization.SecurablePrincipal
-import com.openlattice.rhizome.hazelcast.entryprocessors.AbstractReadOnlyRhizomeEntryProcessor
+import com.geekbeast.rhizome.hazelcast.entryprocessors.AbstractReadOnlyRhizomeEntryProcessor
 
 class PrincipalExistsEntryProcessor : AbstractReadOnlyRhizomeEntryProcessor<AclKey, SecurablePrincipal?, Boolean>(), Offloadable {
 

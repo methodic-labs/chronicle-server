@@ -1,8 +1,5 @@
 package com.openlattice.chronicle.storage
 
-import com.fasterxml.jackson.annotation.JsonProperty
-import com.openlattice.chronicle.auditing.AuditEventType
-import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.BASE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CREATED_AT
@@ -36,10 +33,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPDATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_DATA
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_VERSION
-import com.openlattice.chronicle.util.JsonFields
-import com.openlattice.postgres.PostgresTableDefinition
-import java.time.OffsetDateTime
-import java.util.*
+import com.geekbeast.postgres.PostgresTableDefinition
 
 /**
  *

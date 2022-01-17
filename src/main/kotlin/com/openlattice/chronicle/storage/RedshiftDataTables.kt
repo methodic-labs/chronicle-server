@@ -18,8 +18,8 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMESTAMP
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMEZONE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.USERNAME
-import com.openlattice.postgres.PostgresColumnDefinition
-import com.openlattice.postgres.RedshiftTableDefinition
+import com.geekbeast.postgres.PostgresColumnDefinition
+import com.geekbeast.postgres.RedshiftTableDefinition
 
 /**
  *

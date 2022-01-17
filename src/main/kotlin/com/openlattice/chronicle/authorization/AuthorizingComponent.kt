@@ -20,7 +20,7 @@
 package com.openlattice.chronicle.authorization
 
 import com.openlattice.chronicle.authorization.principals.Principals
-import com.openlattice.controllers.exceptions.ForbiddenException
+import com.geekbeast.controllers.exceptions.ForbiddenException
 import org.slf4j.LoggerFactory
 import java.util.*
 import java.util.function.Function

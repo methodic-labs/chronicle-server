@@ -20,7 +20,7 @@
 package com.openlattice.chronicle.authorization.mapstores
 
 import com.auth0.json.mgmt.users.User
-import com.dataloom.mappers.ObjectMappers
+import com.geekbeast.mappers.mappers.ObjectMappers
 import com.fasterxml.jackson.core.JsonProcessingException
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.google.common.collect.ImmutableList
@@ -32,7 +32,7 @@ import com.openlattice.chronicle.hazelcast.HazelcastMap
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.USERS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_DATA
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_ID
-import com.openlattice.postgres.mapstores.AbstractBasePostgresMapstore
+import com.geekbeast.postgres.mapstores.AbstractBasePostgresMapstore
 import com.zaxxer.hikari.HikariDataSource
 import org.apache.commons.lang3.RandomStringUtils
 import org.apache.commons.lang3.RandomUtils

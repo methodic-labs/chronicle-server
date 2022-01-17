@@ -21,8 +21,8 @@ package com.openlattice.chronicle.serializers
 
 import com.hazelcast.nio.ObjectDataInput
 import com.hazelcast.nio.ObjectDataOutput
-import com.kryptnostic.rhizome.hazelcast.serializers.RhizomeUtils
-import com.kryptnostic.rhizome.pods.hazelcast.SelfRegisteringStreamSerializer
+import com.geekbeast.rhizome.hazelcast.serializers.RhizomeUtils
+import com.geekbeast.rhizome.pods.hazelcast.SelfRegisteringStreamSerializer
 import com.openlattice.chronicle.authorization.DelegatedPermissionEnumSet
 import com.openlattice.chronicle.authorization.DelegatedPermissionEnumSet.Companion.wrap
 import com.openlattice.chronicle.authorization.Permission

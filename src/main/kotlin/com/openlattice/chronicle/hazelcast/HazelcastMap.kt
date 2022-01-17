@@ -24,7 +24,7 @@ import com.hazelcast.core.HazelcastInstance
 import com.hazelcast.map.IMap
 import com.openlattice.chronicle.authorization.*
 import com.openlattice.chronicle.mapstores.ids.Range
-import com.openlattice.postgres.mapstores.TypedMapIdentifier
+import com.geekbeast.postgres.mapstores.TypedMapIdentifier
 import java.util.*
 
 class HazelcastMap<K, V> internal constructor(val name: String) : TypedMapIdentifier<K, V> {

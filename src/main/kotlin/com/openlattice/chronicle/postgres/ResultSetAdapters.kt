@@ -19,12 +19,9 @@
  */
 package com.openlattice.chronicle.postgres
 
-import com.dataloom.mappers.ObjectMappers
+import com.geekbeast.mappers.mappers.ObjectMappers
 import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.google.common.collect.Lists
-import com.google.common.collect.Maps
-import com.google.common.collect.Sets
 import com.openlattice.chronicle.authorization.*
 import com.openlattice.chronicle.mapstores.ids.Range
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
@@ -47,15 +44,12 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.TITLE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.URL
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.USERNAME
-import com.openlattice.postgres.PostgresArrays
+import com.geekbeast.postgres.PostgresArrays
 import org.slf4j.LoggerFactory
-import java.io.IOException
 import java.sql.ResultSet
 import java.sql.SQLException
 import java.time.OffsetDateTime
 import java.util.*
-import java.util.function.Supplier
-import java.util.stream.Collectors
 
 /**
  * Use for reading count field when performing an aggregation.

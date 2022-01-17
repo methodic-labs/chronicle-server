@@ -25,9 +25,9 @@ import com.openlattice.chronicle.serializers.decorators.ByteBlobDataManagerAware
 import com.openlattice.chronicle.ids.IdGenerationServiceDependent
 import com.openlattice.chronicle.storage.ByteBlobDataManager
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
-import com.openlattice.tasks.HazelcastInitializationTask
-import com.openlattice.tasks.HazelcastTaskDependencies
-import com.openlattice.tasks.Task
+import com.geekbeast.tasks.HazelcastInitializationTask
+import com.geekbeast.tasks.HazelcastTaskDependencies
+import com.geekbeast.tasks.Task
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import javax.inject.Inject

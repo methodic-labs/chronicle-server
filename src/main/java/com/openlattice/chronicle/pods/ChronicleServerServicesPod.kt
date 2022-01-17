@@ -20,17 +20,17 @@
 package com.openlattice.chronicle.pods
 
 import com.auth0.client.mgmt.ManagementAPI
-import com.dataloom.mappers.ObjectMappers
+import com.geekbeast.mappers.mappers.ObjectMappers
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.geekbeast.hazelcast.HazelcastClientProvider
 import com.google.common.eventbus.EventBus
 import com.google.common.util.concurrent.ListeningExecutorService
 import com.hazelcast.core.HazelcastInstance
-import com.kryptnostic.rhizome.configuration.ConfigurationConstants
-import com.openlattice.auth0.Auth0Pod
-import com.openlattice.auth0.Auth0TokenProvider
-import com.openlattice.auth0.AwsAuth0TokenProvider
-import com.openlattice.authentication.Auth0Configuration
+import com.geekbeast.rhizome.configuration.ConfigurationConstants
+import com.geekbeast.auth0.Auth0Pod
+import com.geekbeast.auth0.Auth0TokenProvider
+import com.geekbeast.auth0.AwsAuth0TokenProvider
+import com.geekbeast.authentication.Auth0Configuration
 import com.openlattice.chronicle.auditing.AuditingManager
 import com.openlattice.chronicle.auditing.RedshiftAuditingManager
 import com.openlattice.chronicle.authorization.AuthorizationManager

@@ -4,7 +4,7 @@ import com.hazelcast.nio.ObjectDataInput
 import com.hazelcast.nio.ObjectDataOutput
 import com.openlattice.chronicle.authorization.PrincipalType
 import com.openlattice.chronicle.hazelcast.StreamSerializerTypeIds
-import com.openlattice.hazelcast.serializers.AbstractEnumSerializer
+import com.geekbeast.hazelcast.serializers.AbstractEnumSerializer
 import org.springframework.stereotype.Component
 
 /**

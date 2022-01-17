@@ -22,9 +22,9 @@ package com.openlattice.users
 
 import com.hazelcast.scheduledexecutor.StatefulTask
 import com.openlattice.chronicle.users.Auth0SyncTaskDependencies
-import com.openlattice.tasks.HazelcastFixedRateTask
-import com.openlattice.tasks.HazelcastTaskDependencies
-import com.openlattice.tasks.Task
+import com.geekbeast.tasks.HazelcastFixedRateTask
+import com.geekbeast.tasks.HazelcastTaskDependencies
+import com.geekbeast.tasks.Task
 import org.slf4j.Logger
 import java.time.Instant
 import java.util.concurrent.TimeUnit

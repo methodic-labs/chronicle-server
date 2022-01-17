@@ -40,6 +40,7 @@ import java.util.concurrent.TimeUnit
 import java.util.function.Consumer
 import java.util.function.Function
 import java.util.stream.Collectors
+import kotlin.streams.asSequence
 
 open class HzAuthzTest : ChronicleServerTests() {
     @Test
@@ -249,17 +250,9 @@ open class HzAuthzTest : ChronicleServerTests() {
             val p2 = p2s[i]!!
             val permissions1: EnumSet<Permission> = permissions1s[i]!!
             val permissions2: EnumSet<Permission> = permissions2s[i++]!!
-            val result: Map<AclKey, EnumMap<Permission, Boolean>> =
-                hzAuthz!!.accessChecksForPrincipals(ImmutableSet.of(ac), ImmutableSet.of(p2))
-                    .collect(
-                        Collectors.toConcurrentMap(
-                            { (aclKey): Authorization -> aclKey },
-                            { (_, permissions): Authorization ->
-                                EnumMap<Permission, Boolean>(
-                                    permissions
-                                )
-                            })
-                    )
+            val result = hzAuthz
+                .accessChecksForPrincipals(ImmutableSet.of(ac), ImmutableSet.of(p2))
+                .associate { it.aclKey to EnumMap(it.permissions) }
             Assert.assertTrue(result.containsKey(key))
             val checkForKey: EnumMap<Permission, Boolean> = result.getValue(key)
             Assert.assertTrue(checkForKey.size == ac.permissions.size)
@@ -270,18 +263,11 @@ open class HzAuthzTest : ChronicleServerTests() {
             //            Assert.assertTrue( result.get( key ).get( Permission.READ ) );
             //            Assert.assertFalse( result.get( key ).get( Permission.OWNER ) );
         }
+        val result = hzAuthz
+            .accessChecksForPrincipals(accessChecks, ImmutableSet.copyOf(p2s.filterNotNull()))
+            .associate { it.aclKey to EnumMap(it.permissions) }
+
         val w = Stopwatch.createStarted()
-        val result: Map<AclKey, EnumMap<Permission, Boolean>> =
-            hzAuthz!!.accessChecksForPrincipals(accessChecks, ImmutableSet.copyOf(p2s.filterNotNull()))
-                .collect(
-                    Collectors.toConcurrentMap(
-                        Function { (aclKey): Authorization -> aclKey },
-                        Function { (_, permissions): Authorization ->
-                            EnumMap<Permission, Boolean>(
-                                permissions
-                            )
-                        })
-                )
         logger.info("Elapsed time to access check: {} ms", w.elapsed(TimeUnit.MILLISECONDS))
         Assert.assertTrue(result.keys.containsAll(aclKeys.filterNotNull()))
     }

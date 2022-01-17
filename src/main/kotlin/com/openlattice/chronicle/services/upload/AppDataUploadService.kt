@@ -19,8 +19,8 @@ import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.getInsertI
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.getInsertUsageEventColumnIndex
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.util.ChronicleServerUtil
-import com.openlattice.postgres.PostgresColumnDefinition
-import com.openlattice.postgres.PostgresDatatype
+import com.geekbeast.postgres.PostgresColumnDefinition
+import com.geekbeast.postgres.PostgresDatatype
 import com.zaxxer.hikari.HikariDataSource
 import org.apache.olingo.commons.api.edm.FullQualifiedName
 import org.slf4j.LoggerFactory

@@ -194,7 +194,7 @@ interface AuthorizationManager {
     fun accessChecksForPrincipals(
         accessChecks: Set<AccessCheck>,
         principals: Set<Principal>
-    ): Stream<Authorization>
+    ): List<Authorization>
 
     @Timed
     fun checkIfHasPermissions(

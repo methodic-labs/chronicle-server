@@ -6,7 +6,7 @@ import com.hazelcast.nio.ObjectDataOutput
 import com.openlattice.chronicle.authorization.SortedPrincipalSet
 import com.openlattice.chronicle.hazelcast.StreamSerializerTypeIds
 import com.openlattice.chronicle.util.TestDataFactory
-import com.openlattice.hazelcast.serializers.TestableSelfRegisteringStreamSerializer
+import com.geekbeast.hazelcast.serializers.TestableSelfRegisteringStreamSerializer
 import org.springframework.stereotype.Component
 
 @Component

@@ -26,7 +26,7 @@ import com.hazelcast.config.IndexConfig
 import com.hazelcast.config.IndexType
 import com.hazelcast.config.MapConfig
 import com.hazelcast.config.MapStoreConfig
-import com.kryptnostic.rhizome.mapstores.TestableSelfRegisteringMapStore
+import com.geekbeast.rhizome.mapstores.TestableSelfRegisteringMapStore
 import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.authorization.AclKeySet
 import com.openlattice.chronicle.hazelcast.HazelcastMap
@@ -35,8 +35,8 @@ import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.PRINC
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_OF_ACL_KEY
 import com.openlattice.chronicle.util.TestDataFactory
-import com.openlattice.postgres.streams.BasePostgresIterable
-import com.openlattice.postgres.streams.StatementHolderSupplier
+import com.geekbeast.postgres.streams.BasePostgresIterable
+import com.geekbeast.postgres.streams.StatementHolderSupplier
 import com.zaxxer.hikari.HikariDataSource
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service

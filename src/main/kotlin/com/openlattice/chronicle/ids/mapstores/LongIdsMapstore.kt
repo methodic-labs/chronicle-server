@@ -4,7 +4,7 @@ import com.openlattice.chronicle.hazelcast.HazelcastMap
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.BASE_LONG_IDS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.BASE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SCOPE
-import com.openlattice.postgres.mapstores.AbstractBasePostgresMapstore
+import com.geekbeast.postgres.mapstores.AbstractBasePostgresMapstore
 import com.zaxxer.hikari.HikariDataSource
 import org.apache.commons.lang3.RandomStringUtils
 import org.apache.commons.lang3.RandomUtils

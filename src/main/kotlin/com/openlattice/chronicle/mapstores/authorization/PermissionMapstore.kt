@@ -27,16 +27,15 @@ import com.hazelcast.config.MapStoreConfig.InitialLoadMode
 import com.openlattice.chronicle.authorization.*
 import com.openlattice.chronicle.hazelcast.HazelcastMap
 import com.openlattice.chronicle.postgres.ResultSetAdapters
-import com.openlattice.chronicle.storage.ChroniclePostgresTables
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.PERMISSIONS
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.SECURABLE_OBJECTS
 import com.openlattice.chronicle.storage.PostgresColumns
 import com.openlattice.chronicle.util.TestDataFactory
-import com.openlattice.postgres.PostgresArrays.createTextArray
-import com.openlattice.postgres.PostgresArrays.createUuidArray
-import com.openlattice.postgres.PostgresColumnDefinition
-import com.openlattice.postgres.PostgresTableDefinition
-import com.openlattice.postgres.mapstores.AbstractBasePostgresMapstore
+import com.geekbeast.postgres.PostgresArrays.createTextArray
+import com.geekbeast.postgres.PostgresArrays.createUuidArray
+import com.geekbeast.postgres.PostgresColumnDefinition
+import com.geekbeast.postgres.PostgresTableDefinition
+import com.geekbeast.postgres.mapstores.AbstractBasePostgresMapstore
 import com.zaxxer.hikari.HikariDataSource
 import org.apache.commons.lang3.StringUtils
 import org.springframework.stereotype.Component
@@ -170,8 +169,8 @@ class PermissionMapstore(
     }
 
     private fun selectInQuery(
-            columnsToSelect: List<PostgresColumnDefinition>,
-            whereToSelect: List<PostgresColumnDefinition>, batchSize: Int
+        columnsToSelect: List<PostgresColumnDefinition>,
+        whereToSelect: List<PostgresColumnDefinition>, batchSize: Int
     ): String {
         val selectSql = selectInnerJoinQuery()
         val compoundElement = "(" + StringUtils.repeat("?", ",", whereToSelect.size) + ")"

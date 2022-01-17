@@ -2,11 +2,11 @@ package com.openlattice.chronicle.serializers
 
 import com.hazelcast.nio.ObjectDataInput
 import com.hazelcast.nio.ObjectDataOutput
-import com.kryptnostic.rhizome.hazelcast.serializers.ListStreamSerializers
+import com.geekbeast.rhizome.hazelcast.serializers.ListStreamSerializers
 import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.hazelcast.StreamSerializerTypeIds
 import com.openlattice.chronicle.util.TestDataFactory
-import com.openlattice.hazelcast.serializers.TestableSelfRegisteringStreamSerializer
+import com.geekbeast.hazelcast.serializers.TestableSelfRegisteringStreamSerializer
 import org.springframework.stereotype.Component
 
 @Component
