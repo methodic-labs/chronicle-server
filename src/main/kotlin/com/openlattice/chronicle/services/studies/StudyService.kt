@@ -84,7 +84,7 @@ class StudyService(
 
     override fun createStudy(study: Study): UUID {
         study.id = idGenerationService.getNextId()
-        try {
+        
             val (flavor, hds) = storageResolver.resolve(study.id)
             check(flavor == PostgresFlavor.VANILLA) { "Only vanilla postgres is supported for studies." }
             val connection = hds.connection
@@ -105,9 +105,6 @@ class StudyService(
             } finally {
                 connection.autoCommit = true
             }
-        } catch (e: Exception) {
-            logger.error("hds error: $e")
-        }
         return study.id
     }
 
