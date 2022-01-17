@@ -4,6 +4,12 @@ import com.fasterxml.jackson.annotation.JsonProperty
 import com.openlattice.chronicle.auditing.AuditEventType
 import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_PACKAGE_NAME
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_TITLE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_USAGE_DATE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_USAGE_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_USAGE_TIMESTAMP
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_USAGE_USERS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.BASE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CREATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DATE_OF_BIRTH
@@ -161,6 +167,20 @@ class ChroniclePostgresTables {
                 .primaryKey(USER_ID)
                 .overwriteOnConflict()
 
+        @JvmField
+        val APPS_USAGE = PostgresTableDefinition("app_usage")
+                .addColumns(
+                        APP_USAGE_ID,
+                        ORGANIZATION_ID,
+                        STUDY_ID,
+                        PARTICIPANT_ID,
+                        APP_TITLE,
+                        APP_PACKAGE_NAME,
+                        APP_USAGE_USERS,
+                        APP_USAGE_TIMESTAMP,
+                        APP_USAGE_DATE
+                )
+                .primaryKey(APP_USAGE_ID)
 
     }
 }

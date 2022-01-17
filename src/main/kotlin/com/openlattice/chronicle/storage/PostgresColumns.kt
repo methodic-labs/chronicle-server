@@ -62,5 +62,13 @@ class PostgresColumns {
         //It is fine to use double for lat/lon since we won't be doing computation on these
         val LAT = PostgresColumnDefinition("lat", PostgresDatatype.DOUBLE)
         val LON = PostgresColumnDefinition("lon", PostgresDatatype.DOUBLE)
+
+        // app usage survey specific columns
+        val APP_TITLE = PostgresColumnDefinition("app_title", PostgresDatatype.TEXT)
+        val APP_PACKAGE_NAME = PostgresColumnDefinition("app_package_name", PostgresDatatype.TEXT).notNull()
+        val APP_USAGE_ID = PostgresColumnDefinition("id", PostgresDatatype.UUID).notNull()
+        val APP_USAGE_USERS = PostgresColumnDefinition("users", PostgresDatatype.TEXT_ARRAY)
+        val APP_USAGE_TIMESTAMP = PostgresColumnDefinition("timestamp", PostgresDatatype.TIMESTAMPTZ)
+        val APP_USAGE_DATE = PostgresColumnDefinition("date", PostgresDatatype.DATE)
     }
 }
