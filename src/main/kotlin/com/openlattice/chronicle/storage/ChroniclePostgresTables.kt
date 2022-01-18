@@ -1,5 +1,6 @@
 package com.openlattice.chronicle.storage
 
+import com.geekbeast.postgres.PostgresTableDefinition
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_LABEL
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_PACKAGE_NAME
@@ -39,7 +40,6 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.TITLE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPDATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_DATA
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_ID
-import com.openlattice.postgres.PostgresTableDefinition
 
 /**
  *

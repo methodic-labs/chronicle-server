@@ -30,7 +30,7 @@ import java.util.stream.Collectors
 open class PagingSecurableObjectsTest : HzAuthzTest() {
     @Test
     override fun testListSecurableObjects() {
-        val result = hzAuthz!!.getAuthorizedObjectsOfType(
+        val result = hzAuthz.getAuthorizedObjectsOfType(
             currentPrincipals,
             SecurableObjectType.Study,
             EnumSet.of(Permission.READ)
@@ -40,7 +40,7 @@ open class PagingSecurableObjectsTest : HzAuthzTest() {
 
     @Test
     fun testNoResults() {
-        val result = hzAuthz!!.getAuthorizedObjectsOfType(
+        val result = hzAuthz.getAuthorizedObjectsOfType(
             currentPrincipals,
             SecurableObjectType.Organization,
             EnumSet.of(Permission.READ)
@@ -62,7 +62,9 @@ open class PagingSecurableObjectsTest : HzAuthzTest() {
         protected val r2 = TestDataFactory.rolePrincipal()
         protected val r3 = TestDataFactory.rolePrincipal()
         protected val currentPrincipals: NavigableSet<Principal> = TreeSet()
+
         @BeforeClass
+        @JvmStatic
         fun init() {
             HzAuthzTest.init()
             initializePrincipal(u1)
@@ -73,16 +75,12 @@ open class PagingSecurableObjectsTest : HzAuthzTest() {
             currentPrincipals.add(r1)
             currentPrincipals.add(r2)
             currentPrincipals.add(r3)
-            hzAuthz!!.addPermission(
-                key1, u1, EnumSet.allOf(
-                    Permission::class.java
-                )
-            )
-            hzAuthz!!.setSecurableObjectType(key1, SecurableObjectType.Study)
-            hzAuthz!!.addPermission(key2, r1, EnumSet.of(Permission.READ, Permission.WRITE))
-            hzAuthz!!.setSecurableObjectType(key2, SecurableObjectType.Study)
-            hzAuthz!!.addPermission(key3, r2, EnumSet.of(Permission.READ))
-            hzAuthz!!.setSecurableObjectType(key3, SecurableObjectType.Study)
+            hzAuthz.addPermission(key1, u1, EnumSet.allOf(Permission::class.java))
+            hzAuthz.setSecurableObjectType(key1, SecurableObjectType.Study)
+            hzAuthz.addPermission(key2, r1, EnumSet.of(Permission.READ, Permission.WRITE))
+            hzAuthz.setSecurableObjectType(key2, SecurableObjectType.Study)
+            hzAuthz.addPermission(key3, r2, EnumSet.of(Permission.READ))
+            hzAuthz.setSecurableObjectType(key3, SecurableObjectType.Study)
         }
     }
 }

@@ -26,7 +26,10 @@ package com.openlattice.chronicle.auditing
  * @author Matthew Tamayo-Rios &lt;matthew@openlattice.com&gt;
  */
 enum class AuditEventType {
+    ACCESS_DENIED,
     CREATE_STUDY,
+    GET_STUDY,
+    STUDY_NOT_FOUND,
     READ_ENTITIES,
     CREATE_ENTITIES,
     REPLACE_ENTITIES,

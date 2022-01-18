@@ -22,11 +22,11 @@ package com.openlattice.chronicle.serializers
 import com.openlattice.chronicle.serializers.AclKeyStreamSerializer.Companion.serialize
 import com.openlattice.chronicle.serializers.AclKeyStreamSerializer.Companion.deserialize
 import com.openlattice.chronicle.util.InternalTestDataFactory.Companion.aclKeySet
-import com.openlattice.hazelcast.serializers.TestableSelfRegisteringStreamSerializer
+import com.geekbeast.hazelcast.serializers.TestableSelfRegisteringStreamSerializer
 import kotlin.Throws
 import java.io.IOException
 import com.hazelcast.nio.ObjectDataOutput
-import com.kryptnostic.rhizome.hazelcast.serializers.SetStreamSerializers
+import com.geekbeast.rhizome.hazelcast.serializers.SetStreamSerializers
 import com.hazelcast.nio.ObjectDataInput
 import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.authorization.AclKeySet

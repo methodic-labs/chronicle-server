@@ -20,10 +20,7 @@
 package com.openlattice.chronicle.hazelcast.pods
 
 import org.springframework.context.annotation.ComponentScan
-import com.kryptnostic.rhizome.hazelcast.serializers.ListStreamSerializers
-import com.openlattice.chronicle.hazelcast.StreamSerializerTypeIds
 import com.openlattice.chronicle.serializers.SharedStreamSerializers
-import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.FilterType
 import org.springframework.stereotype.Component

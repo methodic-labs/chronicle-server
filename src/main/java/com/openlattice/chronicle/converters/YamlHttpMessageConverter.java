@@ -33,7 +33,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.http.converter.HttpMessageNotWritableException;
 
 import com.openlattice.chronicle.constants.CustomMediaType;
-import com.dataloom.mappers.ObjectMappers;
+import com.geekbeast.mappers.mappers.ObjectMappers;
 import com.google.common.collect.Multimap;
 
 public class YamlHttpMessageConverter extends AbstractGenericHttpMessageConverter<Object> {

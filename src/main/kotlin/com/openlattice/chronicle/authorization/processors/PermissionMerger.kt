@@ -20,7 +20,7 @@
 package com.openlattice.chronicle.authorization.processors
 
 import com.hazelcast.core.Offloadable
-import com.kryptnostic.rhizome.hazelcast.processors.AbstractMerger
+import com.geekbeast.rhizome.hazelcast.processors.AbstractMerger
 import com.openlattice.chronicle.authorization.AceKey
 import com.openlattice.chronicle.authorization.AceValue
 import com.openlattice.chronicle.authorization.Permission

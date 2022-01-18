@@ -28,7 +28,7 @@ import com.openlattice.chronicle.mapstores.ids.Range
 import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.ID_GENERATION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTITION_INDEX
-import com.openlattice.postgres.mapstores.AbstractBasePostgresMapstore
+import com.geekbeast.postgres.mapstores.AbstractBasePostgresMapstore
 import com.zaxxer.hikari.HikariDataSource
 import org.springframework.stereotype.Component
 import java.sql.PreparedStatement

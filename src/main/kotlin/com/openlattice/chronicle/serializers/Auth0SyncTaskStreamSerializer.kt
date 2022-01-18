@@ -22,11 +22,11 @@ package com.openlattice.chronicle.serializers
 
 import com.hazelcast.nio.ObjectDataInput
 import com.hazelcast.nio.ObjectDataOutput
-import com.kryptnostic.rhizome.pods.hazelcast.SelfRegisteringStreamSerializer
+import com.geekbeast.rhizome.pods.hazelcast.SelfRegisteringStreamSerializer
 import com.openlattice.chronicle.hazelcast.StreamSerializerTypeIds
+import com.openlattice.chronicle.users.LocalAuth0SyncTask
 import com.openlattice.users.Auth0SyncTask
 import com.openlattice.users.DefaultAuth0SyncTask
-import com.openlattice.users.LocalAuth0SyncTask
 import org.springframework.stereotype.Component
 import java.io.IOException
 

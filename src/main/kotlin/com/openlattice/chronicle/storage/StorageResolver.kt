@@ -2,7 +2,8 @@ package com.openlattice.chronicle.storage
 
 import com.geekbeast.configuration.postgres.PostgresFlavor
 import com.openlattice.chronicle.configuration.ChronicleStorageConfiguration
-import com.openlattice.jdbc.DataSourceManager
+import com.geekbeast.jdbc.DataSourceManager
+import com.openlattice.chronicle.study.Study
 import com.zaxxer.hikari.HikariDataSource
 import java.util.*
 
@@ -16,7 +17,18 @@ class StorageResolver constructor(
 ) {
     private val datasourceMappings: Map<UUID, String> = mutableMapOf()
     fun resolve(studyId: UUID): Pair<PostgresFlavor, HikariDataSource> {
-        val dataSourceName = datasourceMappings[studyId] ?: storageConfiguration.defaultStorage
+        return getDataSource(resolveDataSourceName(studyId))
+    }
+
+    fun resolveDataSourceName(studyId: UUID): String {
+        return datasourceMappings[studyId] ?: storageConfiguration.defaultStorage
+    }
+
+    fun getStudyIdsByDataSourceName(studyIds: Collection<UUID>): Map<String, List<UUID>> {
+        return studyIds.groupBy { resolveDataSourceName(it) }
+    }
+
+    fun getDataSource(dataSourceName: String): Pair<PostgresFlavor, HikariDataSource> {
         return dataSourceManager.getFlavor(dataSourceName) to dataSourceManager.getDataSource(dataSourceName)
     }
 

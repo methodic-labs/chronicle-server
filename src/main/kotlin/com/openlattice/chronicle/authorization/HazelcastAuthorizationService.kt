@@ -29,7 +29,7 @@ import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.SECUR
 import com.openlattice.chronicle.storage.PostgresColumns
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.util.toAceKeys
-import com.openlattice.postgres.PostgresArrays
+import com.geekbeast.postgres.PostgresArrays
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.sql.Connection
@@ -102,7 +102,7 @@ class HazelcastAuthorizationService(
                 .map { Predicates.equal<AceKey, AceValue>(PERMISSIONS_INDEX, it) }
                 .toTypedArray()
 
-            return Predicates.and<AceKey, AceValue>(*subPredicates)
+            return Predicates.and(*subPredicates)
         }
 
         private fun hasAnyPrincipals(principals: Collection<Principal>): Predicate<AceKey, AceValue> {
@@ -206,7 +206,6 @@ class HazelcastAuthorizationService(
     ) {
         ensurePrincipalsExist(setOf(principal))
         aces.executeOnKey(AceKey(key, principal), PermissionMerger(permissions, securableObjectType, expirationDate))
-
     }
 
     override fun addPermissions(
@@ -400,7 +399,7 @@ class HazelcastAuthorizationService(
     override fun accessChecksForPrincipals(
         accessChecks: Set<AccessCheck>,
         principals: Set<Principal>
-    ): Stream<Authorization> {
+    ): List<Authorization> {
         val requests: MutableMap<AclKey, EnumSet<Permission>> = Maps.newLinkedHashMapWithExpectedSize(accessChecks.size)
 
         accessChecks.forEach {
@@ -409,10 +408,7 @@ class HazelcastAuthorizationService(
             requests[it.aclKey] = p
         }
 
-        return authorize(requests, principals)
-            .entries
-            .stream()
-            .map { e -> Authorization(e.key, e.value) }
+        return authorize(requests, principals).map { Authorization(it.key, it.value) }
     }
 
     @Timed

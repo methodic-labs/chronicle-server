@@ -20,7 +20,7 @@
  */
 package com.openlattice.chronicle.serializers
 
-import com.kryptnostic.rhizome.pods.hazelcast.SelfRegisteringStreamSerializer
+import com.geekbeast.rhizome.pods.hazelcast.SelfRegisteringStreamSerializer
 import kotlin.Throws
 import java.io.IOException
 import com.hazelcast.nio.ObjectDataOutput

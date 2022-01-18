@@ -1,6 +1,7 @@
 package com.openlattice.chronicle.services.upload
 
 import com.geekbeast.configuration.postgres.PostgresFlavor
+import com.geekbeast.postgres.PostgresArrays
 import com.geekbeast.util.StopWatch
 import com.google.common.collect.ImmutableSet
 import com.google.common.collect.Iterables
@@ -39,9 +40,8 @@ import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.getDeleteT
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.getInsertIntoMergeUsageEventsTableSql
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.util.ChronicleServerUtil
-import com.openlattice.postgres.PostgresArrays
-import com.openlattice.postgres.PostgresColumnDefinition
-import com.openlattice.postgres.PostgresDatatype
+import com.geekbeast.postgres.PostgresColumnDefinition
+import com.geekbeast.postgres.PostgresDatatype
 import com.zaxxer.hikari.HikariDataSource
 import org.apache.olingo.commons.api.edm.FullQualifiedName
 import org.slf4j.LoggerFactory

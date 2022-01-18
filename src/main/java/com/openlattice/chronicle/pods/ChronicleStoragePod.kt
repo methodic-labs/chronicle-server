@@ -1,15 +1,12 @@
 package com.openlattice.chronicle.pods
 
-import com.kryptnostic.rhizome.configuration.ConfigurationConstants
-import com.kryptnostic.rhizome.configuration.service.ConfigurationService
-import com.kryptnostic.rhizome.pods.ConfigurationLoader
-import com.openlattice.ResourceConfigurationLoader
+import com.geekbeast.rhizome.pods.ConfigurationLoader
+import com.geekbeast.ResourceConfigurationLoader
 import com.openlattice.chronicle.configuration.ChronicleConfiguration
 import com.openlattice.chronicle.storage.StorageResolver
-import com.openlattice.jdbc.DataSourceManager
+import com.geekbeast.jdbc.DataSourceManager
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.context.annotation.Profile
 import java.io.IOException
 import javax.inject.Inject
 

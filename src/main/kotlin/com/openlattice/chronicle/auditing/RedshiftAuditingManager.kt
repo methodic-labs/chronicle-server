@@ -1,10 +1,11 @@
 package com.openlattice.chronicle.auditing
 
-import com.dataloom.mappers.ObjectMappers
+import com.geekbeast.mappers.mappers.ObjectMappers
 import com.openlattice.chronicle.storage.RedshiftColumns
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.AUDIT
 import com.openlattice.chronicle.storage.StorageResolver
 import java.sql.PreparedStatement
+import java.sql.SQLException
 
 /**
  *

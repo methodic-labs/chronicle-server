@@ -21,8 +21,8 @@
 package com.openlattice.chronicle.storage.pods
 
 import com.google.common.util.concurrent.ListeningExecutorService
-import com.kryptnostic.rhizome.configuration.ConfigurationConstants
-import com.kryptnostic.rhizome.pods.ConfigurationLoader
+import com.geekbeast.rhizome.configuration.ConfigurationConstants
+import com.geekbeast.rhizome.pods.ConfigurationLoader
 import com.openlattice.chronicle.configuration.ChronicleConfiguration
 import com.openlattice.chronicle.constants.ChronicleProfiles
 import com.openlattice.chronicle.storage.ByteBlobDataManager

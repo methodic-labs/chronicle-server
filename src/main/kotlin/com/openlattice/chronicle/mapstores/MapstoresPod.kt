@@ -20,18 +20,18 @@
 package com.openlattice.chronicle.mapstores
 
 import com.auth0.json.mgmt.users.User
-import com.openlattice.postgres.PostgresPod
-import com.openlattice.auth0.Auth0Pod
-import com.openlattice.postgres.PostgresTableManager
-import com.openlattice.authentication.Auth0Configuration
+import com.geekbeast.postgres.PostgresPod
+import com.geekbeast.auth0.Auth0Pod
+import com.geekbeast.postgres.PostgresTableManager
+import com.geekbeast.authentication.Auth0Configuration
 import org.jdbi.v3.core.Jdbi
-import com.kryptnostic.rhizome.mapstores.SelfRegisteringMapStore
+import com.geekbeast.rhizome.mapstores.SelfRegisteringMapStore
 import java.util.UUID
 import com.geekbeast.rhizome.jobs.DistributableJob
 import com.geekbeast.rhizome.jobs.PostgresJobsMapStore
 import com.google.common.eventbus.EventBus
-import com.openlattice.auth0.Auth0TokenProvider
-import com.openlattice.auth0.AwsAuth0TokenProvider
+import com.geekbeast.auth0.Auth0TokenProvider
+import com.geekbeast.auth0.AwsAuth0TokenProvider
 import com.openlattice.chronicle.authorization.AceKey
 import com.openlattice.chronicle.authorization.AceValue
 import com.openlattice.chronicle.authorization.AclKey

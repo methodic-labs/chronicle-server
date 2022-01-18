@@ -1,13 +1,16 @@
 package com.openlattice.chronicle
 
 import com.hazelcast.core.HazelcastInstance
-import com.kryptnostic.rhizome.configuration.ConfigurationConstants
-import com.kryptnostic.rhizome.core.RhizomeApplicationServer
-import com.kryptnostic.rhizome.hazelcast.serializers.RhizomeUtils
+import com.geekbeast.rhizome.configuration.ConfigurationConstants
+import com.geekbeast.rhizome.core.RhizomeApplicationServer
+import com.geekbeast.rhizome.hazelcast.serializers.RhizomeUtils
 import com.openlattice.chronicle.constants.ChronicleProfiles
+import com.openlattice.chronicle.storage.PostgresDataTables
 import com.openlattice.chronicle.storage.StorageResolver
-import com.openlattice.jdbc.DataSourceManager
-import com.openlattice.postgres.PostgresPod
+import com.geekbeast.jdbc.DataSourceManager
+import com.geekbeast.postgres.PostgresPod
+import com.geekbeast.rhizome.configuration.websockets.BaseRhizomeServer
+import com.openlattice.chronicle.users.LocalUserListingService
 import com.zaxxer.hikari.HikariDataSource
 
 /**
@@ -16,9 +19,20 @@ import com.zaxxer.hikari.HikariDataSource
  */
 open class ChronicleServerTests {
     companion object {
+        private val LOCAL_TEST_PROFILES = arrayOf(
+            ConfigurationConstants.Profiles.LOCAL_CONFIGURATION_PROFILE,
+            PostgresDataTables.POSTGRES_DATA_ENVIRONMENT,
+            PostgresPod.PROFILE,
+            ChronicleProfiles.MEDIA_LOCAL_PROFILE)
+        private val AWS_TEST_PROFILES = arrayOf(
+            ConfigurationConstants.Profiles.AWS_TESTING_PROFILE,
+            PostgresDataTables.POSTGRES_DATA_ENVIRONMENT,
+            PostgresPod.PROFILE,
+            ChronicleProfiles.MEDIA_LOCAL_PROFILE
+        )
 
         @JvmField
-        val testServer = RhizomeApplicationServer(
+        val testServer = BaseRhizomeServer(
             *RhizomeUtils.Pods.concatenate(
                 ChronicleServer.webPods,
                 ChronicleServer.rhizomePods,
@@ -40,18 +54,18 @@ open class ChronicleServerTests {
         @JvmField
         val dsm: DataSourceManager
 
+        @JvmField
+        val jwtTokens : Map<String,List<String>>
+
         init {
-            testServer.sprout(
-                ConfigurationConstants.Profiles.LOCAL_CONFIGURATION_PROFILE,
-                PostgresPod.PROFILE,
-                ChronicleProfiles.MEDIA_LOCAL_PROFILE
-            )
+            testServer.start(*LOCAL_TEST_PROFILES)
 
             hazelcastInstance = testServer.context.getBean(HazelcastInstance::class.java)
             //This should work as tests aren't sharded all will all share the default datasource
             hds = testServer.context.getBean(HikariDataSource::class.java)
             sr = testServer.context.getBean(StorageResolver::class.java)
             dsm = testServer.context.getBean(DataSourceManager::class.java)
+            jwtTokens = testServer.context.getBean(LocalUserListingService::class.java).jwtTokens
         }
     }
 }

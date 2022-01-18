@@ -1,10 +1,10 @@
 package com.openlattice.chronicle.pods;
 
 import com.amazonaws.services.s3.AmazonS3;
-import com.kryptnostic.rhizome.configuration.ConfigurationConstants.Profiles;
-import com.kryptnostic.rhizome.configuration.amazon.AmazonLaunchConfiguration;
-import com.kryptnostic.rhizome.configuration.service.ConfigurationService;
-import com.openlattice.ResourceConfigurationLoader;
+import com.geekbeast.rhizome.configuration.ConfigurationConstants.Profiles;
+import com.geekbeast.rhizome.configuration.configuration.amazon.AmazonLaunchConfiguration;
+import com.geekbeast.rhizome.configuration.service.ConfigurationService;
+import com.geekbeast.ResourceConfigurationLoader;
 import com.openlattice.chronicle.configuration.ChronicleConfiguration;
 import java.io.IOException;
 import javax.inject.Inject;

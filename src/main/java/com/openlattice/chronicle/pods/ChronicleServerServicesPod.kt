@@ -20,18 +20,17 @@
 package com.openlattice.chronicle.pods
 
 import com.auth0.client.mgmt.ManagementAPI
-import com.dataloom.mappers.ObjectMappers
+import com.geekbeast.mappers.mappers.ObjectMappers
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.geekbeast.hazelcast.HazelcastClientProvider
 import com.google.common.eventbus.EventBus
 import com.google.common.util.concurrent.ListeningExecutorService
 import com.hazelcast.core.HazelcastInstance
-import com.kryptnostic.rhizome.configuration.ConfigurationConstants
-import com.kryptnostic.rhizome.configuration.service.ConfigurationService
-import com.openlattice.auth0.Auth0Pod
-import com.openlattice.auth0.Auth0TokenProvider
-import com.openlattice.auth0.AwsAuth0TokenProvider
-import com.openlattice.authentication.Auth0Configuration
+import com.geekbeast.rhizome.configuration.ConfigurationConstants
+import com.geekbeast.auth0.Auth0Pod
+import com.geekbeast.auth0.Auth0TokenProvider
+import com.geekbeast.auth0.AwsAuth0TokenProvider
+import com.geekbeast.authentication.Auth0Configuration
 import com.openlattice.chronicle.auditing.AuditingManager
 import com.openlattice.chronicle.auditing.RedshiftAuditingManager
 import com.openlattice.chronicle.authorization.AuthorizationManager
@@ -57,9 +56,9 @@ import com.openlattice.chronicle.services.upload.AppDataUploadManager
 import com.openlattice.chronicle.services.upload.AppDataUploadService
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.tasks.PostConstructInitializerTaskDependencies
-import com.openlattice.chronicle.users.Auth0SyncInitializationTask
-import com.openlattice.chronicle.users.Auth0UserListingService
-import com.openlattice.jdbc.DataSourceManager
+import com.openlattice.chronicle.users.*
+import com.geekbeast.jdbc.DataSourceManager
+import com.openlattice.chronicle.organizations.ChronicleOrganizationService
 import com.openlattice.users.*
 import com.openlattice.users.export.Auth0ApiExtension
 import org.slf4j.LoggerFactory
@@ -230,7 +229,8 @@ class ChronicleServerServicesPod {
             hazelcast!!,
             aclKeyReservationService(),
             authorizationManager(),
-            principalsMapManager()
+            principalsMapManager(),
+            auditingManager()
         )
     }
 
@@ -275,6 +275,11 @@ class ChronicleServerServicesPod {
     @Bean
     fun auditingManager(): AuditingManager {
         return RedshiftAuditingManager(storageResolver)
+    }
+
+    @Bean
+    fun organizationsService(): ChronicleOrganizationService {
+        return ChronicleOrganizationService(storageResolver)
     }
 
     companion object {

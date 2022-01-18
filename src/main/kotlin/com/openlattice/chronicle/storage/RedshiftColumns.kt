@@ -1,8 +1,8 @@
 package com.openlattice.chronicle.storage
 
 import com.openlattice.chronicle.constants.EdmConstants
-import com.openlattice.postgres.PostgresColumnDefinition
-import com.openlattice.postgres.PostgresDatatype
+import com.geekbeast.postgres.PostgresColumnDefinition
+import com.geekbeast.postgres.PostgresDatatype
 import org.apache.olingo.commons.api.edm.FullQualifiedName
 
 /**

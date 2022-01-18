@@ -19,14 +19,16 @@
  *
  */
 
-package com.openlattice.users
+package com.openlattice.chronicle.users
 
 import com.auth0.json.mgmt.users.User
 import com.auth0.jwt.JWT
 import com.geekbeast.auth0.EMAIL
 import com.geekbeast.auth0.EMAIL_VERIFIED
 import com.geekbeast.auth0.USER_ID
-import com.openlattice.authentication.Auth0Configuration
+import com.geekbeast.authentication.Auth0Configuration
+import com.openlattice.users.UserListingService
+import com.openlattice.users.parseAlgorithm
 import org.slf4j.LoggerFactory
 import java.time.Instant
 
@@ -41,6 +43,7 @@ class LocalUserListingService(auth0Configuration: Auth0Configuration) : UserList
     }
 
     private val users = auth0Configuration.users.associateBy { it.id }
+    val jwtTokens = mutableMapOf<String, MutableList<String>>()
 
     init {
         logger.info("************************* BEGIN JWT TOKENS *************************")
@@ -48,16 +51,17 @@ class LocalUserListingService(auth0Configuration: Auth0Configuration) : UserList
 
             auth0Configuration.users.forEach { user ->
                 val jwt = JWT.create()
-                        .withSubject(user.id)
-                        .withClaim(USER_ID, user.id)
-                        .withClaim(EMAIL, user.email)
-                        .withClaim(EMAIL_VERIFIED, user.isEmailVerified)
-                        .withIssuer(aac.issuer)
-                        .withAudience(aac.audience)
-                        //TODO: Hardcoded for now, but should actually parse algorithm string
-                        .sign(parseAlgorithm(aac))
+                    .withSubject(user.id)
+                    .withClaim(USER_ID, user.id)
+                    .withClaim(EMAIL, user.email)
+                    .withClaim(EMAIL_VERIFIED, user.isEmailVerified)
+                    .withIssuer(aac.issuer)
+                    .withAudience(aac.audience)
+                    //TODO: Hardcoded for now, but should actually parse algorithm string
+                    .sign(parseAlgorithm(aac))
 
 
+                jwtTokens.getOrPut(user.id) { mutableListOf() }.add(jwt)
                 logger.info("${user.id} -> $jwt")
             }
 
