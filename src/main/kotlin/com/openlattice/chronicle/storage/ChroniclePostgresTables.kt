@@ -181,6 +181,5 @@ class ChroniclePostgresTables {
                         APP_USAGE_DATE
                 )
                 .primaryKey(APP_USAGE_ID)
-
     }
 }
