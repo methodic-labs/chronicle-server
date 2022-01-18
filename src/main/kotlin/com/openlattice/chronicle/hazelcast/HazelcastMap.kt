@@ -23,6 +23,7 @@ import com.auth0.json.mgmt.users.User
 import com.hazelcast.core.HazelcastInstance
 import com.hazelcast.map.IMap
 import com.openlattice.chronicle.authorization.*
+import com.openlattice.chronicle.mapstores.ids.Range
 import com.openlattice.postgres.mapstores.TypedMapIdentifier
 import java.util.*
 
@@ -65,7 +66,7 @@ class HazelcastMap<K, V> internal constructor(val name: String) : TypedMapIdenti
 //        @JvmField val DB_CREDS = HazelcastMap<AclKey, MaterializedViewAccount>("DB_CREDS")
 //        @JvmField val EXTERNAL_COLUMNS = HazelcastMap<UUID, ExternalColumn>("EXTERNAL_COLUMNS")
 //        @JvmField val EXTERNAL_TABLES = HazelcastMap<UUID, ExternalTable>("EXTERNAL_TABLES")
-//        @JvmField val ID_GENERATION = HazelcastMap<Long, Range>("ID_GENERATION")
+        @JvmField val ID_GENERATION = HazelcastMap<Long, Range>("ID_GENERATION")
 //        @JvmField val INDEXING_JOBS = HazelcastMap<UUID, DelegatedUUIDSet>("INDEXING_JOBS")
 //        @JvmField val INDEXING_LOCKS = HazelcastMap<UUID, Long>("INDEXING_LOCKS")
 //        @JvmField val INDEXING_PROGRESS = HazelcastMap<UUID, UUID>("INDEXING_PROGRESS")
