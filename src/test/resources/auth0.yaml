@@ -13,7 +13,10 @@ configurations:
     signingAlgorithm: "HS256"
 domain: "openlattice.auth0.com"
 users:
+  - user_id: "test_admin"
+    email: "test_user@openlattice.com"
+    email_verified: true
   - user_id: "test_user"
-    email: "tests@openlattice.com"
+    email: "test_admin@openlattice.com"
     email_verified: true
 managementApiUrl: "localhost"
