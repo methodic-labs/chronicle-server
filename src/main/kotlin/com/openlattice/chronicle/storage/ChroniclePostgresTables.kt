@@ -181,5 +181,10 @@ class ChroniclePostgresTables {
                         APP_USAGE_DATE
                 )
                 .primaryKey(APP_USAGE_ID)
+
+        @JvmField
+        val SYSTEM_APPS = PostgresTableDefinition("system_apps")
+                .addColumns(APP_PACKAGE_NAME)
+                .primaryKey(APP_PACKAGE_NAME)
     }
 }
