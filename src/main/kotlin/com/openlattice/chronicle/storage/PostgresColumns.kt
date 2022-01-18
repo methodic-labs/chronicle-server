@@ -1,7 +1,9 @@
 package com.openlattice.chronicle.storage
 
+import com.openlattice.chronicle.constants.EdmConstants
 import com.openlattice.postgres.PostgresColumnDefinition
 import com.openlattice.postgres.PostgresDatatype
+import org.apache.olingo.commons.api.edm.FullQualifiedName
 
 /**
  *
@@ -9,8 +11,8 @@ import com.openlattice.postgres.PostgresDatatype
  */
 class PostgresColumns {
     companion object {
-        val ORGANIZATION_ID = PostgresColumnDefinition("organization_id", PostgresDatatype.UUID).notNull()
-        val STUDY_ID = PostgresColumnDefinition("study_id", PostgresDatatype.UUID).notNull()
+        val ORGANIZATION_ID = PostgresColumnDefinition("organization_id", PostgresDatatype.TEXT_UUID).notNull()
+        val STUDY_ID = PostgresColumnDefinition("study_id", PostgresDatatype.TEXT_UUID).notNull()
         val PARTICIPANT_ID = PostgresColumnDefinition("particpant_id", PostgresDatatype.TEXT).notNull()
         val TITLE = PostgresColumnDefinition("title", PostgresDatatype.TEXT)
         val DESCRIPTION = PostgresColumnDefinition("description", PostgresDatatype.TEXT)
@@ -64,11 +66,20 @@ class PostgresColumns {
         val LON = PostgresColumnDefinition("lon", PostgresDatatype.DOUBLE)
 
         // app usage survey specific columns
-        val APP_TITLE = PostgresColumnDefinition("app_title", PostgresDatatype.TEXT)
+        val APP_LABEL = PostgresColumnDefinition("app_LABEL", PostgresDatatype.TEXT)
         val APP_PACKAGE_NAME = PostgresColumnDefinition("app_package_name", PostgresDatatype.TEXT).notNull()
-        val APP_USAGE_ID = PostgresColumnDefinition("id", PostgresDatatype.UUID).notNull()
+        val APP_USAGE_ID = PostgresColumnDefinition("id", PostgresDatatype.TEXT_UUID).notNull()
         val APP_USAGE_USERS = PostgresColumnDefinition("app_users", PostgresDatatype.TEXT_ARRAY)
         val APP_USAGE_TIMESTAMP = PostgresColumnDefinition("timestamp", PostgresDatatype.TIMESTAMPTZ)
         val APP_USAGE_DATE = PostgresColumnDefinition("date", PostgresDatatype.DATE)
+
+        // fqn to column mapping
+        val FQNS_TO_APP_USAGE_COLUMNS: Map<FullQualifiedName, PostgresColumnDefinition> = mapOf(
+                EdmConstants.STRING_ID_FQN to APP_USAGE_ID,
+                EdmConstants.FULL_NAME_FQN to APP_PACKAGE_NAME,
+                EdmConstants.TITLE_FQN to APP_LABEL,
+                EdmConstants.USER_FQN to APP_USAGE_USERS,
+                EdmConstants.DATE_LOGGED_FQN to APP_USAGE_TIMESTAMP
+        )
     }
 }
