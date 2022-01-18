@@ -2,7 +2,6 @@ package com.openlattice.chronicle.study
 
 import com.openlattice.chronicle.ChronicleServerTests
 import com.openlattice.chronicle.client.ChronicleClient
-import com.openlattice.chronicle.util.TestDataFactory
 import org.junit.Test
 
 /**

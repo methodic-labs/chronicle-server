@@ -8,7 +8,7 @@ import java.util.*
  *
  * @author Matthew Tamayo-Rios &lt;matthew@openlattice.com&gt;
  */
-class ChronicleOrganizationService(val storageResolver: StorageResolver) {
+class   ChronicleOrganizationService(val storageResolver: StorageResolver) {
     fun createOrganization(organizationPrincipal: OrganizationPrincipal): UUID {
 
         TODO("Not yet implemented")

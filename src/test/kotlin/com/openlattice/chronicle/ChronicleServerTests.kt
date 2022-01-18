@@ -9,6 +9,7 @@ import com.openlattice.chronicle.storage.PostgresDataTables
 import com.openlattice.chronicle.storage.StorageResolver
 import com.geekbeast.jdbc.DataSourceManager
 import com.geekbeast.postgres.PostgresPod
+import com.geekbeast.rhizome.configuration.websockets.BaseRhizomeServer
 import com.openlattice.chronicle.users.LocalUserListingService
 import com.zaxxer.hikari.HikariDataSource
 
@@ -31,7 +32,7 @@ open class ChronicleServerTests {
         )
 
         @JvmField
-        val testServer = RhizomeApplicationServer(
+        val testServer = BaseRhizomeServer(
             *RhizomeUtils.Pods.concatenate(
                 ChronicleServer.webPods,
                 ChronicleServer.rhizomePods,
@@ -57,7 +58,7 @@ open class ChronicleServerTests {
         val jwtTokens : Map<String,List<String>>
 
         init {
-            testServer.sprout(*LOCAL_TEST_PROFILES)
+            testServer.start(*LOCAL_TEST_PROFILES)
 
             hazelcastInstance = testServer.context.getBean(HazelcastInstance::class.java)
             //This should work as tests aren't sharded all will all share the default datasource

@@ -58,6 +58,7 @@ import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.tasks.PostConstructInitializerTaskDependencies
 import com.openlattice.chronicle.users.*
 import com.geekbeast.jdbc.DataSourceManager
+import com.openlattice.chronicle.organizations.ChronicleOrganizationService
 import com.openlattice.users.*
 import com.openlattice.users.export.Auth0ApiExtension
 import org.slf4j.LoggerFactory
@@ -274,6 +275,11 @@ class ChronicleServerServicesPod {
     @Bean
     fun auditingManager(): AuditingManager {
         return RedshiftAuditingManager(storageResolver)
+    }
+
+    @Bean
+    fun organizationsService(): ChronicleOrganizationService {
+        return ChronicleOrganizationService(storageResolver)
     }
 
     companion object {
