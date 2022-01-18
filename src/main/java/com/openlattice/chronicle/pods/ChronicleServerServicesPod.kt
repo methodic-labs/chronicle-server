@@ -228,7 +228,8 @@ class ChronicleServerServicesPod {
             hazelcast!!,
             aclKeyReservationService(),
             authorizationManager(),
-            principalsMapManager()
+            principalsMapManager(),
+            auditingManager()
         )
     }
 

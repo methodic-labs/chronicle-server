@@ -1,11 +1,13 @@
 package com.openlattice.chronicle.services.studies
 
 import com.openlattice.chronicle.study.Study
+import java.sql.Connection
 import java.util.UUID
 
 /**
  * @author Solomon Tang <solomon@openlattice.com>
  */
 interface StudyManager {
-    fun createStudy(study: Study): UUID
+    fun createStudy(connection: Connection, study: Study): UUID
+    fun getStudy(studyIds: Collection<UUID>) : Iterable<Study>
 }

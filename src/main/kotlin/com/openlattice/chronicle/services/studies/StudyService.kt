@@ -4,6 +4,9 @@ import com.geekbeast.mappers.mappers.ObjectMappers
 import com.openlattice.chronicle.storage.StorageResolver
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.geekbeast.configuration.postgres.PostgresFlavor
+import com.geekbeast.postgres.PostgresArrays
+import com.geekbeast.postgres.streams.BasePostgresIterable
+import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
 import com.openlattice.chronicle.auditing.AuditingComponent
 import com.openlattice.chronicle.auditing.AuditingManager
 import com.openlattice.chronicle.authorization.AclKey
@@ -12,10 +15,12 @@ import com.openlattice.chronicle.authorization.SecurableObjectType
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.authorization.reservations.AclKeyReservationService
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
+import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.ORGANIZATION_STUDIES
 import com.openlattice.chronicle.study.Study
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.STUDIES
 import com.openlattice.chronicle.storage.PostgresColumns
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.sql.Connection
@@ -79,32 +84,31 @@ class StudyService(
             """
                 INSERT IN ${ORGANIZATION_STUDIES.name} (${ORG_STUDIES_COLS}) VALUES (?,?,?,?)
             """.trimIndent()
+
+        private val GET_STUDIES_SQL = """
+            SELECT * FROM ${STUDIES.name} WHERE ${STUDY_ID.name} = ANY(?)
+        """.trimIndent()
     }
 
-    override fun createStudy(study: Study): UUID {
-        study.id = idGenerationService.getNextId()
-
-        val (flavor, hds) = storageResolver.resolve(study.id)
-        check(flavor == PostgresFlavor.VANILLA) { "Only vanilla postgres is supported for studies." }
-        val connection = hds.connection
-        connection.autoCommit = false
-        try {
-            insertStudy(connection, study)
-            authorizationService.createSecurableObject(
-                connection = connection,
-                aclKey = AclKey(study.id),
-                principal = Principals.getCurrentUser(),
-                objectType = SecurableObjectType.Study
-            )
-
-            connection.commit()
-        } catch (ex: Exception) {
-            logger.error("Failed to create study $study.", ex)
-            connection.rollback()
-            throw ex
-        } finally {
-            connection.autoCommit = true
-        }
+    override fun createStudy(connection: Connection, study: Study): UUID {
+        insertStudy(connection, study)
+        authorizationService.createSecurableObject(
+            connection = connection,
+            aclKey = AclKey(study.id),
+            principal = Principals.getCurrentUser(),
+            objectType = SecurableObjectType.Study
+        )
+//
+//        try {
+//
+//            connection.commit()
+//        } catch (ex: Exception) {
+//            logger.error("Failed to create study $study.", ex)
+//            connection.rollback()
+//            throw ex
+//        } finally {
+//            connection.autoCommit = true
+//        }
 
         return study.id
     }
@@ -120,5 +124,22 @@ class StudyService(
         ps.setObject(7, study.version)
         ps.setString(8, mapper.writeValueAsString(study.settings))
         return ps.executeUpdate()
+    }
+
+    override fun getStudy(studyIds: Collection<UUID>): Iterable<Study> {
+        return storageResolver
+            .getStudyIdsByDataSourceName(studyIds)
+            .flatMap { (dataSourceName, studyIdsForDataSource) ->
+                val (flavor, hds) = storageResolver.getDataSource(dataSourceName)
+                check(flavor == PostgresFlavor.VANILLA) { "Only vanilla postgres is supported for studies." }
+                BasePostgresIterable(
+                    PreparedStatementHolderSupplier(hds, GET_STUDIES_SQL, 256) { ps ->
+                        val pgStudyIds = PostgresArrays.createUuidArray(ps.connection, studyIdsForDataSource)
+                        ps.setArray(1, pgStudyIds)
+                        ps.executeQuery()
+                    }
+                ) { ResultSetAdapters.study(it) }
+
+            }
     }
 }

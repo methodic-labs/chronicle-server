@@ -48,8 +48,8 @@ data class AuditableEvent(
     @JsonProperty(PRINCIPAL) val principalId: String,
     @JsonProperty(EVENT_TYPE) val eventType: AuditEventType,
     @JsonProperty(DESCRIPTION_FIELD) val description: String,
-    @JsonProperty(STUDY_ID) val study: UUID,
-    @JsonProperty(ORGANIZATION_ID) val organization: UUID,
-    @JsonProperty(DATA) val data: Map<String, Any>,
+    @JsonProperty(STUDY_ID) val study: UUID = UUID(0,0),
+    @JsonProperty(ORGANIZATION_ID) val organization: UUID = UUID(0,0),
+    @JsonProperty(DATA) val data: Map<String, Any> = mapOf(),
     @JsonProperty(TIMESTAMP) val timestamp: OffsetDateTime = OffsetDateTime.now(),
 )

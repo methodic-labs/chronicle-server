@@ -9,6 +9,7 @@ import com.openlattice.chronicle.storage.PostgresDataTables
 import com.openlattice.chronicle.storage.StorageResolver
 import com.geekbeast.jdbc.DataSourceManager
 import com.geekbeast.postgres.PostgresPod
+import com.openlattice.chronicle.users.LocalUserListingService
 import com.zaxxer.hikari.HikariDataSource
 
 /**
@@ -52,6 +53,9 @@ open class ChronicleServerTests {
         @JvmField
         val dsm: DataSourceManager
 
+        @JvmField
+        val jwtTokens : Map<String,List<String>>
+
         init {
             testServer.sprout(*LOCAL_TEST_PROFILES)
 
@@ -60,6 +64,7 @@ open class ChronicleServerTests {
             hds = testServer.context.getBean(HikariDataSource::class.java)
             sr = testServer.context.getBean(StorageResolver::class.java)
             dsm = testServer.context.getBean(DataSourceManager::class.java)
+            jwtTokens = testServer.context.getBean(LocalUserListingService::class.java).jwtTokens
         }
     }
 }

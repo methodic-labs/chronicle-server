@@ -1,5 +1,6 @@
 package com.openlattice.chronicle.controllers
 
+import com.openlattice.chronicle.auditing.AuditingManager
 import com.openlattice.chronicle.authorization.AuthorizationManager
 import com.openlattice.chronicle.authorization.AuthorizingComponent
 import com.openlattice.chronicle.organizations.*
@@ -17,7 +18,8 @@ import javax.inject.Inject
 @RestController
 @RequestMapping(CONTROLLER)
 class OrganizationsController @Inject constructor(
-        override val authorizationManager: AuthorizationManager
+    override val authorizationManager: AuthorizationManager,
+    override val auditingManager: AuditingManager
 ) : AuthorizingComponent, OrganizationsApi {
 
     @Inject

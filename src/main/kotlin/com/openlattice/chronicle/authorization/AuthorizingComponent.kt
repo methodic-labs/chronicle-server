@@ -21,6 +21,9 @@ package com.openlattice.chronicle.authorization
 
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.geekbeast.controllers.exceptions.ForbiddenException
+import com.openlattice.chronicle.auditing.AuditEventType
+import com.openlattice.chronicle.auditing.AuditableEvent
+import com.openlattice.chronicle.auditing.AuditingComponent
 import org.slf4j.LoggerFactory
 import java.util.*
 import java.util.function.Function
@@ -35,7 +38,7 @@ val OWNER_PERMISSION: EnumSet<Permission> = EnumSet.of<Permission>(Permission.OW
 val INTEGRATE_PERMISSION: EnumSet<Permission> = EnumSet.of<Permission>(Permission.INTEGRATE)
 private val internalIds: Set<UUID> = setOf() //Reserved for future use.
 
-interface AuthorizingComponent {
+interface AuthorizingComponent : AuditingComponent {
     companion object {
         val logger = LoggerFactory.getLogger(AuthorizingComponent::class.java)
     }
@@ -153,12 +156,24 @@ interface AuthorizingComponent {
     }
 
     fun accessCheck(aclKey: AclKey, requiredPermissions: EnumSet<Permission>) {
+        val currentPrincipals = Principals.getCurrentPrincipals()
         if (!authorizationManager.checkIfHasPermissions(
                 aclKey,
-                Principals.getCurrentPrincipals(),
+                currentPrincipals,
                 requiredPermissions
             )
         ) {
+            val currentUser = Principals.getCurrentSecurablePrincipal()
+            recordEvent(
+                AuditableEvent(
+                    aclKey,
+                    currentUser.id,
+                    currentUser.principal.id,
+                    AuditEventType.ACCESS_DENIED,
+                    "Access check failed for user ${currentUser.title} with required permissiosn $requiredPermissions ",
+                    data = mapOf("principals" to currentPrincipals)
+                )
+            )
             throw ForbiddenException("Object $aclKey is not accessible.")
         }
     }

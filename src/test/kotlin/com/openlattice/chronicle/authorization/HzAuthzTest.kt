@@ -24,6 +24,7 @@ import com.google.common.collect.ImmutableSet
 import com.google.common.collect.Sets
 import com.google.common.eventbus.EventBus
 import com.openlattice.chronicle.ChronicleServerTests
+import com.openlattice.chronicle.auditing.AuditingManager
 import com.openlattice.chronicle.authorization.principals.HazelcastPrincipalService
 import com.openlattice.chronicle.authorization.principals.HazelcastPrincipalsMapManager
 import com.openlattice.chronicle.authorization.principals.PrincipalsMapManager
@@ -409,7 +410,8 @@ open class HzAuthzTest : ChronicleServerTests() {
                 hazelcastInstance,
                 reservationService,
                 hzAuthz,
-                principalsMapManager
+                principalsMapManager,
+                testServer.context.getBean(AuditingManager::class.java)
             )
 
             isInitialized = true

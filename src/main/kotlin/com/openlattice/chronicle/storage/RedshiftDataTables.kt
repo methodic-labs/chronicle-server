@@ -1,5 +1,7 @@
 package com.openlattice.chronicle.storage
 
+import com.geekbeast.postgres.PostgresColumnDefinition
+import com.geekbeast.postgres.RedshiftTableDefinition
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.ACL_KEY
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APPLICATION_LABEL
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_PACKAGE_NAME
@@ -18,8 +20,6 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMESTAMP
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMEZONE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.USERNAME
-import com.geekbeast.postgres.PostgresColumnDefinition
-import com.geekbeast.postgres.RedshiftTableDefinition
 
 /**
  *

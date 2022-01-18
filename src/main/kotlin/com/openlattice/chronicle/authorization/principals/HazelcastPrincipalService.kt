@@ -25,6 +25,7 @@ import com.google.common.collect.Sets
 import com.hazelcast.core.HazelcastInstance
 import com.hazelcast.query.Predicate
 import com.hazelcast.query.Predicates
+import com.openlattice.chronicle.auditing.AuditingManager
 import com.openlattice.chronicle.authorization.*
 import com.openlattice.chronicle.authorization.reservations.AclKeyReservationService
 import com.openlattice.chronicle.authorization.principals.processors.*
@@ -40,10 +41,11 @@ import java.util.*
  */
 @Service
 class HazelcastPrincipalService(
-        hazelcastInstance: HazelcastInstance,
-        private val reservations: AclKeyReservationService,
-        override val authorizationManager: AuthorizationManager,
-        private val principalsMapManager: PrincipalsMapManager,
+    hazelcastInstance: HazelcastInstance,
+    private val reservations: AclKeyReservationService,
+    override val authorizationManager: AuthorizationManager,
+    private val principalsMapManager: PrincipalsMapManager,
+    override val auditingManager: AuditingManager,
 ) : SecurePrincipalsManager, AuthorizingComponent {
 
     private val principals = HazelcastMap.PRINCIPALS.getMap(hazelcastInstance)

@@ -5,6 +5,7 @@ import com.openlattice.chronicle.storage.RedshiftColumns
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.AUDIT
 import com.openlattice.chronicle.storage.StorageResolver
 import java.sql.PreparedStatement
+import java.sql.SQLException
 
 /**
  *
