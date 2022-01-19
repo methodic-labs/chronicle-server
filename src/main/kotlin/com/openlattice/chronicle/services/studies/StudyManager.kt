@@ -8,6 +8,6 @@ import java.util.UUID
  * @author Solomon Tang <solomon@openlattice.com>
  */
 interface StudyManager {
-    fun createStudy(connection: Connection, study: Study): UUID
-    fun getStudy(studyIds: Collection<UUID>) : Iterable<Study>
+    fun createStudy(connection: Connection, study: Study)
+    fun getStudy(studyIds: Collection<UUID>): Iterable<Study>
 }

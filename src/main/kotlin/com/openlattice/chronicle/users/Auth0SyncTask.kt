@@ -18,10 +18,9 @@
  *
  *
  */
-package com.openlattice.users
+package com.openlattice.chronicle.users
 
 import com.hazelcast.scheduledexecutor.StatefulTask
-import com.openlattice.chronicle.users.Auth0SyncTaskDependencies
 import com.geekbeast.tasks.HazelcastFixedRateTask
 import com.geekbeast.tasks.HazelcastTaskDependencies
 import com.geekbeast.tasks.Task

@@ -3,7 +3,6 @@ package com.openlattice.chronicle.storage
 import com.geekbeast.configuration.postgres.PostgresFlavor
 import com.openlattice.chronicle.configuration.ChronicleStorageConfiguration
 import com.geekbeast.jdbc.DataSourceManager
-import com.openlattice.chronicle.study.Study
 import com.zaxxer.hikari.HikariDataSource
 import java.util.*
 
@@ -38,9 +37,9 @@ class StorageResolver constructor(
         }
     }
 
-    fun getAuthorizationStorage(): Pair<PostgresFlavor, HikariDataSource> {
+    fun getPlatformStorage(): Pair<PostgresFlavor, HikariDataSource> {
         return with(dataSourceManager) {
-            getFlavor(storageConfiguration.authorizationStorage) to getDataSource(storageConfiguration.authorizationStorage)
+            getFlavor(storageConfiguration.platformStorage) to getDataSource(storageConfiguration.platformStorage)
         }
     }
 
@@ -49,5 +48,6 @@ class StorageResolver constructor(
             getFlavor(storageConfiguration.defaultStorage) to getDataSource(storageConfiguration.defaultStorage)
         }
     }
+
 }
 

@@ -46,7 +46,7 @@ class HazelcastAuthorizationService(
     private val eventBus: EventBus,
     private val principalsMapManager: PrincipalsMapManager
 ) : AuthorizationManager {
-    private val authorizationStorage = storageResolver.getAuthorizationStorage()
+    private val authorizationStorage = storageResolver.getPlatformStorage()
 
     private val securableObjectTypes = HazelcastMap.SECURABLE_OBJECT_TYPES.getMap(hazelcastInstance)
     private val aces: IMap<AceKey, AceValue> = HazelcastMap.PERMISSIONS.getMap(hazelcastInstance)
@@ -142,6 +142,8 @@ class HazelcastAuthorizationService(
         objectType: SecurableObjectType,
         expirationDate: OffsetDateTime
     ) {
+        ensurePrincipalsExist(setOf(principal))
+
         val insertSecObj = connection.prepareStatement(INSERT_SECURABLE_OBJECT_SQL)
         val aclKeyArray = PostgresArrays.createUuidArray(connection, aclKey)
         insertSecObj.setArray(1, aclKeyArray)

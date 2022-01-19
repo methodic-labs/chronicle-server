@@ -18,6 +18,7 @@ import com.openlattice.ioc.providers.LateInitProvidersPod
 import com.geekbeast.jdbc.JdbcPod
 import com.geekbeast.postgres.PostgresPod
 import com.geekbeast.pods.TaskSchedulerPod
+import com.openlattice.chronicle.hazelcast.pods.HazelcastQueuePod
 
 /**
  *
@@ -55,6 +56,7 @@ class ChronicleServer(vararg pods: Class<*>) : BaseRhizomeServer(
             SharedStreamSerializersPod::class.java,
             ByteBlobServicePod::class.java,
             LateInitProvidersPod::class.java,
+            HazelcastQueuePod::class.java,
         )
 
         @Throws(Exception::class)

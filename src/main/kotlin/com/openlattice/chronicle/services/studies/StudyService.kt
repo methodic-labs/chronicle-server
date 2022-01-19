@@ -37,11 +37,9 @@ class StudyService(
     private val authorizationService: AuthorizationManager,
     override val auditingManager: AuditingManager
 ) : StudyManager, AuditingComponent {
-    private val mapper = ObjectMappers.newJsonMapper()
-
     companion object {
         private val logger = LoggerFactory.getLogger(StudyService::class.java)
-        private val objectMapper = ObjectMapper()
+        private val mapper = ObjectMappers.newJsonMapper()
         private val STUDY_COLUMNS = listOf(
             PostgresColumns.STUDY_ID,
             PostgresColumns.TITLE,
@@ -90,7 +88,7 @@ class StudyService(
         """.trimIndent()
     }
 
-    override fun createStudy(connection: Connection, study: Study): UUID {
+    override fun createStudy(connection: Connection, study: Study) {
         insertStudy(connection, study)
         authorizationService.createSecurableObject(
             connection = connection,
@@ -98,19 +96,6 @@ class StudyService(
             principal = Principals.getCurrentUser(),
             objectType = SecurableObjectType.Study
         )
-//
-//        try {
-//
-//            connection.commit()
-//        } catch (ex: Exception) {
-//            logger.error("Failed to create study $study.", ex)
-//            connection.rollback()
-//            throw ex
-//        } finally {
-//            connection.autoCommit = true
-//        }
-
-        return study.id
     }
 
     private fun insertStudy(connection: Connection, study: Study): Int {

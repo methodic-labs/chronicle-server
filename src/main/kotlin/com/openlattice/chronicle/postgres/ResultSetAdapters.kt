@@ -46,6 +46,8 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.URL
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.USERNAME
 import com.geekbeast.postgres.PostgresArrays
+import com.openlattice.chronicle.organizations.Organization
+import com.openlattice.chronicle.organizations.OrganizationPrincipal
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CREATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ENDED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LAT
@@ -226,7 +228,7 @@ class ResultSetAdapters {
 
         @Throws(SQLException::class)
         fun expirationDate(rs: ResultSet): OffsetDateTime {
-            return rs.getObject<OffsetDateTime>(EXPIRATION_DATE.name, OffsetDateTime::class.java)
+            return rs.getObject(EXPIRATION_DATE.name, OffsetDateTime::class.java)
         }
 
         @Throws(SQLException::class)
@@ -253,8 +255,19 @@ class ResultSetAdapters {
                 rs.getDouble(LON.name),
                 rs.getString(STUDY_GROUP.name),
                 rs.getString(STUDY_VERSION.name),
-                PostgresArrays.getUuidArray(rs, ORGANIZATION_IDS.name) ?.toSet()?: setOf(),
+                PostgresArrays.getUuidArray(rs, ORGANIZATION_IDS.name)?.toSet() ?: setOf(),
                 mapper.readValue(rs.getString(SETTINGS.name))
+            )
+        }
+
+        @Throws(SQLException::class)
+        fun organization(rs: ResultSet): Organization {
+            return Organization(
+                rs.getObject(ORGANIZATION_ID.name, UUID::class.java),
+                rs.getString(TITLE.name),
+                rs.getString(DESCRIPTION.name),
+                mapper.readValue(rs.getString(SETTINGS.name))
+
             )
         }
     }

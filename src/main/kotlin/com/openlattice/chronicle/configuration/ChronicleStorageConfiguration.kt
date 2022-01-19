@@ -8,6 +8,6 @@ import com.geekbeast.jdbc.DataSourceManager
  */
 data class ChronicleStorageConfiguration(
     val defaultStorage: String = DataSourceManager.DEFAULT_DATASOURCE,
+    val platformStorage: String = DataSourceManager.DEFAULT_DATASOURCE,
     val auditStorage: String = "chronicle",
-    val authorizationStorage: String = DataSourceManager.DEFAULT_DATASOURCE
 )

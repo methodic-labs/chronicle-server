@@ -58,7 +58,11 @@ import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.tasks.PostConstructInitializerTaskDependencies
 import com.openlattice.chronicle.users.*
 import com.geekbeast.jdbc.DataSourceManager
+import com.openlattice.chronicle.authorization.initializers.AuthorizationInitializationDependencies
+import com.openlattice.chronicle.authorization.initializers.AuthorizationInitializationTask
 import com.openlattice.chronicle.organizations.ChronicleOrganizationService
+import com.openlattice.chronicle.organizations.initializers.OrganizationsInitializationDependencies
+import com.openlattice.chronicle.organizations.initializers.OrganizationsInitializationTask
 import com.openlattice.users.*
 import com.openlattice.users.export.Auth0ApiExtension
 import org.slf4j.LoggerFactory
@@ -279,7 +283,32 @@ class ChronicleServerServicesPod {
 
     @Bean
     fun organizationsService(): ChronicleOrganizationService {
-        return ChronicleOrganizationService(storageResolver)
+        return ChronicleOrganizationService(storageResolver, authorizationManager())
+    }
+
+    @Bean
+    fun authorizationInitializationTask(): AuthorizationInitializationTask {
+        return AuthorizationInitializationTask()
+    }
+
+    @Bean
+    fun authorizationInitializationTaskDependencies(): AuthorizationInitializationDependencies {
+        return AuthorizationInitializationDependencies(principalsManager())
+    }
+
+    @Bean
+    fun organizationInitTask(): OrganizationsInitializationTask {
+        return OrganizationsInitializationTask()
+    }
+
+    @Bean
+    fun orgInitTaskDependencies(): OrganizationsInitializationDependencies {
+        return OrganizationsInitializationDependencies(
+            storageResolver,
+            organizationsService(),
+            principalsManager(),
+            chronicleConfiguration
+        )
     }
 
     companion object {

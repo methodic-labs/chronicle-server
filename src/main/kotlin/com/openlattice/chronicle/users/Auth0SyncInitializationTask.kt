@@ -24,7 +24,7 @@ package com.openlattice.chronicle.users
 import com.openlattice.chronicle.tasks.PostConstructInitializerTaskDependencies
 import com.geekbeast.tasks.HazelcastInitializationTask
 import com.geekbeast.tasks.Task.AUTH0_SYNC_INITIALIZATION_TASK
-import com.openlattice.users.Auth0SyncTask
+
 
 /**
  * This is the auth0 synchronization initialization task that loads all users on startup from auth0.

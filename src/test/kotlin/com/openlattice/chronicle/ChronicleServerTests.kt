@@ -66,6 +66,7 @@ open class ChronicleServerTests {
             sr = testServer.context.getBean(StorageResolver::class.java)
             dsm = testServer.context.getBean(DataSourceManager::class.java)
             jwtTokens = testServer.context.getBean(LocalUserListingService::class.java).jwtTokens
+
         }
     }
 }
