@@ -2,18 +2,38 @@ package com.openlattice.chronicle.services.surveys;
 
 import com.dataloom.streams.StreamUtil;
 import com.google.common.base.Preconditions;
-import com.google.common.collect.*;
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ListMultimap;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import com.openlattice.ApiUtil;
-import com.openlattice.chronicle.data.*;
+import com.openlattice.chronicle.data.ChronicleAppsUsageDetails;
+import com.openlattice.chronicle.data.ChronicleCoreAppConfig;
+import com.openlattice.chronicle.data.ChronicleDataCollectionAppConfig;
+import com.openlattice.chronicle.data.ChronicleQuestionnaire;
+import com.openlattice.chronicle.data.ChronicleSurveysAppConfig;
+import com.openlattice.chronicle.data.EntitiesAndEdges;
 import com.openlattice.chronicle.services.ApiCacheManager;
 import com.openlattice.chronicle.services.edm.EdmCacheManager;
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager;
 import com.openlattice.chronicle.services.entitysets.EntitySetIdsManager;
 import com.openlattice.client.ApiClient;
-import com.openlattice.data.*;
+import com.openlattice.data.DataApi;
+import com.openlattice.data.DataAssociation;
+import com.openlattice.data.DataEdgeKey;
+import com.openlattice.data.DataGraph;
+import com.openlattice.data.DataIntegrationApi;
+import com.openlattice.data.EntityDataKey;
+import com.openlattice.data.EntityKey;
+import com.openlattice.data.PropertyUpdateType;
+import com.openlattice.data.UpdateType;
 import com.openlattice.data.requests.NeighborEntityDetails;
 import com.openlattice.search.SearchApi;
 import com.openlattice.search.requests.EntityNeighborsFilter;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
 import org.slf4j.Logger;
@@ -21,7 +41,14 @@ import org.slf4j.LoggerFactory;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
-import java.util.*;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
@@ -33,9 +60,13 @@ import static com.openlattice.chronicle.constants.EdmConstants.OL_ID_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.PERSON_ID_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.START_DATE_TIME_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.STRING_ID_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.TIMEZONE_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.TITLE_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.USER_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.VALUES_FQN;
+import static com.openlattice.chronicle.constants.OutputConstants.DEFAULT_TIMEZONE;
 import static com.openlattice.chronicle.util.ChronicleServerUtil.getFirstUUIDOrNull;
+import static com.openlattice.chronicle.util.ChronicleServerUtil.getFirstValueOrNull;
 import static com.openlattice.chronicle.util.ChronicleServerUtil.getParticipantEntitySetName;
 import static com.openlattice.edm.EdmConstants.ID_FQN;
 
@@ -387,7 +418,7 @@ public class SurveysService implements SurveysManager {
             searchApi = apiClient.getSearchApi();
 
             // date must be valid.
-            LocalDate.parse( date ); // this will throw a DateTimeParseException if date cannot be parsed
+            LocalDate requestedDate = LocalDate.parse( date ); // this will throw a DateTimeParseException if date cannot be parsed
 
             // participant must exist
             UUID participantEKID = Preconditions
@@ -420,18 +451,30 @@ public class SurveysService implements SurveysManager {
                 return participantNeighbors.get( participantEKID )
                         .stream()
                         .filter( neighbor -> neighbor.getNeighborDetails().isPresent() )
-                        .filter( neighbor -> neighbor
-                                .getAssociationDetails()
-                                .get( DATE_TIME_FQN )
-                                .iterator()
-                                .next()
-                                .toString()
-                                .startsWith( date )
-                        )
-                        .map( neighbor -> new ChronicleAppsUsageDetails(
-                                neighbor.getNeighborDetails().get(),
-                                neighbor.getAssociationDetails()
-                        ) )
+                        .filter( neighbor -> {
+                            Map<FullQualifiedName, Set<Object>> associations = neighbor.getAssociationDetails();
+
+                            String dateStr = getFirstValueOrNull( associations, DATE_TIME_FQN );
+                            ZoneId zoneId = getZoneIdFromEntity( associations );
+                            LocalDate recordedDate = parseDate( dateStr, zoneId );
+
+                            String user = getFirstValueOrNull( associations, USER_FQN );
+
+                            return StringUtils.isBlank( user ) && requestedDate.equals( recordedDate );
+                        } )
+                        .map( neighbor -> {
+                            Map<FullQualifiedName, Set<Object>> associations = neighbor.getAssociationDetails();
+                            ZoneId zoneId = getZoneIdFromEntity( associations );
+                            String dateStr = getFirstValueOrNull( associations, DATE_TIME_FQN );
+
+                            OffsetDateTime dateTime = parseDateTime( dateStr, zoneId );
+                            associations.put( DATE_TIME_FQN, ImmutableSet.of( dateTime ) );
+
+                            return new ChronicleAppsUsageDetails(
+                                    neighbor.getNeighborDetails().get(),
+                                    associations
+                            );
+                        } )
                         .collect( Collectors.toList() );
             }
 
@@ -444,6 +487,29 @@ public class SurveysService implements SurveysManager {
                     organizationId );
             throw new IllegalStateException( e );
         }
+    }
+
+    private OffsetDateTime parseDateTime( String dateStr, ZoneId zoneId ) {
+        if ( dateStr == null ) {
+            return null;
+        }
+        return OffsetDateTime.parse( dateStr ).toInstant().atZone( zoneId ).toOffsetDateTime();
+    }
+
+    private ZoneId getZoneIdFromEntity( Map<FullQualifiedName, Set<Object>> entity ) {
+        return ZoneId.of(
+                entity.getOrDefault( TIMEZONE_FQN, ImmutableSet.of( DEFAULT_TIMEZONE ) )
+                        .iterator()
+                        .next()
+                        .toString()
+        );
+    }
+
+    private LocalDate parseDate( String date, ZoneId zoneId ) {
+        if ( date == null )
+            return null;
+
+        return OffsetDateTime.parse( date ).toInstant().atZone( zoneId ).toLocalDate();
     }
 
     // HELPER METHODS for submitTimeUseDiarySurvey
