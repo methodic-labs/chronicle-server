@@ -29,6 +29,7 @@ import com.openlattice.chronicle.auditing.AuditingManager
 import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.controllers.ChronicleServerExceptionHandler
+import com.openlattice.chronicle.ids.IdConstants
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -65,12 +66,12 @@ class ChronicleServerExceptionHandler @Inject constructor(override val auditingM
             }
             else -> {
                 AuditableEvent(
-                    AclKey(ReservedIds.SYSTEM.id),
+                    AclKey(IdConstants.SYSTEM.id),
                     principal.id,
                     principal.principal.id,
                     AuditEventType.STUDY_NOT_FOUND,
                     e.message ?: "Exception did not include message",
-                    ReservedIds.STUDY.id,
+                    IdConstants.UNINITIALIZED.id,
                     data = mapOf("principals" to principals)
                 )
             }
