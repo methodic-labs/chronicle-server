@@ -86,8 +86,12 @@ class StudyService(
             """.trimIndent()
 
         private val GET_STUDIES_SQL = """
-            SELECT * FROM ${STUDIES.name} 
-            INNER JOIN (SELECT ${STUDY_ID.name}, array_agg(${ORGANIZATION_ID.name}) as ${ORGANIZATION_IDS.name} FROM ${ORGANIZATION_STUDIES.name}) as org_studies 
+            SELECT * as organization_ids FROM ${STUDIES.name} 
+            LEFT JOIN (
+                SELECT ${STUDY_ID.name}, array_agg(${ORGANIZATION_ID.name}) as ${ORGANIZATION_IDS.name} 
+                    FROM ${ORGANIZATION_STUDIES.name}
+                    GROUP BY ${STUDY_ID.name}
+                ) as org_studies 
             USING (${STUDY_ID.name}) 
             WHERE ${STUDY_ID.name} = ANY(?)
         """.trimIndent()

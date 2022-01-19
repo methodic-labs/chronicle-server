@@ -159,7 +159,8 @@ class ChroniclePostgresTables {
             .overwriteOnConflict()
 
         init {
-            ORGANIZATION_STUDIES.addIndexes(PostgresColumnsIndexDefinition(ORGANIZATION_STUDIES, ORGANIZATION_ID))
+            ORGANIZATION_STUDIES
+                .addIndexes(PostgresColumnsIndexDefinition(ORGANIZATION_STUDIES, ORGANIZATION_ID).ifNotExists())
         }
     }
 }
