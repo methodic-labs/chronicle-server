@@ -63,6 +63,7 @@ class ChronicleOrganizationService(
             ps.setString(2, organization.title)
             ps.setString(3, organization.description)
             ps.setObject(4, mapper.writeValueAsString(organization.settings))
+            ps.executeUpdate()
         }
     }
 

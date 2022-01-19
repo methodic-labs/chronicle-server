@@ -1,4 +1,4 @@
-package com.openlattice.users
+package com.openlattice.chronicle.users
 
 import com.auth0.json.mgmt.users.User
 import com.hazelcast.core.HazelcastInstance
@@ -130,10 +130,12 @@ class Auth0SyncService(
                     else -> null
                 }
             }).forEach { roleSecPrincipal ->
-                spm.addPrincipalToPrincipal(
-                    roleSecPrincipal.aclKey,
-                    userSecPrincipal.aclKey
-                )
+                if (!spm.principalHasChildPrincipal(userSecPrincipal.aclKey, roleSecPrincipal.aclKey)) {
+                    spm.addPrincipalToPrincipal(
+                        roleSecPrincipal.aclKey,
+                        userSecPrincipal.aclKey
+                    )
+                }
             }
         }
     }

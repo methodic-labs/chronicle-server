@@ -65,8 +65,14 @@ class OrganizationsInitializationTask : HazelcastInitializationTask<Organization
             val (flavor, hds) = dependencies.storageResolver.getPlatformStorage()
             ensureVanilla(flavor)
             hds.connection.use { connection ->
-                organizationService.createOrganization(connection, GLOBAL_ADMIN_ROLE.principal, org)
-                //TODO: Consider auditing this
+                try {
+                    connection.autoCommit = false
+                    //TODO: Consider auditing this
+                    organizationService.createOrganization(connection, GLOBAL_ADMIN_ROLE.principal, org)
+                    connection.commit()
+                } catch (ex:Exception) {
+                    connection.rollback()
+                }
             }
         }
 
