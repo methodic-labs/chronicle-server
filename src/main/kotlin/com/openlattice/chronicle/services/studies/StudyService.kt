@@ -86,7 +86,7 @@ class StudyService(
             """.trimIndent()
 
         private val GET_STUDIES_SQL = """
-            SELECT * as organization_ids FROM ${STUDIES.name} 
+            SELECT * FROM ${STUDIES.name} 
             LEFT JOIN (
                 SELECT ${STUDY_ID.name}, array_agg(${ORGANIZATION_ID.name}) as ${ORGANIZATION_IDS.name} 
                     FROM ${ORGANIZATION_STUDIES.name}
