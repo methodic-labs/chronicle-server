@@ -88,9 +88,8 @@ class StudyController @Inject constructor(
     }
 
     @Timed
-    @PostMapping(
+    @GetMapping(
         path = [STUDY_ID_PATH],
-        consumes = [MediaType.APPLICATION_JSON_VALUE],
         produces = [MediaType.APPLICATION_JSON_VALUE],
     )
     override fun getStudy(@PathVariable(STUDY_ID) studyId: UUID): Study {

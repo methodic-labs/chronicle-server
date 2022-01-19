@@ -20,6 +20,8 @@ import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.ORGAN
 import com.openlattice.chronicle.study.Study
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.STUDIES
 import com.openlattice.chronicle.storage.PostgresColumns
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_IDS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
@@ -84,7 +86,10 @@ class StudyService(
             """.trimIndent()
 
         private val GET_STUDIES_SQL = """
-            SELECT * FROM ${STUDIES.name} WHERE ${STUDY_ID.name} = ANY(?)
+            SELECT * FROM ${STUDIES.name} 
+            INNER JOIN (SELECT ${STUDY_ID.name}, array_agg(${ORGANIZATION_ID.name}) as ${ORGANIZATION_IDS.name} FROM ${ORGANIZATION_STUDIES.name}) as org_studies 
+            USING (${STUDY_ID.name}) 
+            WHERE ${STUDY_ID.name} = ANY(?)
         """.trimIndent()
     }
 

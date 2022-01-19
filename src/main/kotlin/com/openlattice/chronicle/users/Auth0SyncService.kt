@@ -119,8 +119,6 @@ class Auth0SyncService(
     }
 
     private fun grantBuiltInRoles(allUsersByPrincipal: Map<Principal, User>) {
-
-        spm.getSecurablePrincipals(allUsersByPrincipal.keys)
         allUsersByPrincipal.forEach { principal, user ->
             val userSecPrincipal = spm.getSecurablePrincipal(principal.id)
             spm.getSecurablePrincipals(getRoles(user).mapNotNull { role ->
