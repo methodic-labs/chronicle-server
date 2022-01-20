@@ -135,7 +135,7 @@ test {
 }
 
 ext.odata_version = '4.2.0'
-ext.chronicle_api_version = '0.0.18'
+ext.chronicle_api_version = '0.0.17'
 
 dependencies {
     implementation "com.google.guava:guava:${guava_version}"
