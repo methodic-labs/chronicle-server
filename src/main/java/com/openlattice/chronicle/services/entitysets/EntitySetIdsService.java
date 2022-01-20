@@ -1,6 +1,6 @@
 package com.openlattice.chronicle.services.entitysets;
 
-import com.dataloom.streams.StreamUtil;
+import com.geekbeast.streams.StreamUtil;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;

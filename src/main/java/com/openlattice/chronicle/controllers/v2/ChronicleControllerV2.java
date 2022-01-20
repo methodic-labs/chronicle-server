@@ -194,8 +194,7 @@ public class ChronicleControllerV2 implements ChronicleApi {
 
     @Override public void updateMessageStatus(
             UUID organizationId, String messageId, MessageStatus messageStatus ) {
-        // Todd to implement this
-        throw new NotImplementedException( "Awaiting implementation!" );
+        throw new NotImplementedException( "not implemented" );
     }
 
     @RequestMapping(
@@ -211,6 +210,11 @@ public class ChronicleControllerV2 implements ChronicleApi {
             @RequestBody List<Map<FullQualifiedName, Set<Object>>> surveyData
     ) {
         surveysManager.submitTimeUseDiarySurvey( organizationId, studyId, participantId, surveyData );
+    }
+
+    @Override public void uploadIOSSensorData(
+            UUID organizationId, UUID studyId, String participantId, String deviceId, List<SensorDataSample> data ) {
+        throw new NotImplementedException( "Not implemented" );
     }
 
     @Override

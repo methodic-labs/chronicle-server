@@ -20,14 +20,14 @@
 
 package com.openlattice.chronicle;
 
-import com.dataloom.mappers.ObjectMappers;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import com.kryptnostic.rhizome.configuration.websockets.BaseRhizomeServer;
-import com.kryptnostic.rhizome.core.RhizomeApplicationServer;
-import com.kryptnostic.rhizome.hazelcast.serializers.RhizomeUtils.Pods;
-import com.kryptnostic.rhizome.pods.hazelcast.RegistryBasedHazelcastInstanceConfigurationPod;
-import com.openlattice.auth0.Auth0Pod;
-import com.openlattice.aws.AwsS3Pod;
+import com.geekbeast.auth0.Auth0Pod;
+import com.geekbeast.aws.AwsS3Pod;
+import com.geekbeast.mappers.mappers.ObjectMappers;
+import com.geekbeast.rhizome.configuration.websockets.BaseRhizomeServer;
+import com.geekbeast.rhizome.core.RhizomeApplicationServer;
+import com.geekbeast.rhizome.hazelcast.serializers.RhizomeUtils;
+import com.geekbeast.rhizome.pods.hazelcast.RegistryBasedHazelcastInstanceConfigurationPod;
 import com.openlattice.chronicle.pods.ChronicleServerSecurityPod;
 import com.openlattice.chronicle.pods.ChronicleServerServicesPod;
 import com.openlattice.chronicle.pods.ChronicleServerServletsPod;
@@ -52,7 +52,7 @@ public class ChronicleServer extends BaseRhizomeServer {
     }
 
     public ChronicleServer( Class<?>... pods ) {
-        super( Pods.concatenate(
+        super( RhizomeUtils.Pods.concatenate(
                 pods,
                 webPods,
                 rhizomePods,
