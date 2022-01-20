@@ -319,8 +319,8 @@ class AppDataUploadService(
 
                 connection.prepareStatement(getInsertIntoAppUsageTableSql()).use { ps ->
 
-                    ps.setString(APP_USAGE_INSERT_INDICES.getValue(ORGANIZATION_ID.name), organizationId.toString())
-                    ps.setString(APP_USAGE_INSERT_INDICES.getValue(STUDY_ID.name), studyId.toString())
+                    ps.setObject(APP_USAGE_INSERT_INDICES.getValue(ORGANIZATION_ID.name), organizationId)
+                    ps.setObject(APP_USAGE_INSERT_INDICES.getValue(STUDY_ID.name), studyId )
                     ps.setString(APP_USAGE_INSERT_INDICES.getValue(PARTICIPANT_ID.name), participantId)
 
                     data.forEach { mappedCols ->

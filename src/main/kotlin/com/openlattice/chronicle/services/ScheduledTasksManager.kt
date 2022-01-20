@@ -1,7 +1,12 @@
 package com.openlattice.chronicle.services
 
+import com.geekbeast.postgres.streams.BasePostgresIterable
+import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
 import com.google.common.collect.Maps
 import com.google.common.collect.Sets
+import com.openlattice.chronicle.postgres.ResultSetAdapters
+import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.SYSTEM_APPS
+import com.openlattice.chronicle.storage.StorageResolver
 import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.Scheduled
 import java.util.*
@@ -17,8 +22,18 @@ private const val DEVICES_INFO_REFRESH_INTERVAL = (60 * 1000L) // 1 minute
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
  * @author Matthew Tamayo-Rios &lt;matthew@openlattice.com&gt;
  */
-class ScheduledTasksManager {
-    private val logger = LoggerFactory.getLogger(ScheduledTasksManager::class.java)
+class ScheduledTasksManager(
+        private val storageResolver: StorageResolver
+) {
+
+    companion object {
+        private val logger = LoggerFactory.getLogger(ScheduledTasksManager::class.java)
+
+        private val GET_SYSTEM_APPS_SQL = """
+            SELECT * FROM ${SYSTEM_APPS.name}
+        """.trimIndent()
+    }
+
 
 
     // orgId -> studyId -> participantId -> EKID
@@ -52,7 +67,20 @@ class ScheduledTasksManager {
     @Scheduled(fixedRate = SYSTEM_APPS_REFRESH_INTERVAL)
     fun refreshSystemApps() {
         logger.info("Refreshing system apps cache")
-        TODO("Not yet implemented")
+
+        val (_, hds ) = storageResolver.getDefaultStorage()
+
+        val systemAppNames = BasePostgresIterable(
+                PreparedStatementHolderSupplier(hds, GET_SYSTEM_APPS_SQL) { ps ->
+                    ps.executeQuery()
+                }
+        ) {
+            ResultSetAdapters.systemApp(it)
+        }.toSet()
+
+        logger.info("loaded ${systemAppNames.size} system apps")
+
+        systemAppPackageNames.addAll(systemAppNames)
     }
 
     @Scheduled(fixedRate = USER_APPS_REFRESH_INTERVAL)
