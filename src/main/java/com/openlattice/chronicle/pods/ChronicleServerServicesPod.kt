@@ -196,7 +196,9 @@ class ChronicleServerServicesPod {
     @Bean
     @Throws(IOException::class, ExecutionException::class)
     fun surveysManager(): SurveysManager {
-        return SurveysService(enrollmentManager())
+        return SurveysService(
+                storageResolver,
+        )
     }
 
     @Bean
