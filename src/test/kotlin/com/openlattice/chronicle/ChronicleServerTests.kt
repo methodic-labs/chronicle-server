@@ -10,6 +10,9 @@ import com.openlattice.chronicle.storage.StorageResolver
 import com.geekbeast.jdbc.DataSourceManager
 import com.geekbeast.postgres.PostgresPod
 import com.geekbeast.rhizome.configuration.websockets.BaseRhizomeServer
+import com.openlattice.chronicle.authorization.Principal
+import com.openlattice.chronicle.authorization.PrincipalType
+import com.openlattice.chronicle.client.ChronicleClient
 import com.openlattice.chronicle.users.LocalUserListingService
 import com.zaxxer.hikari.HikariDataSource
 
@@ -41,7 +44,6 @@ open class ChronicleServerTests {
             )
         )
 
-
         @JvmField
         val hazelcastInstance: HazelcastInstance
 
@@ -66,7 +68,24 @@ open class ChronicleServerTests {
             sr = testServer.context.getBean(StorageResolver::class.java)
             dsm = testServer.context.getBean(DataSourceManager::class.java)
             jwtTokens = testServer.context.getBean(LocalUserListingService::class.java).jwtTokens
-
         }
+
+        @JvmField
+        val testUser1 = Principal(PrincipalType.USER, "test_user")
+        @JvmField
+        val testUser2 = Principal(PrincipalType.USER, "test_user")
+        @JvmField
+        val testUser3 = Principal(PrincipalType.USER, "test_user")
+        @JvmField
+        val adminUser = Principal(PrincipalType.USER, "test_user")
+
+        @JvmField
+        val clientUser1 = ChronicleClient { jwtTokens.getValue(testUser1.id).first() }
+        @JvmField
+        val clientUser2 = ChronicleClient { jwtTokens.getValue(testUser2.id).first() }
+        @JvmField
+        val clientUser3 = ChronicleClient { jwtTokens.getValue(testUser3.id).first() }
+        @JvmField
+        val clientAdmin = ChronicleClient { jwtTokens.getValue(adminUser.id).first() }
     }
 }
