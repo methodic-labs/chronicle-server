@@ -70,7 +70,7 @@ class PostgresColumns {
         // app usage survey specific columns
         val APP_LABEL = PostgresColumnDefinition("app_label", PostgresDatatype.TEXT)
         val APP_PACKAGE_NAME = PostgresColumnDefinition("app_package_name", PostgresDatatype.TEXT).notNull()
-        val APP_USAGE_ID = PostgresColumnDefinition("id", PostgresDatatype.TEXT_UUID).notNull()
+        val APP_USAGE_ID = PostgresColumnDefinition("id", PostgresDatatype.UUID).notNull()
         val APP_USAGE_USERS = PostgresColumnDefinition("app_users", PostgresDatatype.TEXT_ARRAY)
         val APP_USAGE_TIMESTAMP = PostgresColumnDefinition("timestamp", PostgresDatatype.TIMESTAMPTZ)
         val APP_USAGE_DATE = PostgresColumnDefinition("date", PostgresDatatype.DATE)
