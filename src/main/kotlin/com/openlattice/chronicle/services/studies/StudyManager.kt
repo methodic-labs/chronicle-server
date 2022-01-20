@@ -10,4 +10,5 @@ import java.util.UUID
 interface StudyManager {
     fun createStudy(connection: Connection, study: Study)
     fun getStudy(studyIds: Collection<UUID>): Iterable<Study>
+    fun deleteStudies(connection: Connection, studyIds: Collection<UUID>): Int
 }

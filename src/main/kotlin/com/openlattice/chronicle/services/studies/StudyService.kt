@@ -2,7 +2,6 @@ package com.openlattice.chronicle.services.studies
 
 import com.geekbeast.mappers.mappers.ObjectMappers
 import com.openlattice.chronicle.storage.StorageResolver
-import com.fasterxml.jackson.databind.ObjectMapper
 import com.geekbeast.configuration.postgres.PostgresFlavor
 import com.geekbeast.postgres.PostgresArrays
 import com.geekbeast.postgres.streams.BasePostgresIterable
@@ -95,6 +94,10 @@ class StudyService(
             USING (${STUDY_ID.name}) 
             WHERE ${STUDY_ID.name} = ANY(?)
         """.trimIndent()
+
+        private val DELETE_STUDIES_SQL = """
+            DELETE FROM ${STUDIES.name} WHERE ${STUDY_ID.name} = ANY(?)
+        """.trimIndent()
     }
 
     override fun createStudy(connection: Connection, study: Study) {
@@ -135,5 +138,12 @@ class StudyService(
                 ) { ResultSetAdapters.study(it) }
 
             }
+    }
+
+    override fun deleteStudies(connection: Connection, studyIds: Collection<UUID>): Int {
+        val ps = connection.prepareStatement(DELETE_STUDIES_SQL)
+        val pgStudyIds = PostgresArrays.createUuidArray(ps.connection, studyIds)
+        ps.setArray(1, pgStudyIds)
+        return ps.executeUpdate()
     }
 }

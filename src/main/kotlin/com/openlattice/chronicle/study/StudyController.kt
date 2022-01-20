@@ -104,4 +104,36 @@ class StudyController @Inject constructor(
 
     }
 
+    @Timed
+    @DeleteMapping(
+        path = [STUDY_ID_PATH],
+        produces = [MediaType.APPLICATION_JSON_VALUE],
+    )
+    override fun destroyStudy(@PathVariable studyId: UUID): Int {
+        accessCheck(AclKey(studyId), EnumSet.of(Permission.OWNER))
+        logger.info("Deleting study with id $studyId")
+
+        val (flavor, hds) = storageResolver.getPlatformStorage()
+        check(flavor == PostgresFlavor.VANILLA) { "Only vanilla postgres supported for studies." }
+        AuditedOperationBuilder<Unit>(hds.connection, auditingManager)
+            .operation { connection -> studyService.deleteStudies(connection, listOf(studyId)) }
+            .audit {
+                listOf(
+                    AuditableEvent(
+                        AclKey(studyId),
+                        Principals.getCurrentSecurablePrincipal().id,
+                        Principals.getCurrentUser().id,
+                        AuditEventType.DELETE_STUDY,
+                        "",
+                        studyId,
+                        UUID(0, 0),
+                        mapOf()
+                    )
+                )
+            }
+            .buildAndRun()
+
+        return 1
+    }
+
 }
