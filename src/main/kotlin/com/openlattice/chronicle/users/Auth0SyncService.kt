@@ -1,4 +1,4 @@
-package com.openlattice.users
+package com.openlattice.chronicle.users
 
 import com.auth0.json.mgmt.users.User
 import com.hazelcast.core.HazelcastInstance
@@ -8,6 +8,7 @@ import com.openlattice.chronicle.authorization.principals.PrincipalMapstore
 import com.openlattice.chronicle.authorization.principals.SecurePrincipalsManager
 import com.openlattice.chronicle.hazelcast.HazelcastMap
 import com.openlattice.chronicle.util.getPrincipal
+import com.openlattice.chronicle.util.getRoles
 import org.slf4j.LoggerFactory
 import java.util.*
 
@@ -108,11 +109,32 @@ class Auth0SyncService(
             it.value.appMetadata != null
         }
 
+        grantBuiltInRoles(allUsersByPrincipal)
         logger.info("Synchronizing enrollments and authentication cache for all users")
 
 
-        allUsersByPrincipal.forEach { (principal, user) ->
+        allUsersByPrincipal.forEach { (principal, _) ->
             syncAuthenticationCache(principal.id)
+        }
+    }
+
+    private fun grantBuiltInRoles(allUsersByPrincipal: Map<Principal, User>) {
+        allUsersByPrincipal.forEach { principal, user ->
+            val userSecPrincipal = spm.getSecurablePrincipal(principal.id)
+            spm.getSecurablePrincipals(getRoles(user).mapNotNull { role ->
+                when (role) {
+                    "AuthenticatedUser", "user" -> SystemRole.AUTHENTICATED_USER.principal
+                    "admin" -> SystemRole.ADMIN.principal
+                    else -> null
+                }
+            }).forEach { roleSecPrincipal ->
+                if (!spm.principalHasChildPrincipal(userSecPrincipal.aclKey, roleSecPrincipal.aclKey)) {
+                    spm.addPrincipalToPrincipal(
+                        roleSecPrincipal.aclKey,
+                        userSecPrincipal.aclKey
+                    )
+                }
+            }
         }
     }
 

@@ -17,7 +17,7 @@
  * You can contact the owner of the copyright at support@openlattice.com
  */
 
-package com.openlattice.users
+package com.openlattice.chronicle.users
 
 
 import com.google.common.base.Stopwatch

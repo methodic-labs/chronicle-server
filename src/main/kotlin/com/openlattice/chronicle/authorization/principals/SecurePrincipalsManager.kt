@@ -65,6 +65,9 @@ interface SecurePrincipalsManager {
 
     /**
      * Reads
+     *
+     * TODO: Check if tehre is a bug as you may need role type and principal to uniquely identify, unless reservations
+     * are by principal id only.
      */
     @Nonnull
     fun getSecurablePrincipal(principalId: String): SecurablePrincipal

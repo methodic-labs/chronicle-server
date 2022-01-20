@@ -18,16 +18,14 @@
  *
  *
  */
+package com.openlattice.chronicle.organizations
 
-package com.openlattice.chronicle.users
+import com.openlattice.chronicle.authorization.Principal
+import com.openlattice.chronicle.authorization.PrincipalType
 
-import com.google.common.util.concurrent.ListeningExecutorService
-import com.geekbeast.tasks.HazelcastTaskDependencies
-import com.openlattice.users.UserListingService
-
-data class Auth0SyncTaskDependencies(
-        val users: Auth0SyncService,
-        val userListingService: UserListingService,
-        val executor: ListeningExecutorService
-) : HazelcastTaskDependencies
-
+class OrganizationConstants {
+    companion object {
+        @JvmField
+        val SYSTEM_ORG_PRINCIPAL = Principal(PrincipalType.ORGANIZATION, "SYSTEM")
+    }
+}

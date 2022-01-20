@@ -81,7 +81,9 @@ class Principals {
          */
 
         fun getCurrentUser(): Principal = getUserPrincipal(getCurrentPrincipalId())
-        fun getCurrentSecurablePrincipal(): SecurablePrincipal = securablePrincipals[getCurrentPrincipalId()]!!
+        fun getCurrentSecurablePrincipal(): SecurablePrincipal {
+            return securablePrincipals[getCurrentPrincipalId()]!!
+        }
 
         fun getAdminRole(): Principal {
             return SystemRole.adminRole

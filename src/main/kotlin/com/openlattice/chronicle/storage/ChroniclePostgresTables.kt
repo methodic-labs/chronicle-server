@@ -1,5 +1,7 @@
 package com.openlattice.chronicle.storage
 
+import com.geekbeast.postgres.PostgresColumnsIndexDefinition
+import com.geekbeast.postgres.PostgresIndexDefinition
 import com.geekbeast.postgres.PostgresTableDefinition
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_LABEL
@@ -50,71 +52,71 @@ class ChroniclePostgresTables {
 
         @JvmField
         val ORGANIZATIONS = PostgresTableDefinition("organizations")
-                .addColumns(
-                        ORGANIZATION_ID,
-                        TITLE,
-                        DESCRIPTION,
-                        SETTINGS
-                )
-                .primaryKey(ORGANIZATION_ID)
-                .overwriteOnConflict()
+            .addColumns(
+                ORGANIZATION_ID,
+                TITLE,
+                DESCRIPTION,
+                SETTINGS
+            )
+            .primaryKey(ORGANIZATION_ID)
+            .overwriteOnConflict()
 
         @JvmField
         val STUDIES = PostgresTableDefinition("studies")
-                .addColumns(
-                        STUDY_ID,
-                        TITLE,
-                        DESCRIPTION,
-                        CREATED_AT,
-                        UPDATED_AT,
-                        STARTED_AT,
-                        ENDED_AT,
-                        LAT,
-                        LON,
-                        STUDY_GROUP,
-                        STUDY_VERSION,
-                        SETTINGS,
-                )
-                .primaryKey(STUDY_ID)
+            .addColumns(
+                STUDY_ID,
+                TITLE,
+                DESCRIPTION,
+                CREATED_AT,
+                UPDATED_AT,
+                STARTED_AT,
+                ENDED_AT,
+                LAT,
+                LON,
+                STUDY_GROUP,
+                STUDY_VERSION,
+                SETTINGS,
+            )
+            .primaryKey(STUDY_ID)
 
         @JvmField
-        val ORGANIZATION_STUDIES = PostgresTableDefinition("studies")
-                .addColumns(
-                        ORGANIZATION_ID,
-                        STUDY_ID,
-                        USER_ID,
-                        CREATED_AT,
-                        SETTINGS
-                )
-                .primaryKey(ORGANIZATION_ID, STUDY_ID)
+        val ORGANIZATION_STUDIES = PostgresTableDefinition("organization_studies")
+            .addColumns(
+                ORGANIZATION_ID,
+                STUDY_ID,
+                USER_ID,
+                CREATED_AT,
+                SETTINGS
+            )
+            .primaryKey(ORGANIZATION_ID, STUDY_ID)
 
         @JvmField
         val STUDY_PARTICIPATION = PostgresTableDefinition("study_participation")
-                .addColumns(
-                        ORGANIZATION_ID,
-                        STUDY_ID,
-                        PARTICIPANT_ID,
-                )
-                .primaryKey(STUDY_ID, PARTICIPANT_ID)
+            .addColumns(
+                ORGANIZATION_ID,
+                STUDY_ID,
+                PARTICIPANT_ID,
+            )
+            .primaryKey(STUDY_ID, PARTICIPANT_ID)
 
         @JvmField
         val PARTICIPANTS = PostgresTableDefinition("participants")
-                .addColumns(
-                        PARTICIPANT_ID,
-                        TITLE,
-                        NAME,
-                        FIRST_NAME,
-                        LAST_NAME,
-                        DATE_OF_BIRTH,
-                        DESCRIPTION,
-                        SETTINGS
-                )
-                .primaryKey(PARTICIPANT_ID)
+            .addColumns(
+                PARTICIPANT_ID,
+                TITLE,
+                NAME,
+                FIRST_NAME,
+                LAST_NAME,
+                DATE_OF_BIRTH,
+                DESCRIPTION,
+                SETTINGS
+            )
+            .primaryKey(PARTICIPANT_ID)
 
         @JvmField
         val BASE_LONG_IDS: PostgresTableDefinition = PostgresTableDefinition("base_long_ids")
-                .addColumns(SCOPE, BASE)
-                .primaryKey(SCOPE)
+            .addColumns(SCOPE, BASE)
+            .primaryKey(SCOPE)
 
         /**
          * Authorization tables
@@ -126,41 +128,41 @@ class ChroniclePostgresTables {
          */
         @JvmField
         val PRINCIPALS = PostgresTableDefinition("principals")
-                .addColumns(ACL_KEY, PRINCIPAL_TYPE, PRINCIPAL_ID, TITLE, DESCRIPTION)
-                .primaryKey(ACL_KEY)
-                .setUnique(PRINCIPAL_TYPE, PRINCIPAL_ID)
+            .addColumns(ACL_KEY, PRINCIPAL_TYPE, PRINCIPAL_ID, TITLE, DESCRIPTION)
+            .primaryKey(ACL_KEY)
+            .setUnique(PRINCIPAL_TYPE, PRINCIPAL_ID)
 
         @JvmField
         val PRINCIPAL_TREES = PostgresTableDefinition("principal_trees")
-                .addColumns(ACL_KEY, PRINCIPAL_OF_ACL_KEY)
-                .primaryKey(ACL_KEY, PRINCIPAL_OF_ACL_KEY)
+            .addColumns(ACL_KEY, PRINCIPAL_OF_ACL_KEY)
+            .primaryKey(ACL_KEY, PRINCIPAL_OF_ACL_KEY)
 
         @JvmField
         val ID_GENERATION = PostgresTableDefinition("id_gen")
-                .primaryKey(PARTITION_INDEX)
-                .addColumns(PARTITION_INDEX, MSB, LSB)
+            .primaryKey(PARTITION_INDEX)
+            .addColumns(PARTITION_INDEX, MSB, LSB)
 
         @JvmField
         val PERMISSIONS = PostgresTableDefinition("permissions")
-                .addColumns(
-                        ACL_KEY,
-                        PRINCIPAL_TYPE,
-                        PRINCIPAL_ID,
-                        PostgresColumns.PERMISSIONS,
-                        PostgresColumns.EXPIRATION_DATE
-                )
-                .primaryKey(ACL_KEY, PRINCIPAL_TYPE, PRINCIPAL_ID)
+            .addColumns(
+                ACL_KEY,
+                PRINCIPAL_TYPE,
+                PRINCIPAL_ID,
+                PostgresColumns.PERMISSIONS,
+                PostgresColumns.EXPIRATION_DATE
+            )
+            .primaryKey(ACL_KEY, PRINCIPAL_TYPE, PRINCIPAL_ID)
 
         @JvmField
         val SECURABLE_OBJECTS = PostgresTableDefinition("securable_objects")
-                .addColumns(ACL_KEY, SECURABLE_OBJECT_TYPE, SECURABLE_OBJECT_ID, SECURABLE_OBJECT_NAME)
-                .primaryKey(ACL_KEY)
+            .addColumns(ACL_KEY, SECURABLE_OBJECT_TYPE, SECURABLE_OBJECT_ID, SECURABLE_OBJECT_NAME)
+            .primaryKey(ACL_KEY)
 
         @JvmField
         val USERS = PostgresTableDefinition("users")
-                .addColumns(USER_ID, USER_DATA, EXPIRATION)
-                .primaryKey(USER_ID)
-                .overwriteOnConflict()
+            .addColumns(USER_ID, USER_DATA, EXPIRATION)
+            .primaryKey(USER_ID)
+            .overwriteOnConflict()
 
         @JvmField
         val APPS_USAGE = PostgresTableDefinition("app_usage")
@@ -202,5 +204,10 @@ class ChroniclePostgresTables {
         val SYSTEM_APPS = PostgresTableDefinition("system_apps")
                 .addColumns(APP_PACKAGE_NAME)
                 .primaryKey(APP_PACKAGE_NAME)
+        
+        init {
+            ORGANIZATION_STUDIES
+                .addIndexes(PostgresColumnsIndexDefinition(ORGANIZATION_STUDIES, ORGANIZATION_ID).ifNotExists())
+        }
     }
 }

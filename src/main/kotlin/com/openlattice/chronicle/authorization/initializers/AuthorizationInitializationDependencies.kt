@@ -19,15 +19,15 @@
  *
  */
 
-package com.openlattice.chronicle.users
+package com.openlattice.chronicle.authorization.initializers
 
-import com.google.common.util.concurrent.ListeningExecutorService
 import com.geekbeast.tasks.HazelcastTaskDependencies
-import com.openlattice.users.UserListingService
+import com.openlattice.chronicle.authorization.principals.SecurePrincipalsManager
 
-data class Auth0SyncTaskDependencies(
-        val users: Auth0SyncService,
-        val userListingService: UserListingService,
-        val executor: ListeningExecutorService
+/**
+ *
+ * @author Matthew Tamayo-Rios &lt;matthew@openlattice.com&gt;
+ */
+class AuthorizationInitializationDependencies(
+        val securePrincipalsManager: SecurePrincipalsManager
 ) : HazelcastTaskDependencies
-

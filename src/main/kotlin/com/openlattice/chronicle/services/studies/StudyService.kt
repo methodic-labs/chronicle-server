@@ -20,6 +20,8 @@ import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.ORGAN
 import com.openlattice.chronicle.study.Study
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.STUDIES
 import com.openlattice.chronicle.storage.PostgresColumns
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_IDS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
@@ -37,11 +39,9 @@ class StudyService(
     private val authorizationService: AuthorizationManager,
     override val auditingManager: AuditingManager
 ) : StudyManager, AuditingComponent {
-    private val mapper = ObjectMappers.newJsonMapper()
-
     companion object {
         private val logger = LoggerFactory.getLogger(StudyService::class.java)
-        private val objectMapper = ObjectMapper()
+        private val mapper = ObjectMappers.newJsonMapper()
         private val STUDY_COLUMNS = listOf(
             PostgresColumns.STUDY_ID,
             PostgresColumns.TITLE,
@@ -86,11 +86,18 @@ class StudyService(
             """.trimIndent()
 
         private val GET_STUDIES_SQL = """
-            SELECT * FROM ${STUDIES.name} WHERE ${STUDY_ID.name} = ANY(?)
+            SELECT * FROM ${STUDIES.name} 
+            LEFT JOIN (
+                SELECT ${STUDY_ID.name}, array_agg(${ORGANIZATION_ID.name}) as ${ORGANIZATION_IDS.name} 
+                    FROM ${ORGANIZATION_STUDIES.name}
+                    GROUP BY ${STUDY_ID.name}
+                ) as org_studies 
+            USING (${STUDY_ID.name}) 
+            WHERE ${STUDY_ID.name} = ANY(?)
         """.trimIndent()
     }
 
-    override fun createStudy(connection: Connection, study: Study): UUID {
+    override fun createStudy(connection: Connection, study: Study) {
         insertStudy(connection, study)
         authorizationService.createSecurableObject(
             connection = connection,
@@ -98,19 +105,6 @@ class StudyService(
             principal = Principals.getCurrentUser(),
             objectType = SecurableObjectType.Study
         )
-//
-//        try {
-//
-//            connection.commit()
-//        } catch (ex: Exception) {
-//            logger.error("Failed to create study $study.", ex)
-//            connection.rollback()
-//            throw ex
-//        } finally {
-//            connection.autoCommit = true
-//        }
-
-        return study.id
     }
 
     private fun insertStudy(connection: Connection, study: Study): Int {

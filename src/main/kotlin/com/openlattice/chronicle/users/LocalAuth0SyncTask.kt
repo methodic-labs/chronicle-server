@@ -21,8 +21,6 @@
 package com.openlattice.chronicle.users
 
 import com.google.common.base.Stopwatch
-import com.openlattice.users.Auth0SyncTask
-import com.openlattice.users.DEFAULT_CHUNK_SIZE
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.time.Instant

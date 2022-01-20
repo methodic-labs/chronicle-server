@@ -19,15 +19,18 @@
  *
  */
 
-package com.openlattice.chronicle.users
+package com.openlattice.chronicle.organizations.initializers
 
-import com.google.common.util.concurrent.ListeningExecutorService
 import com.geekbeast.tasks.HazelcastTaskDependencies
-import com.openlattice.users.UserListingService
+import com.openlattice.chronicle.authorization.principals.SecurePrincipalsManager
+import com.openlattice.chronicle.configuration.ChronicleConfiguration
+import com.openlattice.chronicle.organizations.ChronicleOrganizationService
+import com.openlattice.chronicle.storage.StorageResolver
 
-data class Auth0SyncTaskDependencies(
-        val users: Auth0SyncService,
-        val userListingService: UserListingService,
-        val executor: ListeningExecutorService
+
+data class OrganizationsInitializationDependencies @JvmOverloads constructor(
+        val storageResolver: StorageResolver,
+        val organizationService: ChronicleOrganizationService,
+        val spm: SecurePrincipalsManager,
+        val configuration: ChronicleConfiguration
 ) : HazelcastTaskDependencies
-

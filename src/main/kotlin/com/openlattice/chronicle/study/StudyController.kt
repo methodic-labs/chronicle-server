@@ -52,12 +52,11 @@ class StudyController @Inject constructor(
     override fun createStudy(@RequestBody study: Study): UUID {
         ensureAuthenticated()
         logger.info("Creating study associated with organizations ${study.organizationIds}")
+        val (flavor, hds) = storageResolver.getPlatformStorage()
+        check(flavor == PostgresFlavor.VANILLA) { "Only vanilla postgres supported for studies." }
         study.id = idGenerationService.getNextId()
-        val (flavor, hds) = storageResolver.resolve(study.id)
-        check(flavor == PostgresFlavor.VANILLA) { "Only vanilla postgres is supported for studies." }
-
-        return AuditedOperationBuilder<UUID>(hds.connection, auditingManager)
-            .operation { studyService.createStudy(it, study) }
+        AuditedOperationBuilder<Unit>(hds.connection, auditingManager)
+            .operation { connection -> studyService.createStudy(connection, study) }
             .audit {
                 listOf(
                     AuditableEvent(
@@ -84,12 +83,13 @@ class StudyController @Inject constructor(
                 }
             }
             .buildAndRun()
+
+        return study.id
     }
 
     @Timed
-    @PostMapping(
+    @GetMapping(
         path = [STUDY_ID_PATH],
-        consumes = [MediaType.APPLICATION_JSON_VALUE],
         produces = [MediaType.APPLICATION_JSON_VALUE],
     )
     override fun getStudy(@PathVariable(STUDY_ID) studyId: UUID): Study {
@@ -98,7 +98,7 @@ class StudyController @Inject constructor(
 
         return try {
             studyService.getStudy(listOf(studyId)).first()
-        } catch (ex:NoSuchElementException) {
+        } catch (ex: NoSuchElementException) {
             throw StudyNotFoundException(studyId, "No study with id $studyId found.")
         }
 
