@@ -7,6 +7,7 @@ import com.openlattice.chronicle.data.ChronicleQuestionnaire
 import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.APPS_USAGE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_LABEL
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_PACKAGE_NAME
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_USAGE_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_USAGE_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_USAGE_TIMESTAMP
@@ -19,6 +20,7 @@ import com.openlattice.chronicle.survey.AppUsage
 import com.openlattice.chronicle.util.ChronicleServerUtil.ORG_STUDY_PARTICIPANT
 import org.apache.olingo.commons.api.edm.FullQualifiedName
 import org.slf4j.LoggerFactory
+import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.util.*
 
@@ -44,7 +46,7 @@ class SurveysService(
          * 4) date
          */
         val GET_APP_USAGE_SQL = """
-            SELECT ${APP_USAGE_ID.name}, ${APP_LABEL.name}, ${APP_USAGE_TIMESTAMP.name}
+            SELECT ${APP_USAGE_ID.name}, ${APP_PACKAGE_NAME.name}, ${APP_LABEL.name}, ${APP_USAGE_TIMESTAMP.name}
             FROM ${APPS_USAGE.name}
             WHERE ${ORGANIZATION_ID.name} = ? 
                 AND ${STUDY_ID.name} = ? 
@@ -113,7 +115,7 @@ class SurveysService(
 
     override fun getAppUsageData(organizationId: UUID, studyId: UUID, participantId: String, date: String): List<AppUsage> {
         try {
-            val requestedDate = OffsetDateTime.parse(date).toLocalDate()
+            val requestedDate = LocalDate.parse(date)
 
             val (_, hds) = storageResolver.getDefaultStorage()
 
@@ -122,7 +124,7 @@ class SurveysService(
                         ps.setObject(1, organizationId)
                         ps.setObject(2, studyId)
                         ps.setObject(3, participantId)
-                        ps.setString(4, requestedDate.toString())
+                        ps.setObject(4, requestedDate)
                     }
             ) {
                 ResultSetAdapters.appUsage(it)
