@@ -21,3 +21,4 @@ target/
 *.csv
 out/
 src/main/resources/auth0.yaml
+src/test/resources/auth0.yaml
