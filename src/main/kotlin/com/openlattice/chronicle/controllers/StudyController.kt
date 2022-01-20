@@ -9,6 +9,7 @@ import com.openlattice.chronicle.authorization.AuthorizingComponent
 import com.openlattice.chronicle.authorization.Permission
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
+import com.openlattice.chronicle.ids.IdConstants
 import com.openlattice.chronicle.study.StudyApi.Companion.CONTROLLER
 import com.openlattice.chronicle.services.studies.StudyService
 import com.openlattice.chronicle.storage.StorageResolver
@@ -97,7 +98,20 @@ class StudyController @Inject constructor(
         logger.info("Retrieving study with id $studyId")
 
         return try {
-            studyService.getStudy(listOf(studyId)).first()
+            val study = studyService.getStudy(listOf(studyId)).first()
+            recordEvent(
+                AuditableEvent(
+                    AclKey(studyId),
+                    Principals.getCurrentSecurablePrincipal().id,
+                    Principals.getCurrentUser().id,
+                    AuditEventType.GET_STUDY,
+                    "",
+                    studyId,
+                    IdConstants.UNINITIALIZED.id,
+                    mapOf()
+                )
+            )
+            study
         } catch (ex: NoSuchElementException) {
             throw StudyNotFoundException(studyId, "No study with id $studyId found.")
         }
