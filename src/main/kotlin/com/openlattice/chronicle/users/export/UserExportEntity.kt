@@ -21,7 +21,7 @@
 package com.openlattice.users.export
 
 import com.auth0.json.mgmt.jobs.Job
-import com.dataloom.mappers.ObjectMappers
+import com.geekbeast.mappers.mappers.ObjectMappers
 import com.openlattice.chronicle.users.export.UserExportJobRequest
 import com.openlattice.chronicle.users.export.UserExportJobResult
 import okhttp3.*

@@ -1,19 +1,25 @@
 package com.openlattice.chronicle.storage
 
+import com.geekbeast.postgres.PostgresColumnDefinition
+import com.geekbeast.postgres.RedshiftTableDefinition
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.ACL_KEY
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APPLICATION_LABEL
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_PACKAGE_NAME
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.AUDIT_EVENT_TYPE
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DATA
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DESCRIPTION
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DURATION
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.END_TIME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.INTERACTION_TYPE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.ORGANIZATION_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PARTICIPANT_ID
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PRINCIPAL_ID
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.SECURABLE_PRINCIPAL_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.START_TIME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMESTAMP
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMEZONE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.USERNAME
-import com.openlattice.postgres.PostgresColumnDefinition
-import com.openlattice.postgres.RedshiftTableDefinition
 
 /**
  *
@@ -58,6 +64,21 @@ class RedshiftDataTables {
                 )
                 .addDataSourceNames(REDSHIFT_DATASOURCE_NAME)
 
+
+        @JvmField
+        val AUDIT = RedshiftTableDefinition("audit")
+            .sortKey(ACL_KEY)
+            .addColumns(
+                        ACL_KEY,
+                        SECURABLE_PRINCIPAL_ID,
+                        PRINCIPAL_ID,
+                        AUDIT_EVENT_TYPE,
+                        STUDY_ID,
+                        ORGANIZATION_ID,
+                        DESCRIPTION,
+                        DATA,
+                        TIMESTAMP)
+            .addDataSourceNames(REDSHIFT_DATASOURCE_NAME)
         private val USAGE_EVENT_COLS = CHRONICLE_USAGE_EVENTS.columns.joinToString(",") { it.name }
         private val USAGE_EVENT_PARAMS = CHRONICLE_USAGE_EVENTS.columns.joinToString(",") { "?" }
 

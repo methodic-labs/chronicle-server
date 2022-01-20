@@ -20,7 +20,7 @@
 
 package com.openlattice.chronicle.pods;
 
-import com.openlattice.auth0.Auth0SecurityPod;
+import com.geekbeast.auth0.Auth0SecurityPod;
 import com.ryantenney.metrics.spring.config.annotation.EnableMetrics;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -46,7 +46,8 @@ public class ChronicleServerSecurityPod extends Auth0SecurityPod {
         http.authorizeRequests()
                 .antMatchers( HttpMethod.OPTIONS ).permitAll()
                 .antMatchers( HttpMethod.POST, "/chronicle/data/study/participant" ).permitAll()
-                .antMatchers( "/chronicle/data/authenticated/**" ).authenticated();
+                .antMatchers( "/chronicle/data/authenticated/**" ).authenticated()
+                .antMatchers( "/chronicle/data/study/**" ).authenticated();;
 
         CharacterEncodingFilter filter = new CharacterEncodingFilter();
         filter.setEncoding( StandardCharsets.UTF_8.toString() );

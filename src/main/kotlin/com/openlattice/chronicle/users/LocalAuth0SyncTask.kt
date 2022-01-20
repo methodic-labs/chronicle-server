@@ -18,7 +18,7 @@
  *
  *
  */
-package com.openlattice.users
+package com.openlattice.chronicle.users
 
 import com.google.common.base.Stopwatch
 import org.slf4j.Logger

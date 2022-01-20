@@ -25,8 +25,9 @@ import com.google.common.collect.Sets
 import com.hazelcast.core.HazelcastInstance
 import com.hazelcast.query.Predicate
 import com.hazelcast.query.Predicates
+import com.openlattice.chronicle.auditing.AuditingManager
 import com.openlattice.chronicle.authorization.*
-import com.openlattice.chronicle.authorization.objects.AclKeyReservationService
+import com.openlattice.chronicle.authorization.reservations.AclKeyReservationService
 import com.openlattice.chronicle.authorization.principals.processors.*
 import com.openlattice.chronicle.hazelcast.HazelcastMap
 import com.openlattice.chronicle.mapstores.authorization.PrincipalTreesMapstore
@@ -40,10 +41,11 @@ import java.util.*
  */
 @Service
 class HazelcastPrincipalService(
-        hazelcastInstance: HazelcastInstance,
-        private val reservations: AclKeyReservationService,
-        override val authorizationManager: AuthorizationManager,
-        private val principalsMapManager: PrincipalsMapManager,
+    hazelcastInstance: HazelcastInstance,
+    private val reservations: AclKeyReservationService,
+    override val authorizationManager: AuthorizationManager,
+    private val principalsMapManager: PrincipalsMapManager,
+    override val auditingManager: AuditingManager,
 ) : SecurePrincipalsManager, AuthorizingComponent {
 
     private val principals = HazelcastMap.PRINCIPALS.getMap(hazelcastInstance)
@@ -85,6 +87,16 @@ class HazelcastPrincipalService(
         return true
     }
 
+    override fun createSecurablePrincipalIfNotExists(principal: SecurablePrincipal): Boolean {
+        if (reservations.isReserved(principal.name)) {
+            logger.warn("Securable Principal {} already exists", principal)
+            return false
+        }
+
+        createSecurablePrincipal(principal.principal, principal)
+        return true
+    }
+
     private fun createSecurablePrincipal(owner: Principal, principal: SecurablePrincipal) {
         val aclKey = principal.aclKey
         try {
@@ -117,15 +129,15 @@ class HazelcastPrincipalService(
         principals.executeOnKey(aclKey, PrincipalDescriptionUpdater(description))
     }
 
-    override fun getSecurablePrincipal(aclKey: AclKey): SecurablePrincipal? {
-        return principalsMapManager.getSecurablePrincipal(aclKey)
+    override fun getSecurablePrincipal(aclKey: AclKey): SecurablePrincipal {
+        return principalsMapManager.getSecurablePrincipal(aclKey)!!
     }
 
     override fun lookup(p: Principal): AclKey {
         return getFirstSecurablePrincipal(findPrincipal(p)).aclKey
     }
 
-    override fun lookup(p: MutableSet<Principal>): MutableMap<Principal, AclKey> {
+    override fun lookup(p: Set<Principal>): MutableMap<Principal, AclKey> {
         return principals.entrySet(findPrincipals(p)).associate { it.value.principal to it.key }.toMutableMap()
     }
 
@@ -246,7 +258,7 @@ class HazelcastPrincipalService(
         return childrenToParents
     }
 
-    override fun getOrganizationMembers(organizationIds: MutableSet<UUID>): Map<UUID, Set<SecurablePrincipal>> {
+    override fun getOrganizationMembers(organizationIds: Set<UUID>): Map<UUID, Set<SecurablePrincipal>> {
         val orgAclKeys = organizationIds.map { AclKey(it) }.toSet()
         val orgMembers = getParentPrincipalsOfPrincipals(orgAclKeys)
         return orgAclKeys

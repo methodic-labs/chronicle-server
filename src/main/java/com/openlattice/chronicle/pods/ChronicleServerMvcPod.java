@@ -21,12 +21,12 @@ package com.openlattice.chronicle.pods;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.openlattice.chronicle.constants.CustomMediaType;
+import com.openlattice.chronicle.controllers.StudyController;
 import com.openlattice.chronicle.controllers.legacy.ChronicleController;
 import com.openlattice.chronicle.controllers.v2.ChronicleControllerV2;
-import com.openlattice.chronicle.controllers.v3.TimeUseDiaryController;
 import com.openlattice.chronicle.converters.IterableCsvHttpMessageConverter;
 import com.openlattice.chronicle.converters.YamlHttpMessageConverter;
-import com.openlattice.chronicle.util.ChronicleServerExceptionHandler;
+import com.openlattice.chronicle.controllers.ChronicleServerExceptionHandler;
 import com.ryantenney.metrics.spring.config.annotation.EnableMetrics;
 import java.util.List;
 import javax.inject.Inject;
@@ -49,7 +49,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurationSupp
                 ChronicleController.class,
                 ChronicleServerExceptionHandler.class,
                 ChronicleControllerV2.class,
-                TimeUseDiaryController.class
+                StudyController.class,
         },
         includeFilters = @ComponentScan.Filter(
                 value = {

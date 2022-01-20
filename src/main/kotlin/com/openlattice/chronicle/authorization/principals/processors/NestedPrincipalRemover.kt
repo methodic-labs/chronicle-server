@@ -19,7 +19,7 @@
  */
 package com.openlattice.chronicle.authorization.principals.processors
 
-import com.kryptnostic.rhizome.hazelcast.processors.AbstractRemover
+import com.geekbeast.rhizome.hazelcast.processors.AbstractRemover
 import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.authorization.AclKeySet
 

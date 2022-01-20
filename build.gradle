@@ -45,8 +45,8 @@ plugins {
     id 'checkstyle'
     id 'maven-publish'
     id 'signing'
-    id 'org.jetbrains.kotlin.jvm' version '1.5.10'
-    id 'org.jetbrains.kotlin.plugin.spring' version '1.5.10'
+    id 'org.jetbrains.kotlin.jvm'
+    id 'org.jetbrains.kotlin.plugin.spring'
 }
 
 description = "Chronicle Server"
@@ -80,7 +80,7 @@ if (CS_XMX == 'null' || CS_XMX == null || CS_XMX == "") {
 }
 
 if (CS_ARGS == 'null' || CS_ARGS == null || CS_ARGS == "") {
-    CS_ARGS = 'local postgres'
+    CS_ARGS = 'local postgres medialocal'
 }
 
 
@@ -95,6 +95,15 @@ if (GC == 'null' || GC == null || GC == "") {
 println "Using java args for running ${projectName}: Xms=" + CS_XMS + ",Xmx=" + CS_XMX + " -server"
 
 applicationDefaultJvmArgs = [CS_XMS, CS_XMX, "-server", GC, PARALLEL]
+applicationDefaultJvmArgs += [ "--add-modules", "java.base",
+                               "--add-modules", "java.se",
+                               "--add-exports","java.base/jdk.internal.ref=ALL-UNNAMED",
+                               "--add-opens","java.base/java.lang=ALL-UNNAMED",
+                               "--add-opens","java.base/java.nio=ALL-UNNAMED",
+                               "--add-opens","java.base/sun.nio.ch=ALL-UNNAMED",
+                               "--add-opens","java.management/sun.management=ALL-UNNAMED",
+                               "--add-opens", "jdk.management/com.ibm.lang.management.internal=ALL-UNNAMED",
+                               "--add-opens","jdk.management/com.sun.management.internal=ALL-UNNAMED"]
 sourceCompatibility = JavaVersion.VERSION_11
 targetCompatibility = JavaVersion.VERSION_11
 
@@ -135,11 +144,13 @@ test {
 }
 
 ext.odata_version = '4.2.0'
-ext.chronicle_api_version = '0.0.16'
+ext.chronicle_api_version = '0.0.17'
 
 dependencies {
     implementation "com.google.guava:guava:${guava_version}"
     implementation "com.amazon.redshift:redshift-jdbc42:2.1.0.3"
+    implementation "org.apache.commons:commons-text:${commonsText_version}"
+
     if (project.hasProperty('developmentMode') && project.developmentMode) {
         logger.quiet(project.name + " using project dependencies.")
         implementation project(":rhizome")
@@ -147,6 +158,8 @@ dependencies {
         implementation(project(":chronicle-api")) {
             exclude group: 'com.google.guava', module: 'guava'
         }
+        testImplementation(project(path: ":rhizome", configuration: "tests"))
+        testImplementation(project(path: ":rhizome-client", configuration: "tests"))
     } else {
         logger.quiet(project.name + " using jar dependencies.")
         implementation "com.openlattice:rhizome:${rhizome_version}"
@@ -154,28 +167,57 @@ dependencies {
         implementation("com.openlattice:chronicle-api:${chronicle_api_version}") {
             exclude group: 'com.google.guava', module: 'guava'
         }
+        testImplementation "com.openlattice:rhizome:${rhizome_version}:tests"
+        testImplementation "com.openlattice:rhizome-client:${rhizome_client_version}:tests"
     }
-
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
 
     /*
      * TESTING
      */
     testImplementation "junit:junit:${junit_version}"
-    testImplementation "com.openlattice:conductor-client:${conductor_client_version}"
+    //testImplementation "com.openlattice:conductor-client:${conductor_client_version}"
     testImplementation("org.mockito:mockito-all:${mockito_version}") {
         exclude module: 'hamcrest'
         exclude module: 'hamcrest-core'
     }
 }
 
-compileKotlin {
+tasks.withType(JavaCompile) {
+    options.compilerArgs+= ["--add-modules", "java.base",
+                            "--add-modules", "java.se",
+                            "--add-exports","java.base/jdk.internal.ref=ALL-UNNAMED"]
+}
+
+tasks.withType(Test) {
+    jvmArgs += ["--add-modules", "java.base",
+                "--add-modules", "java.se",
+                "--add-exports","java.base/jdk.internal.ref=ALL-UNNAMED",
+                "--add-opens","java.base/java.lang=ALL-UNNAMED",
+                "--add-opens","java.base/java.nio=ALL-UNNAMED",
+                "--add-opens","java.base/sun.nio.ch=ALL-UNNAMED",
+                "--add-opens","java.management/sun.management=ALL-UNNAMED",
+                "--add-opens", "jdk.management/com.ibm.lang.management.internal=ALL-UNNAMED",
+                "--add-opens","jdk.management/com.sun.management.internal=ALL-UNNAMED"]
+}
+
+tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
     kotlinOptions {
-        jvmTarget = "1.8"
+        jvmTarget = "11"
+        freeCompilerArgs += '-Xjvm-default=compatibility'
     }
 }
-compileTestKotlin {
-    kotlinOptions {
-        jvmTarget = "1.8"
+
+jar {
+    doFirst {
+        manifest {
+            attributes (
+                    "Class-Path": configurations.runtimeClasspath.files.collect { it.getName() }.join(" "),
+                    "Main-Class": mainClassName
+            )
+        }
     }
+}
+
+startScripts {
+    classpath = files(jar.archivePath)
 }

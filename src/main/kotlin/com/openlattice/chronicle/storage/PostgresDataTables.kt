@@ -1,6 +1,6 @@
 package com.openlattice.chronicle.storage
 
-import com.openlattice.postgres.PostgresTableDefinition
+import com.geekbeast.postgres.PostgresTableDefinition
 
 /**
  *
@@ -10,14 +10,19 @@ class PostgresDataTables {
     companion object {
         const val POSTGRES_DATA_ENVIRONMENT = "postgres_data"
 
-        @JvmStatic
-        val CHRONICLE_USAGE_EVENTS = PostgresTableDefinition("chronicle_usage_events")
+        @JvmField
+        val CHRONICLE_USAGE_EVENTS = PostgresTableDefinition(RedshiftDataTables.CHRONICLE_USAGE_EVENTS.name)
             .addColumns(*RedshiftDataTables.CHRONICLE_USAGE_EVENTS.columns.toTypedArray())
             .primaryKey(*RedshiftDataTables.CHRONICLE_USAGE_EVENTS.columns.toTypedArray())
 
-        @JvmStatic
-        val CHRONICLE_USAGE_STATS = PostgresTableDefinition("chronicle_usage_stats")
+        @JvmField
+        val CHRONICLE_USAGE_STATS = PostgresTableDefinition(RedshiftDataTables.CHRONICLE_USAGE_STATS.name)
             .addColumns(*RedshiftDataTables.CHRONICLE_USAGE_STATS.columns.toTypedArray())
-            .primaryKey(*RedshiftDataTables.CHRONICLE_USAGE_EVENTS.columns.toTypedArray())
+            .primaryKey(*RedshiftDataTables.CHRONICLE_USAGE_STATS.columns.toTypedArray())
+
+        @JvmField
+        val AUDIT = PostgresTableDefinition(RedshiftDataTables.AUDIT.name)
+            .addColumns(*RedshiftDataTables.AUDIT.columns.toTypedArray())
+            .primaryKey(*RedshiftDataTables.AUDIT.columns.toTypedArray())
     }
 }

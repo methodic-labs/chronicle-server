@@ -27,31 +27,32 @@ import com.hazelcast.config.MapStoreConfig.InitialLoadMode
 import com.openlattice.chronicle.authorization.*
 import com.openlattice.chronicle.hazelcast.HazelcastMap
 import com.openlattice.chronicle.postgres.ResultSetAdapters
-import com.openlattice.chronicle.storage.ChroniclePostgresTables
+import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.PERMISSIONS
+import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.SECURABLE_OBJECTS
 import com.openlattice.chronicle.storage.PostgresColumns
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.PERMISSIONS
 import com.openlattice.chronicle.util.TestDataFactory
-import com.openlattice.postgres.PostgresArrays.createTextArray
-import com.openlattice.postgres.PostgresArrays.createUuidArray
-import com.openlattice.postgres.PostgresColumnDefinition
-import com.openlattice.postgres.PostgresTableDefinition
-import com.openlattice.postgres.mapstores.AbstractBasePostgresMapstore
+import com.geekbeast.postgres.PostgresArrays.createTextArray
+import com.geekbeast.postgres.PostgresArrays.createUuidArray
+import com.geekbeast.postgres.PostgresColumnDefinition
+import com.geekbeast.postgres.PostgresTableDefinition
+import com.geekbeast.postgres.mapstores.AbstractBasePostgresMapstore
 import com.zaxxer.hikari.HikariDataSource
 import org.apache.commons.lang3.StringUtils
+import org.springframework.stereotype.Component
 import java.sql.Array
 import java.sql.PreparedStatement
 import java.sql.ResultSet
 import java.sql.SQLException
 import java.time.OffsetDateTime
 import java.util.*
-import java.util.function.Function
 import java.util.stream.Collectors
 
 /**
  * @author Matthew Tamayo-Rios &lt;matthew@openlattice.com&gt;
  */
+@Component
 class PermissionMapstore(
-        hds: HikariDataSource?, private val eventBus: EventBus
+        hds: HikariDataSource, private val eventBus: EventBus
 ) : AbstractBasePostgresMapstore<AceKey, AceValue>(HazelcastMap.PERMISSIONS, PERMISSIONS, hds) {
     @Throws(SQLException::class)
     protected override fun bind(
@@ -168,8 +169,8 @@ class PermissionMapstore(
     }
 
     private fun selectInQuery(
-            columnsToSelect: List<PostgresColumnDefinition>,
-            whereToSelect: List<PostgresColumnDefinition>, batchSize: Int
+        columnsToSelect: List<PostgresColumnDefinition>,
+        whereToSelect: List<PostgresColumnDefinition>, batchSize: Int
     ): String {
         val selectSql = selectInnerJoinQuery()
         val compoundElement = "(" + StringUtils.repeat("?", ",", whereToSelect.size) + ")"
@@ -178,7 +179,7 @@ class PermissionMapstore(
                 .append(
                         whereToSelect.stream()
                                 .map { col: PostgresColumnDefinition ->
-                                    getTableColumn(ChroniclePostgresTables.PERMISSIONS, col)
+                                    getTableColumn(PERMISSIONS, col)
                                 }
                                 .collect(Collectors.joining(","))
                 )
@@ -191,9 +192,9 @@ class PermissionMapstore(
     private fun selectInnerJoinQuery(): StringBuilder {
         return StringBuilder("SELECT * FROM ").append(PERMISSIONS.getName())
                 .append(" INNER JOIN ")
-                .append(PostgresTable.SECURABLE_OBJECTS.getName()).append(" ON ")
-                .append(getTableColumn(ChroniclePostgresTables.PERMISSIONS, PostgresColumns.ACL_KEY)).append(" = ")
-                .append(getTableColumn(PostgresTable.SECURABLE_OBJECTS, PostgresColumns.ACL_KEY))
+                .append(SECURABLE_OBJECTS.name).append(" ON ")
+                .append(getTableColumn(PERMISSIONS, PostgresColumns.ACL_KEY)).append(" = ")
+                .append(getTableColumn(SECURABLE_OBJECTS, PostgresColumns.ACL_KEY))
     }
 
     private fun getTableColumn(table: PostgresTableDefinition, column: PostgresColumnDefinition): String {

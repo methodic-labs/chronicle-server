@@ -4,7 +4,7 @@ import com.google.common.base.Preconditions
 import com.hazelcast.core.HazelcastInstance
 import com.hazelcast.query.Predicates
 import com.openlattice.chronicle.authorization.*
-import com.openlattice.chronicle.authorization.objects.AclKeyReservationService
+import com.openlattice.chronicle.authorization.reservations.AclKeyReservationService
 import com.openlattice.chronicle.authorization.principals.PrincipalsMapManager.Companion.findPrincipal
 import com.openlattice.chronicle.authorization.principals.PrincipalsMapManager.Companion.getFirstSecurablePrincipal
 import com.openlattice.chronicle.authorization.principals.PrincipalsMapManager.Companion.hasPrincipalType

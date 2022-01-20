@@ -1,12 +1,24 @@
 package com.openlattice.chronicle.controllers
 
+import com.codahale.metrics.annotation.Timed
+import com.openlattice.chronicle.auditing.AuditEventType
+import com.openlattice.chronicle.auditing.AuditableEvent
+import com.openlattice.chronicle.auditing.AuditedOperationBuilder
+import com.openlattice.chronicle.auditing.AuditingManager
+import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.authorization.AuthorizationManager
 import com.openlattice.chronicle.authorization.AuthorizingComponent
+import com.openlattice.chronicle.authorization.principals.Principals
+import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.organizations.*
 import com.openlattice.chronicle.organizations.OrganizationsApi.Companion.CONTROLLER
+import com.openlattice.chronicle.organizations.OrganizationsApi.Companion.ORGANIZATION_ID
+import com.openlattice.chronicle.organizations.OrganizationsApi.Companion.ORGANIZATION_ID_PATH
 import com.openlattice.chronicle.settings.AppComponent
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RestController
+import com.openlattice.chronicle.storage.StorageResolver
+import org.slf4j.LoggerFactory
+import org.springframework.http.MediaType
+import org.springframework.web.bind.annotation.*
 import java.util.*
 import javax.inject.Inject
 
@@ -17,22 +29,72 @@ import javax.inject.Inject
 @RestController
 @RequestMapping(CONTROLLER)
 class OrganizationsController @Inject constructor(
-        override val authorizationManager: AuthorizationManager
+    private val storageResolver: StorageResolver,
+    private val idGenerationService: HazelcastIdGenerationService,
+    override val authorizationManager: AuthorizationManager,
+    override val auditingManager: AuditingManager
 ) : AuthorizingComponent, OrganizationsApi {
 
-    @Inject
-    private lateinit var chronicleOrganizationService:  ChronicleOrganizationService
-
-    override fun createOrganization(organizationPrincipal: OrganizationPrincipal): UUID {
-        ensureAuthenticated()
-        return chronicleOrganizationService.createOrganization(organizationPrincipal)
+    companion object {
+        private val logger = LoggerFactory.getLogger(StudyController::class.java)!!
     }
 
-    override fun searchOrganizations(): Collection<OrganizationPrincipal> {
+    @Inject
+    private lateinit var chronicleOrganizationService: ChronicleOrganizationService
+
+    @Timed
+    @PostMapping(
+        path = ["", "/"],
+        consumes = [MediaType.APPLICATION_JSON_VALUE],
+        produces = [MediaType.APPLICATION_JSON_VALUE],
+    )
+    override fun createOrganization(organization: Organization): UUID {
+        ensureAuthenticated()
+        logger.info("Creating organization with title ${organization.title}")
+        organization.id = idGenerationService.getNextId()
+        val (flavor, hds) = storageResolver.getPlatformStorage()
+        ensureVanilla(flavor)
+        AuditedOperationBuilder<Unit>(hds.connection, auditingManager)
+            .operation { connection ->
+                chronicleOrganizationService.createOrganization(
+                    connection,
+                    Principals.getCurrentUser(),
+                    organization
+                )
+            }
+            .audit {
+                listOf(
+                    AuditableEvent(
+                        AclKey(organization.id),
+                        Principals.getCurrentSecurablePrincipal().id,
+                        Principals.getCurrentUser().id,
+                        AuditEventType.CREATE_ORGANIZATION,
+                        "",
+                        organization.id,
+                        UUID(0, 0),
+                        mapOf()
+                    )
+                )
+            }
+            .buildAndRun()
+        return organization.id
+    }
+
+    @Timed
+    @GetMapping(
+        path = [ORGANIZATION_ID_PATH],
+        consumes = [MediaType.APPLICATION_JSON_VALUE],
+        produces = [MediaType.APPLICATION_JSON_VALUE],
+    )
+    override fun getOrganization(@PathVariable(ORGANIZATION_ID) organizationId: UUID): Organization {
+        return chronicleOrganizationService.getOrganization(organizationId)
+    }
+
+    override fun searchOrganizations(): Collection<Organization> {
         TODO("Not yet implemented")
     }
 
-    override fun getOrganizations(): Collection<OrganizationPrincipal> {
+    override fun getOrganizations(): Collection<Organization> {
         TODO("Not yet implemented")
     }
 
@@ -53,7 +115,7 @@ class OrganizationsController @Inject constructor(
     }
 
     override fun setChronicleDataCollectionSettings(
-            organizationId: UUID, dataCollectionSettings: ChronicleDataCollectionSettings
+        organizationId: UUID, dataCollectionSettings: ChronicleDataCollectionSettings
     ) {
         TODO("Not yet implemented")
     }

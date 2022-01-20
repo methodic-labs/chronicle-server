@@ -19,16 +19,16 @@
  */
 package com.openlattice.chronicle.postgres
 
-import com.dataloom.mappers.ObjectMappers
+import com.geekbeast.mappers.mappers.ObjectMappers
 import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.google.common.collect.Lists
-import com.google.common.collect.Maps
-import com.google.common.collect.Sets
+import com.fasterxml.jackson.module.kotlin.readValue
 import com.openlattice.chronicle.authorization.*
 import com.openlattice.chronicle.mapstores.ids.Range
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.CATEGORY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DESCRIPTION
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.EXPIRATION_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LSB
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.MSB
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.NAME
@@ -42,14 +42,34 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJ
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_NAME
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_TYPE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TITLE
-import com.openlattice.postgres.PostgresArrays
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.URL
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.ID
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.USERNAME
+import com.geekbeast.postgres.PostgresArrays
+import com.openlattice.chronicle.organizations.Organization
+import com.openlattice.chronicle.organizations.OrganizationPrincipal
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.CREATED_AT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.ENDED_AT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.LAT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.LON
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_IDS
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.SETTINGS
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.STARTED_AT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_GROUP
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_VERSION
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPDATED_AT
+import com.openlattice.chronicle.study.Study
 import org.slf4j.LoggerFactory
 import java.sql.ResultSet
 import java.sql.SQLException
 import java.time.OffsetDateTime
 import java.util.*
-import java.util.function.Supplier
-import java.util.stream.Collectors
+
+/**
+ * Use for reading count field when performing an aggregation.
+ */
+const val COUNT = "count"
 
 /**
  * @author Matthew Tamayo-Rios &lt;matthew@openlattice.com&gt;
@@ -109,7 +129,7 @@ class ResultSetAdapters {
 
         @Throws(SQLException::class)
         fun id(rs: ResultSet): UUID {
-            return rs.getObject(ID.getName(), UUID::class.java)
+            return UUID.fromString(rs.getString(ID.name))
         }
 
         @Throws(SQLException::class)
@@ -129,7 +149,7 @@ class ResultSetAdapters {
 
         @Throws(SQLException::class)
         fun url(rs: ResultSet): String {
-            return rs.getString(URL.getName())
+            return rs.getString(URL.name)
         }
 
         @Throws(SQLException::class)
@@ -152,50 +172,29 @@ class ResultSetAdapters {
         }
 
         @Throws(SQLException::class)
-        fun linkedHashSetUUID(rs: ResultSet, colName: String?): LinkedHashSet<UUID> {
-            //Curious what happens if a null slips in here
-            return linkedSetOf(*(rs.getArray(colName).array as Array<UUID>))
-        }
-
-        @Throws(SQLException::class)
-        fun key(rs: ResultSet): LinkedHashSet<UUID> {
-            return linkedHashSetUUID(rs, KEY.getName())
-        }
-
-        @Throws(SQLException::class)
-        fun properties(rs: ResultSet): LinkedHashSet<UUID> {
-            return linkedHashSetUUID(rs, PROPERTIES.getName())
+        fun linkedHashSetUUID(rs: ResultSet, colName: String): LinkedHashSet<UUID> {
+            return LinkedHashSet<UUID>((rs.getArray(colName).array as Array<UUID?>).filterNotNull())
         }
 
         @Throws(SQLException::class)
         fun category(rs: ResultSet): SecurableObjectType {
-            return SecurableObjectType.valueOf(rs.getString(CATEGORY.getName()))
+            return SecurableObjectType.valueOf(rs.getString(CATEGORY.name))
         }
 
-        @Throws(SQLException::class)
-        fun shards(rs: ResultSet): Int {
-            return rs.getInt(SHARDS.getName())
-        }
-
-        @Throws(SQLException::class)
-        fun contacts(rs: ResultSet): Set<String> {
-            return Sets.newHashSet(*rs.getArray(CONTACTS.getName()).getArray() as Array<String?>)
-        }
-
-        @Throws(SQLException::class)
-        fun show(rs: ResultSet): Boolean {
-            return rs.getBoolean(SHOW.getName())
-        }
-
-        @Throws(SQLException::class)
-        fun members(rs: ResultSet): java.util.LinkedHashSet<String> {
-            return Arrays.stream(rs.getArray(MEMBERS.getName()).getArray() as Array<String>)
-                    .collect(
-                            Collectors
-                                    .toCollection(
-                                            Supplier { LinkedHashSet() })
-                    )
-        }
+//        @Throws(SQLException::class)
+//        fun contacts(rs: ResultSet): Set<String> {
+//            return (rs.getArray(CONTACTS.getName()).getArray() as Array<String?>).filterNotNull().toSet()
+//        }
+//
+//        @Throws(SQLException::class)
+//        fun members(rs: ResultSet): java.util.LinkedHashSet<String> {
+//            return Arrays.stream(rs.getArray(MEMBERS.getName()).getArray() as Array<String>)
+//                    .collect(
+//                            Collectors
+//                                    .toCollection(
+//                                            Supplier { LinkedHashSet() })
+//                    )
+//        }
 
         @Throws(SQLException::class)
         fun securableObjectId(rs: ResultSet): UUID {
@@ -217,51 +216,10 @@ class ResultSetAdapters {
             return SecurableObjectType.valueOf(rs.getString(SECURABLE_OBJECT_TYPE.name))
         }
 
-        @Throws(SQLException::class)
-        fun dataExpiration(rs: ResultSet): DataExpiration? {
-            val expirationBase: ExpirationBase = expirationBase(rs)
-                    ?: return null
-            val timeToExpiration = timeToExpiration(rs)
-            val deleteType: DeleteType? = deleteType(rs)
-            val startDateProperty: UUID = startDateProperty(rs)
-            return DataExpiration(
-                    timeToExpiration,
-                    expirationBase,
-                    deleteType,
-                    Optional.ofNullable(startDateProperty)
-            )
-        }
-
-        @Throws(SQLException::class)
-        fun timeToExpiration(rs: ResultSet): Long {
-            return rs.getLong(TIME_TO_EXPIRATION_FIELD)
-        }
-
-        @Throws(SQLException::class)
-        fun expirationBase(rs: ResultSet): ExpirationBase? {
-            val expirationFlag: String = rs.getString(EXPIRATION_BASE_FLAG_FIELD)
-            return if (expirationFlag != null) {
-                ExpirationBase.valueOf(expirationFlag)
-            } else null
-        }
-
-        @Throws(SQLException::class)
-        fun deleteType(rs: ResultSet): DeleteType? {
-            val deleteType: String = rs.getString(EXPIRATION_DELETE_FLAG_FIELD)
-            return if (deleteType != null) {
-                DeleteType.valueOf(deleteType)
-            } else null
-        }
-
-        @Throws(SQLException::class)
-        fun startDateProperty(rs: ResultSet): UUID {
-            return rs.getObject<UUID>(EXPIRATION_START_ID_FIELD, UUID::class.java)
-        }
-
-        @Throws(SQLException::class, IOException::class)
-        fun roles(rs: ResultSet): Map<UUID, AclKey> {
-            return mapper.readValue(rs.getString(PostgresColumn.ROLES.getName()), rolesTypeRef)
-        }
+//        @Throws(SQLException::class, IOException::class)
+//        fun roles(rs: ResultSet): Map<UUID, AclKey> {
+//            return mapper.readValue(rs.getString(PostgresColumn.ROLES.getName()), rolesTypeRef)
+//        }
 
         @Throws(SQLException::class)
         fun count(rs: ResultSet): Long {
@@ -270,12 +228,7 @@ class ResultSetAdapters {
 
         @Throws(SQLException::class)
         fun expirationDate(rs: ResultSet): OffsetDateTime {
-            return rs.getObject<OffsetDateTime>(EXPIRATION_DATE_FIELD, OffsetDateTime::class.java)
-        }
-
-        @Throws(SQLException::class)
-        fun lastRead(rs: ResultSet): OffsetDateTime {
-            return rs.getObject<OffsetDateTime>(LAST_READ_FIELD, OffsetDateTime::class.java)
+            return rs.getObject(EXPIRATION_DATE.name, OffsetDateTime::class.java)
         }
 
         @Throws(SQLException::class)
@@ -284,131 +237,38 @@ class ResultSetAdapters {
         }
 
         @Throws(SQLException::class)
-        fun entitySetCollection(rs: ResultSet): EntitySetCollection {
-            val id: UUID = id(rs)
-            val name = name(rs)
-            val title = title(rs)
-            val description = Optional.ofNullable(description(rs))
-            val entityTypeCollectionId: UUID = entityTypeCollectionId(rs)
-            val contacts = contacts(rs)
-            val organizationId: UUID = organizationId(rs)
-            return EntitySetCollection(
-                    id,
-                    name,
-                    title,
-                    description,
-                    entityTypeCollectionId,
-                    Maps.newHashMap(),
-                    contacts,
-                    organizationId
-            )
-        }
-
-        @Throws(SQLException::class)
-        fun collectionTemplateKey(rs: ResultSet): CollectionTemplateKey {
-            val entitySetCollectionId: UUID = entitySetCollectionId(rs)
-            val templateTypeId: UUID = templateTypeid(rs)
-            return CollectionTemplateKey(entitySetCollectionId, templateTypeId)
-        }
-
-        @Throws(SQLException::class)
-        fun externalTable(rs: ResultSet): ExternalTable {
-            val id: UUID = id(rs)
-            val name = name(rs)
-            val title = title(rs)
-            val description = Optional.ofNullable(
-                    description(
-                            rs
-                    )
-            )
-            val organizationId: UUID = organizationId(rs)
-            val oid: Long = oid(rs)
-            val schema: String = schema(rs)
-            return ExternalTable(id, name, title, description, organizationId, oid, schema)
-        }
-
-        @Throws(SQLException::class)
-        fun externalColumn(rs: ResultSet): ExternalColumn {
-            val id: UUID = id(rs)
-            val name = name(rs)
-            val title = title(rs)
-            val description = Optional.ofNullable(
-                    description(
-                            rs
-                    )
-            )
-            val tableId: UUID = tableId(rs)
-            val organizationId: UUID = organizationId(rs)
-            val dataType: PostgresDatatype = sqlDataType(rs)
-            val isPrimaryKey: Boolean = rs.getBoolean(IS_PRIMARY_KEY.getName())
-            val ordinalPosition = ordinalPosition(rs)
-            return ExternalColumn(
-                    id,
-                    name,
-                    title,
-                    description,
-                    tableId,
-                    organizationId,
-                    dataType,
-                    isPrimaryKey,
-                    ordinalPosition
-            )
-        }
-
-        @Throws(SQLException::class)
-        fun columnName(rs: ResultSet): String {
-            return rs.getString(COLUMN_NAME.getName())
-        }
-
-        @Throws(SQLException::class)
-        fun columnNames(rs: ResultSet): List<String> {
-            return Lists.newArrayList(*PostgresArrays.getTextArray(rs, COLUMN_NAMES_FIELD))
-        }
-
-        @Throws(SQLException::class)
-        fun sqlDataType(rs: ResultSet): PostgresDatatype {
-            val dataType: String = rs.getString(DATATYPE.getName()).toUpperCase()
-            return PostgresDatatype.getEnum(dataType)
-        }
-
-        @Throws(SQLException::class)
-        fun ordinalPosition(rs: ResultSet): Int {
-            return rs.getInt(ORDINAL_POSITION.getName())
-        }
-
-        @Throws(SQLException::class)
-        fun constraintType(rs: ResultSet): String {
-            return rs.getString(CONSTRAINT_TYPE.getName())
-        }
-
-        @Throws(SQLException::class)
-        fun privilegeType(rs: ResultSet): String {
-            return rs.getString(PRIVILEGE_TYPE.getName())
-        }
-
-        @Throws(SQLException::class)
-        fun user(rs: ResultSet): String {
-            return rs.getString(USER.getName())
-        }
-
-        @Throws(SQLException::class)
-        fun originId(rs: ResultSet): UUID {
-            return rs.getObject(ORIGIN_ID.getName(), UUID::class.java)
-        }
-
-        @Throws(SQLException::class)
         fun username(rs: ResultSet): String {
-            return rs.getString(USERNAME.getName())
+            return rs.getString(USERNAME.name)
         }
 
         @Throws(SQLException::class)
-        fun permission(rs: ResultSet): Permission {
-            return Permission.valueOf(rs.getString(PERMISSION.getName()))
+        fun study(rs: ResultSet): Study {
+            return Study(
+                rs.getObject(STUDY_ID.name, UUID::class.java),
+                rs.getString(TITLE.name),
+                rs.getString(DESCRIPTION.name),
+                rs.getObject(CREATED_AT.name, OffsetDateTime::class.java),
+                rs.getObject(UPDATED_AT.name, OffsetDateTime::class.java),
+                rs.getObject(STARTED_AT.name, OffsetDateTime::class.java),
+                rs.getObject(ENDED_AT.name, OffsetDateTime::class.java),
+                rs.getDouble(LAT.name),
+                rs.getDouble(LON.name),
+                rs.getString(STUDY_GROUP.name),
+                rs.getString(STUDY_VERSION.name),
+                PostgresArrays.getUuidArray(rs, ORGANIZATION_IDS.name)?.toSet() ?: setOf(),
+                mapper.readValue(rs.getString(SETTINGS.name))
+            )
         }
 
-        @Throws(SQLException::class, IOException::class)
-        fun securableObjectMetadata(rs: ResultSet): SecurableObjectMetadata {
-            return mapper.readValue(rs.getString(METADATA.getName()), SecurableObjectMetadata::class.java)
+        @Throws(SQLException::class)
+        fun organization(rs: ResultSet): Organization {
+            return Organization(
+                rs.getObject(ORGANIZATION_ID.name, UUID::class.java),
+                rs.getString(TITLE.name),
+                rs.getString(DESCRIPTION.name),
+                mapper.readValue(rs.getString(SETTINGS.name))
+
+            )
         }
     }
 }

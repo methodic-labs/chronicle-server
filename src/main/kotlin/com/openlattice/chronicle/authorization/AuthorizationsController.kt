@@ -20,6 +20,7 @@
 package com.openlattice.chronicle.authorization
 
 import com.codahale.metrics.annotation.Timed
+import com.openlattice.chronicle.auditing.AuditingManager
 import com.openlattice.chronicle.authorization.principals.Principals
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.*
@@ -29,19 +30,21 @@ import javax.inject.Inject
 
 @RestController
 @RequestMapping(AuthorizationsApi.CONTROLLER)
-class AuthorizationsController : AuthorizationsApi, AuthorizingComponent {
+class AuthorizationsController @Inject constructor(
+    override val auditingManager: AuditingManager
+) : AuthorizationsApi, AuthorizingComponent {
     @Inject
     override lateinit var authorizationManager: AuthorizationManager
 
     @Timed
     @RequestMapping(
-            method = [RequestMethod.POST], consumes = [MediaType.APPLICATION_JSON_VALUE],
-            produces = [MediaType.APPLICATION_JSON_VALUE]
+        method = [RequestMethod.POST], consumes = [MediaType.APPLICATION_JSON_VALUE],
+        produces = [MediaType.APPLICATION_JSON_VALUE]
     )
     override fun checkAuthorizations(@RequestBody queries: Set<AccessCheck>): Iterable<Authorization> {
         return Iterable {
             authorizationManager.accessChecksForPrincipals(
-                    queries, Principals.getCurrentPrincipals()
+                queries, Principals.getCurrentPrincipals()
             ).iterator()
         }
     }
@@ -49,14 +52,14 @@ class AuthorizationsController : AuthorizationsApi, AuthorizingComponent {
     @Timed
     @RequestMapping(method = [RequestMethod.GET], produces = [MediaType.APPLICATION_JSON_VALUE])
     override fun getAccessibleObjects(
-            @RequestParam(value = AuthorizationsApi.OBJECT_TYPE) objectType: SecurableObjectType,
-            @RequestParam(value = AuthorizationsApi.PERMISSION) permission: Permission,
-            @RequestParam(value = AuthorizationsApi.PAGING_TOKEN, required = false) pagingToken: String
+        @RequestParam(value = AuthorizationsApi.OBJECT_TYPE) objectType: SecurableObjectType,
+        @RequestParam(value = AuthorizationsApi.PERMISSION) permission: Permission,
+        @RequestParam(value = AuthorizationsApi.PAGING_TOKEN, required = false) pagingToken: String
     ): AuthorizedObjectsSearchResult {
         val authorizedAclKeys = authorizationManager.getAuthorizedObjectsOfType(
-                Principals.getCurrentPrincipals(),
-                objectType,
-                EnumSet.of(permission)
+            Principals.getCurrentPrincipals(),
+            objectType,
+            EnumSet.of(permission)
         ).collect(Collectors.toSet())
         return AuthorizedObjectsSearchResult("", authorizedAclKeys)
     }

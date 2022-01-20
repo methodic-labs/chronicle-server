@@ -2,9 +2,8 @@ package com.openlattice.chronicle.pods
 
 import com.openlattice.chronicle.storage.RedshiftDataTables
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.REDSHIFT_ENVIRONMENT
-import com.openlattice.postgres.PostgresTableDefinition
-import com.openlattice.postgres.PostgresTables
-import com.openlattice.postgres.RedshiftTableDefinition
+import com.geekbeast.postgres.PostgresTableDefinition
+import com.geekbeast.postgres.PostgresTables
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Profile
