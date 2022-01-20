@@ -109,7 +109,7 @@ class StudyController @Inject constructor(
         path = [STUDY_ID_PATH],
         produces = [MediaType.APPLICATION_JSON_VALUE],
     )
-    override fun destroyStudy(@PathVariable studyId: UUID): Int {
+    override fun destroyStudy(@PathVariable studyId: UUID) {
         accessCheck(AclKey(studyId), EnumSet.of(Permission.OWNER))
         logger.info("Deleting study with id $studyId")
 
@@ -133,7 +133,6 @@ class StudyController @Inject constructor(
             }
             .buildAndRun()
 
-        return 1
     }
 
 }
