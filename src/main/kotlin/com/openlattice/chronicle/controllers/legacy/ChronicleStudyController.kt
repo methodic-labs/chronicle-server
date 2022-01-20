@@ -70,8 +70,9 @@ class ChronicleStudyController : ChronicleStudyApi {
             @PathVariable(ChronicleStudyApi.PARTICIPANT_ID) participantId: String,
             @RequestParam(value = ChronicleStudyApi.DATE) date: String
     ): List<ChronicleAppsUsageDetails> {
-        val organizationId = enrollmentManager.getOrganizationIdForLegacyStudy( studyId )
-        return surveysManager.getParticipantAppsUsageData(organizationId, studyId, participantId, date)
+//        val organizationId = enrollmentManager.getOrganizationIdForLegacyStudy( studyId )
+//        return surveysManager.getParticipantAppsUsageData(organizationId, studyId, participantId, date)
+        TODO("This shouldn't have to exist. Will remove")
     }
 
     @Timed
@@ -107,8 +108,9 @@ class ChronicleStudyController : ChronicleStudyApi {
             @PathVariable(ChronicleStudyApi.PARTICIPANT_ID) participantId: String,
             @RequestBody associationDetails: Map<UUID, Map<FullQualifiedName, Set<Any>>>
     ) {
-        val organizationId = enrollmentManager.getOrganizationIdForLegacyStudy( studyId )
-        surveysManager.submitAppUsageSurvey(organizationId, studyId, participantId, associationDetails)
+//        val organizationId = enrollmentManager.getOrganizationIdForLegacyStudy( studyId )
+//        surveysManager.submitAppUsageSurvey(organizationId, studyId, participantId, associationDetails)
+        TODO("Remove this during clean up")
     }
 
     @Timed
@@ -159,7 +161,8 @@ class ChronicleStudyController : ChronicleStudyApi {
             @PathVariable(ChronicleStudyApi.PARTICIPANT_ID) participantId: String,
             @RequestBody surveyData: List<Map<FullQualifiedName, Set<Any>>>
     ) {
-        val organizationId = enrollmentManager.getOrganizationIdForLegacyStudy( studyId )
-        surveysManager.submitTimeUseDiarySurvey(organizationId, studyId, participantId, surveyData)
+//        val organizationId = enrollmentManager.getOrganizationIdForLegacyStudy( studyId )
+//        surveysManager.submitTimeUseDiarySurvey(organizationId, studyId, participantId, surveyData)
+        TODO("To remove this endpoint later during v2 cleanup. TimeUseDiary stuff will eventually be in its own controller")
     }
 }
