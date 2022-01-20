@@ -1,10 +1,25 @@
 package com.openlattice.chronicle.services.surveys
 
-import com.openlattice.chronicle.data.ChronicleAppsUsageDetails
+import com.geekbeast.postgres.PostgresArrays
+import com.geekbeast.postgres.streams.BasePostgresIterable
+import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
 import com.openlattice.chronicle.data.ChronicleQuestionnaire
-import com.openlattice.chronicle.services.enrollment.EnrollmentManager
+import com.openlattice.chronicle.postgres.ResultSetAdapters
+import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.APPS_USAGE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_LABEL
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_USAGE_DATE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_USAGE_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_USAGE_TIMESTAMP
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_USAGE_USERS
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
+import com.openlattice.chronicle.storage.StorageResolver
+import com.openlattice.chronicle.survey.AppUsage
+import com.openlattice.chronicle.util.ChronicleServerUtil.ORG_STUDY_PARTICIPANT
 import org.apache.olingo.commons.api.edm.FullQualifiedName
 import org.slf4j.LoggerFactory
+import java.time.OffsetDateTime
 import java.util.*
 
 /**
@@ -16,18 +31,44 @@ import java.util.*
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
  */
 class SurveysService(
-        private val enrollmentManager: EnrollmentManager
+        private val storageResolver: StorageResolver,
 ) : SurveysManager {
     companion object {
         private val logger = LoggerFactory.getLogger(SurveysService::class.java)
-        private val TIME_USE_DIARY_TITLE = "Time Use Diary"
-    }
 
-    override fun submitAppUsageSurvey(
-            organizationId: UUID, studyId: UUID, participantId: String,
-            associationDetails: Map<UUID, Map<FullQualifiedName, Set<Any>>>
-    ) {
-        TODO("Not yet implemented")
+        /**
+         * PreparedStatement bind order
+         * 1) organizationId
+         * 2) studyId
+         * 3) participantId
+         * 4) date
+         */
+        val GET_APP_USAGE_SQL = """
+            SELECT ${APP_USAGE_ID.name}, ${APP_LABEL.name}, ${APP_USAGE_TIMESTAMP.name}
+            FROM ${APPS_USAGE.name}
+            WHERE ${ORGANIZATION_ID.name} = ? 
+                AND ${STUDY_ID.name} = ? 
+                AND ${PARTICIPANT_ID.name} = ? 
+                AND ${APP_USAGE_DATE.name} = ?
+                AND cardinality(${APP_USAGE_USERS.name}) = 0
+        """.trimIndent()
+
+        /**
+         * PreparedStatement bind order
+         * 1) appUsers
+         * 2) organizationId
+         * 3) studyId
+         * 4) participantId
+         * 5) appUsageId
+         */
+        val SUBMIT_APP_USAGE_SURVEY_SQL = """
+            UPDATE ${APPS_USAGE.name}
+            SET ${APP_USAGE_USERS.name} = ?
+            WHERE ${ORGANIZATION_ID.name} = ?
+                AND ${STUDY_ID.name} = ?
+                AND ${PARTICIPANT_ID.name} = ?
+                AND ${APP_USAGE_ID.name} = ?
+        """.trimIndent()
     }
 
     override fun getQuestionnaire(
@@ -49,16 +90,96 @@ class SurveysService(
         TODO("Not yet implemented")
     }
 
-    override fun getParticipantAppsUsageData(
-            organizationId: UUID, studyId: UUID, participantId: String, date: String
-    ): List<ChronicleAppsUsageDetails> {
-        TODO("Not yet implemented")
+
+    override fun submitAppUsageSurvey(
+            organizationId: UUID,
+            studyId: UUID,
+            participantId: String,
+            surveyResponses: Map<UUID, Set<String>>
+    ) {
+        logger.info(
+                "submitting app usage survey $ORG_STUDY_PARTICIPANT",
+                organizationId,
+                studyId,
+                participantId
+        )
+
+        val numWritten = updateAppUsage(organizationId, studyId, participantId, surveyResponses)
+
+        if (numWritten  != surveyResponses.size) {
+            logger.warn("updated {} entities but expected to update {} entities", numWritten, surveyResponses.size)
+        }
     }
 
-    override fun submitTimeUseDiarySurvey(
-            organizationId: UUID, studyId: UUID, participantId: String,
-            surveyData: List<Map<FullQualifiedName, Set<Any>>>
-    ) {
-        TODO("Not yet implemented")
+    override fun getAppUsageData(organizationId: UUID, studyId: UUID, participantId: String, date: String): List<AppUsage> {
+        try {
+            val requestedDate = OffsetDateTime.parse(date).toLocalDate()
+
+            val (_, hds) = storageResolver.getDefaultStorage()
+
+            val result = BasePostgresIterable(
+                    PreparedStatementHolderSupplier(hds, GET_APP_USAGE_SQL) { ps ->
+                        ps.setObject(1, organizationId)
+                        ps.setObject(2, studyId)
+                        ps.setObject(3, participantId)
+                        ps.setString(4, requestedDate.toString())
+                    }
+            ) {
+                ResultSetAdapters.appUsage(it)
+
+            }.toList()
+
+            logger.info(
+                    "fetched {} app usage entries for date {} $ORG_STUDY_PARTICIPANT",
+                    result.size,
+                    requestedDate,
+                    organizationId,
+                    studyId,
+                    participantId
+            )
+
+            return result
+
+        } catch (ex: Exception) {
+            logger.error("unable to parse date string")
+            throw ex
+        }
+    }
+
+    private fun updateAppUsage( organizationId: UUID, studyId: UUID, participantId: String, data: Map<UUID, Set<String>>): Int {
+        val (_, hds) = storageResolver.resolve(studyId)
+
+        return hds.connection.use { conn ->
+            try {
+                conn.autoCommit = false
+
+                val wc = conn.prepareStatement(SUBMIT_APP_USAGE_SURVEY_SQL).use { ps ->
+                    data.forEach { (appUsageId, appUsers) ->
+                        ps.setArray(1, PostgresArrays.createTextArray(conn, appUsers))
+                        ps.setObject(2, organizationId)
+                        ps.setObject(3, studyId)
+                        ps.setString(4, participantId)
+                        ps.setObject(5, appUsageId)
+                        ps.addBatch()
+                    }
+                    ps.executeBatch().sum()
+                }
+
+                conn.commit()
+                conn.autoCommit = true
+                return@use wc
+
+            } catch (ex: Exception) {
+                logger.error(
+                        "unable to submit app usage survey $ORG_STUDY_PARTICIPANT",
+                        organizationId,
+                        studyId,
+                        participantId,
+                        ex
+                )
+                conn.rollback()
+                throw ex
+            }
+        }
     }
 }
