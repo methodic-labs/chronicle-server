@@ -1,7 +1,6 @@
 package com.openlattice.chronicle.controllers
 
 import com.codahale.metrics.annotation.Timed
-import com.geekbeast.configuration.postgres.PostgresFlavor
 import com.openlattice.chronicle.auditing.AuditEventType
 import com.openlattice.chronicle.auditing.AuditableEvent
 import com.openlattice.chronicle.auditing.AuditedOperationBuilder
@@ -17,7 +16,6 @@ import com.openlattice.chronicle.organizations.OrganizationsApi.Companion.ORGANI
 import com.openlattice.chronicle.organizations.OrganizationsApi.Companion.ORGANIZATION_ID_PATH
 import com.openlattice.chronicle.settings.AppComponent
 import com.openlattice.chronicle.storage.StorageResolver
-import com.openlattice.chronicle.study.StudyController
 import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.*

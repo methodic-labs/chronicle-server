@@ -9,8 +9,8 @@ import org.junit.Test
  * @author Matthew Tamayo-Rios &lt;matthew@openlattice.com&gt;
  */
 class StudyTests : ChronicleServerTests() {
-    private val chronicleClient: ChronicleClient =
-        ChronicleClient { ChronicleServerTests.jwtTokens.getValue("test_user").first() }
+    private val chronicleClient: ChronicleClient = clientUser1
+
 
     @Test
     fun createStudy() {

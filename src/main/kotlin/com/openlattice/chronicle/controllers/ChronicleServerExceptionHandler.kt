@@ -21,7 +21,6 @@ package com.openlattice.chronicle.controllers
 
 import com.geekbeast.controllers.exceptions.wrappers.ErrorsDTO
 import com.geekbeast.controllers.util.ApiExceptions
-import com.openlattice.chronicle.ReservedIds
 import com.openlattice.chronicle.auditing.AuditEventType
 import com.openlattice.chronicle.auditing.AuditableEvent
 import com.openlattice.chronicle.auditing.AuditingComponent
