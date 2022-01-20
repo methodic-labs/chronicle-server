@@ -28,7 +28,9 @@ package com.openlattice.chronicle.auditing
 enum class AuditEventType {
     ACCESS_DENIED,
     CREATE_STUDY,
+    DELETE_STUDY,
     GET_STUDY,
+    UPDATE_STUDY,
     STUDY_NOT_FOUND,
     CREATE_ORGANIZATION,
     READ_ENTITIES,
