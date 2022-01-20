@@ -285,9 +285,9 @@ class ResultSetAdapters {
         fun appUsage(rs: ResultSet): AppUsage {
             val appUsage = AppUsage(
                     rs.getObject(APP_USAGE_ID.name, UUID::class.java),
-                    rs.getObject(APP_USAGE_TIMESTAMP.name, OffsetDateTime::class.java),
+                    rs.getString(APP_PACKAGE_NAME.name),
                     rs.getString(APP_LABEL.name),
-                    rs.getString(APP_PACKAGE_NAME.name)
+                    rs.getObject(APP_USAGE_TIMESTAMP.name, OffsetDateTime::class.java),
             )
             if (appUsage.appLabel.isBlank()) {
                 appUsage.appLabel = appUsage.appPackageName
