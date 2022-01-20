@@ -212,11 +212,6 @@ public class ChronicleControllerV2 implements ChronicleApi {
         surveysManager.submitTimeUseDiarySurvey( organizationId, studyId, participantId, surveyData );
     }
 
-    @Override public void uploadIOSSensorData(
-            UUID organizationId, UUID studyId, String participantId, String deviceId, List<SensorDataSample> data ) {
-        throw new NotImplementedException( "Not implemented" );
-    }
-
     @Override
     @Timed
     @RequestMapping(
