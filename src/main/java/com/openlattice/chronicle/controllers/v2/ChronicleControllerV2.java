@@ -166,17 +166,17 @@ public class ChronicleControllerV2 implements ChronicleApi {
 
         return surveysManager.getStudyQuestionnaires( organizationId, studyId );
     }
-    
+
     @RequestMapping(
             path = ORGANIZATION_ID_PATH + MESSAGE_PATH,
             method = RequestMethod.POST,
             consumes = MediaType.APPLICATION_JSON_VALUE
     )
     public void sendMessages(
-            @PathVariable ( ORGANIZATION_ID ) UUID organizationId,
+            @PathVariable( ORGANIZATION_ID ) UUID organizationId,
             @RequestBody List<MessageDetails> messageDetails
     ) {
-        messageService.sendMessages( organizationId, messageDetails);
+        messageService.sendMessages( organizationId, messageDetails );
     }
 
     @RequestMapping(
@@ -187,8 +187,7 @@ public class ChronicleControllerV2 implements ChronicleApi {
             @PathVariable ( ORGANIZATION_ID ) UUID organizationId,
             @RequestParam ( MESSAGE_ID ) String messageId,
             @RequestParam ( MESSAGE_STATUS ) MessageStatus messageStatus
-    ) {
-
+    ) throws ExecutionException {
         if ( messageStatus.equals( MessageStatus.undelivered ) || messageStatus.equals( MessageStatus.failed ) ) {
             messageService.trackUndeliveredMessage( organizationId, messageId );
         }
@@ -201,9 +200,9 @@ public class ChronicleControllerV2 implements ChronicleApi {
     )
     @Override
     public void submitTimeUseDiarySurvey(
-            @PathVariable ( ORGANIZATION_ID ) UUID organizationId,
-            @PathVariable ( STUDY_ID ) UUID studyId,
-            @PathVariable ( PARTICIPANT_ID ) String participantId,
+            @PathVariable( ORGANIZATION_ID ) UUID organizationId,
+            @PathVariable( STUDY_ID ) UUID studyId,
+            @PathVariable( PARTICIPANT_ID ) String participantId,
             @RequestBody List<Map<FullQualifiedName, Set<Object>>> surveyData
     ) {
         surveysManager.submitTimeUseDiarySurvey( organizationId, studyId, participantId, surveyData );

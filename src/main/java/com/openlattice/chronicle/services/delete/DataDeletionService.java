@@ -1,5 +1,6 @@
 package com.openlattice.chronicle.services.delete;
 
+import com.geekbeast.controllers.exceptions.ForbiddenException;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.ImmutableSet;
@@ -17,7 +18,6 @@ import com.openlattice.chronicle.services.enrollment.EnrollmentManager;
 import com.openlattice.chronicle.services.entitysets.EntitySetIdsManager;
 import com.openlattice.client.ApiClient;
 import com.openlattice.client.RetrofitFactory;
-import com.openlattice.controllers.exceptions.ForbiddenException;
 import com.openlattice.data.DataApi;
 import com.openlattice.data.DeleteType;
 import com.openlattice.entitysets.EntitySetsApi;
@@ -60,14 +60,13 @@ public class DataDeletionService implements DataDeletionManager {
 
     // get a set of all participants to remove:
     private Set<UUID> getParticipantsToDelete(
-            UUID organizationId,
-            UUID studyId,
-            Optional<String> participantId ) throws Exception {
+            UUID organizationId, UUID studyId, Optional<String> participantId ) throws Exception {
 
         // specific participant
         if ( participantId.isPresent() ) {
-            UUID participantEntityKeyId = enrollmentManager
-                    .getParticipantEntityKeyId( organizationId, studyId, participantId.get() );
+            UUID participantEntityKeyId = enrollmentManager.getParticipantEntityKeyId( organizationId,
+                    studyId,
+                    participantId.get() );
             if ( participantEntityKeyId == null ) {
                 throw new Exception(
                         "unable to delete participant " + participantId.get() + ": participant does not exist." );
@@ -88,22 +87,19 @@ public class DataDeletionService implements DataDeletionManager {
             String userToken ) {
         try {
             // load api for actions authenticated by the user
-            ApiClient userApiClient = new ApiClient( RetrofitFactory.Environment.PROD_INTEGRATION,
-                    () -> userToken );
+            ApiClient userApiClient = new ApiClient( RetrofitFactory.Environment.PROD_INTEGRATION, () -> userToken );
             DataApi dataApi = userApiClient.getDataApi();
 
             // ensure study exists
-            UUID studyEntityKeyId = Preconditions
-                    .checkNotNull( enrollmentManager.getStudyEntityKeyId( organizationId, studyId ),
-                            "study must exist" );
+            UUID studyEntityKeyId = Preconditions.checkNotNull( enrollmentManager.getStudyEntityKeyId( organizationId,
+                    studyId ), "study must exist" );
 
             // entity set ids
-            ChronicleCoreAppConfig coreAppConfig = entitySetIdsManager
-                    .getChronicleAppConfig( organizationId );
-            ChronicleDataCollectionAppConfig dataCollectionAppConfig = entitySetIdsManager
-                    .getChronicleDataCollectionAppConfig( organizationId );
-            ChronicleSurveysAppConfig surveysAppConfig = entitySetIdsManager
-                    .getChronicleSurveysAppConfig( organizationId );
+            ChronicleCoreAppConfig coreAppConfig = entitySetIdsManager.getChronicleAppConfig( organizationId );
+            ChronicleDataCollectionAppConfig dataCollectionAppConfig = entitySetIdsManager.getChronicleDataCollectionAppConfig(
+                    organizationId );
+            ChronicleSurveysAppConfig surveysAppConfig = entitySetIdsManager.getChronicleSurveysAppConfig(
+                    organizationId );
 
             UUID studiesESID = coreAppConfig.getStudiesEntitySetId();
             UUID participantsESID = coreAppConfig.getParticipantEntitySetId();
@@ -126,18 +122,18 @@ public class DataDeletionService implements DataDeletionManager {
              * Since the data collection and surveys chronicle components are optional, entity set ids will be null if the
              * corresponding apps have not been installed for organization, thus we have to filter out the null values
              */
-            Set<UUID> srcEntitySetIds = Sets
-                    .filter( Sets.newHashSet( devicesESID, appDataESID, preprocessedDataESID ), Objects::nonNull );
+            Set<UUID> srcEntitySetIds = Sets.filter( Sets.newHashSet( devicesESID, appDataESID, preprocessedDataESID ),
+                    Objects::nonNull );
             Set<UUID> dstEntitySetIds = Sets.filter( Sets.newHashSet( answersESID, submissionESID, metadataESID ),
                     Objects::nonNull );
 
             if ( !participantsToDelete.isEmpty() ) {
-                dataApi.deleteEntitiesAndNeighbors( participantsESID, new EntityNeighborsFilter(
-                        participantsToDelete,
-                        Optional.of( srcEntitySetIds ),
-                        Optional.of( dstEntitySetIds ),
-                        Optional.empty()
-                ), deleteType );
+                dataApi.deleteEntitiesAndNeighbors( participantsESID,
+                        new EntityNeighborsFilter( participantsToDelete,
+                                Optional.of( srcEntitySetIds ),
+                                Optional.of( dstEntitySetIds ),
+                                Optional.empty() ),
+                        deleteType );
 
                 logger.info( "Deleted {} participants from study {} in org {}.",
                         participantsToDelete.size(),
@@ -150,10 +146,7 @@ public class DataDeletionService implements DataDeletionManager {
             }
 
             // delete study if no participantId is specified
-            dataApi.deleteEntities( studiesESID,
-                    ImmutableSet.of( studyEntityKeyId ),
-                    deleteType,
-                    false );
+            dataApi.deleteEntities( studiesESID, ImmutableSet.of( studyEntityKeyId ), deleteType, false );
             logger.info( "Deleted study {} from org {}", studyId, organizationId );
 
         } catch ( Exception e ) {
@@ -165,8 +158,7 @@ public class DataDeletionService implements DataDeletionManager {
 
     private void ensureUserCanDeleteData( Set<UUID> entitySetIds, PermissionsApi permissionsApi ) {
         try {
-            Set<AclKey> aclKeys = entitySetIds.stream().map( AclKey::new ).collect(
-                    Collectors.toSet() );
+            Set<AclKey> aclKeys = entitySetIds.stream().map( AclKey::new ).collect( Collectors.toSet() );
             permissionsApi.getAcls( aclKeys );
         } catch ( Exception e ) {
             logger.error( "Authorization for deleting participant data failed" );
@@ -175,10 +167,7 @@ public class DataDeletionService implements DataDeletionManager {
     }
 
     private void legacyDeleteStudyData(
-            UUID studyId,
-            Optional<String> participantId,
-            DeleteType deleteType,
-            String jwtToken ) {
+            UUID studyId, Optional<String> participantId, DeleteType deleteType, String jwtToken ) {
 
         try {
             // api for actions authenticated for user
@@ -194,15 +183,13 @@ public class DataDeletionService implements DataDeletionManager {
             DataApi chronicleDataApi = apiClient.getDataApi();
 
             // ensure study exists
-            UUID studyEntityKeyId = Preconditions
-                    .checkNotNull( enrollmentManager.getStudyEntityKeyId( null, studyId ),
-                            "study must exist" );
+            UUID studyEntityKeyId = Preconditions.checkNotNull( enrollmentManager.getStudyEntityKeyId( null, studyId ),
+                    "study must exist" );
 
             // entity set ids
-            ChronicleCoreAppConfig coreAppConfig = entitySetIdsManager
-                    .getLegacyChronicleAppConfig( getParticipantEntitySetName( studyId ) );
-            ChronicleDataCollectionAppConfig dataCollectionAppConfig = entitySetIdsManager
-                    .getLegacyChronicleDataCollectionAppConfig();
+            ChronicleCoreAppConfig coreAppConfig = entitySetIdsManager.getLegacyChronicleAppConfig(
+                    getParticipantEntitySetName( studyId ) );
+            ChronicleDataCollectionAppConfig dataCollectionAppConfig = entitySetIdsManager.getLegacyChronicleDataCollectionAppConfig();
             ChronicleSurveysAppConfig surveysAppConfig = entitySetIdsManager.getLegacyChronicleSurveysAppConfig();
 
             UUID studiesESID = coreAppConfig.getStudiesEntitySetId();
@@ -223,12 +210,11 @@ public class DataDeletionService implements DataDeletionManager {
 
             if ( !participantsToDelete.isEmpty() ) {
                 chronicleDataApi.deleteEntitiesAndNeighbors( participantsESID,
-                        new EntityNeighborsFilter(
-                                participantsToDelete,
+                        new EntityNeighborsFilter( participantsToDelete,
                                 Optional.of( srcEntitySetIds ),
                                 Optional.of( dstEntitySetIds ),
-                                Optional.empty()
-                        ), deleteType );
+                                Optional.empty() ),
+                        deleteType );
                 logger.info( "Deleted {} participants from study {} ", participantsToDelete.size(), studyId );
             }
 
@@ -237,10 +223,7 @@ public class DataDeletionService implements DataDeletionManager {
             }
 
             // if no participant is specified, delete study
-            chronicleDataApi.deleteEntities( studiesESID,
-                    ImmutableSet.of( studyEntityKeyId ),
-                    deleteType,
-                    false );
+            chronicleDataApi.deleteEntities( studiesESID, ImmutableSet.of( studyEntityKeyId ), deleteType, false );
             logger.info( "Deleted study {} from global studies dataset", studyId );
 
             userEntitySetsApi.deleteEntitySet( participantsESID, deleteType );
@@ -253,8 +236,7 @@ public class DataDeletionService implements DataDeletionManager {
         }
     }
 
-    @Override
-    public void deleteParticipantAndAllNeighbors(
+    @Override public void deleteParticipantAndAllNeighbors(
             UUID organizationId,
             UUID studyId,
             String participantId,
@@ -293,8 +275,7 @@ public class DataDeletionService implements DataDeletionManager {
         }
     }
 
-    @Override
-    public void deleteStudyAndAllNeighbors(
+    @Override public void deleteStudyAndAllNeighbors(
             UUID organizationId, UUID studyId, ChronicleDeleteType chronicleDeleteType, String token ) {
 
         Stopwatch stopwatch = Stopwatch.createStarted();

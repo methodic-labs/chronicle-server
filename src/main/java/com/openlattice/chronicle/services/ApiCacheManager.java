@@ -1,10 +1,10 @@
 package com.openlattice.chronicle.services;
 
+import com.geekbeast.auth0.Auth0Delegate;
+import com.geekbeast.authentication.Auth0Configuration;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
-import com.openlattice.auth0.Auth0Delegate;
-import com.openlattice.authentication.Auth0Configuration;
 import com.openlattice.chronicle.configuration.ChronicleConfiguration;
 import com.openlattice.client.ApiClient;
 import com.openlattice.client.RetrofitFactory;

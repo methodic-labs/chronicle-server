@@ -1,10 +1,20 @@
 package com.openlattice.chronicle.services.upload;
 
-import com.dataloom.streams.StreamUtil;
+import com.geekbeast.streams.StreamUtil;
 import com.google.common.base.Stopwatch;
-import com.google.common.collect.*;
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.ListMultimap;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Multimaps;
+import com.google.common.collect.SetMultimap;
+import com.google.common.collect.Sets;
 import com.openlattice.ApiUtil;
-import com.openlattice.chronicle.constants.*;
+import com.openlattice.chronicle.constants.AppComponent;
+import com.openlattice.chronicle.constants.AppUsageFrequencyType;
 import com.openlattice.chronicle.data.ChronicleCoreAppConfig;
 import com.openlattice.chronicle.data.ChronicleDataCollectionAppConfig;
 import com.openlattice.chronicle.data.EntitiesAndEdges;
@@ -15,7 +25,15 @@ import com.openlattice.chronicle.services.edm.EdmCacheManager;
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager;
 import com.openlattice.chronicle.services.entitysets.EntitySetIdsManager;
 import com.openlattice.client.ApiClient;
-import com.openlattice.data.*;
+import com.openlattice.data.DataApi;
+import com.openlattice.data.DataAssociation;
+import com.openlattice.data.DataEdgeKey;
+import com.openlattice.data.DataGraph;
+import com.openlattice.data.DataIntegrationApi;
+import com.openlattice.data.EntityDataKey;
+import com.openlattice.data.EntityKey;
+import com.openlattice.data.PropertyUpdateType;
+import com.openlattice.data.UpdateType;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
 import org.slf4j.Logger;
@@ -24,7 +42,12 @@ import org.slf4j.LoggerFactory;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -35,7 +58,6 @@ import static com.openlattice.chronicle.constants.EdmConstants.FULL_NAME_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.OL_ID_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.PERSON_ID_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.RECORDED_DATE_TIME_FQN;
-import static com.openlattice.chronicle.constants.EdmConstants.RECORD_TYPE_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.START_DATE_TIME_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.STRING_ID_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.TIMEZONE_FQN;
@@ -51,10 +73,8 @@ import static com.openlattice.chronicle.util.ChronicleServerUtil.getParticipantE
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
  */
 public class AppDataUploadService implements AppDataUploadManager {
+    private static final String APP_USAGE_FREQUENCY = "appUsageFrequency";
     protected final Logger logger = LoggerFactory.getLogger( AppDataUploadService.class );
-
-    private static final String APP_USAGE_FREQUENCY   = "appUsageFrequency";
-
     private final ScheduledTasksManager scheduledTasksManager;
     private final EnrollmentManager     enrollmentManager;
     private final ApiCacheManager       apiCacheManager;
@@ -75,7 +95,7 @@ public class AppDataUploadService implements AppDataUploadManager {
         this.entitySetIdsManager = entitySetIdsManager;
     }
 
-    private String getTruncatedDateTimeHelper(String dateTime, ChronoUnit chronoUnit) {
+    private String getTruncatedDateTimeHelper( String dateTime, ChronoUnit chronoUnit ) {
         if ( dateTime == null ) {
             return null;
         }
@@ -89,8 +109,10 @@ public class AppDataUploadService implements AppDataUploadManager {
         Map<String, Object> settings = entitySetIdsManager
                 .getOrgAppSettings( AppComponent.CHRONICLE_DATA_COLLECTION, organizationId );
 
-        String appUsageFreq = settings.getOrDefault( APP_USAGE_FREQUENCY, AppUsageFrequencyType.DAILY).toString();
-        ChronoUnit chronoUnit = appUsageFreq.equals( AppUsageFrequencyType.HOURLY.toString()) ? ChronoUnit.HOURS : ChronoUnit.DAYS;
+        String appUsageFreq = settings.getOrDefault( APP_USAGE_FREQUENCY, AppUsageFrequencyType.DAILY ).toString();
+        ChronoUnit chronoUnit = appUsageFreq.equals( AppUsageFrequencyType.HOURLY.toString() ) ?
+                ChronoUnit.HOURS :
+                ChronoUnit.DAYS;
 
         return getTruncatedDateTimeHelper( datetime, chronoUnit );
     }
@@ -158,13 +180,17 @@ public class AppDataUploadService implements AppDataUploadManager {
     }
 
     // HELPER METHODS: upload
-    private Map<UUID, Set<Object>> getUsedByEntity( String appPackageName, String dateLogged, String participantId, String deviceUser ) {
+    private Map<UUID, Set<Object>> getUsedByEntity(
+            String appPackageName,
+            String dateLogged,
+            String participantId,
+            String deviceUser ) {
         Map<UUID, Set<Object>> entity = Maps.newHashMap();
 
         entity.put( edmCacheManager.getPropertyTypeId( DATE_TIME_FQN ), ImmutableSet.of( dateLogged ) );
         entity.put( edmCacheManager.getPropertyTypeId( FULL_NAME_FQN ), ImmutableSet.of( appPackageName ) );
         entity.put( edmCacheManager.getPropertyTypeId( PERSON_ID_FQN ), ImmutableSet.of( participantId ) );
-        entity.put( edmCacheManager.getPropertyTypeId( USER_FQN ), ImmutableSet.of(deviceUser) );
+        entity.put( edmCacheManager.getPropertyTypeId( USER_FQN ), ImmutableSet.of( deviceUser ) );
         return entity;
     }
 
@@ -544,7 +570,10 @@ public class AppDataUploadService implements AppDataUploadManager {
             // association 2: user apps => used by => participant
             String deviceUser = getFirstValueOrNull( appEntity, USER_FQN );
             deviceUser = deviceUser == null ? "" : deviceUser;
-            Map<UUID, Set<Object>> usedByEntityData = getUsedByEntity( appPackageName, dateLogged, participantId, deviceUser );
+            Map<UUID, Set<Object>> usedByEntityData = getUsedByEntity( appPackageName,
+                    dateLogged,
+                    participantId,
+                    deviceUser );
 
             EntityKey usedByEK = getUsedByEntityKey( usedByESID, usedByEntityData );
             usedByEntityData.remove( edmCacheManager
@@ -553,7 +582,7 @@ public class AppDataUploadService implements AppDataUploadManager {
                     .getPropertyTypeId( PERSON_ID_FQN ) ); // PERSON_ID_FQN shouldn't be stored
             String timezone = getFirstValueOrNull( appEntity, TIMEZONE_FQN );
             timezone = timezone == null ? DEFAULT_TIMEZONE : timezone;
-            usedByEntityData.put( edmCacheManager.getPropertyTypeId( TIMEZONE_FQN ), ImmutableSet.of(timezone) );
+            usedByEntityData.put( edmCacheManager.getPropertyTypeId( TIMEZONE_FQN ), ImmutableSet.of( timezone ) );
 
             // we generate the entity key id using a truncated date to enforce uniqueness, but we'll store the actual datetime value
             usedByEntityData.put( edmCacheManager.getPropertyTypeId( DATE_TIME_FQN ), ImmutableSet.of( eventDate ) );
