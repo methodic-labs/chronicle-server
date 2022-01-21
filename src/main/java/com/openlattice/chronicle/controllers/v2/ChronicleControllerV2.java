@@ -9,7 +9,6 @@ import com.openlattice.chronicle.data.ChronicleQuestionnaire;
 import com.openlattice.chronicle.data.MessageDetails;
 import com.openlattice.chronicle.data.MessageStatus;
 import com.openlattice.chronicle.data.ParticipationStatus;
-import com.openlattice.chronicle.data.SensorDataSample;
 import com.openlattice.chronicle.services.edm.EdmCacheManager;
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager;
 import com.openlattice.chronicle.services.entitysets.EntitySetIdsManager;
@@ -206,11 +205,6 @@ public class ChronicleControllerV2 implements ChronicleApi {
             @RequestBody List<Map<FullQualifiedName, Set<Object>>> surveyData
     ) {
         surveysManager.submitTimeUseDiarySurvey( organizationId, studyId, participantId, surveyData );
-    }
-
-    @Override public void uploadIOSSensorData(
-            UUID organizationId, UUID studyId, String participantId, String deviceId, List<SensorDataSample> data ) {
-        throw new NotImplementedException( "Not implemented" );
     }
 
     @Override
