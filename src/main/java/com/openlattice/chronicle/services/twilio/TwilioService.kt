@@ -41,7 +41,7 @@ open class TwilioService(configuration: TwilioConfiguration) :
                 """
                     message sent to participant ${messageDetails.participantId}
                     for study ${messageDetails.studyId}
-                    in organization $messageDetails
+                    in organization $organizationId
                 """.trimIndent()
             )
             return MessageOutcome(
