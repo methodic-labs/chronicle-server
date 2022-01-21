@@ -72,5 +72,10 @@ class RedshiftColumns {
         val AUDIT_EVENT_TYPE = PostgresColumnDefinition("audit_event_type", PostgresDatatype.TEXT_256).notNull()
         val DESCRIPTION = PostgresColumnDefinition("description", PostgresDatatype.TEXT_256).notNull()
         val DATA = PostgresColumnDefinition("data", PostgresDatatype.VARCHAR_MAX).notNull()
+
+        // sensorKit
+        val SENSOR_DATA = PostgresColumnDefinition("data", PostgresDatatype.JSONB).notNull()
+        val SENSOR_TYPE = PostgresColumnDefinition("sensor_type", PostgresDatatype.TEXT).notNull()
+
     }
 }

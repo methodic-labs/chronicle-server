@@ -9,12 +9,18 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.AUDIT_EVENT_T
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DATA
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DESCRIPTION
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DURATION
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.END_DATE_TIME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.END_TIME
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.INTERACTION_TYPE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.ORGANIZATION_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PRINCIPAL_ID
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.RECORDED_DATE_TIME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.SECURABLE_PRINCIPAL_ID
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.SENSOR_DATA
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.SENSOR_TYPE
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.START_DATE_TIME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.START_TIME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMESTAMP
@@ -79,6 +85,24 @@ class RedshiftDataTables {
                         DATA,
                         TIMESTAMP)
             .addDataSourceNames(REDSHIFT_DATASOURCE_NAME)
+
+        @JvmField
+        val SENSOR_KIT = RedshiftTableDefinition("sensor_kit")
+                .sortKey(STUDY_ID)
+                .addColumns(
+                        ID,
+                        SENSOR_TYPE,
+                        ORGANIZATION_ID,
+                        STUDY_ID,
+                        PARTICIPANT_ID,
+                        RECORDED_DATE_TIME,
+                        START_DATE_TIME,
+                        END_DATE_TIME,
+                        SENSOR_DATA
+                ).primaryKey(ID)
+                .addDataSourceNames(REDSHIFT_DATASOURCE_NAME)
+
+
         private val USAGE_EVENT_COLS = CHRONICLE_USAGE_EVENTS.columns.joinToString(",") { it.name }
         private val USAGE_EVENT_PARAMS = CHRONICLE_USAGE_EVENTS.columns.joinToString(",") { "?" }
 
