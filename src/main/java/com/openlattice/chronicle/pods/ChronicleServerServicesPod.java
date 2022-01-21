@@ -20,14 +20,13 @@
 
 package com.openlattice.chronicle.pods;
 
-import com.dataloom.mappers.ObjectMappers;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.kryptnostic.rhizome.configuration.service.ConfigurationService;
-import com.kryptnostic.rhizome.pods.AsyncPod;
-import com.openlattice.auth0.Auth0Pod;
-import com.openlattice.auth0.Auth0TokenProvider;
-import com.openlattice.auth0.AwsAuth0TokenProvider;
-import com.openlattice.authentication.Auth0Configuration;
+import com.geekbeast.auth0.Auth0Pod;
+import com.geekbeast.auth0.Auth0TokenProvider;
+import com.geekbeast.auth0.AwsAuth0TokenProvider;
+import com.geekbeast.authentication.Auth0Configuration;
+import com.geekbeast.mappers.mappers.ObjectMappers;
+import com.geekbeast.rhizome.configuration.service.ConfigurationService;
 import com.openlattice.chronicle.configuration.ChronicleConfiguration;
 import com.openlattice.chronicle.configuration.TwilioConfiguration;
 import com.openlattice.chronicle.services.ApiCacheManager;
@@ -42,11 +41,9 @@ import com.openlattice.chronicle.services.enrollment.EnrollmentManager;
 import com.openlattice.chronicle.services.enrollment.EnrollmentService;
 import com.openlattice.chronicle.services.entitysets.EntitySetIdsManager;
 import com.openlattice.chronicle.services.entitysets.EntitySetIdsService;
-import com.openlattice.chronicle.services.message.MessageManager;
 import com.openlattice.chronicle.services.message.MessageService;
 import com.openlattice.chronicle.services.surveys.SurveysManager;
 import com.openlattice.chronicle.services.surveys.SurveysService;
-import com.openlattice.chronicle.services.twilio.TwilioManager;
 import com.openlattice.chronicle.services.twilio.TwilioService;
 import com.openlattice.chronicle.services.upload.AppDataUploadManager;
 import com.openlattice.chronicle.services.upload.AppDataUploadService;

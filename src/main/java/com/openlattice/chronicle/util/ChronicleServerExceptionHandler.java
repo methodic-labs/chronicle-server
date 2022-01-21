@@ -20,8 +20,8 @@
 
 package com.openlattice.chronicle.util;
 
-import com.openlattice.controllers.exceptions.wrappers.ErrorsDTO;
-import com.openlattice.controllers.util.ApiExceptions;
+import com.geekbeast.controllers.exceptions.wrappers.ErrorsDTO;
+import com.geekbeast.controllers.util.ApiExceptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;

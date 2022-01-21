@@ -1,7 +1,11 @@
 package com.openlattice.chronicle.services.entitysets;
 
-import com.dataloom.streams.StreamUtil;
-import com.google.common.collect.*;
+import com.geekbeast.streams.StreamUtil;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Multimaps;
+import com.google.common.collect.SetMultimap;
 import com.openlattice.apps.App;
 import com.openlattice.apps.AppApi;
 import com.openlattice.apps.UserAppConfig;
@@ -28,12 +32,43 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
-import static com.openlattice.chronicle.constants.AppComponent.*;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.*;
+import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE;
+import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE_DATA_COLLECTION;
+import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE_SURVEYS;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.ADDRESSES;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.ANSWER;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.APPDATA;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.APP_DICTIONARY;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.DEVICE;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.HAS;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.MESSAGES;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.METADATA;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.NOTIFICATION;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.PARTICIPANTS;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.PARTICIPATED_IN;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.PART_OF;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.PREPROCESSED_DATA;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.QUESTION;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.RECORDED_BY;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.REGISTERED_FOR;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.RESPONDS_WITH;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.SENT_TO;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.STUDIES;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.SUBMISSION;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.SURVEY;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.TIME_RANGE;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.USED_BY;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.USER_APPS;
 import static com.openlattice.chronicle.constants.EdmConstants.LEGACY_DATASET_COLLECTION_TEMPLATE_MAP;
 import static com.openlattice.chronicle.constants.EdmConstants.STRING_ID_FQN;
 import static com.openlattice.chronicle.util.ChronicleServerUtil.getFirstUUIDOrNull;
@@ -146,7 +181,7 @@ public class EntitySetIdsService implements EntitySetIdsManager {
                 }
                 orgEntitySetMap.put( userAppConfig.getOrganizationId(), templateTypeNameESIDMap );
 
-                settings.put(userAppConfig.getOrganizationId(), userAppConfig.getSettings());
+                settings.put( userAppConfig.getOrganizationId(), userAppConfig.getSettings() );
             } );
 
             appSettings.put( appComponent, settings );
@@ -200,12 +235,13 @@ public class EntitySetIdsService implements EntitySetIdsManager {
 
     // app settings
     @Override
-    public Map<String, Object> getOrgAppSettings(AppComponent appComponent, UUID organizationId) {
-        return appSettings.getOrDefault( appComponent, ImmutableMap.of() ).getOrDefault( organizationId, ImmutableMap.of() );
+    public Map<String, Object> getOrgAppSettings( AppComponent appComponent, UUID organizationId ) {
+        return appSettings.getOrDefault( appComponent, ImmutableMap.of() )
+                .getOrDefault( organizationId, ImmutableMap.of() );
     }
 
     @Override
-    public Map<String, Object> getOrgAppSettings(String appName, UUID organizationId) {
+    public Map<String, Object> getOrgAppSettings( String appName, UUID organizationId ) {
         AppComponent component = AppComponent.fromString( appName );
         return getOrgAppSettings( component, organizationId );
     }
@@ -229,11 +265,11 @@ public class EntitySetIdsService implements EntitySetIdsManager {
                 templateEntitySetIdMap.get( HAS ),
                 Optional.of( templateEntitySetIdMap.get( PARTICIPANTS ) ),
                 templateEntitySetIdMap.get( PARTICIPATED_IN ),
-                Optional.of(  templateEntitySetIdMap.get( MESSAGES )),
+                Optional.of( templateEntitySetIdMap.get( MESSAGES ) ),
                 templateEntitySetIdMap.get( METADATA ),
                 templateEntitySetIdMap.get( PART_OF ),
                 templateEntitySetIdMap.get( NOTIFICATION ),
-                Optional.of(  templateEntitySetIdMap.get( SENT_TO )),
+                Optional.of( templateEntitySetIdMap.get( SENT_TO ) ),
                 templateEntitySetIdMap.get( STUDIES )
         );
     }
@@ -300,8 +336,8 @@ public class EntitySetIdsService implements EntitySetIdsManager {
     @Deprecated
     public ChronicleCoreAppConfig getLegacyChronicleAppConfig( String participantESName ) {
 
-        UUID participantESID = legacyParticipantsEntitySetIds.getOrDefault( participantESName, null);
-        Optional<UUID> optional = participantESID  == null ? Optional.empty() : Optional.of( participantESID );
+        UUID participantESID = legacyParticipantsEntitySetIds.getOrDefault( participantESName, null );
+        Optional<UUID> optional = participantESID == null ? Optional.empty() : Optional.of( participantESID );
 
         return new ChronicleCoreAppConfig(
                 legacyEntitySetIds.get( HAS ),
