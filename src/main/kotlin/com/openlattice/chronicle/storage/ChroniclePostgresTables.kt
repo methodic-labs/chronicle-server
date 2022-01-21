@@ -1,5 +1,6 @@
 package com.openlattice.chronicle.storage
 
+import com.geekbeast.postgres.PostgresColumnDefinition
 import com.geekbeast.postgres.PostgresColumnsIndexDefinition
 import com.geekbeast.postgres.PostgresIndexDefinition
 import com.geekbeast.postgres.PostgresTableDefinition
@@ -9,6 +10,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_PACKAGE_N
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_USAGE_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_USAGE_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_USAGE_TIMESTAMP
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_USAGE_TIMEZONE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_USAGE_USERS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.BASE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CREATED_AT
@@ -175,13 +177,18 @@ class ChroniclePostgresTables {
                         APP_PACKAGE_NAME,
                         APP_USAGE_USERS,
                         APP_USAGE_TIMESTAMP,
-                        APP_USAGE_DATE
+                        APP_USAGE_DATE,
+                        APP_USAGE_TIMEZONE
                 )
                 .primaryKey(APP_USAGE_ID)
 
         private val APP_USAGE_COLS = APPS_USAGE.columns.joinToString(",") { it.name }
         private val APP_USAGE_PARAMS = APPS_USAGE.columns.joinToString(",") { "?" }
         val APP_USAGE_INSERT_INDICES: Map<String, Int> = APPS_USAGE.columns.mapIndexed { index, col -> col.name to index + 1 }.toMap()
+
+        fun getInsertAppUsageColumnIndex(columnDefinition: PostgresColumnDefinition): Int {
+            return APP_USAGE_INSERT_INDICES.getValue(columnDefinition.name)
+        }
 
         /**
          * PreparedStatement bind order
@@ -204,7 +211,7 @@ class ChroniclePostgresTables {
         val SYSTEM_APPS = PostgresTableDefinition("system_apps")
                 .addColumns(APP_PACKAGE_NAME)
                 .primaryKey(APP_PACKAGE_NAME)
-        
+
         init {
             ORGANIZATION_STUDIES
                 .addIndexes(PostgresColumnsIndexDefinition(ORGANIZATION_STUDIES, ORGANIZATION_ID).ifNotExists())
