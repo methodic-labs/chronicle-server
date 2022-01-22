@@ -41,8 +41,7 @@ open class MessageService(
     open fun getSearchTermString(propertyTypeId: UUID, searchString: String): String {
         return "entity.$propertyTypeId:\"$searchString\""
     }
-
-    @Throws(ExecutionException::class)
+    
     override fun trackUndeliveredMessage(organizationId: UUID, messageSid: String) {
         try {
             val apiClient = apiCacheManager.prodApiClientCache[ApiClient::class.java]
