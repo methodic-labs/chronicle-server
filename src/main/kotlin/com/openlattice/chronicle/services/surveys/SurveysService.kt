@@ -153,8 +153,6 @@ class SurveysService(
 
         return hds.connection.use { conn ->
             try {
-                conn.autoCommit = false
-
                 val wc = conn.prepareStatement(SUBMIT_APP_USAGE_SURVEY_SQL).use { ps ->
                     data.forEach { (appUsageId, appUsers) ->
                         ps.setArray(1, PostgresArrays.createTextArray(conn, appUsers))
@@ -166,9 +164,6 @@ class SurveysService(
                     }
                     ps.executeBatch().sum()
                 }
-
-                conn.commit()
-                conn.autoCommit = true
                 return@use wc
 
             } catch (ex: Exception) {
