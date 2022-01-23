@@ -25,7 +25,7 @@ class RedshiftColumns {
         //Convert all duration to milliseconds for redshift compatibility
         val DURATION = PostgresColumnDefinition("duration", PostgresDatatype.BIGINT )
 
-        val FQNS_TO_COLUMNS: Map<FullQualifiedName, PostgresColumnDefinition> = mapOf(
+        val FQNS_TO_USAGE_EVENT_COLUMNS: Map<FullQualifiedName, PostgresColumnDefinition> = mapOf(
 //                EdmConstants.OL_ID_FQN to ID,
                 EdmConstants.STRING_ID_FQN to ID,
                 EdmConstants.FULL_NAME_FQN to APP_PACKAGE_NAME,

@@ -71,9 +71,10 @@ class PostgresColumns {
         val APP_LABEL = PostgresColumnDefinition("app_label", PostgresDatatype.TEXT)
         val APP_PACKAGE_NAME = PostgresColumnDefinition("app_package_name", PostgresDatatype.TEXT).notNull()
         val APP_USAGE_ID = PostgresColumnDefinition("id", PostgresDatatype.UUID).notNull()
-        val APP_USAGE_USERS = PostgresColumnDefinition("app_users", PostgresDatatype.TEXT_ARRAY)
-        val APP_USAGE_TIMESTAMP = PostgresColumnDefinition("timestamp", PostgresDatatype.TIMESTAMPTZ)
-        val APP_USAGE_DATE = PostgresColumnDefinition("date", PostgresDatatype.DATE)
+        val APP_USAGE_USERS = PostgresColumnDefinition("app_users", PostgresDatatype.TEXT_ARRAY).notNull()
+        val APP_USAGE_TIMESTAMP = PostgresColumnDefinition("timestamp", PostgresDatatype.TIMESTAMPTZ).notNull()
+        val APP_USAGE_DATE = PostgresColumnDefinition("date", PostgresDatatype.DATE).notNull()
+        val APP_USAGE_TIMEZONE = PostgresColumnDefinition("timezone", PostgresDatatype.TEXT).notNull()
 
         // fqn to column mapping
         val FQNS_TO_APP_USAGE_COLUMNS: Map<FullQualifiedName, PostgresColumnDefinition> = mapOf(
@@ -81,7 +82,8 @@ class PostgresColumns {
                 EdmConstants.FULL_NAME_FQN to APP_PACKAGE_NAME,
                 EdmConstants.TITLE_FQN to APP_LABEL,
                 EdmConstants.USER_FQN to APP_USAGE_USERS,
-                EdmConstants.DATE_LOGGED_FQN to APP_USAGE_TIMESTAMP
+                EdmConstants.DATE_LOGGED_FQN to APP_USAGE_TIMESTAMP,
+                EdmConstants.TIMEZONE_FQN to APP_USAGE_TIMEZONE
         )
     }
 }
