@@ -11,6 +11,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_PACKAGE_N
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_USAGE_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_USAGE_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_USAGE_TIMESTAMP
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_USAGE_TIMEZONE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_USAGE_USERS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_ID
@@ -46,7 +47,7 @@ class SurveysService(
          * 4) date
          */
         val GET_APP_USAGE_SQL = """
-            SELECT ${APP_USAGE_ID.name}, ${APP_PACKAGE_NAME.name}, ${APP_LABEL.name}, ${APP_USAGE_TIMESTAMP.name}
+            SELECT ${APP_USAGE_ID.name}, ${APP_USAGE_TIMEZONE.name}, ${APP_PACKAGE_NAME.name}, ${APP_LABEL.name}, ${APP_USAGE_TIMESTAMP.name}
             FROM ${APPS_USAGE.name}
             WHERE ${ORGANIZATION_ID.name} = ? 
                 AND ${STUDY_ID.name} = ? 
