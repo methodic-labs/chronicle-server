@@ -6,13 +6,11 @@ import com.geekbeast.util.StopWatch
 import com.google.common.collect.*
 import com.openlattice.chronicle.constants.EdmConstants.*
 import com.openlattice.chronicle.constants.OutputConstants
-import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.services.ScheduledTasksManager
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import com.openlattice.chronicle.services.legacy.LegacyEdmResolver
 import com.openlattice.chronicle.services.settings.OrganizationSettingsManager
 import com.openlattice.chronicle.settings.AppUsageFrequency
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.FQNS_TO_COLUMNS
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.CHRONICLE_USAGE_EVENTS
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.getAppendTembTableSql
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.getDeleteTempTableEntriesSql
@@ -22,20 +20,23 @@ import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.util.ChronicleServerUtil
 import com.geekbeast.postgres.PostgresColumnDefinition
 import com.geekbeast.postgres.PostgresDatatype
+import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.APP_USAGE_INSERT_INDICES
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.getInsertAppUsageColumnIndex
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.getInsertIntoAppUsageTableSql
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_PACKAGE_NAME
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_USAGE_DATE
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.FQN_TO_APP_USAGE_COLUMNS
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_USAGE_TIMESTAMP
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.FQNS_TO_APP_USAGE_COLUMNS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.FQNS_TO_USAGE_EVENT_COLUMNS
 import com.zaxxer.hikari.HikariDataSource
 import org.apache.olingo.commons.api.edm.FullQualifiedName
 import org.slf4j.LoggerFactory
 import org.slf4j.event.Level
 import java.security.InvalidParameterException
-import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.temporal.ChronoUnit
 import java.util.*
@@ -160,19 +161,13 @@ class AppDataUploadService(
                     return 0
                 }
 
-                logger.info(
-                        "attempting to log data" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE,
-                        organizationId,
-                        studyId,
-                        participantId,
-                        dataSourceId
-                )
+                val mappedUsageEventData = mapToStorageModel(data, USAGE_EVENT_COLUMNS, FQNS_TO_USAGE_EVENT_COLUMNS, ::getInsertUsageEventColumnIndex)
+                val mappedAppUsageData = mapToStorageModel(data, APP_USAGE_COLUMNS, FQNS_TO_APP_USAGE_COLUMNS, ::getInsertAppUsageColumnIndex)
 
-                val mappedData = mapToStorageModel(data)
                 StopWatch(log = "Writing ${data.size} entites to DB ")
                 val written = when (flavor) {
-                    PostgresFlavor.VANILLA -> writeToPostgres(hds, organizationId, studyId, participantId, mappedData)
-                    PostgresFlavor.REDSHIFT -> writeToRedshift(hds, organizationId, studyId, participantId, mappedData)
+                    PostgresFlavor.VANILLA -> writeToPostgres(hds, organizationId, studyId, participantId, mappedUsageEventData, mappedAppUsageData)
+                    PostgresFlavor.REDSHIFT -> writeToRedshift(hds, organizationId, studyId, participantId, mappedUsageEventData, mappedAppUsageData)
                     else -> throw InvalidParameterException("Only regular postgres and redshift are supported.")
                 }
 
@@ -196,26 +191,31 @@ class AppDataUploadService(
         }
     }
 
-    private fun mapToStorageModel(data: List<SetMultimap<UUID, Any>>): Sequence<Map<FullQualifiedName, UsageEventColumn>> {
+    private fun mapToStorageModel(
+            data: List<SetMultimap<UUID, Any>>,
+            columns: List<FullQualifiedName>,
+            mapper: Map<FullQualifiedName, PostgresColumnDefinition>,
+            colIndexResolver: (PostgresColumnDefinition) -> Int
+    ): Sequence<Map<String, UsageEventColumn>> {
         return data.asSequence().map { usageEvent ->
-            (USAGE_EVENT_COLUMNS + APP_USAGE_COLUMNS).toSet().associateWith { fqn ->
-                val usageEventCol = FQNS_TO_COLUMNS[fqn]
-                val usageEventColIndex = getInsertUsageEventColumnIndex(usageEventCol!!)
-                val appUsageCol = FQN_TO_APP_USAGE_COLUMNS[fqn]
-                val appUsageColIndex = getInsertAppUsageColumnIndex(appUsageCol!!)
+            columns.associate { fqn ->
+                val col = mapper.getValue(fqn)
+                val colIndex = colIndexResolver(col)
                 val ptId = LegacyEdmResolver.getPropertyTypeId(fqn)
                 val value = usageEvent[ptId]?.iterator()?.next()
-                UsageEventColumn(usageEventCol, usageEventColIndex, appUsageCol, appUsageColIndex, value)
+                col.name to UsageEventColumn(col, colIndex, value)
             }
         }
     }
+
 
     private fun writeToRedshift(
             hds: HikariDataSource,
             organizationId: UUID,
             studyId: UUID,
             participantId: String,
-            data: Sequence<Map<FullQualifiedName, UsageEventColumn>>
+            usageEventData: Sequence<Map<String, UsageEventColumn>>,
+            appUsageData: Sequence<Map<String, UsageEventColumn>>?
     ): Int {
         return hds.connection.use { connection ->
             //Create the temporary merge table
@@ -232,11 +232,11 @@ class AppDataUploadService(
                             ps.setString(2, studyId.toString())
                             ps.setString(3, participantId)
 
-                            data.forEach { usageEventCols ->
+                            usageEventData.forEach { usageEventCols ->
                                 usageEventCols.values.forEach { usageEventCol ->
 
-                                    val col = usageEventCol.usageEventCol
-                                    val colIndex = usageEventCol.usageEventColIndex
+                                    val col = usageEventCol.col
+                                    val colIndex = usageEventCol.colIndex
                                     val value = usageEventCol.value
 
                                     //Set insert value to null, if value was not provided.
@@ -259,7 +259,9 @@ class AppDataUploadService(
                             ps.executeBatch().sum()
                         }
 
-                writeToAppUsageTable(hds, organizationId, studyId, participantId, data)
+                appUsageData?.let {
+                     writeToAppUsageTable(hds, organizationId, studyId, participantId, it)
+                }
 
                 connection.createStatement().use { stmt ->
                     stmt.execute(getDeleteTempTableEntriesSql(tempMergeTable.name))
@@ -282,9 +284,10 @@ class AppDataUploadService(
             organizationId: UUID,
             studyId: UUID,
             participantId: String,
-            data: Sequence<Map<FullQualifiedName, UsageEventColumn>>
-    ): Int {
-        return writeToRedshift(hds, organizationId, studyId, participantId, data)
+            usageEventData: Sequence<Map<String, UsageEventColumn>>,
+            appUsageData: Sequence<Map<String, UsageEventColumn>>
+            ): Int {
+        return writeToRedshift(hds, organizationId, studyId, participantId, usageEventData, appUsageData)
     }
 
     private fun writeToAppUsageTable(
@@ -292,7 +295,7 @@ class AppDataUploadService(
             organizationId: UUID,
             studyId: UUID,
             participantId: String,
-            data: Sequence<Map<FullQualifiedName, UsageEventColumn>>
+            data: Sequence<Map<String, UsageEventColumn>>
     ) {
         hds.connection.use { connection ->
             try {
@@ -305,19 +308,17 @@ class AppDataUploadService(
                     data.forEach { usageEventCols ->
 
                         // skip invalid entries
-                        val transformed = transformCols(usageEventCols)
-                        if (!isValidAppUsageEntity(transformed)) {
-                            return
+                        if (!isValidAppUsageEntity(usageEventCols)) {
+                            return@forEach
                         }
 
-                        val dateLogged = transformed.getValue(DATE_LOGGED_FQN) as LocalDate //non-null
+                        val timestamp =  usageEventCols.getValue(APP_USAGE_TIMESTAMP.name).value as String
+                        val dateLogged = OffsetDateTime.parse(timestamp).toLocalDate()
                         ps.setObject(APP_USAGE_INSERT_INDICES.getValue(APP_USAGE_DATE.name), dateLogged)
 
-                        val packageName = transformed.getValue(FULL_NAME_FQN) as String // non-null
-
-                        usageEventCols.forEach { (fqn, usageEventColumn) ->
-                            val col = usageEventColumn.appUsageCol
-                            val index = usageEventColumn.appUsageEventColIndex
+                        usageEventCols.values.forEach { usageEventColumn ->
+                            val col = usageEventColumn.col
+                            val index = usageEventColumn.colIndex
                             val value = usageEventColumn.value
 
                             // insert null if value wasn't specified
@@ -325,13 +326,8 @@ class AppDataUploadService(
                                 ps.setObject(index, null)
                             } else {
                                 when (col.datatype) {
-                                    PostgresDatatype.TEXT -> {
-                                        if (fqn == TITLE_FQN) {
-                                            ps.setString(index, value as String? ?: packageName )
-                                        } else {
-                                            ps.setString(index, value as String?)
-                                        }
-                                    }
+                                    PostgresDatatype.UUID -> ps.setObject(index, UUID.fromString(value as String?))
+                                    PostgresDatatype.TEXT -> ps.setString(index, value as String?)
                                     PostgresDatatype.TEXT_ARRAY -> {
                                         val valStr = value as String
                                         if (valStr.isBlank()) {
@@ -358,29 +354,18 @@ class AppDataUploadService(
         }
     }
 
+    private fun isValidAppUsageEntity(entity: Map<String, UsageEventColumn>): Boolean {
+        val appPackageName = entity.getValue(APP_PACKAGE_NAME.name).value as String?
+        if (appPackageName == null || scheduledTasksManager.systemAppPackageNames.contains(appPackageName)) return false
 
-    private fun transformCols(mappedCols: Map<FullQualifiedName, UsageEventColumn>): Map<FullQualifiedName, Any?> {
-        val result: MutableMap<FullQualifiedName, Any?> = mutableMapOf()
-        val appPackageName = mappedCols.getValue(FULL_NAME_FQN).value as String?
-        result[FULL_NAME_FQN] = appPackageName
-
-        try {
-            val timestamp = mappedCols.getValue(DATE_LOGGED_FQN).value as String? ?: ""
-            val date = OffsetDateTime.parse(timestamp).toLocalDate()
-            result[DATE_LOGGED_FQN] = date
-
+        // try parsing date
+        return try {
+            val timestamp = entity.getValue(APP_USAGE_TIMESTAMP.name).value as String? ?: ""
+            OffsetDateTime.parse(timestamp).toLocalDate()
+            true
         } catch (ex: Exception) {
-            result[DATE_LOGGED_FQN] = null
+            false
         }
-
-        return result
-    }
-
-    private fun isValidAppUsageEntity(entity: Map<FullQualifiedName, Any?>): Boolean {
-        val appPackageName = entity.getValue(FULL_NAME_FQN) as String?
-        val date = entity.getValue(DATE_LOGGED_FQN) as LocalDate?
-
-        return (date != null && appPackageName != null &&  !scheduledTasksManager.systemAppPackageNames.contains(appPackageName))
     }
 
 
@@ -391,10 +376,8 @@ class AppDataUploadService(
 
 
 private data class UsageEventColumn(
-        val usageEventCol: PostgresColumnDefinition,
-        val usageEventColIndex: Int,
-        val appUsageCol: PostgresColumnDefinition,
-        val appUsageEventColIndex: Int,
+        val col: PostgresColumnDefinition,
+        val colIndex: Int,
         val value: Any?
 )
 
