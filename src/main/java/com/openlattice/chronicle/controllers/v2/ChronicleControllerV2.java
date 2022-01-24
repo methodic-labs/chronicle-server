@@ -9,7 +9,6 @@ import com.openlattice.chronicle.data.ChronicleQuestionnaire;
 import com.openlattice.chronicle.data.MessageDetails;
 import com.openlattice.chronicle.data.MessageStatus;
 import com.openlattice.chronicle.data.ParticipationStatus;
-import com.openlattice.chronicle.data.SensorDataSample;
 import com.openlattice.chronicle.services.edm.EdmCacheManager;
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager;
 import com.openlattice.chronicle.services.entitysets.EntitySetIdsManager;
