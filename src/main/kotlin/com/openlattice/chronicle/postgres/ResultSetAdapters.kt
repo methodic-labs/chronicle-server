@@ -48,7 +48,11 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.USERNAME
 import com.geekbeast.postgres.PostgresArrays
 import com.openlattice.chronicle.organizations.Organization
 import com.openlattice.chronicle.organizations.OrganizationPrincipal
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_LABEL
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_PACKAGE_NAME
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_USAGE_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_USAGE_TIMESTAMP
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_USAGE_TIMEZONE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CREATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ENDED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LAT
@@ -61,10 +65,12 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_VERSION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPDATED_AT
 import com.openlattice.chronicle.study.Study
+import com.openlattice.chronicle.survey.AppUsage
 import org.slf4j.LoggerFactory
 import java.sql.ResultSet
 import java.sql.SQLException
 import java.time.OffsetDateTime
+import java.time.ZoneId
 import java.util.*
 
 /**
@@ -275,6 +281,24 @@ class ResultSetAdapters {
         @Throws(SQLException::class)
         fun systemApp(rs: ResultSet): String {
             return rs.getString(APP_PACKAGE_NAME.name)
+        }
+
+        @Throws(SQLException::class)
+        fun appUsage(rs: ResultSet): AppUsage {
+            val timezone = rs.getString(APP_USAGE_TIMEZONE.name)
+            val timestamp =  rs.getObject(APP_USAGE_TIMESTAMP.name, OffsetDateTime::class.java)
+            val zoneId = ZoneId.of(timezone)
+            val appUsage = AppUsage(
+                    rs.getObject(APP_USAGE_ID.name, UUID::class.java),
+                    rs.getString(APP_PACKAGE_NAME.name),
+                    rs.getString(APP_LABEL.name),
+                    timestamp.toInstant().atZone(zoneId).toOffsetDateTime()
+            )
+            if (appUsage.appLabel.isBlank()) {
+                appUsage.appLabel = appUsage.appPackageName
+            }
+
+            return appUsage
         }
     }
 }

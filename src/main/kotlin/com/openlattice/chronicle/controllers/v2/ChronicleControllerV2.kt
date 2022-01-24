@@ -15,6 +15,7 @@ import com.openlattice.chronicle.services.settings.OrganizationSettingsManager
 import com.openlattice.chronicle.services.surveys.SurveysManager
 import com.openlattice.chronicle.services.upload.AppDataUploadManager
 import com.openlattice.chronicle.sources.Datasource
+import com.openlattice.chronicle.survey.AppUsage
 import org.apache.olingo.commons.api.edm.FullQualifiedName
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.*
@@ -104,7 +105,7 @@ class ChronicleControllerV2 : ChronicleApi {
             @PathVariable(ChronicleApi.PARTICIPANT_ID) participantId: String,
             @RequestBody associationDetails: Map<UUID, Map<FullQualifiedName, Set<Any>>>
     ) {
-        surveysManager!!.submitAppUsageSurvey(organizationId, studyId, participantId, associationDetails)
+       TODO("to be removed")
     }
 
     @Timed
@@ -132,7 +133,8 @@ class ChronicleControllerV2 : ChronicleApi {
             @PathVariable(ChronicleApi.PARTICIPANT_ID) participantId: String,
             @RequestParam(value = ChronicleApi.DATE) date: String
     ): List<ChronicleAppsUsageDetails> {
-        return surveysManager!!.getParticipantAppsUsageData(organizationId, studyId, participantId, date)
+//        return surveysManager!!.getParticipantAppsUsageData(organizationId, studyId, participantId, date)
+        TODO("won't be needed any more. to remove")
     }
 
     @Timed
@@ -157,7 +159,8 @@ class ChronicleControllerV2 : ChronicleApi {
             @PathVariable(ChronicleApi.PARTICIPANT_ID) participantId: String,
             @RequestBody surveyData: List<Map<FullQualifiedName, Set<Any>>>
     ) {
-        surveysManager!!.submitTimeUseDiarySurvey(organizationId, studyId, participantId, surveyData)
+        // surveysManager!!.submitTimeUseDiarySurvey(organizationId, studyId, participantId, surveyData)
+        TODO("implementation moved to TimeUseDiaryController")
     }
 
     @Timed
