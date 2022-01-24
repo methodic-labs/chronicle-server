@@ -53,7 +53,7 @@ class SurveysService(
                 AND ${STUDY_ID.name} = ? 
                 AND ${PARTICIPANT_ID.name} = ? 
                 AND ${APP_USAGE_DATE.name} = ?
-                AND cardinality(${APP_USAGE_USERS.name}) = 0
+                AND (cardinality(${APP_USAGE_USERS.name}) = 0 OR ${APP_USAGE_USERS.name} IS NULL)
         """.trimIndent()
 
         /**
