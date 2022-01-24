@@ -202,7 +202,13 @@ class AppDataUploadService(
                 val col = mapper.getValue(fqn)
                 val colIndex = colIndexResolver(col)
                 val ptId = LegacyEdmResolver.getPropertyTypeId(fqn)
-                val value = usageEvent[ptId]?.iterator()?.next()
+                val value = usageEvent[ptId]?.iterator()?.let {
+                    if (it.hasNext()) {
+                        it.next()
+                    } else {
+                        null
+                    }
+                }
                 col.name to UsageEventColumn(col, colIndex, value)
             }
         }
@@ -329,7 +335,7 @@ class AppDataUploadService(
                                     PostgresDatatype.UUID -> ps.setObject(index, UUID.fromString(value as String?))
                                     PostgresDatatype.TEXT -> ps.setString(index, value as String?)
                                     PostgresDatatype.TEXT_ARRAY -> {
-                                        val valStr = value as String
+                                        val valStr = value as String? ?: ""
                                         if (valStr.isBlank()) {
                                             ps.setArray(index, PostgresArrays.createUuidArray(connection, listOf()))
                                         } else {
