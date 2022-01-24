@@ -143,6 +143,10 @@ class RedshiftDataTables {
         fun getInsertUsageEventColumnIndex(
                 column: PostgresColumnDefinition
         ): Int = INSERT_USAGE_EVENT_COLUMN_INDICES.getValue(column.name)
+
+        fun getInsertUsageStatColumnIndex(
+                column: PostgresColumnDefinition
+        ): Int = INSERT_USAGE_STATS_COLUMN_INDICES.getValue(column.name)
     }
 }
 
