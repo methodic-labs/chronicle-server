@@ -54,7 +54,7 @@ class StudyService(
             PostgresColumns.SETTINGS
         ).joinToString(",") { it.name }
 
-        private val UPDATE_STUDY_COLUMNS = listOf(
+        private val UPDATE_STUDY_COLUMNS_LIST = listOf(
             PostgresColumns.TITLE,
             PostgresColumns.DESCRIPTION,
             PostgresColumns.UPDATED_AT,
@@ -65,7 +65,14 @@ class StudyService(
             PostgresColumns.STUDY_GROUP,
             PostgresColumns.STUDY_VERSION,
             PostgresColumns.SETTINGS
-        ).joinToString(",") { it.name }
+        )
+
+        private val UPDATE_STUDY_COLUMNS = UPDATE_STUDY_COLUMNS_LIST.joinToString(",") { it.name }
+
+        private val COALESCED_STUDY_COLUMNS = UPDATE_STUDY_COLUMNS_LIST
+            .joinToString(",") {
+            "coalesce(?${if(it.equals(PostgresColumns.SETTINGS)) "::jsonb" else ""}, ${it.name})"
+        }
 
         private val ORG_STUDIES_COLS = listOf(
             PostgresColumns.ORGANIZATION_ID,
@@ -126,7 +133,7 @@ class StudyService(
 
         private val UPDATE_STUDY_SQL = """
             UPDATE ${STUDIES.name}
-            SET (${UPDATE_STUDY_COLUMNS}) = (?,?,?,?,?,?,?,?,?,?::jsonb)
+            SET (${UPDATE_STUDY_COLUMNS}) = (${COALESCED_STUDY_COLUMNS})
             WHERE ${STUDY_ID.name} = ANY(?)
         """.trimIndent()
     }
@@ -173,6 +180,7 @@ class StudyService(
 
     override fun updateStudy(connection: Connection, studyId: UUID, study: Study) {
         val ps = connection.prepareStatement(UPDATE_STUDY_SQL)
+
         ps.setObject(1, study.title)
         ps.setObject(2, study.description)
         ps.setObject(3, OffsetDateTime.now())
