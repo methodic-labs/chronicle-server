@@ -37,13 +37,7 @@ open class TwilioService(configuration: TwilioConfiguration) :
                 .setStatusCallback(URI.create(
                     "https://api.openlattice.com$BASE/$organizationId$MESSAGE_PATH$STATUS_PATH"))
                 .create()
-            logger.info(
-                """
-                    message sent to participant ${messageDetails.participantId}
-                    for study ${messageDetails.studyId}
-                    in organization $organizationId
-                """.trimIndent()
-            )
+            logger.info("message sent to participant ${messageDetails.participantId} for study ${messageDetails.studyId} in organization $organizationId".trimIndent())
             return MessageOutcome(
                 messageDetails.messageType,
                 OffsetDateTime.now(),
@@ -54,11 +48,7 @@ open class TwilioService(configuration: TwilioConfiguration) :
                 messageDetails.studyId
             )
         } catch (e: ApiException) {
-            logger.error("""
-                Unable to send message of type ${messageDetails.messageType} 
-                to participant ${messageDetails.participantId} 
-                in study ${messageDetails.studyId}
-                """.trimIndent(), e)
+            logger.error("Unable to send message of type ${messageDetails.messageType} to participant ${messageDetails.participantId} in study ${messageDetails.studyId}".trimIndent(), e)
             return MessageOutcome(
                 messageDetails.messageType,
                 OffsetDateTime.now(),

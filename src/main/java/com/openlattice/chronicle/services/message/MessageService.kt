@@ -147,22 +147,12 @@ open class MessageService(
         try {
             dataApi.createEntityAndAssociationData(dataGraph)
             for (messageOutcome in messageOutcomes) {
-                logger.info("""
-                    Recorded message ${messageOutcome.sid}
-                    sent to participant ${messageOutcome.participantId}
-                    for study ${messageOutcome.studyId}
-                    in organization $organizationId
-                """.trimIndent())
+                logger.info("Recorded message ${messageOutcome.sid} sent to participant ${messageOutcome.participantId} for study ${messageOutcome.studyId} in organization $organizationId ".trimIndent())
             }
         } catch (e: ExecutionException) {
             logger.info("Failed to record messages", e)
             for (messageOutcome in messageOutcomes) {
-                logger.info("""
-                    Unable to record message ${messageOutcome.sid}
-                    sent to participant ${messageOutcome.participantId}
-                    for study ${messageOutcome.studyId}
-                    in organization $organizationId
-                """.trimIndent())
+                logger.info("Unable to record message ${messageOutcome.sid} sent to participant ${messageOutcome.participantId} for study ${messageOutcome.studyId} in organization $organizationId".trimIndent())
             }
         }
     }
