@@ -134,7 +134,7 @@ class StudyService(
         private val UPDATE_STUDY_SQL = """
             UPDATE ${STUDIES.name}
             SET (${UPDATE_STUDY_COLUMNS}) = (${COALESCED_STUDY_COLUMNS})
-            WHERE ${STUDY_ID.name} = ANY(?)
+            WHERE ${STUDY_ID.name} = ?
         """.trimIndent()
     }
 
