@@ -26,6 +26,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.sql.Connection
+import java.time.OffsetDateTime
 import java.util.UUID
 
 /**
@@ -46,6 +47,19 @@ class StudyService(
             PostgresColumns.STUDY_ID,
             PostgresColumns.TITLE,
             PostgresColumns.DESCRIPTION,
+            PostgresColumns.LAT,
+            PostgresColumns.LON,
+            PostgresColumns.STUDY_GROUP,
+            PostgresColumns.STUDY_VERSION,
+            PostgresColumns.SETTINGS
+        ).joinToString(",") { it.name }
+
+        private val UPDATE_STUDY_COLUMNS = listOf(
+            PostgresColumns.TITLE,
+            PostgresColumns.DESCRIPTION,
+            PostgresColumns.UPDATED_AT,
+            PostgresColumns.STARTED_AT,
+            PostgresColumns.ENDED_AT,
             PostgresColumns.LAT,
             PostgresColumns.LON,
             PostgresColumns.STUDY_GROUP,
@@ -95,6 +109,26 @@ class StudyService(
             USING (${STUDY_ID.name}) 
             WHERE ${STUDY_ID.name} = ANY(?)
         """.trimIndent()
+
+        /**
+         * 1. title,
+         * 2. description,
+         * 3. updated_at,
+         * 4. started_at,
+         * 5. ended_at,
+         * 6. lat,
+         * 7. lon,
+         * 8. study_group,
+         * 9. study_version,
+         * 10. settings
+         * 11. study_id
+         */
+
+        private val UPDATE_STUDY_SQL = """
+            UPDATE ${STUDIES.name}
+            SET (${UPDATE_STUDY_COLUMNS}) = (?,?,?,?,?,?,?,?,?,?::jsonb)
+            WHERE ${STUDY_ID.name} = ANY(?)
+        """.trimIndent()
     }
 
     override fun createStudy(connection: Connection, study: Study) {
@@ -135,5 +169,21 @@ class StudyService(
                 ) { ResultSetAdapters.study(it) }
 
             }
+    }
+
+    override fun updateStudy(connection: Connection, studyId: UUID, study: Study) {
+        val ps = connection.prepareStatement(UPDATE_STUDY_SQL)
+        ps.setObject(1, study.title)
+        ps.setObject(2, study.description)
+        ps.setObject(3, OffsetDateTime.now())
+        ps.setObject(4, study.startedAt)
+        ps.setObject(5, study.endedAt)
+        ps.setObject(6, study.lat)
+        ps.setObject(7, study.lon)
+        ps.setObject(8, study.group)
+        ps.setObject(9, study.version)
+        ps.setString(10, mapper.writeValueAsString(study.settings))
+        ps.setObject(11, study.id)
+        ps.executeUpdate()
     }
 }

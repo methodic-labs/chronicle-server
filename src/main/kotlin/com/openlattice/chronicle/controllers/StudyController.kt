@@ -118,4 +118,38 @@ class StudyController @Inject constructor(
 
     }
 
+    @Timed
+    @PutMapping(
+        path = [STUDY_ID_PATH],
+        consumes = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    override fun updateStudy(
+        @PathVariable(STUDY_ID) studyId: UUID,
+        @RequestBody study: Study
+    ) {
+        val studyAclKey = AclKey(studyId);
+        ensureOwnerAccess(studyAclKey)
+        val currentUserId = Principals.getCurrentUser().id;
+        logger.info("Updating study with id $studyId on behalf of $currentUserId")
+
+        val (flavor, hds) = storageResolver.getPlatformStorage()
+        check(flavor == PostgresFlavor.VANILLA) { "Only vanilla postgres supported for studies." }
+        AuditedOperationBuilder<Unit>(hds.connection, auditingManager)
+            .operation { connection -> studyService.updateStudy(connection, studyId, study) }
+            .audit {
+                listOf(
+                    AuditableEvent(
+                        studyAclKey,
+                        Principals.getCurrentSecurablePrincipal().id,
+                        currentUserId,
+                        AuditEventType.UPDATE_STUDY,
+                        "",
+                        studyId,
+                        UUID(0, 0),
+                        mapOf()
+                    )
+                )
+            }
+    }
+
 }
