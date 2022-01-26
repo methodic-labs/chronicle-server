@@ -25,9 +25,6 @@ class PostgresColumns {
         val DELETE_ME = PostgresColumnDefinition("delete_me", PostgresDatatype.TIMESTAMPTZ)
             .notNull()
             .withDefault("'-infinity'")
-        val DELETED_AT = PostgresColumnDefinition("deleted_at", PostgresDatatype.TIMESTAMPTZ)
-            .notNull()
-            .withDefault("'-infinity'")
 
         val ACL_KEY = PostgresColumnDefinition("acl_key", PostgresDatatype.UUID_ARRAY)
         val PRINCIPAL_ID = PostgresColumnDefinition("principal_id", PostgresDatatype.TEXT)

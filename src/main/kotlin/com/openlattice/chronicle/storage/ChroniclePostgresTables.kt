@@ -100,13 +100,11 @@ class ChroniclePostgresTables {
         val PARTICIPANTS = PostgresTableDefinition("participants")
             .addColumns(
                 PARTICIPANT_ID,
-                FRIENDLY_ID,
                 FIRST_NAME,
                 LAST_NAME,
                 NAME,
                 DATE_OF_BIRTH,
-                DELETE_ME,
-                DELETED_AT
+                DELETE_ME
             )
             .primaryKey(PARTICIPANT_ID)
 
