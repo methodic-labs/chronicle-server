@@ -13,7 +13,8 @@ class PostgresColumns {
         //Not actually used in table, just for reading studies.
         val ORGANIZATION_IDS = PostgresColumnDefinition("organization_ids", PostgresDatatype.UUID_ARRAY).notNull()
         val STUDY_ID = PostgresColumnDefinition("study_id", PostgresDatatype.UUID).notNull()
-        val PARTICIPANT_ID = PostgresColumnDefinition("particpant_id", PostgresDatatype.TEXT).notNull()
+        val PARTICIPANT_ID = PostgresColumnDefinition("particpant_id", PostgresDatatype.UUID).notNull()
+        val FRIENDLY_ID = PostgresColumnDefinition("friendly_id", PostgresDatatype.TEXT).notNull()
         val TITLE = PostgresColumnDefinition("title", PostgresDatatype.TEXT)
         val DESCRIPTION = PostgresColumnDefinition("description", PostgresDatatype.TEXT)
         val SETTINGS = PostgresColumnDefinition("settings", PostgresDatatype.JSONB).withDefault("'{}'::jsonb")
