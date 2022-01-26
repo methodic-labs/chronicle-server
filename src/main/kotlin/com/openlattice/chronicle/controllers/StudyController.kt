@@ -120,7 +120,7 @@ class StudyController @Inject constructor(
     }
 
     @Timed
-    @PutMapping(
+    @PatchMapping(
         path = [STUDY_ID_PATH],
         consumes = [MediaType.APPLICATION_JSON_VALUE]
     )
