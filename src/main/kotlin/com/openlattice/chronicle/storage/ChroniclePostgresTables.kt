@@ -6,6 +6,8 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.BASE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CREATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DATE_OF_BIRTH
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.DELETED_AT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.DELETE_ME
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DESCRIPTION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ENDED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.EXPIRATION
@@ -102,7 +104,9 @@ class ChroniclePostgresTables {
                 FIRST_NAME,
                 LAST_NAME,
                 NAME,
-                DATE_OF_BIRTH
+                DATE_OF_BIRTH,
+                DELETE_ME,
+                DELETED_AT
             )
             .primaryKey(PARTICIPANT_ID)
 
