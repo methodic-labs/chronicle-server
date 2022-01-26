@@ -87,7 +87,7 @@ class RedshiftDataTables {
             .addDataSourceNames(REDSHIFT_DATASOURCE_NAME)
 
         @JvmField
-        val SENSOR_KIT = RedshiftTableDefinition("sensor_kit")
+        val IOS_SENSOR = RedshiftTableDefinition("ios_sensor")
                 .sortKey(STUDY_ID)
                 .addColumns(
                         ID,
