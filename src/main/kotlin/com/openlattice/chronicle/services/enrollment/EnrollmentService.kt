@@ -27,7 +27,7 @@ class EnrollmentService(
             studyId: UUID,
             participantId: String,
             datasourceId: String,
-            datasource: com.google.common.base.Optional<Datasource>
+            datasource: Datasource
     ): UUID {
         logger.info(
                 "attempting to register data source" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE,
@@ -65,7 +65,10 @@ class EnrollmentService(
     }
 
     override fun isKnownDatasource(
-            organizationId: UUID, studyId: UUID, participantId: String, datasourceId: String
+            organizationId: UUID,
+            studyId: UUID,
+            participantId: String,
+            datasourceId: String
     ): Boolean {
         TODO("Not yet implemented")
     }

@@ -1,10 +1,8 @@
 package com.openlattice.chronicle.services.enrollment
 
-import com.google.common.base.Optional
 import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.sources.Datasource
-import org.apache.olingo.commons.api.edm.FullQualifiedName
 import java.util.*
 
 /**
@@ -20,7 +18,7 @@ interface EnrollmentManager {
             studyId: UUID,
             participantId: String,
             datasourceId: String,
-            datasource: Optional<Datasource>
+            datasource: Datasource
     ): UUID
 
     fun isKnownDatasource(organizationId: UUID, studyId: UUID, participantId: String, datasourceId: String): Boolean

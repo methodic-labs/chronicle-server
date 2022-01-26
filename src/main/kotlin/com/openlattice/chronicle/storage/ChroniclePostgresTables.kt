@@ -36,6 +36,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_DATA
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_VERSION
 import com.geekbeast.postgres.PostgresTableDefinition
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.CANDIDATE_ID
 
 /**
  *
@@ -89,14 +90,15 @@ class ChroniclePostgresTables {
             .addColumns(
                 ORGANIZATION_ID,
                 STUDY_ID,
-                PARTICIPANT_ID,
+                CANDIDATE_ID,
+                PARTICIPANT_ID
             )
-            .primaryKey(STUDY_ID, PARTICIPANT_ID)
+            .primaryKey(STUDY_ID, CANDIDATE_ID)
 
         @JvmField
-        val PARTICIPANTS = PostgresTableDefinition("participants")
+        val candidates = PostgresTableDefinition("candidates")
             .addColumns(
-                PARTICIPANT_ID,
+                CANDIDATE_ID,
                 TITLE,
                 NAME,
                 FIRST_NAME,
@@ -105,7 +107,7 @@ class ChroniclePostgresTables {
                 DESCRIPTION,
                 SETTINGS
             )
-            .primaryKey(PARTICIPANT_ID)
+            .primaryKey(CANDIDATE_ID)
 
         @JvmField
         val BASE_LONG_IDS: PostgresTableDefinition = PostgresTableDefinition("base_long_ids")
