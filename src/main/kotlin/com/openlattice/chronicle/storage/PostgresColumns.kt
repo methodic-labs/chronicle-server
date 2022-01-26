@@ -14,7 +14,7 @@ class PostgresColumns {
         val ORGANIZATION_IDS = PostgresColumnDefinition("organization_ids", PostgresDatatype.UUID_ARRAY).notNull()
         val STUDY_ID = PostgresColumnDefinition("study_id", PostgresDatatype.UUID).notNull()
         val PARTICIPANT_ID = PostgresColumnDefinition("particpant_id", PostgresDatatype.TEXT).notNull()
-        val CANDIDATE_ID = PostgresColumnDefinition("particpant_id", PostgresDatatype.UUID).notNull()
+        val CANDIDATE_ID = PostgresColumnDefinition("candidate_id", PostgresDatatype.UUID).notNull()
         val TITLE = PostgresColumnDefinition("title", PostgresDatatype.TEXT)
         val DESCRIPTION = PostgresColumnDefinition("description", PostgresDatatype.TEXT)
         val SETTINGS = PostgresColumnDefinition("settings", PostgresDatatype.JSONB).withDefault("'{}'::jsonb")
