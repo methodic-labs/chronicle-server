@@ -55,7 +55,6 @@ class ChronicleControllerV2 : ChronicleApi {
     ): UUID {
         if( datasource.isPresent ) {
             return enrollmentManager.registerDatasource(
-                organizationId,
                 studyId,
                 participantId,
                 datasourceId,
@@ -75,7 +74,7 @@ class ChronicleControllerV2 : ChronicleApi {
             @PathVariable(ChronicleApi.ORGANIZATION_ID) organizationId: UUID,
             @PathVariable(ChronicleApi.STUDY_ID) studyId: UUID
     ): Boolean {
-        return enrollmentManager.isNotificationsEnabled(organizationId, studyId)
+        return enrollmentManager.isNotificationsEnabled(studyId)
     }
 
     @Timed
@@ -88,7 +87,7 @@ class ChronicleControllerV2 : ChronicleApi {
             @PathVariable(ChronicleApi.STUDY_ID) studyId: UUID,
             @PathVariable(ChronicleApi.PARTICIPANT_ID) participantId: String
     ): ParticipationStatus {
-        return enrollmentManager.getParticipationStatus(organizationId, studyId, participantId)
+        return enrollmentManager.getParticipationStatus(studyId, participantId)
     }
 
     @Timed
