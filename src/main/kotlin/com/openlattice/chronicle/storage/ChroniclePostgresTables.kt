@@ -86,7 +86,7 @@ class ChroniclePostgresTables {
             .primaryKey(ORGANIZATION_ID, STUDY_ID)
 
         @JvmField
-        val STUDY_PARTICIPATION = PostgresTableDefinition("study_participation")
+        val STUDY_PARTICIPANTS = PostgresTableDefinition("study_participants")
             .addColumns(
                 ORGANIZATION_ID,
                 STUDY_ID,
