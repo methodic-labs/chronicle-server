@@ -135,7 +135,7 @@ class StudyController @Inject constructor(
         logger.info("Updating study with id $studyId on behalf of $currentUserId")
 
         val (flavor, hds) = storageResolver.getPlatformStorage()
-        check(flavor == PostgresFlavor.VANILLA) { "Only vanilla postgres supported for studies." }
+        ensureVanilla(flavor)
         AuditedOperationBuilder<Unit>(hds.connection, auditingManager)
             .operation { connection -> studyService.updateStudy(connection, studyId, study) }
             .audit {
