@@ -185,19 +185,24 @@ class StudyService(
 
     override fun updateStudy(connection: Connection, studyId: UUID, study: StudyUpdate) {
         val ps = connection.prepareStatement(UPDATE_STUDY_SQL)
-
-        ps.setObject(1, study.title)
-        ps.setObject(2, study.description)
-        ps.setObject(3, OffsetDateTime.now())
-        ps.setObject(4, study.startedAt)
-        ps.setObject(5, study.endedAt)
-        ps.setObject(6, study.lat)
-        ps.setObject(7, study.lon)
-        ps.setObject(8, study.group)
-        ps.setObject(9, study.version)
-        ps.setObject(10, study.contact)
-        ps.setString(11, mapper.writeValueAsString(study.settings))
-        ps.setObject(12, studyId)
+        var index = 1;
+        ps.setString(index++, study.title)
+        ps.setString(index++, study.description)
+        ps.setObject(index++, OffsetDateTime.now())
+        ps.setObject(index++, study.startedAt)
+        ps.setObject(index++, study.endedAt)
+        ps.setObject(index++, study.lat)
+        ps.setObject(index++, study.lon)
+        ps.setString(index++, study.group)
+        ps.setString(index++, study.version)
+        ps.setString(index++, study.contact)
+        if (study.settings == null){
+            ps.setObject(index++, study.settings)
+        }
+        else {
+            ps.setString(index++, mapper.writeValueAsString(study.settings))
+        }
+        ps.setObject(index++, studyId)
         ps.executeUpdate()
     }
 }
