@@ -18,6 +18,7 @@ import com.openlattice.chronicle.sources.Datasource
 import org.apache.olingo.commons.api.edm.FullQualifiedName
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.*
+import java.security.InvalidParameterException
 import java.util.*
 import javax.inject.Inject
 
@@ -52,7 +53,17 @@ class ChronicleControllerV2 : ChronicleApi {
             @PathVariable(ChronicleApi.DATASOURCE_ID) datasourceId: String,
             @RequestBody datasource: Optional<Datasource>
     ): UUID {
-        return enrollmentManager.registerDatasource(organizationId, studyId, participantId, datasourceId, java.util.Optional.ofNullable(datasource.orNull()))
+        if( datasource.isPresent ) {
+            return enrollmentManager.registerDatasource(
+                organizationId,
+                studyId,
+                participantId,
+                datasourceId,
+                datasource.get()
+            )
+        } else {
+            throw InvalidParameterException("Datasource must be specified when enrolling.")
+        }
     }
 
     @Timed
