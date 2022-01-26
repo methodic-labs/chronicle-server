@@ -98,6 +98,7 @@ class RedshiftDataTables {
                         RECORDED_DATE_TIME,
                         START_DATE_TIME,
                         END_DATE_TIME,
+                        TIMEZONE,
                         SENSOR_DATA
                 ).primaryKey(ID)
                 .addDataSourceNames(REDSHIFT_DATASOURCE_NAME)
