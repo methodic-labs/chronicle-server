@@ -7,9 +7,11 @@ import java.util.*
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
  */
 interface SensorDataManager {
-    fun uploadData(organizationId: UUID,
-                   studyId: UUID,
-                   participantId: String,
-                   deviceId: String,
-                   data: List<SensorDataSample>)
+    fun uploadData(
+            organizationId: UUID,
+            studyId: UUID,
+            participantId: String,
+            deviceId: String,
+            data: List<SensorDataSample>
+    ): Int
 }

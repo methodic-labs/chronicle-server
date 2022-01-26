@@ -220,13 +220,14 @@ public class ChronicleControllerV2 implements ChronicleApi {
             method = RequestMethod.POST,
             consumes = MediaType.APPLICATION_JSON_VALUE
     )
-    public void uploadIOSSensorData(
+    public Integer uploadIOSSensorData(
             @PathVariable( ORGANIZATION_ID ) UUID organizationId,
             @PathVariable( STUDY_ID ) UUID studyId,
             @PathVariable( PARTICIPANT_ID ) String participantId,
             @PathVariable( DATASOURCE_ID ) String deviceId,
-            @RequestBody List<SensorDataSample> data ) {
-        sensorDataManager.uploadData( organizationId, studyId, participantId, deviceId, data );
+            @RequestBody List<SensorDataSample> data
+    ) {
+        return sensorDataManager.uploadData( organizationId, studyId, participantId, deviceId, data );
     }
 
     @Override

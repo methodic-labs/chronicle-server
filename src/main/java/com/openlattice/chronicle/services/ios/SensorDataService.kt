@@ -13,6 +13,7 @@ import com.openlattice.chronicle.constants.EdmConstants.RECORDED_DATE_TIME_FQN
 import com.openlattice.chronicle.constants.EdmConstants.START_DATE_TIME_FQN
 import com.openlattice.chronicle.constants.EdmConstants.TIMEZONE_FQN
 import com.openlattice.chronicle.data.EntityUpdateDefinition
+import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.data.SensorDataSample
 import com.openlattice.chronicle.services.ApiCacheManager
 import com.openlattice.chronicle.services.edm.EdmCacheManager
@@ -215,10 +216,28 @@ class SensorDataService(
         return sensorEntityKeys.entries.map { EntityUpdateDefinition(it.key, it.value, UpdateType.Merge) }.toSet()
     }
 
-    override fun uploadData(organizationId: UUID, studyId: UUID, participantId: String, deviceId: String, data: List<SensorDataSample>) {
+    override fun uploadData(
+            organizationId: UUID,
+            studyId: UUID,
+            participantId: String,
+            deviceId: String,
+            data: List<SensorDataSample>
+    ): Int {
 
-        val timer = Stopwatch.createStarted()
         this.loggerStringTemplate = "orgId - $organizationId, studyId - $studyId, participantId - $participantId, deviceId - $deviceId"
+        val timer = Stopwatch.createStarted()
+        val status = enrollmentManager.getParticipationStatus(organizationId, studyId, participantId)
+
+        if (status == ParticipationStatus.NOT_ENROLLED) {
+            logger.warn(
+                    "participant is not enrolled, ignoring upload: $loggerStringTemplate",
+                    organizationId,
+                    studyId,
+                    participantId,
+                    deviceId
+            )
+            return 0
+        }
 
         val apiClient = apiCacheManager.intApiClientCache.get(ApiClient::class.java)
         val dataIntegrationApi = apiClient.dataIntegrationApi
@@ -315,10 +334,10 @@ class SensorDataService(
             timer.stop()
 
             logger.info("logging ${data.size} sensor data samples took ${timer.elapsed(TimeUnit.SECONDS)} seconds. $loggerStringTemplate")
-
+            return data.size
         } catch (e: Exception) {
             logger.error("An error occurred while attempting to upload sensor data: $loggerStringTemplate", e)
-            throw RuntimeException("An error occurred while attempting to upload sensor data")
+            return 0
         }
     }
 }
