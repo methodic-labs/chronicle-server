@@ -60,6 +60,7 @@ class PostgresColumns {
         val UPDATED_AT = PostgresColumnDefinition("updated_at", PostgresDatatype.TIMESTAMPTZ).notNull().withDefault("now()")
         val STUDY_GROUP = PostgresColumnDefinition("study_group", PostgresDatatype.TEXT)
         val STUDY_VERSION = PostgresColumnDefinition("study_version", PostgresDatatype.TEXT)
+        val CONTACT = PostgresColumnDefinition("contact", PostgresDatatype.TEXT)
 
         //It is fine to use double for lat/lon since we won't be doing computation on these
         val LAT = PostgresColumnDefinition("lat", PostgresDatatype.DOUBLE)

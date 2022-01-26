@@ -2,7 +2,6 @@ package com.openlattice.chronicle.services.studies
 
 import com.geekbeast.mappers.mappers.ObjectMappers
 import com.openlattice.chronicle.storage.StorageResolver
-import com.fasterxml.jackson.databind.ObjectMapper
 import com.geekbeast.configuration.postgres.PostgresFlavor
 import com.geekbeast.postgres.PostgresArrays
 import com.geekbeast.postgres.streams.BasePostgresIterable
@@ -23,6 +22,7 @@ import com.openlattice.chronicle.storage.PostgresColumns
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_IDS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
+import com.openlattice.chronicle.study.StudyUpdate
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.sql.Connection
@@ -51,6 +51,7 @@ class StudyService(
             PostgresColumns.LON,
             PostgresColumns.STUDY_GROUP,
             PostgresColumns.STUDY_VERSION,
+            PostgresColumns.CONTACT,
             PostgresColumns.SETTINGS
         ).joinToString(",") { it.name }
 
@@ -64,6 +65,7 @@ class StudyService(
             PostgresColumns.LON,
             PostgresColumns.STUDY_GROUP,
             PostgresColumns.STUDY_VERSION,
+            PostgresColumns.CONTACT,
             PostgresColumns.SETTINGS
         )
 
@@ -89,10 +91,11 @@ class StudyService(
          * 5. lon
          * 6. study group
          * 7. study version
-         * 8. settings
+         * 8. contact
+         * 9. settings
          */
         private val INSERT_STUDY_SQL = """
-            INSERT INTO ${STUDIES.name} ($STUDY_COLUMNS) VALUES (?,?,?,?,?,?,?,?::jsonb)
+            INSERT INTO ${STUDIES.name} ($STUDY_COLUMNS) VALUES (?,?,?,?,?,?,?,?,?::jsonb)
         """.trimIndent()
 
         /**
@@ -127,8 +130,9 @@ class StudyService(
          * 7. lon,
          * 8. study_group,
          * 9. study_version,
-         * 10. settings
-         * 11. study_id
+         * 10. contact,
+         * 11. settings
+         * 12. study_id
          */
 
         private val UPDATE_STUDY_SQL = """
@@ -157,7 +161,8 @@ class StudyService(
         ps.setObject(5, study.lon)
         ps.setObject(6, study.group)
         ps.setObject(7, study.version)
-        ps.setString(8, mapper.writeValueAsString(study.settings))
+        ps.setObject(8, study.contact)
+        ps.setString(9, mapper.writeValueAsString(study.settings))
         return ps.executeUpdate()
     }
 
@@ -178,7 +183,7 @@ class StudyService(
             }
     }
 
-    override fun updateStudy(connection: Connection, studyId: UUID, study: Study) {
+    override fun updateStudy(connection: Connection, studyId: UUID, study: StudyUpdate) {
         val ps = connection.prepareStatement(UPDATE_STUDY_SQL)
 
         ps.setObject(1, study.title)
@@ -190,8 +195,9 @@ class StudyService(
         ps.setObject(7, study.lon)
         ps.setObject(8, study.group)
         ps.setObject(9, study.version)
-        ps.setString(10, mapper.writeValueAsString(study.settings))
-        ps.setObject(11, study.id)
+        ps.setObject(10, study.contact)
+        ps.setString(11, mapper.writeValueAsString(study.settings))
+        ps.setObject(12, studyId)
         ps.executeUpdate()
     }
 }

@@ -17,6 +17,7 @@ import com.openlattice.chronicle.study.Study
 import com.openlattice.chronicle.study.StudyApi
 import com.openlattice.chronicle.study.StudyApi.Companion.STUDY_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.STUDY_ID_PATH
+import com.openlattice.chronicle.study.StudyUpdate
 import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.*
@@ -125,7 +126,7 @@ class StudyController @Inject constructor(
     )
     override fun updateStudy(
         @PathVariable(STUDY_ID) studyId: UUID,
-        @RequestBody study: Study
+        @RequestBody study: StudyUpdate
     ) {
         val studyAclKey = AclKey(studyId);
         ensureOwnerAccess(studyAclKey)
