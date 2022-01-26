@@ -90,8 +90,9 @@ class ChroniclePostgresTables {
                 ORGANIZATION_ID,
                 STUDY_ID,
                 PARTICIPANT_ID,
+                FRIENDLY_ID
             )
-            .primaryKey(STUDY_ID, PARTICIPANT_ID)
+            .primaryKey(STUDY_ID, FRIENDLY_ID)
 
         @JvmField
         val PARTICIPANTS = PostgresTableDefinition("participants")
@@ -103,7 +104,7 @@ class ChroniclePostgresTables {
                 NAME,
                 DATE_OF_BIRTH
             )
-            .primaryKey(PARTICIPANT_ID, FRIENDLY_ID)
+            .primaryKey(PARTICIPANT_ID)
 
         @JvmField
         val BASE_LONG_IDS: PostgresTableDefinition = PostgresTableDefinition("base_long_ids")
