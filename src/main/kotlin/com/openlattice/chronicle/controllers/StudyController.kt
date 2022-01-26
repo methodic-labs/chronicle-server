@@ -10,6 +10,7 @@ import com.openlattice.chronicle.authorization.Permission
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.ids.IdConstants
+import com.openlattice.chronicle.organizations.ensureVanilla
 import com.openlattice.chronicle.study.StudyApi.Companion.CONTROLLER
 import com.openlattice.chronicle.services.studies.StudyService
 import com.openlattice.chronicle.storage.StorageResolver
@@ -151,6 +152,7 @@ class StudyController @Inject constructor(
                     )
                 )
             }
+            .buildAndRun()
     }
 
 }
