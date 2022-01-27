@@ -4,7 +4,6 @@ import com.geekbeast.postgres.PostgresArrays
 import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
 import com.openlattice.chronicle.candidates.Candidate
-import com.openlattice.chronicle.organizations.ChronicleOrganizationService
 import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.CANDIDATES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CANDIDATE_ID
@@ -40,7 +39,11 @@ class CandidatesService(
     }
 
     override fun getCandidate(candidateId: UUID): Candidate {
-        return selectCandidates(listOf(candidateId)).first()
+        return selectCandidates(setOf(candidateId)).first()
+    }
+
+    override fun getCandidates(candidateIds: Set<UUID>): Iterable<Candidate> {
+        return selectCandidates(candidateIds)
     }
 
     override fun registerCandidate(connection: Connection, candidate: Candidate) {

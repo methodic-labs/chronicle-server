@@ -11,6 +11,7 @@ import com.openlattice.chronicle.authorization.AuthorizingComponent
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.candidates.Candidate
 import com.openlattice.chronicle.candidates.CandidatesApi
+import com.openlattice.chronicle.candidates.CandidatesApi.Companion.BULK_PATH
 import com.openlattice.chronicle.candidates.CandidatesApi.Companion.CANDIDATE_ID_PARAM
 import com.openlattice.chronicle.candidates.CandidatesApi.Companion.CANDIDATE_ID_PATH
 import com.openlattice.chronicle.candidates.CandidatesApi.Companion.CONTROLLER
@@ -58,6 +59,17 @@ class CandidatesController @Inject constructor(
         catch (e: NoSuchElementException) {
             throw CandidateNotFoundException("candidate not found - $candidateId")
         }
+    }
+
+    @Timed
+    @PostMapping(
+        path = [BULK_PATH],
+        consumes = [MediaType.APPLICATION_JSON_VALUE],
+        produces = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    override fun getCandidates(@RequestBody candidateIds: Set<UUID>): Iterable<Candidate> {
+        ensureAuthenticated()
+        return candidatesService.getCandidates(candidateIds)
     }
 
     @Timed
