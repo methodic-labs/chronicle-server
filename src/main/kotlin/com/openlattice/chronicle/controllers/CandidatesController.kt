@@ -11,6 +11,8 @@ import com.openlattice.chronicle.authorization.AuthorizingComponent
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.candidates.Candidate
 import com.openlattice.chronicle.candidates.CandidatesApi
+import com.openlattice.chronicle.candidates.CandidatesApi.Companion.CANDIDATE_ID_PARAM
+import com.openlattice.chronicle.candidates.CandidatesApi.Companion.CANDIDATE_ID_PATH
 import com.openlattice.chronicle.candidates.CandidatesApi.Companion.CONTROLLER
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.services.candidates.CandidatesService
@@ -18,6 +20,8 @@ import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.util.ensureVanilla
 import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
@@ -40,6 +44,16 @@ class CandidatesController @Inject constructor(
 
     @Inject
     private lateinit var candidatesService: CandidatesService
+
+    @Timed
+    @GetMapping(
+        path = [CANDIDATE_ID_PATH],
+        produces = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    override fun getCandidate(@PathVariable(CANDIDATE_ID_PARAM) candidateId: UUID): Candidate {
+        ensureAuthenticated()
+        return candidatesService.getCandidate(candidateId)
+    }
 
     @Timed
     @PostMapping(
