@@ -1,7 +1,8 @@
 package com.openlattice.chronicle.services.timeusediary
 
-import com.openlattice.chronicle.tud.TimeUseDiaryDownloadDataType
-import com.openlattice.chronicle.tud.TimeUseDiaryResponse
+import com.openlattice.chronicle.timeusediary.TimeUseDiaryDownloadDataType
+import com.openlattice.chronicle.timeusediary.TimeUseDiaryResponse
+import java.sql.Connection
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneOffset
@@ -12,11 +13,13 @@ import java.util.UUID
  */
 interface TimeUseDiaryManager {
     fun submitTimeUseDiary(
+        connection: Connection,
+        timeUseDiaryId: UUID,
         organizationId: UUID,
         studyId: UUID,
         participantId: String,
         responses: List<TimeUseDiaryResponse>
-    ): UUID
+    )
 
     fun getSubmissionByDate(
         organizationId: UUID,

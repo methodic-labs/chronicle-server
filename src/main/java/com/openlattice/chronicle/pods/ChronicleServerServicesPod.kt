@@ -273,7 +273,7 @@ class ChronicleServerServicesPod {
     fun timeUseDiaryManager(): TimeUseDiaryManager {
         return TimeUseDiaryService(
             storageResolver,
-            idGenerationService()
+            authorizationManager()
         )
     }
 

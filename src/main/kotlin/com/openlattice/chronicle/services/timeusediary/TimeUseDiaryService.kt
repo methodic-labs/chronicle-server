@@ -2,10 +2,14 @@ package com.openlattice.chronicle.services.timeusediary
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
-import com.openlattice.chronicle.ids.HazelcastIdGenerationService
+import com.geekbeast.configuration.postgres.PostgresFlavor
+import com.openlattice.chronicle.authorization.AclKey
+import com.openlattice.chronicle.authorization.AuthorizationManager
+import com.openlattice.chronicle.authorization.SecurableObjectType
+import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.storage.StorageResolver
-import com.openlattice.chronicle.tud.TimeUseDiaryDownloadDataType
-import com.openlattice.chronicle.tud.TimeUseDiaryResponse
+import com.openlattice.chronicle.timeusediary.TimeUseDiaryDownloadDataType
+import com.openlattice.chronicle.timeusediary.TimeUseDiaryResponse
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
@@ -15,6 +19,7 @@ import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.TIME_
 import org.slf4j.LoggerFactory
 import java.sql.Connection
 import java.sql.ResultSet
+import java.sql.SQLException
 import java.time.LocalDate
 import java.util.*
 import java.sql.Types
@@ -27,7 +32,7 @@ import java.time.ZoneOffset
  */
 class TimeUseDiaryService(
     private val storageResolver: StorageResolver,
-    private val idGenerationService: HazelcastIdGenerationService
+    private val authorizationService: AuthorizationManager,
 ) : TimeUseDiaryManager {
 
     companion object {
@@ -38,28 +43,27 @@ class TimeUseDiaryService(
     }
 
     override fun submitTimeUseDiary(
+        connection: Connection,
+        timeUseDiaryId: UUID,
         organizationId: UUID,
         studyId: UUID,
         participantId: String,
         responses: List<TimeUseDiaryResponse>
-    ): UUID {
-        val tudId = idGenerationService.getNextId()
-        try {
-            val (flavor, hds) = storageResolver.resolve(studyId)
-            hds.connection.use { conn ->
-                executeInsertTimeUseDiarySql(
-                    conn,
-                    tudId,
-                    organizationId,
-                    studyId,
-                    participantId,
-                    responses
-                )
-            }
-        } catch(e: Exception) {
-            logger.error("hds error: $e")
-        }
-        return tudId
+    ) {
+        executeInsertTimeUseDiarySql(
+            connection,
+            timeUseDiaryId,
+            organizationId,
+            studyId,
+            participantId,
+            responses
+        )
+        authorizationService.createSecurableObject(
+            connection = connection,
+            aclKey = AclKey(timeUseDiaryId),
+            principal = Principals.getCurrentUser(),
+            objectType = SecurableObjectType.TimeUseDiary
+        )
     }
 
     override fun getSubmissionByDate(
@@ -74,7 +78,8 @@ class TimeUseDiaryService(
         // Use Calendar to convert response to user's timezone
         cal.timeZone = TimeZone.getTimeZone("GMT${zoneOffset.id}")
         try {
-            val (flavor, hds) = storageResolver.resolve(studyId)
+            val (flavor, hds) = storageResolver.getPlatformStorage()
+            check(flavor == PostgresFlavor.VANILLA)
             val result = hds.connection.use { connection ->
                 executeGetSubmissionByDateSql(
                     connection,
@@ -94,7 +99,7 @@ class TimeUseDiaryService(
                     submissionsByDate[currentDate]!!.add(currentUUID)
                 }
             }
-        } catch (e: Exception) {
+        } catch (e: SQLException) {
             logger.error("hds error: $e")
         }
         return submissionsByDate
