@@ -1,17 +1,19 @@
 package com.openlattice.chronicle.storage
 
 import com.geekbeast.postgres.PostgresColumnsIndexDefinition
-import com.geekbeast.postgres.PostgresIndexDefinition
+import com.geekbeast.postgres.PostgresTableDefinition
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.BASE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CONTACT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.CANDIDATE_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CREATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DATE_OF_BIRTH
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.DELETE_ME
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DESCRIPTION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ENDED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.EXPIRATION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.FIRST_NAME
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_GROUP
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.FRIENDLY_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LAST_NAME
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LAT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LON
@@ -19,7 +21,6 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.LSB
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.MSB
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.NAME
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_ID
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTITION_INDEX
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_OF_ACL_KEY
@@ -30,13 +31,13 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJ
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_TYPE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SETTINGS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STARTED_AT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_GROUP
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_VERSION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TITLE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPDATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_DATA
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_ID
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_VERSION
-import com.geekbeast.postgres.PostgresTableDefinition
 
 
 /**
@@ -88,27 +89,26 @@ class ChroniclePostgresTables {
             .primaryKey(ORGANIZATION_ID, STUDY_ID)
 
         @JvmField
-        val STUDY_PARTICIPATION = PostgresTableDefinition("study_participation")
+        val STUDY_PARTICIPANTS = PostgresTableDefinition("study_participants")
             .addColumns(
                 ORGANIZATION_ID,
                 STUDY_ID,
-                PARTICIPANT_ID,
+                CANDIDATE_ID,
+                FRIENDLY_ID
             )
-            .primaryKey(STUDY_ID, PARTICIPANT_ID)
+            .primaryKey(STUDY_ID, FRIENDLY_ID)
 
         @JvmField
-        val PARTICIPANTS = PostgresTableDefinition("participants")
+        val candidates = PostgresTableDefinition("candidates")
             .addColumns(
-                PARTICIPANT_ID,
-                TITLE,
-                NAME,
+                CANDIDATE_ID,
                 FIRST_NAME,
                 LAST_NAME,
+                NAME,
                 DATE_OF_BIRTH,
-                DESCRIPTION,
-                SETTINGS
+                DELETE_ME
             )
-            .primaryKey(PARTICIPANT_ID)
+            .primaryKey(CANDIDATE_ID)
 
         @JvmField
         val BASE_LONG_IDS: PostgresTableDefinition = PostgresTableDefinition("base_long_ids")
