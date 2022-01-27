@@ -122,7 +122,6 @@ class ChroniclePostgresTables {
             )
             .primaryKey(TUD_ID)
 
-
         @JvmField
         val BASE_LONG_IDS: PostgresTableDefinition = PostgresTableDefinition("base_long_ids")
             .addColumns(SCOPE, BASE)
