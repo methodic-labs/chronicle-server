@@ -4,6 +4,7 @@ import com.geekbeast.postgres.PostgresColumnsIndexDefinition
 import com.geekbeast.postgres.PostgresTableDefinition
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.BASE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.CONTACT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CANDIDATE_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CREATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DATE_OF_BIRTH
@@ -38,6 +39,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPDATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_DATA
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_ID
 
+
 /**
  *
  * @author Matthew Tamayo-Rios &lt;matthew@openlattice.com&gt;
@@ -70,6 +72,7 @@ class ChroniclePostgresTables {
                 LON,
                 STUDY_GROUP,
                 STUDY_VERSION,
+                CONTACT,
                 SETTINGS,
             )
             .primaryKey(STUDY_ID)
