@@ -1,6 +1,8 @@
 package com.openlattice.chronicle.services.timeusediary
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
+import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.tud.TimeUseDiaryDownloadDataType
 import com.openlattice.chronicle.tud.TimeUseDiaryResponse
@@ -24,12 +26,14 @@ import java.time.ZoneOffset
  * @author Andrew Carter andrew@openlattice.com
  */
 class TimeUseDiaryService(
-    private val storageResolver: StorageResolver
+    private val storageResolver: StorageResolver,
+    private val idGenerationService: HazelcastIdGenerationService
 ) : TimeUseDiaryManager {
 
     companion object {
         private val logger = LoggerFactory.getLogger(TimeUseDiaryService::class.java)
         private val objectMapper = ObjectMapper()
+            .registerModule( JavaTimeModule() )
         private val cal = Calendar.getInstance()
     }
 
@@ -39,7 +43,7 @@ class TimeUseDiaryService(
         participantId: String,
         responses: List<TimeUseDiaryResponse>
     ): UUID {
-        val tudId = UUID.randomUUID()
+        val tudId = idGenerationService.getNextId()
         try {
             val (flavor, hds) = storageResolver.resolve(studyId)
             hds.connection.use { conn ->

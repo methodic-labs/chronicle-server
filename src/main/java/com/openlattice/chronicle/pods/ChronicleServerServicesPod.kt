@@ -272,7 +272,8 @@ class ChronicleServerServicesPod {
     @Bean
     fun timeUseDiaryManager(): TimeUseDiaryManager {
         return TimeUseDiaryService(
-            storageResolver
+            storageResolver,
+            idGenerationService()
         )
     }
 
