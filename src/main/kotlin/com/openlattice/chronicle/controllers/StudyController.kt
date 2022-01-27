@@ -10,8 +10,10 @@ import com.openlattice.chronicle.authorization.Permission
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.ids.IdConstants
+import com.openlattice.chronicle.services.enrollment.EnrollmentService
 import com.openlattice.chronicle.study.StudyApi.Companion.CONTROLLER
 import com.openlattice.chronicle.services.studies.StudyService
+import com.openlattice.chronicle.sources.Datasource
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.study.Study
 import com.openlattice.chronicle.study.StudyApi
@@ -34,6 +36,7 @@ import kotlin.NoSuchElementException
 class StudyController @Inject constructor(
     val storageResolver: StorageResolver,
     val idGenerationService: HazelcastIdGenerationService,
+    val enrollmentService: EnrollmentService,
     override val authorizationManager: AuthorizationManager,
     override val auditingManager: AuditingManager
 ) : StudyApi, AuthorizingComponent {
@@ -42,6 +45,23 @@ class StudyController @Inject constructor(
 
     companion object {
         private val logger = LoggerFactory.getLogger(StudyController::class.java)!!
+    }
+
+    @Timed
+    @PostMapping(
+        path = ["STUDY_ID_PATH + PARTICIPANT_ID_PATH + DATA_SOURCE_ID_PATH + ENROLL_PATH"],
+        consumes = [MediaType.APPLICATION_JSON_VALUE],
+        produces = [MediaType.APPLICATION_JSON_VALUE],
+    )
+    override fun enroll(
+        studyId: UUID,
+        participantId: String,
+        datasourceId: String,
+        datasource: Datasource
+    ): UUID {
+//        check( enrollmentService.isKnownParticipant(studyId, participantId)) { "Cannot enroll device for an unknown participant." }
+//        TODO: Move checks out from enrollment data source into the controller.
+        return enrollmentService.registerDatasource(studyId, participantId, datasourceId, datasource)
     }
 
     @Timed
