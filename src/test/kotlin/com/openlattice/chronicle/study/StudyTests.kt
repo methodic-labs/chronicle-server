@@ -15,7 +15,7 @@ class StudyTests : ChronicleServerTests() {
     @Test
     fun createStudy() {
         val studyApi = chronicleClient.studyApi
-        val expected = Study(title = "This is a test study.")
+        val expected = Study(title = "This is a test study.", contact = "test@openlattice.com")
         val studyId = studyApi.createStudy(expected)
         val actual = studyApi.getStudy(studyId)
     }
