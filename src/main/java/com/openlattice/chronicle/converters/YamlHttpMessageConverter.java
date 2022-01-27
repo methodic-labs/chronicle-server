@@ -20,11 +20,10 @@
 
 package com.openlattice.chronicle.converters;
 
-import java.io.IOException;
-import java.lang.reflect.Type;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
-
+import com.geekbeast.mappers.mappers.ObjectMappers;
+import com.google.common.collect.Multimap;
+import com.openlattice.chronicle.constants.CustomMediaType;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
 import org.springframework.http.HttpInputMessage;
 import org.springframework.http.HttpOutputMessage;
@@ -32,18 +31,17 @@ import org.springframework.http.converter.AbstractGenericHttpMessageConverter;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.http.converter.HttpMessageNotWritableException;
 
-import com.openlattice.chronicle.constants.CustomMediaType;
-import com.dataloom.mappers.ObjectMappers;
-import com.google.common.collect.Multimap;
+import java.io.IOException;
+import java.lang.reflect.Type;
 
 public class YamlHttpMessageConverter extends AbstractGenericHttpMessageConverter<Object> {
 
     private final ObjectMapper mapper = ObjectMappers.getYamlMapper();
-    
+
     public YamlHttpMessageConverter() {
         super( CustomMediaType.TEXT_YAML );
     }
-    
+
     @Override
     public Iterable<Multimap<FullQualifiedName, ?>> read(
             Type type,
@@ -58,7 +56,7 @@ public class YamlHttpMessageConverter extends AbstractGenericHttpMessageConverte
             Type type,
             HttpOutputMessage outputMessage ) throws IOException, HttpMessageNotWritableException {
         mapper.writeValue( outputMessage.getBody(), t );
-        
+
     }
 
     @Override

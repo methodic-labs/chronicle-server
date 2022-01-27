@@ -1,12 +1,17 @@
 package com.openlattice.chronicle.services.entitysets;
 
-import com.dataloom.streams.StreamUtil;
-import com.google.common.collect.*;
+import com.geekbeast.streams.StreamUtil;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Multimaps;
+import com.google.common.collect.SetMultimap;
 import com.openlattice.apps.App;
 import com.openlattice.apps.AppApi;
 import com.openlattice.apps.UserAppConfig;
 import com.openlattice.authorization.securable.AbstractSecurableObject;
-import com.openlattice.chronicle.constants.*;
+import com.openlattice.chronicle.constants.AppComponent;
+import com.openlattice.chronicle.constants.CollectionTemplateTypeName;
 import com.openlattice.chronicle.data.ChronicleCoreAppConfig;
 import com.openlattice.chronicle.data.ChronicleDataCollectionAppConfig;
 import com.openlattice.chronicle.data.ChronicleSurveysAppConfig;
@@ -27,15 +32,43 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ExecutionException;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE;
 import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE_DATA_COLLECTION;
 import static com.openlattice.chronicle.constants.AppComponent.CHRONICLE_SURVEYS;
-import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.*;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.ADDRESSES;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.ANSWER;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.APPDATA;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.APP_DICTIONARY;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.DEVICE;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.HAS;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.MESSAGES;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.METADATA;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.NOTIFICATION;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.PARTICIPANTS;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.PARTICIPATED_IN;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.PART_OF;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.PREPROCESSED_DATA;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.QUESTION;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.RECORDED_BY;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.REGISTERED_FOR;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.RESPONDS_WITH;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.SENT_TO;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.STUDIES;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.SUBMISSION;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.SURVEY;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.TIME_RANGE;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.USED_BY;
+import static com.openlattice.chronicle.constants.CollectionTemplateTypeName.USER_APPS;
 import static com.openlattice.chronicle.constants.EdmConstants.LEGACY_DATASET_COLLECTION_TEMPLATE_MAP;
 import static com.openlattice.chronicle.constants.EdmConstants.STRING_ID_FQN;
 import static com.openlattice.chronicle.util.ChronicleServerUtil.getFirstUUIDOrNull;
@@ -148,7 +181,7 @@ public class EntitySetIdsService implements EntitySetIdsManager {
                 }
                 orgEntitySetMap.put( userAppConfig.getOrganizationId(), templateTypeNameESIDMap );
 
-                settings.put(userAppConfig.getOrganizationId(), userAppConfig.getSettings());
+                settings.put( userAppConfig.getOrganizationId(), userAppConfig.getSettings() );
             } );
 
             appSettings.put( appComponent, settings );
@@ -202,12 +235,13 @@ public class EntitySetIdsService implements EntitySetIdsManager {
 
     // app settings
     @Override
-    public Map<String, Object> getOrgAppSettings(AppComponent appComponent, UUID organizationId) {
-        return appSettings.getOrDefault( appComponent, ImmutableMap.of() ).getOrDefault( organizationId, ImmutableMap.of() );
+    public Map<String, Object> getOrgAppSettings( AppComponent appComponent, UUID organizationId ) {
+        return appSettings.getOrDefault( appComponent, ImmutableMap.of() )
+                .getOrDefault( organizationId, ImmutableMap.of() );
     }
 
     @Override
-    public Map<String, Object> getOrgAppSettings(String appName, UUID organizationId) {
+    public Map<String, Object> getOrgAppSettings( String appName, UUID organizationId ) {
         AppComponent component = AppComponent.fromString( appName );
         return getOrgAppSettings( component, organizationId );
     }
@@ -231,9 +265,11 @@ public class EntitySetIdsService implements EntitySetIdsManager {
                 templateEntitySetIdMap.get( HAS ),
                 Optional.of( templateEntitySetIdMap.get( PARTICIPANTS ) ),
                 templateEntitySetIdMap.get( PARTICIPATED_IN ),
+                Optional.of( templateEntitySetIdMap.get( MESSAGES ) ),
                 templateEntitySetIdMap.get( METADATA ),
                 templateEntitySetIdMap.get( PART_OF ),
                 templateEntitySetIdMap.get( NOTIFICATION ),
+                Optional.of( templateEntitySetIdMap.get( SENT_TO ) ),
                 templateEntitySetIdMap.get( STUDIES )
         );
     }
@@ -257,18 +293,17 @@ public class EntitySetIdsService implements EntitySetIdsManager {
                 .getOrDefault( organizationId, ImmutableMap.of() );
 
         if ( templateEntitySetIdMap.isEmpty() ) {
-            logger.error( "organization {} does not have chronicle data collection app installed ", organizationId );
-            return null;
+            logger.warn( "organization {} does not have chronicle data collection app installed ", organizationId );
         }
 
         return new ChronicleDataCollectionAppConfig(
-                templateEntitySetIdMap.get( APP_DICTIONARY ),
-                templateEntitySetIdMap.get( RECORDED_BY ),
-                templateEntitySetIdMap.get( DEVICE ),
-                templateEntitySetIdMap.get( USED_BY ),
-                templateEntitySetIdMap.get( USER_APPS ),
-                templateEntitySetIdMap.get( PREPROCESSED_DATA ),
-                templateEntitySetIdMap.get( APPDATA )
+                templateEntitySetIdMap.getOrDefault( APP_DICTIONARY, null ),
+                templateEntitySetIdMap.getOrDefault( RECORDED_BY, null ),
+                templateEntitySetIdMap.getOrDefault( DEVICE, null ),
+                templateEntitySetIdMap.getOrDefault( USED_BY, null ),
+                templateEntitySetIdMap.getOrDefault( USER_APPS, null ),
+                templateEntitySetIdMap.getOrDefault( PREPROCESSED_DATA, null ),
+                templateEntitySetIdMap.getOrDefault( APPDATA, null )
         );
     }
 
@@ -283,35 +318,36 @@ public class EntitySetIdsService implements EntitySetIdsManager {
                 .getOrDefault( organizationId, ImmutableMap.of() );
 
         if ( templateEntitySetIdMap.isEmpty() ) {
-            logger.error( "organization {} does not have chronicle surveys app installed ", organizationId );
-            return null;
+            logger.warn( "organization {} does not have chronicle surveys app installed ", organizationId );
         }
 
         return new ChronicleSurveysAppConfig(
-                templateEntitySetIdMap.get( SURVEY ),
-                templateEntitySetIdMap.get( TIME_RANGE ),
-                templateEntitySetIdMap.get( SUBMISSION ),
-                templateEntitySetIdMap.get( REGISTERED_FOR ),
-                templateEntitySetIdMap.get( RESPONDS_WITH ),
-                templateEntitySetIdMap.get( ADDRESSES ),
-                templateEntitySetIdMap.get( ANSWER ),
-                templateEntitySetIdMap.get( QUESTION )
+                templateEntitySetIdMap.getOrDefault( SURVEY, null ),
+                templateEntitySetIdMap.getOrDefault( TIME_RANGE, null ),
+                templateEntitySetIdMap.getOrDefault( SUBMISSION, null ),
+                templateEntitySetIdMap.getOrDefault( REGISTERED_FOR, null ),
+                templateEntitySetIdMap.getOrDefault( RESPONDS_WITH, null ),
+                templateEntitySetIdMap.getOrDefault( ADDRESSES, null ),
+                templateEntitySetIdMap.getOrDefault( ANSWER, null ),
+                templateEntitySetIdMap.getOrDefault( QUESTION, null )
         );
     }
 
     @Deprecated
     public ChronicleCoreAppConfig getLegacyChronicleAppConfig( String participantESName ) {
 
-        UUID participantESID = legacyParticipantsEntitySetIds.getOrDefault( participantESName, null);
-        Optional<UUID> optional = participantESID  == null ? Optional.empty() : Optional.of( participantESID );
+        UUID participantESID = legacyParticipantsEntitySetIds.getOrDefault( participantESName, null );
+        Optional<UUID> optional = participantESID == null ? Optional.empty() : Optional.of( participantESID );
 
         return new ChronicleCoreAppConfig(
                 legacyEntitySetIds.get( HAS ),
                 optional,
                 legacyEntitySetIds.get( PARTICIPATED_IN ),
+                Optional.empty(),
                 legacyEntitySetIds.get( METADATA ),
                 legacyEntitySetIds.get( PART_OF ),
                 legacyEntitySetIds.get( NOTIFICATION ),
+                Optional.empty(),
                 legacyEntitySetIds.get( STUDIES )
         );
     }
@@ -323,9 +359,11 @@ public class EntitySetIdsService implements EntitySetIdsManager {
                 legacyEntitySetIds.get( HAS ),
                 Optional.empty(),
                 legacyEntitySetIds.get( PARTICIPATED_IN ),
+                Optional.empty(),
                 legacyEntitySetIds.get( METADATA ),
                 legacyEntitySetIds.get( PART_OF ),
                 legacyEntitySetIds.get( NOTIFICATION ),
+                Optional.empty(),
                 legacyEntitySetIds.get( STUDIES )
         );
     }

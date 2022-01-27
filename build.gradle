@@ -135,7 +135,7 @@ test {
 }
 
 ext.odata_version = '4.2.0'
-ext.chronicle_api_version = '0.0.16'
+ext.chronicle_api_version = '0.0.19'
 
 dependencies {
     implementation "com.google.guava:guava:${guava_version}"
@@ -155,6 +155,8 @@ dependencies {
             exclude group: 'com.google.guava', module: 'guava'
         }
     }
+
+    implementation group: "com.twilio.sdk", name: "twilio", version: "8.21.0"
 
     implementation "org.apache.olingo:odata-server-api:${odata_version}"
     implementation "org.apache.olingo:odata-server-core:${odata_version}"

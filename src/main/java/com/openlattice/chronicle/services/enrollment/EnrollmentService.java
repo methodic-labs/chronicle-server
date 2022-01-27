@@ -12,6 +12,7 @@ import com.openlattice.chronicle.services.edm.EdmCacheManager;
 import com.openlattice.chronicle.services.entitysets.EntitySetIdsManager;
 import com.openlattice.chronicle.sources.AndroidDevice;
 import com.openlattice.chronicle.sources.Datasource;
+import com.openlattice.chronicle.sources.IOSDevice;
 import com.openlattice.client.ApiClient;
 import com.openlattice.data.*;
 import com.openlattice.data.requests.NeighborEntityDetails;
@@ -27,6 +28,7 @@ import java.util.concurrent.ExecutionException;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.openlattice.chronicle.constants.EdmConstants.MODEL_FQN;
+import static com.openlattice.chronicle.constants.EdmConstants.NAME_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.OL_ID_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.STATUS_FQN;
 import static com.openlattice.chronicle.constants.EdmConstants.STRING_ID_FQN;
@@ -86,6 +88,29 @@ public class EnrollmentService implements EnrollmentManager {
         scheduledTasksManager.getDeviceIdsByEKID().put( datasourceId, deviceEKID );
     }
 
+    private Map<UUID, Set<Object>> createDeviceData( String datasourceId, Optional<Datasource> datasource ) {
+        Map<UUID, Set<Object>> data = Maps.newHashMap();
+        data.put( edmCacheManager.getPropertyTypeId( STRING_ID_FQN ), ImmutableSet.of( datasourceId ) );
+
+        if ( datasource.isPresent() ) {
+            if ( AndroidDevice.class.isAssignableFrom( datasource.get().getClass() ) ) {
+                AndroidDevice device = (AndroidDevice) datasource.get();
+                data.put( edmCacheManager.getPropertyTypeId( MODEL_FQN ), ImmutableSet.of( device.getModel() ) );
+                data.put( edmCacheManager.getPropertyTypeId( VERSION_FQN ), ImmutableSet.of( device.getOsVersion() ) );
+            }
+
+            if ( IOSDevice.class.isAssignableFrom( datasource.get().getClass() ) ) {
+                IOSDevice device = (IOSDevice) datasource.get();
+                data.put( edmCacheManager.getPropertyTypeId( MODEL_FQN ),
+                        ImmutableSet.of( device.getLocalizedModel() ) );
+                data.put( edmCacheManager.getPropertyTypeId( VERSION_FQN ), ImmutableSet.of( device.getVersion() ) );
+                data.put( edmCacheManager.getPropertyTypeId( NAME_FQN ), ImmutableSet.of( device.getName() ) );
+            }
+        }
+
+        return data;
+    }
+
     private UUID registerDatasourceHelper(
             UUID organizationId,
             UUID studyId,
@@ -114,16 +139,8 @@ public class EnrollmentService implements EnrollmentManager {
             UUID participantEKID = checkNotNull( getParticipantEntityKeyId( organizationId, studyId, participantId ) );
 
             // device entity data
-            Map<UUID, Set<Object>> deviceData = new HashMap<>();
-            deviceData.put( edmCacheManager.getPropertyTypeId( STRING_ID_FQN ), Sets.newHashSet( datasourceId ) );
 
-            if ( datasource.isPresent() && AndroidDevice.class.isAssignableFrom( datasource.get().getClass() ) ) {
-                AndroidDevice device = (AndroidDevice) datasource.get();
-                deviceData
-                        .put( edmCacheManager.getPropertyTypeId( MODEL_FQN ), Sets.newHashSet( device.getModel() ) );
-                deviceData.put( edmCacheManager.getPropertyTypeId( VERSION_FQN ),
-                        Sets.newHashSet( device.getOsVersion() ) );
-            }
+            Map<UUID, Set<Object>> deviceData = createDeviceData( datasourceId, datasource );
 
             UUID deviceEntityKeyId = reserveDeviceEntityKeyId( devicesESID, deviceData, dataIntegrationApi );
             if ( deviceEntityKeyId == null ) {
@@ -416,14 +433,16 @@ public class EnrollmentService implements EnrollmentManager {
     }
 
     @Override
-    public Set<UUID> getStudyParticipants( UUID organizationId, UUID studyId) {
-        if (organizationId != null) {
-            Map<UUID, Map<String, UUID>> participants = scheduledTasksManager.getStudyParticipantsByOrg().getOrDefault( organizationId, Map.of() );
+    public Set<UUID> getStudyParticipants( UUID organizationId, UUID studyId ) {
+        if ( organizationId != null ) {
+            Map<UUID, Map<String, UUID>> participants = scheduledTasksManager.getStudyParticipantsByOrg()
+                    .getOrDefault( organizationId, Map.of() );
 
             return Sets.newHashSet( participants.getOrDefault( studyId, Map.of() ).values() );
         }
 
-        return Sets.newHashSet(scheduledTasksManager.getStudyParticipants().getOrDefault( studyId, Map.of() ).values());
+        return Sets
+                .newHashSet( scheduledTasksManager.getStudyParticipants().getOrDefault( studyId, Map.of() ).values() );
     }
 
     @Override

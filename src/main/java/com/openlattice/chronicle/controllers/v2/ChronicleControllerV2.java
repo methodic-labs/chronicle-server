@@ -6,16 +6,25 @@ import com.google.common.collect.SetMultimap;
 import com.openlattice.chronicle.api.ChronicleApi;
 import com.openlattice.chronicle.data.ChronicleAppsUsageDetails;
 import com.openlattice.chronicle.data.ChronicleQuestionnaire;
+import com.openlattice.chronicle.data.MessageDetails;
+import com.openlattice.chronicle.data.MessageStatus;
 import com.openlattice.chronicle.data.ParticipationStatus;
 import com.openlattice.chronicle.services.edm.EdmCacheManager;
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager;
 import com.openlattice.chronicle.services.entitysets.EntitySetIdsManager;
+import com.openlattice.chronicle.services.message.MessageService;
 import com.openlattice.chronicle.services.surveys.SurveysManager;
 import com.openlattice.chronicle.services.upload.AppDataUploadManager;
 import com.openlattice.chronicle.sources.Datasource;
+import org.apache.commons.lang3.NotImplementedException;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
 import org.springframework.http.MediaType;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import javax.inject.Inject;
 import java.util.List;
@@ -44,6 +53,9 @@ public class ChronicleControllerV2 implements ChronicleApi {
 
     @Inject
     private EntitySetIdsManager entitySetIdsManager;
+
+    @Inject
+    private MessageService messageService;
 
     @Override
     @Timed
@@ -164,15 +176,32 @@ public class ChronicleControllerV2 implements ChronicleApi {
     }
 
     @RequestMapping(
+            path = ORGANIZATION_ID_PATH + MESSAGE_PATH,
+            method = RequestMethod.POST,
+            consumes = MediaType.APPLICATION_JSON_VALUE
+    )
+    public void sendMessages(
+            @PathVariable( ORGANIZATION_ID ) UUID organizationId,
+            @RequestBody List<MessageDetails> messageDetails
+    ) {
+        messageService.sendMessages( organizationId, messageDetails );
+    }
+
+    @Override public void updateMessageStatus(
+            UUID organizationId, String messageId, MessageStatus messageStatus ) {
+        throw new NotImplementedException( "not implemented" );
+    }
+
+    @RequestMapping(
             path = ORGANIZATION_ID_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH + TIME_USE_DIARY,
             method = RequestMethod.POST,
             consumes = MediaType.APPLICATION_JSON_VALUE
     )
     @Override
     public void submitTimeUseDiarySurvey(
-            @PathVariable ( ORGANIZATION_ID ) UUID organizationId,
-            @PathVariable ( STUDY_ID ) UUID studyId,
-            @PathVariable ( PARTICIPANT_ID ) String participantId,
+            @PathVariable( ORGANIZATION_ID ) UUID organizationId,
+            @PathVariable( STUDY_ID ) UUID studyId,
+            @PathVariable( PARTICIPANT_ID ) String participantId,
             @RequestBody List<Map<FullQualifiedName, Set<Object>>> surveyData
     ) {
         surveysManager.submitTimeUseDiarySurvey( organizationId, studyId, participantId, surveyData );

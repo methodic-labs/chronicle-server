@@ -10,7 +10,6 @@ import java.util.UUID;
 
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
- *
  * POJO for the core feature datasets of chronicle
  */
 public class ChronicleCoreAppConfig {
@@ -19,8 +18,10 @@ public class ChronicleCoreAppConfig {
     private final UUID participatedInEntitySetId;
     private final UUID metadataEntitySetId;
     private final UUID partOfEntitySetId;
+    private       UUID messagesEntitySetId;
     private final UUID notificationEntitySetId;
     private       UUID participantEntitySetId;
+    private       UUID sentToEntitySetId;
     private final UUID studiesEntitySetId;
 
     @JsonCreator
@@ -28,18 +29,22 @@ public class ChronicleCoreAppConfig {
             @JsonProperty( SerializationConstants.ENTITY_SET_ID ) UUID hasEntitySetId,
             @JsonProperty( SerializationConstants.ENTITY_SET_ID ) Optional<UUID> participantEntitySetId,
             @JsonProperty( SerializationConstants.ENTITY_SET_ID ) UUID participatedInEntitySetId,
+            @JsonProperty( SerializationConstants.ENTITY_SET_ID ) Optional<UUID> messagesEntitySetId,
             @JsonProperty( SerializationConstants.ENTITY_SET_ID ) UUID metadataEntitySetId,
             @JsonProperty( SerializationConstants.ENTITY_SET_ID ) UUID partOfEntitySetId,
             @JsonProperty( SerializationConstants.ENTITY_SET_ID ) UUID notificationEntitySetId,
+            @JsonProperty( SerializationConstants.ENTITY_SET_ID ) Optional<UUID> sentToEntitySetId,
             @JsonProperty( SerializationConstants.ENTITY_SET_ID ) UUID studiesEntitySetId
     ) {
         participantEntitySetId.ifPresent( uuid -> this.participantEntitySetId = uuid );
 
         this.hasEntitySetId = hasEntitySetId;
         this.participatedInEntitySetId = participatedInEntitySetId;
+        messagesEntitySetId.ifPresent( uuid -> this.messagesEntitySetId = uuid );
         this.metadataEntitySetId = metadataEntitySetId;
         this.partOfEntitySetId = partOfEntitySetId;
         this.notificationEntitySetId = notificationEntitySetId;
+        sentToEntitySetId.ifPresent( uuid -> this.sentToEntitySetId = uuid );
         this.studiesEntitySetId = studiesEntitySetId;
     }
 
@@ -64,6 +69,11 @@ public class ChronicleCoreAppConfig {
     }
 
     @JsonProperty( SerializationConstants.ENTITY_SET_ID )
+    public UUID getMessagesEntitySetId() {
+        return messagesEntitySetId;
+    }
+
+    @JsonProperty( SerializationConstants.ENTITY_SET_ID )
     public UUID getNotificationEntitySetId() {
         return notificationEntitySetId;
     }
@@ -71,6 +81,11 @@ public class ChronicleCoreAppConfig {
     @JsonProperty( SerializationConstants.ENTITY_SET_ID )
     public UUID getParticipantEntitySetId() {
         return participantEntitySetId;
+    }
+
+    @JsonProperty( SerializationConstants.ENTITY_SET_ID )
+    public UUID getSentToEntitySetId() {
+        return sentToEntitySetId;
     }
 
     @JsonProperty( SerializationConstants.ENTITY_SET_ID )
@@ -84,7 +99,9 @@ public class ChronicleCoreAppConfig {
                 hasEntitySetId,
                 participantEntitySetId,
                 participatedInEntitySetId,
+                messagesEntitySetId,
                 metadataEntitySetId,
+                sentToEntitySetId,
                 studiesEntitySetId,
                 notificationEntitySetId,
                 partOfEntitySetId

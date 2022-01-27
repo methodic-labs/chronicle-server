@@ -1,15 +1,13 @@
 package com.openlattice.chronicle.configuration;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.kryptnostic.rhizome.configuration.annotation.ReloadableConfiguration;
+import com.geekbeast.rhizome.configuration.configuration.annotation.ReloadableConfiguration;
+
 import java.util.Objects;
 
-/**
- * @author Matthew Tamayo-Rios &lt;matthew@openlattice.com&gt;
- */
-@ReloadableConfiguration(uri="chronicle.yaml")
+@ReloadableConfiguration( uri = "chronicle.yaml" )
 public class ChronicleConfiguration {
-    private final String USER_KEY = "user";
+    private final String USER_KEY     = "user";
     private final String PASSWORD_KEY = "password";
 
     private final String user;
@@ -33,8 +31,8 @@ public class ChronicleConfiguration {
     }
 
     @Override public boolean equals( Object o ) {
-        if ( this == o ) { return true; }
-        if ( !( o instanceof ChronicleConfiguration ) ) { return false; }
+        if ( this == o ) {return true;}
+        if ( !( o instanceof ChronicleConfiguration ) ) {return false;}
         ChronicleConfiguration that = (ChronicleConfiguration) o;
         return Objects.equals( user, that.user ) &&
                 Objects.equals( password, that.password );
