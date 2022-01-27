@@ -10,6 +10,7 @@ import com.openlattice.chronicle.authorization.Permission
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.ids.IdConstants
+import com.openlattice.chronicle.organizations.ensureVanilla
 import com.openlattice.chronicle.services.enrollment.EnrollmentService
 import com.openlattice.chronicle.study.StudyApi.Companion.CONTROLLER
 import com.openlattice.chronicle.services.studies.StudyService
@@ -139,8 +140,39 @@ class StudyController @Inject constructor(
 
     }
 
-    override fun updateStudy(studyId: UUID, study: StudyUpdate) {
-        TODO("Not yet implemented")
+    @Timed
+    @PatchMapping(
+        path = [STUDY_ID_PATH],
+        consumes = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    override fun updateStudy(
+        @PathVariable(STUDY_ID) studyId: UUID,
+        @RequestBody study: StudyUpdate
+    ) {
+        val studyAclKey = AclKey(studyId);
+        ensureOwnerAccess(studyAclKey)
+        val currentUserId = Principals.getCurrentUser().id;
+        logger.info("Updating study with id $studyId on behalf of $currentUserId")
+
+        val (flavor, hds) = storageResolver.getPlatformStorage()
+        ensureVanilla(flavor)
+        AuditedOperationBuilder<Unit>(hds.connection, auditingManager)
+            .operation { connection -> studyService.updateStudy(connection, studyId, study) }
+            .audit {
+                listOf(
+                    AuditableEvent(
+                        studyAclKey,
+                        Principals.getCurrentSecurablePrincipal().id,
+                        currentUserId,
+                        AuditEventType.UPDATE_STUDY,
+                        "",
+                        studyId,
+                        UUID(0, 0),
+                        mapOf()
+                    )
+                )
+            }
+            .buildAndRun()
     }
 
 }
