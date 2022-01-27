@@ -13,8 +13,8 @@ class PostgresColumns {
         //Not actually used in table, just for reading studies.
         val ORGANIZATION_IDS = PostgresColumnDefinition("organization_ids", PostgresDatatype.UUID_ARRAY).notNull()
         val STUDY_ID = PostgresColumnDefinition("study_id", PostgresDatatype.UUID).notNull()
-        val PARTICIPANT_ID = PostgresColumnDefinition("particpant_id", PostgresDatatype.TEXT).notNull()
         val CANDIDATE_ID = PostgresColumnDefinition("candidate_id", PostgresDatatype.UUID).notNull()
+        val FRIENDLY_ID = PostgresColumnDefinition("friendly_id", PostgresDatatype.TEXT).notNull()
         val TITLE = PostgresColumnDefinition("title", PostgresDatatype.TEXT)
         val DESCRIPTION = PostgresColumnDefinition("description", PostgresDatatype.TEXT)
         val SETTINGS = PostgresColumnDefinition("settings", PostgresDatatype.JSONB).withDefault("'{}'::jsonb")
@@ -22,6 +22,9 @@ class PostgresColumns {
         val FIRST_NAME = PostgresColumnDefinition("first_name", PostgresDatatype.TEXT)
         val LAST_NAME = PostgresColumnDefinition("last_name", PostgresDatatype.TEXT)
         val DATE_OF_BIRTH = PostgresColumnDefinition("dob", PostgresDatatype.DATE)
+        val DELETE_ME = PostgresColumnDefinition("delete_me", PostgresDatatype.TIMESTAMPTZ)
+            .notNull()
+            .withDefault("'-infinity'")
 
         val ACL_KEY = PostgresColumnDefinition("acl_key", PostgresDatatype.UUID_ARRAY)
         val PRINCIPAL_ID = PostgresColumnDefinition("principal_id", PostgresDatatype.TEXT)
