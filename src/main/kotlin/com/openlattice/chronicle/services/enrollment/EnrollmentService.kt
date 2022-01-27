@@ -15,7 +15,7 @@ import java.util.*
  * @author Matthew Tamayo-Rios &lt;matthew@openlattice.com&gt;
  */
 class EnrollmentService(
-        private val scheduledTasksManager: ScheduledTasksManager
+    private val scheduledTasksManager: ScheduledTasksManager
 ) : EnrollmentManager {
 
     companion object {
@@ -23,90 +23,93 @@ class EnrollmentService(
     }
 
     override fun registerDatasource(
-            organizationId: UUID,
-            studyId: UUID,
-            participantId: String,
-            datasourceId: String,
-            datasource: com.google.common.base.Optional<Datasource>
+        studyId: UUID,
+        participantId: String,
+        datasourceId: String,
+        datasource: Datasource
     ): UUID {
         logger.info(
-                "attempting to register data source" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE,
-                organizationId,
+            "attempting to register data source" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE,
+            studyId,
+            participantId,
+            datasourceId
+        )
+        val isKnownParticipant = isKnownParticipant(studyId, participantId)
+        if (!isKnownParticipant) {
+            logger.error(
+                "unknown participant, unable to register datasource" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE,
                 studyId,
                 participantId,
                 datasourceId
-        )
-        val isKnownParticipant = isKnownParticipant(organizationId, studyId, participantId)
-        if (!isKnownParticipant) {
-            logger.error(
-                    "unknown participant, unable to register datasource" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE,
-                    organizationId,
-                    studyId,
-                    participantId,
-                    datasourceId
             )
             throw AccessDeniedException("unknown participant, unable to register datasource")
         }
 
-        return when( datasource ) {
-            is AndroidDevice -> registerAndroidDeviceOrGetId( organizationId, studyId, participantId, datasourceId, datasource )
+
+        return when (datasource) {
+            is AndroidDevice -> registerAndroidDeviceOrGetId(
+                studyId,
+                participantId,
+                datasourceId,
+                datasource
+            )
             else -> throw UnsupportedOperationException("${datasource.javaClass.name} is not a supported datasource.")
         }
     }
 
     private fun registerAndroidDeviceOrGetId(
-            organizationId: UUID,
-            studyId: UUID,
-            participantId: String,
-            datasourceId: String,
-            datasource: AndroidDevice
+        studyId: UUID,
+        participantId: String,
+        datasourceId: String,
+        datasource: AndroidDevice
     ): UUID {
         TODO("Not yet implemented")
     }
 
     override fun isKnownDatasource(
-            organizationId: UUID, studyId: UUID, participantId: String, datasourceId: String
+        studyId: UUID,
+        participantId: String,
+        datasourceId: String
     ): Boolean {
         TODO("Not yet implemented")
     }
 
-    override fun isKnownParticipant(organizationId: UUID, studyId: UUID, participantId: String): Boolean {
+    override fun isKnownParticipant(studyId: UUID, participantId: String): Boolean {
         TODO("Not yet implemented")
     }
 
     override fun getParticipantEntity(
-            organizationId: UUID, studyId: UUID, participantEntityKeyId: UUID
+        studyId: UUID, participantEntityKeyId: UUID
     ): Participant {
         TODO("Not yet implemented")
     }
 
     override fun getParticipationStatus(
-            organizationId: UUID,
-            studyId: UUID,
-            participantId: String
+        studyId: UUID,
+        participantId: String
     ): ParticipationStatus {
         val status: ParticipationStatus
         logger.info(
-                "getting participation status" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT, organizationId, studyId,
-                participantId
+            "getting participation status" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT, studyId,
+            participantId
         )
         TODO("Not yet implemented")
     }
 
-    override fun isNotificationsEnabled(organizationId: UUID, studyId: UUID): Boolean {
-        logger.info("Checking notifications enabled on studyId = {}, organization = {}", studyId, organizationId)
+    override fun isNotificationsEnabled(studyId: UUID): Boolean {
+        logger.info("Checking notifications enabled on studyId = {}", studyId)
         TODO("Not yet implemented")
     }
 
-    override fun getStudyParticipantIds(organizationId: UUID, studyId: UUID): Set<String> {
+    override fun getStudyParticipantIds(studyId: UUID): Set<String> {
         TODO("Not yet implemented")
     }
 
-    override fun getStudyParticipants(organizationId: UUID, studyId: UUID): Set<Participant> {
-       TODO("Not yet implemented")
+    override fun getStudyParticipants(studyId: UUID): Set<Participant> {
+        TODO("Not yet implemented")
     }
 
-    override fun studyExists(organizationId: UUID, studyId: UUID): Boolean {
+    override fun studyExists(studyId: UUID): Boolean {
         TODO("Not yet implemented")
     }
 
