@@ -4,14 +4,20 @@ import com.geekbeast.mappers.mappers.ObjectMappers
 import com.geekbeast.postgres.PostgresArrays
 import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
-import com.openlattice.chronicle.authorization.*
-import com.openlattice.chronicle.ids.HazelcastIdGenerationService
+import com.openlattice.chronicle.authorization.AclKey
+import com.openlattice.chronicle.authorization.AuthorizationManager
+import com.openlattice.chronicle.authorization.Permission
+import com.openlattice.chronicle.authorization.Principal
+import com.openlattice.chronicle.authorization.SecurableObjectType
 import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.ORGANIZATIONS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_ID
 import com.openlattice.chronicle.storage.StorageResolver
+import com.openlattice.chronicle.util.ensureVanilla
 import java.sql.Connection
-import java.util.*
+import java.util.EnumSet
+import java.util.Optional
+import java.util.UUID
 
 /**
  *
