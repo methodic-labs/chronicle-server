@@ -99,7 +99,7 @@ class ChroniclePostgresTables {
             .primaryKey(STUDY_ID, FRIENDLY_ID)
 
         @JvmField
-        val candidates = PostgresTableDefinition("candidates")
+        val CANDIDATES = PostgresTableDefinition("candidates")
             .addColumns(
                 CANDIDATE_ID,
                 FIRST_NAME,
