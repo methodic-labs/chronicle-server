@@ -45,7 +45,7 @@ class EnrollmentService(
          * 4. source device id
          * 5. source device
          */
-        private val INSERT_DEVICE_SQL = """
+        private val INSERT_DEVICE = """
             INSERT INTO ${DEVICES.name} ($DEVICES_COLS) VALUES (?,?,?,?,?::jsonb) ON CONFLICT DO NOTHING             
         """
 
@@ -54,7 +54,7 @@ class EnrollmentService(
          * 2. participant id
          * 3. source device id
          */
-        private val GET_DEVICE_ID_SQL = """
+        private val GET_DEVICE_ID = """
             SELECT ${DEVICE_ID.name} FROM ${DEVICES.name} 
                 WHERE ${STUDY_ID.name} = ? AND ${PARTICIPANT_ID.name} AND ${SOURCE_DEVICE_ID.name} = ? 
         """.trimIndent()
@@ -64,13 +64,14 @@ class EnrollmentService(
          * 2. participant id
          * 3. source device id
          */
-        private val COUNT_DEVICE_ID_SQL = """
+        private val COUNT_DEVICE_ID = """
             SELECT count(*) FROM ${DEVICES.name} 
                 WHERE ${STUDY_ID.name} = ? AND ${PARTICIPANT_ID.name} AND ${SOURCE_DEVICE_ID.name} = ? 
         """.trimIndent()
 
         private val COUNT_STUDY_PARTICIPANTS = """
-            
+            SELECT count(*) FROM ${STUDY_PARTICIPANTS.name}
+                WHERE ${STUDY_ID.name} = ? AND ${PARTICIPANT_ID.name}
         """.trimIndent()
     }
 
@@ -119,7 +120,7 @@ class EnrollmentService(
         ensureVanilla(flavor)
         val deviceId = idGenerationService.getNextId()
         val insertCount = hds.connection.use { connection ->
-            connection.prepareStatement(INSERT_DEVICE_SQL).use { ps ->
+            connection.prepareStatement(INSERT_DEVICE).use { ps ->
                 ps.setObject(1, studyId)
                 ps.setObject(2, deviceId)
                 ps.setString(3, participantId)
@@ -139,7 +140,7 @@ class EnrollmentService(
         val (flavor, hds) = storageResolver.getPlatformStorage()
         ensureVanilla(flavor)
         return hds.connection.use { connection ->
-            connection.prepareStatement(GET_DEVICE_ID_SQL).use { ps ->
+            connection.prepareStatement(GET_DEVICE_ID).use { ps ->
                 ps.setObject(1, studyId)
                 ps.setString(2, participantId)
                 ps.setString(3, sourceDeviceId)
@@ -162,7 +163,7 @@ class EnrollmentService(
         val (flavor, hds) = storageResolver.getPlatformStorage()
         ensureVanilla(flavor)
         return hds.connection.use { connection ->
-            connection.prepareStatement(COUNT_DEVICE_ID_SQL).use { ps ->
+            connection.prepareStatement(COUNT_DEVICE_ID).use { ps ->
                 ps.setObject(1, studyId)
                 ps.setString(2, participantId)
                 ps.setString(3, sourceDeviceId)
@@ -175,12 +176,21 @@ class EnrollmentService(
     }
 
     override fun isKnownParticipant(studyId: UUID, participantId: String): Boolean {
-        TODO("Not yet implemented")
+        val (flavor, hds) = storageResolver.getPlatformStorage()
+        ensureVanilla(flavor)
+        return hds.connection.use { connection ->
+            connection.prepareStatement(COUNT_STUDY_PARTICIPANTS).use { ps ->
+                ps.setObject(1, studyId)
+                ps.setString(2, participantId)
+                ps.executeQuery().use { rs ->
+                    check(rs.next()) { "No count returned for study=$studyId, participant=$participantId" }
+                    ResultSetAdapters.count(rs) > 0 //could also check equal to one, but unique index exists in db
+                }
+            }
+        }
     }
 
-    override fun getParticipantEntity(
-        studyId: UUID, participantEntityKeyId: UUID
-    ): Participant {
+    override fun getParticipant(studyId: UUID, participantId: String): Participant {
         TODO("Not yet implemented")
     }
 

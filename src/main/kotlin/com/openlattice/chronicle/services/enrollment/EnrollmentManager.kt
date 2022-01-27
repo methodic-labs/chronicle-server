@@ -24,12 +24,7 @@ interface EnrollmentManager {
     fun isKnownDatasource(studyId: UUID, participantId: String, sourceDeviceId: String): Boolean
     fun isKnownParticipant(studyId: UUID, participantId: String): Boolean
 
-    fun getParticipantEntity(
-
-        studyId: UUID,
-        participantEntityId: UUID
-    ): Participant
-
+    fun getParticipant(studyId: UUID, participantId: String): Participant
     fun getParticipationStatus(studyId: UUID, participantId: String): ParticipationStatus
     fun isNotificationsEnabled(studyId: UUID): Boolean
     fun getStudyParticipantIds(studyId: UUID): Set<String>

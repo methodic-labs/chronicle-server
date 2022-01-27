@@ -12,7 +12,7 @@ interface DataDownloadManager {
     fun getParticipantData(
             organizationId: UUID?,
             studyId: UUID,
-            participantEntityId: UUID,
+            participantId: String,
             dataType: ParticipantDataType,
             token: String?): Iterable<Map<String, Set<Any>>>
 }
