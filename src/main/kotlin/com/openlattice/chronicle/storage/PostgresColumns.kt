@@ -13,7 +13,11 @@ class PostgresColumns {
         //Not actually used in table, just for reading studies.
         val ORGANIZATION_IDS = PostgresColumnDefinition("organization_ids", PostgresDatatype.UUID_ARRAY).notNull()
         val STUDY_ID = PostgresColumnDefinition("study_id", PostgresDatatype.UUID).notNull()
-        val PARTICIPANT_ID = PostgresColumnDefinition("particpant_id", PostgresDatatype.TEXT).notNull()
+        val CANDIDATE_ID = PostgresColumnDefinition("candidate_id", PostgresDatatype.UUID).notNull()
+        val PARTICIPANT_ID = PostgresColumnDefinition("participant_id", PostgresDatatype.TEXT).notNull()
+        val SOURCE_DEVICE = PostgresColumnDefinition("source_device", PostgresDatatype.JSONB).notNull()
+        val SOURCE_DEVICE_ID = PostgresColumnDefinition("source_device_id", PostgresDatatype.TEXT).notNull()
+        val DEVICE_ID = PostgresColumnDefinition("device_id", PostgresDatatype.UUID).notNull()
         val TITLE = PostgresColumnDefinition("title", PostgresDatatype.TEXT)
         val DESCRIPTION = PostgresColumnDefinition("description", PostgresDatatype.TEXT)
         val SETTINGS = PostgresColumnDefinition("settings", PostgresDatatype.JSONB).withDefault("'{}'::jsonb")
@@ -21,6 +25,9 @@ class PostgresColumns {
         val FIRST_NAME = PostgresColumnDefinition("first_name", PostgresDatatype.TEXT)
         val LAST_NAME = PostgresColumnDefinition("last_name", PostgresDatatype.TEXT)
         val DATE_OF_BIRTH = PostgresColumnDefinition("dob", PostgresDatatype.DATE)
+        val DELETE_ME = PostgresColumnDefinition("delete_me", PostgresDatatype.TIMESTAMPTZ)
+            .notNull()
+            .withDefault("'-infinity'")
         val TUD_ID = PostgresColumnDefinition("tud_id", PostgresDatatype.UUID).notNull()
         val SUBMISSION_DATE = PostgresColumnDefinition("submission_date", PostgresDatatype.TIMESTAMP).notNull().withDefault("NOW()")
         val SUBMISSION = PostgresColumnDefinition("submission", PostgresDatatype.JSONB)
@@ -63,6 +70,7 @@ class PostgresColumns {
         val UPDATED_AT = PostgresColumnDefinition("updated_at", PostgresDatatype.TIMESTAMPTZ).notNull().withDefault("now()")
         val STUDY_GROUP = PostgresColumnDefinition("study_group", PostgresDatatype.TEXT)
         val STUDY_VERSION = PostgresColumnDefinition("study_version", PostgresDatatype.TEXT)
+        val CONTACT = PostgresColumnDefinition("contact", PostgresDatatype.TEXT)
 
         //It is fine to use double for lat/lon since we won't be doing computation on these
         val LAT = PostgresColumnDefinition("lat", PostgresDatatype.DOUBLE)
