@@ -8,7 +8,7 @@ import com.openlattice.chronicle.data.ChronicleQuestionnaire
 import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import com.openlattice.chronicle.services.surveys.SurveysManager
-import com.openlattice.chronicle.sources.Datasource
+import com.openlattice.chronicle.sources.SourceDevice
 import org.apache.olingo.commons.api.edm.FullQualifiedName
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.*
@@ -37,7 +37,7 @@ class ChronicleStudyController : ChronicleStudyApi {
         @PathVariable(ChronicleStudyApi.STUDY_ID) studyId: UUID,
         @PathVariable(ChronicleStudyApi.PARTICIPANT_ID) participantId: String,
         @PathVariable(ChronicleStudyApi.DATASOURCE_ID) datasourceId: String,
-        @RequestBody datasource: Optional<Datasource>
+        @RequestBody datasource: Optional<SourceDevice>
     ): UUID {
         val organizationId = enrollmentManager.getOrganizationIdForLegacyStudy(studyId)
         return enrollmentManager.registerDatasource(studyId, participantId, datasourceId, datasource.get())

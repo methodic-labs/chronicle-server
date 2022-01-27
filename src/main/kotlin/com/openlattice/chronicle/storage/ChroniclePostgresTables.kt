@@ -6,13 +6,16 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.BASE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CANDIDATE_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CREATED_AT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.SOURCE_DEVICE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.SOURCE_DEVICE_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DATE_OF_BIRTH
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DELETE_ME
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DESCRIPTION
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.DEVICE_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ENDED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.EXPIRATION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.FIRST_NAME
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.FRIENDLY_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LAST_NAME
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LAT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LON
@@ -91,12 +94,12 @@ class ChroniclePostgresTables {
                 ORGANIZATION_ID,
                 STUDY_ID,
                 CANDIDATE_ID,
-                FRIENDLY_ID
+                PARTICIPANT_ID
             )
-            .primaryKey(STUDY_ID, FRIENDLY_ID)
+            .primaryKey(STUDY_ID, PARTICIPANT_ID)
 
         @JvmField
-        val candidates = PostgresTableDefinition("candidates")
+        val CANDIDATES = PostgresTableDefinition("candidates")
             .addColumns(
                 CANDIDATE_ID,
                 FIRST_NAME,
@@ -106,6 +109,17 @@ class ChroniclePostgresTables {
                 DELETE_ME
             )
             .primaryKey(CANDIDATE_ID)
+
+        @JvmField
+        val DEVICES = PostgresTableDefinition("DEVICES")
+            .addColumns(
+                STUDY_ID,
+                DEVICE_ID,
+                PARTICIPANT_ID, //Make sure this is indexed.
+                SOURCE_DEVICE_ID,
+                SOURCE_DEVICE
+            )
+            .primaryKey(STUDY_ID, DEVICE_ID) //Just in case device is used across multiple studies
 
         @JvmField
         val BASE_LONG_IDS: PostgresTableDefinition = PostgresTableDefinition("base_long_ids")
@@ -161,6 +175,16 @@ class ChroniclePostgresTables {
         init {
             ORGANIZATION_STUDIES
                 .addIndexes(PostgresColumnsIndexDefinition(ORGANIZATION_STUDIES, ORGANIZATION_ID).ifNotExists())
+            DEVICES
+                .addIndexes(
+                    //(study id, participant id, datasource id) is bijective with device id
+                    PostgresColumnsIndexDefinition(
+                        DEVICES,
+                        STUDY_ID,
+                        PARTICIPANT_ID,
+                        SOURCE_DEVICE_ID
+                    ).ifNotExists().unique()
+                )
         }
     }
 }
