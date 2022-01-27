@@ -52,7 +52,12 @@ class CandidatesController @Inject constructor(
     )
     override fun getCandidate(@PathVariable(CANDIDATE_ID_PARAM) candidateId: UUID): Candidate {
         ensureAuthenticated()
-        return candidatesService.getCandidate(candidateId)
+        return try {
+            candidatesService.getCandidate(candidateId)
+        }
+        catch (e: NoSuchElementException) {
+            throw CandidateNotFoundException("candidate not found - $candidateId")
+        }
     }
 
     @Timed
