@@ -15,7 +15,7 @@ import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.ids.IdConstants
 import com.openlattice.chronicle.services.enrollment.EnrollmentService
 import com.openlattice.chronicle.services.studies.StudyService
-import com.openlattice.chronicle.sources.Datasource
+import com.openlattice.chronicle.sources.SourceDevice
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.study.Study
 import com.openlattice.chronicle.study.StudyApi
@@ -68,7 +68,7 @@ class StudyController @Inject constructor(
         studyId: UUID,
         participantId: String,
         datasourceId: String,
-        datasource: Datasource
+        datasource: SourceDevice
     ): UUID {
 //        check( enrollmentService.isKnownParticipant(studyId, participantId)) { "Cannot enroll device for an unknown participant." }
 //        TODO: Move checks out from enrollment data source into the controller.

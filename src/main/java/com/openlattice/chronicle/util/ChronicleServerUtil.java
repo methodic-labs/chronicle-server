@@ -60,10 +60,7 @@ public class ChronicleServerUtil {
             String fileNamePrefix,
             UUID organizationId,
             UUID studyId,
-            UUID participantEntityKeyId ) {
-        String participantId = enrollmentManager
-                .getParticipantEntity( studyId, participantEntityKeyId )
-                .getParticipantId();
+            String participantId ) {
 
         StringBuilder fileNameBuilder = new StringBuilder()
                 .append( fileNamePrefix )
