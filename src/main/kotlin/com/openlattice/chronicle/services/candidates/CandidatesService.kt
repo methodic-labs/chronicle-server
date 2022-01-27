@@ -2,7 +2,7 @@ package com.openlattice.chronicle.services.candidates
 
 import com.openlattice.chronicle.candidates.Candidate
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.CANDIDATES
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.DELETE_ME
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.EXPIRATION_DATE
 import com.openlattice.chronicle.storage.StorageResolver
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
@@ -18,7 +18,7 @@ class CandidatesService(
 
         private val CANDIDATES_COLUMNS = CANDIDATES
             .columns
-            .subtract(setOf(DELETE_ME))
+            .subtract(setOf(EXPIRATION_DATE))
 
         private val INSERT_CANDIDATE_SQL = """
             INSERT INTO ${CANDIDATES.name} (${CANDIDATES_COLUMNS.joinToString { it.name }}) 

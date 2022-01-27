@@ -25,9 +25,6 @@ class PostgresColumns {
         val FIRST_NAME = PostgresColumnDefinition("first_name", PostgresDatatype.TEXT)
         val LAST_NAME = PostgresColumnDefinition("last_name", PostgresDatatype.TEXT)
         val DATE_OF_BIRTH = PostgresColumnDefinition("dob", PostgresDatatype.DATE)
-        val DELETE_ME = PostgresColumnDefinition("delete_me", PostgresDatatype.TIMESTAMPTZ)
-            .notNull()
-            .withDefault("'-infinity'")
 
         val ACL_KEY = PostgresColumnDefinition("acl_key", PostgresDatatype.UUID_ARRAY)
         val PRINCIPAL_ID = PostgresColumnDefinition("principal_id", PostgresDatatype.TEXT)
