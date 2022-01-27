@@ -7,7 +7,6 @@ import com.openlattice.chronicle.storage.StorageResolver
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.sql.Connection
-import java.time.LocalDate
 
 @Service
 class CandidatesService(
@@ -38,8 +37,7 @@ class CandidatesService(
             ps.setString(index++, candidate.firstName)
             ps.setString(index++, candidate.lastName)
             ps.setString(index++, candidate.name)
-            val dob = if (candidate.dob != null) LocalDate.parse(candidate.dob) else null
-            ps.setObject(index, dob)
+            ps.setObject(index, candidate.dob)
             ps.executeUpdate()
         }
     }
