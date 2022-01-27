@@ -36,7 +36,7 @@ class CandidatesController @Inject constructor(
         path = ["", "/"],
         consumes = [MediaType.APPLICATION_JSON_VALUE]
     )
-    override fun createCandidate(candidate: Candidate): UUID {
+    override fun registerCandidate(candidate: Candidate): UUID {
         throw NotImplementedException("coming soon")
     }
 }
