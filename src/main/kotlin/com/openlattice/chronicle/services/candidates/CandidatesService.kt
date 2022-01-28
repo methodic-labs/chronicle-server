@@ -1,5 +1,9 @@
 package com.openlattice.chronicle.services.candidates
 
+import com.openlattice.chronicle.authorization.AclKey
+import com.openlattice.chronicle.authorization.AuthorizationManager
+import com.openlattice.chronicle.authorization.SecurableObjectType
+import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.candidates.Candidate
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.CANDIDATES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.EXPIRATION_DATE
@@ -11,6 +15,7 @@ import java.sql.Connection
 @Service
 class CandidatesService(
     private val storageResolver: StorageResolver,
+    private val authorizationService: AuthorizationManager,
 ) : CandidatesManager {
 
     companion object {
@@ -28,6 +33,12 @@ class CandidatesService(
 
     override fun registerCandidate(connection: Connection, candidate: Candidate) {
         insertCandidate(connection, candidate)
+        authorizationService.createSecurableObject(
+            connection = connection,
+            aclKey = AclKey(candidate.id),
+            principal = Principals.getCurrentUser(),
+            objectType = SecurableObjectType.Candidate
+        )
     }
 
     private fun insertCandidate(connection: Connection, candidate: Candidate) {
