@@ -3,6 +3,10 @@ package com.openlattice.chronicle.services.candidates
 import com.geekbeast.postgres.PostgresArrays
 import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
+import com.openlattice.chronicle.authorization.AclKey
+import com.openlattice.chronicle.authorization.AuthorizationManager
+import com.openlattice.chronicle.authorization.SecurableObjectType
+import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.candidates.Candidate
 import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.CANDIDATES
@@ -18,6 +22,7 @@ import java.util.UUID
 @Service
 class CandidatesService(
     private val storageResolver: StorageResolver,
+    private val authorizationService: AuthorizationManager,
 ) : CandidatesManager {
 
     companion object {
@@ -48,6 +53,12 @@ class CandidatesService(
 
     override fun registerCandidate(connection: Connection, candidate: Candidate) {
         insertCandidate(connection, candidate)
+        authorizationService.createSecurableObject(
+            connection = connection,
+            aclKey = AclKey(candidate.id),
+            principal = Principals.getCurrentUser(),
+            objectType = SecurableObjectType.Candidate
+        )
     }
 
     //
@@ -59,11 +70,13 @@ class CandidatesService(
     private fun insertCandidate(connection: Connection, candidate: Candidate) {
         connection.prepareStatement(INSERT_CANDIDATE_SQL).use { ps ->
             var index = 1
-            ps.setObject(index++, candidate.candidateId)
+            ps.setObject(index++, candidate.id)
             ps.setString(index++, candidate.firstName)
             ps.setString(index++, candidate.lastName)
             ps.setString(index++, candidate.name)
-            ps.setObject(index, candidate.dob)
+            ps.setObject(index++, candidate.dateOfBirth)
+            ps.setString(index++, candidate.email)
+            ps.setString(index, candidate.phoneNumber)
             ps.executeUpdate()
         }
     }
