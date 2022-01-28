@@ -235,7 +235,7 @@ class ChronicleServerServicesPod {
     }
 
     @Bean
-    fun authorizationManager(): AuthorizationManager {
+    fun authorizationService(): AuthorizationManager {
         return HazelcastAuthorizationService(hazelcast!!, storageResolver, eventBus!!, principalsMapManager())
     }
 
@@ -244,7 +244,7 @@ class ChronicleServerServicesPod {
         return HazelcastPrincipalService(
             hazelcast!!,
             aclKeyReservationService(),
-            authorizationManager(),
+            authorizationService(),
             principalsMapManager(),
             auditingManager()
         )
@@ -273,7 +273,7 @@ class ChronicleServerServicesPod {
             storageResolver,
             aclKeyReservationService(),
             idGenerationService(),
-            authorizationManager(),
+            authorizationService(),
             auditingManager()
         )
     }
@@ -295,7 +295,7 @@ class ChronicleServerServicesPod {
 
     @Bean
     fun organizationsService(): ChronicleOrganizationService {
-        return ChronicleOrganizationService(storageResolver, authorizationManager())
+        return ChronicleOrganizationService(storageResolver, authorizationService())
     }
 
     @Bean
@@ -325,7 +325,7 @@ class ChronicleServerServicesPod {
 
     @Bean
     fun candidatesService(): CandidatesService {
-        return CandidatesService(storageResolver)
+        return CandidatesService(storageResolver, authorizationService())
     }
 
     companion object {
