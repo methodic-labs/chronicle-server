@@ -106,7 +106,7 @@ class StudyService(
          */
         private val INSERT_ORG_STUDIES_SQL =
             """
-                INSERT IN ${ORGANIZATION_STUDIES.name} (${ORG_STUDIES_COLS}) VALUES (?,?,?,?)
+                INSERT INTO ${ORGANIZATION_STUDIES.name} (${ORG_STUDIES_COLS}) VALUES (?,?,?,?::jsonb)
             """.trimIndent()
 
         private val GET_STUDIES_SQL = """
@@ -144,6 +144,7 @@ class StudyService(
 
     override fun createStudy(connection: Connection, study: Study) {
         insertStudy(connection, study)
+        insertOrgStudy(connection, study)
         authorizationService.createSecurableObject(
             connection = connection,
             aclKey = AclKey(study.id),
@@ -164,6 +165,19 @@ class StudyService(
         ps.setObject(8, study.contact)
         ps.setString(9, mapper.writeValueAsString(study.settings))
         return ps.executeUpdate()
+    }
+
+    private fun insertOrgStudy(connection: Connection, study: Study): Int {
+        val ps = connection.prepareStatement(INSERT_ORG_STUDIES_SQL)
+        study.organizationIds.forEach { organizationId ->
+            var params = 1
+            ps.setObject(params++, organizationId)
+            ps.setObject(params++, study.id)
+            ps.setObject(params++, Principals.getCurrentUser().id)
+            ps.setString(params++, mapper.writeValueAsString(study.settings))
+            ps.addBatch()
+        }
+        return ps.executeBatch().sum()
     }
 
     override fun getStudy(studyIds: Collection<UUID>): Iterable<Study> {
