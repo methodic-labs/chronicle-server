@@ -37,7 +37,9 @@ class CandidatesService(
             ps.setString(index++, candidate.firstName)
             ps.setString(index++, candidate.lastName)
             ps.setString(index++, candidate.name)
-            ps.setObject(index, candidate.dob)
+            ps.setObject(index++, candidate.dateOfBirth)
+            ps.setString(index++, candidate.email)
+            ps.setString(index, candidate.phoneNumber)
             ps.executeUpdate()
         }
     }
