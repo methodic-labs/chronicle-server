@@ -44,7 +44,7 @@ class CandidatesService(
     private fun insertCandidate(connection: Connection, candidate: Candidate) {
         connection.prepareStatement(INSERT_CANDIDATE_SQL).use { ps ->
             var index = 1
-            ps.setObject(index++, candidate.candidateId)
+            ps.setObject(index++, candidate.id)
             ps.setString(index++, candidate.firstName)
             ps.setString(index++, candidate.lastName)
             ps.setString(index++, candidate.name)

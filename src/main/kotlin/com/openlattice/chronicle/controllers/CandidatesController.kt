@@ -50,12 +50,12 @@ class CandidatesController @Inject constructor(
         ensureAuthenticated()
         val (flavor, hds) = storageResolver.getPlatformStorage()
         ensureVanilla(flavor)
-        candidate.candidateId = idGenerationService.getNextId()
+        candidate.id = idGenerationService.getNextId()
         AuditedOperationBuilder<Unit>(hds.connection, auditingManager)
             .operation { connection -> candidatesService.registerCandidate(connection, candidate) }
             .audit { listOf(
                 AuditableEvent(
-                    AclKey(candidate.candidateId),
+                    AclKey(candidate.id),
                     Principals.getCurrentSecurablePrincipal().id,
                     Principals.getCurrentUser().id,
                     AuditEventType.REGISTER_CANDIDATE,
@@ -63,6 +63,6 @@ class CandidatesController @Inject constructor(
                 )
             ) }
             .buildAndRun()
-        return candidate.candidateId
+        return candidate.id
     }
 }
