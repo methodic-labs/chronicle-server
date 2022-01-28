@@ -28,7 +28,7 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.USERNAME
 class RedshiftDataTables {
     companion object {
         const val REDSHIFT_ENVIRONMENT = "redshift"
-        private const val REDSHIFT_DATASOURCE_NAME = "chronicle"
+        internal const val REDSHIFT_DATASOURCE_NAME = "chronicle"
 
         @JvmField
         val CHRONICLE_USAGE_EVENTS = RedshiftTableDefinition("chronicle_usage_events")

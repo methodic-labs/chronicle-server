@@ -50,6 +50,7 @@ import com.openlattice.chronicle.organizations.Organization
 import com.openlattice.chronicle.organizations.OrganizationPrincipal
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CONTACT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CREATED_AT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.DEVICE_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ENDED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LAT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LON
@@ -90,6 +91,9 @@ class ResultSetAdapters {
             val lsb: Long = rs.getLong(LSB.name)
             return Range(base, msb, lsb)
         }
+
+        @Throws(SQLException::class)
+        fun deviceId(rs: ResultSet): UUID = rs.getObject(DEVICE_ID.name, UUID::class.java)
 
         @Throws(SQLException::class)
         fun principalOfAclKey(rs: ResultSet): AclKey {

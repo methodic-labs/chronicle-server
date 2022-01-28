@@ -14,15 +14,18 @@ class PostgresDataTables {
         val CHRONICLE_USAGE_EVENTS = PostgresTableDefinition(RedshiftDataTables.CHRONICLE_USAGE_EVENTS.name)
             .addColumns(*RedshiftDataTables.CHRONICLE_USAGE_EVENTS.columns.toTypedArray())
             .primaryKey(*RedshiftDataTables.CHRONICLE_USAGE_EVENTS.columns.toTypedArray())
+            .addDataSourceNames(RedshiftDataTables.REDSHIFT_DATASOURCE_NAME)
 
         @JvmField
         val CHRONICLE_USAGE_STATS = PostgresTableDefinition(RedshiftDataTables.CHRONICLE_USAGE_STATS.name)
             .addColumns(*RedshiftDataTables.CHRONICLE_USAGE_STATS.columns.toTypedArray())
             .primaryKey(*RedshiftDataTables.CHRONICLE_USAGE_STATS.columns.toTypedArray())
+            .addDataSourceNames(RedshiftDataTables.REDSHIFT_DATASOURCE_NAME)
 
         @JvmField
         val AUDIT = PostgresTableDefinition(RedshiftDataTables.AUDIT.name)
             .addColumns(*RedshiftDataTables.AUDIT.columns.toTypedArray())
             .primaryKey(*RedshiftDataTables.AUDIT.columns.toTypedArray())
+            .addDataSourceNames(RedshiftDataTables.REDSHIFT_DATASOURCE_NAME)
     }
 }

@@ -16,9 +16,9 @@ class DataDownloadService() : DataDownloadManager {
     private fun getParticipantDataHelper(
             organizationId: UUID?,
             studyId: UUID,
-            participantEKID: UUID,
-            dataType: ParticipantDataType,
-            token: String?): Iterable<Map<String, Set<Any>>> {
+            participantId: String,
+            dataType: ParticipantDataType )
+    : Iterable<Map<String, Set<Any>>> {
 
         return try {
             val srcPropertiesToInclude = DownloadTypePropertyTypeFqns.SRC.getValue(dataType)
@@ -31,7 +31,7 @@ class DataDownloadService() : DataDownloadManager {
             // internally. additionally, it doesn't seem right for the request to return a stacktrace. instead,
             // catching all exceptions and throwing a general exception here will result in a failed request with
             // a simple error message to indicate something went wrong during the file download.
-            logger.error("failed to download data for participant {}", participantEKID, e)
+            logger.error("failed to download data for study {} and participant {}", studyId, participantId, e)
             throw RuntimeException("failed to download participant data")
         }
     }
@@ -39,7 +39,7 @@ class DataDownloadService() : DataDownloadManager {
     override fun getParticipantData(
             organizationId: UUID?,
             studyId: UUID,
-            participantEntityId: UUID,
+            participantEntityId: String,
             dataType: ParticipantDataType,
             token: String?
     ): Iterable<Map<String, Set<Any>>> {
@@ -48,8 +48,7 @@ class DataDownloadService() : DataDownloadManager {
                 organizationId,
                 studyId,
                 participantEntityId,
-                dataType,
-                token
+                dataType
         )
     }
 
