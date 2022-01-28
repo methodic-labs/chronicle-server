@@ -9,13 +9,18 @@ import com.openlattice.chronicle.authorization.AuthorizingComponent
 import com.openlattice.chronicle.authorization.Permission
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
+import com.openlattice.chronicle.ids.IdConstants
+import com.openlattice.chronicle.organizations.ensureVanilla
+import com.openlattice.chronicle.services.enrollment.EnrollmentService
 import com.openlattice.chronicle.study.StudyApi.Companion.CONTROLLER
 import com.openlattice.chronicle.services.studies.StudyService
+import com.openlattice.chronicle.sources.SourceDevice
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.study.Study
 import com.openlattice.chronicle.study.StudyApi
 import com.openlattice.chronicle.study.StudyApi.Companion.STUDY_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.STUDY_ID_PATH
+import com.openlattice.chronicle.study.StudyUpdate
 import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.*
@@ -33,6 +38,7 @@ import kotlin.NoSuchElementException
 class StudyController @Inject constructor(
     val storageResolver: StorageResolver,
     val idGenerationService: HazelcastIdGenerationService,
+    val enrollmentService: EnrollmentService,
     override val authorizationManager: AuthorizationManager,
     override val auditingManager: AuditingManager
 ) : StudyApi, AuthorizingComponent {
@@ -41,6 +47,23 @@ class StudyController @Inject constructor(
 
     companion object {
         private val logger = LoggerFactory.getLogger(StudyController::class.java)!!
+    }
+
+    @Timed
+    @PostMapping(
+        path = ["STUDY_ID_PATH + PARTICIPANT_ID_PATH + DATA_SOURCE_ID_PATH + ENROLL_PATH"],
+        consumes = [MediaType.APPLICATION_JSON_VALUE],
+        produces = [MediaType.APPLICATION_JSON_VALUE],
+    )
+    override fun enroll(
+        studyId: UUID,
+        participantId: String,
+        datasourceId: String,
+        datasource: SourceDevice
+    ): UUID {
+//        check( enrollmentService.isKnownParticipant(studyId, participantId)) { "Cannot enroll device for an unknown participant." }
+//        TODO: Move checks out from enrollment data source into the controller.
+        return enrollmentService.registerDatasource(studyId, participantId, datasourceId, datasource)
     }
 
     @Timed
@@ -97,11 +120,59 @@ class StudyController @Inject constructor(
         logger.info("Retrieving study with id $studyId")
 
         return try {
-            studyService.getStudy(listOf(studyId)).first()
+            val study = studyService.getStudy(listOf(studyId)).first()
+            recordEvent(
+                AuditableEvent(
+                    AclKey(studyId),
+                    Principals.getCurrentSecurablePrincipal().id,
+                    Principals.getCurrentUser().id,
+                    AuditEventType.GET_STUDY,
+                    "",
+                    studyId,
+                    IdConstants.UNINITIALIZED.id,
+                    mapOf()
+                )
+            )
+            study
         } catch (ex: NoSuchElementException) {
             throw StudyNotFoundException(studyId, "No study with id $studyId found.")
         }
 
+    }
+
+    @Timed
+    @PatchMapping(
+        path = [STUDY_ID_PATH],
+        consumes = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    override fun updateStudy(
+        @PathVariable(STUDY_ID) studyId: UUID,
+        @RequestBody study: StudyUpdate
+    ) {
+        val studyAclKey = AclKey(studyId);
+        ensureOwnerAccess(studyAclKey)
+        val currentUserId = Principals.getCurrentUser().id;
+        logger.info("Updating study with id $studyId on behalf of $currentUserId")
+
+        val (flavor, hds) = storageResolver.getPlatformStorage()
+        ensureVanilla(flavor)
+        AuditedOperationBuilder<Unit>(hds.connection, auditingManager)
+            .operation { connection -> studyService.updateStudy(connection, studyId, study) }
+            .audit {
+                listOf(
+                    AuditableEvent(
+                        studyAclKey,
+                        Principals.getCurrentSecurablePrincipal().id,
+                        currentUserId,
+                        AuditEventType.UPDATE_STUDY,
+                        "",
+                        studyId,
+                        UUID(0, 0),
+                        mapOf()
+                    )
+                )
+            }
+            .buildAndRun()
     }
 
 }

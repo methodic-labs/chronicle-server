@@ -1,5 +1,6 @@
 package com.openlattice.chronicle.client
 
+import com.openlattice.chronicle.api.TimeUseDiaryApi
 import com.openlattice.chronicle.study.StudyApi
 
 /**
@@ -9,4 +10,5 @@ import com.openlattice.chronicle.study.StudyApi
 class ChronicleClient (jwt: () -> String )  {
     private val retrofit = RetrofitClientFactory.newClient(Environment.TESTING_CHRONICLE, jwt)
     val studyApi: StudyApi = retrofit.create(StudyApi::class.java)
+    val timeUseDiaryApi: TimeUseDiaryApi = retrofit.create(TimeUseDiaryApi::class.java)
 }

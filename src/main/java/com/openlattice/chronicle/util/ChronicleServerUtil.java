@@ -25,7 +25,7 @@ import static com.openlattice.chronicle.constants.EdmConstants.PERSON_ID_FQN;
  */
 public class ChronicleServerUtil {
 
-    public static String ORG_STUDY_PARTICIPANT = " - orgId = {}, studyId = {}, participantId = {}";
+    public static String ORG_STUDY_PARTICIPANT            = " - orgId = {}, studyId = {}, participantId = {}";
     public static String ORG_STUDY_PARTICIPANT_DATASOURCE = " - orgId = {}, studyId = {}, participantId = {}, dataSourceId = {}";
 
     public static String getFirstValueOrNull( Map<FullQualifiedName, Set<Object>> entity, FullQualifiedName fqn ) {
@@ -48,7 +48,7 @@ public class ChronicleServerUtil {
         }
     }
 
-    @Deprecated(since = "apps v2")
+    @Deprecated( since = "apps v2" )
     public static String getParticipantEntitySetName( UUID studyId ) {
         return PARTICIPANTS_PREFIX.concat( studyId.toString() );
     }
@@ -60,10 +60,7 @@ public class ChronicleServerUtil {
             String fileNamePrefix,
             UUID organizationId,
             UUID studyId,
-            UUID participantEntityKeyId ) {
-        String participantId = enrollmentManager
-                .getParticipantEntity( organizationId, studyId, participantEntityKeyId )
-                .getParticipantId();
+            String participantId ) {
 
         StringBuilder fileNameBuilder = new StringBuilder()
                 .append( fileNamePrefix )
