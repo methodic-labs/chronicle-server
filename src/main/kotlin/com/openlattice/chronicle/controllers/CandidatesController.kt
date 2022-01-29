@@ -53,6 +53,7 @@ class CandidatesController @Inject constructor(
     )
     override fun getCandidate(@PathVariable(CANDIDATE_ID_PARAM) candidateId: UUID): Candidate {
         ensureAuthenticated()
+        ensureReadAccess(AclKey(candidateId))
         return try {
             candidatesService.getCandidate(candidateId)
         }
@@ -69,6 +70,7 @@ class CandidatesController @Inject constructor(
     )
     override fun getCandidates(@RequestBody candidateIds: Set<UUID>): Iterable<Candidate> {
         ensureAuthenticated()
+        ensureReadAccess(candidateIds.mapTo(mutableSetOf()) { AclKey(it) })
         return candidatesService.getCandidates(candidateIds)
     }
 
