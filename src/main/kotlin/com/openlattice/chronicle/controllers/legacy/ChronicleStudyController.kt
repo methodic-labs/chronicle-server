@@ -108,8 +108,9 @@ class ChronicleStudyController : ChronicleStudyApi {
         @PathVariable(ChronicleStudyApi.PARTICIPANT_ID) participantId: String,
         @RequestBody associationDetails: Map<UUID, Map<FullQualifiedName, Set<Any>>>
     ) {
-        val organizationId = enrollmentManager.getOrganizationIdForLegacyStudy(studyId)
-        surveysManager.submitAppUsageSurvey(organizationId, studyId, participantId, associationDetails)
+        // val organizationId = enrollmentManager.getOrganizationIdForLegacyStudy(studyId)
+        //surveysManager.submitAppUsageSurvey(organizationId, studyId, participantId, associationDetails)
+        TODO("Not needed. To remove")
     }
 
     @Timed
@@ -160,7 +161,8 @@ class ChronicleStudyController : ChronicleStudyApi {
         @PathVariable(ChronicleStudyApi.PARTICIPANT_ID) participantId: String,
         @RequestBody surveyData: List<Map<FullQualifiedName, Set<Any>>>
     ) {
-        val organizationId = enrollmentManager.getOrganizationIdForLegacyStudy(studyId)
-        surveysManager.submitTimeUseDiarySurvey(organizationId, studyId, participantId, surveyData)
+//        val organizationId = enrollmentManager.getOrganizationIdForLegacyStudy(studyId)
+//        surveysManager.submitTimeUseDiarySurvey(organizationId, studyId, participantId, surveyData)
+        TODO("Not needed. To remove")
     }
 }

@@ -169,7 +169,8 @@ class ChronicleControllerV2 : ChronicleApi {
             @PathVariable(ChronicleApi.PARTICIPANT_ID) participantId: String,
             @RequestBody surveyData: List<Map<FullQualifiedName, Set<Any>>>
     ) {
-        surveysManager.submitTimeUseDiarySurvey(organizationId, studyId, participantId, surveyData)
+        // surveysManager.submitTimeUseDiarySurvey(organizationId, studyId, participantId, surveyData)
+        TODO("Not needed here. To remove")
     }
 
     @Timed
