@@ -24,7 +24,7 @@ import java.util.*
 @RequestMapping(CONTROLLER)
 class IOSSensorController: IOSSensorApi {
     @PostMapping(
-            path = [ IOSSensorApi.BASE + IOSSensorApi.ORGANIZATION_ID_PATH + IOSSensorApi.STUDY_ID_PATH + IOSSensorApi.PARTICIPANT_ID_PATH + IOSSensorApi.DATASOURCE_ID_PATH],
+            path = [IOSSensorApi.BASE + IOSSensorApi.ORGANIZATION_ID_PATH + IOSSensorApi.STUDY_ID_PATH + IOSSensorApi.PARTICIPANT_ID_PATH + IOSSensorApi.DATASOURCE_ID_PATH],
             consumes = [MediaType.APPLICATION_JSON_VALUE]
     )
     override fun uploadIOSSensorData(
