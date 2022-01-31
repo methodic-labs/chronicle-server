@@ -20,27 +20,38 @@
 package com.openlattice.chronicle.pods
 
 import com.auth0.client.mgmt.ManagementAPI
-import com.geekbeast.mappers.mappers.ObjectMappers
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.geekbeast.hazelcast.HazelcastClientProvider
-import com.google.common.eventbus.EventBus
-import com.google.common.util.concurrent.ListeningExecutorService
-import com.hazelcast.core.HazelcastInstance
-import com.geekbeast.rhizome.configuration.ConfigurationConstants
 import com.geekbeast.auth0.Auth0Pod
 import com.geekbeast.auth0.Auth0TokenProvider
 import com.geekbeast.auth0.AwsAuth0TokenProvider
 import com.geekbeast.authentication.Auth0Configuration
+import com.geekbeast.hazelcast.HazelcastClientProvider
+import com.geekbeast.jdbc.DataSourceManager
+import com.geekbeast.mappers.mappers.ObjectMappers
+import com.geekbeast.rhizome.configuration.ConfigurationConstants
+import com.google.common.eventbus.EventBus
+import com.google.common.util.concurrent.ListeningExecutorService
+import com.hazelcast.core.HazelcastInstance
 import com.openlattice.chronicle.auditing.AuditingManager
 import com.openlattice.chronicle.auditing.RedshiftAuditingManager
 import com.openlattice.chronicle.authorization.AuthorizationManager
 import com.openlattice.chronicle.authorization.HazelcastAuthorizationService
-import com.openlattice.chronicle.authorization.principals.*
+import com.openlattice.chronicle.authorization.initializers.AuthorizationInitializationDependencies
+import com.openlattice.chronicle.authorization.initializers.AuthorizationInitializationTask
+import com.openlattice.chronicle.authorization.principals.HazelcastPrincipalService
+import com.openlattice.chronicle.authorization.principals.HazelcastPrincipalsMapManager
+import com.openlattice.chronicle.authorization.principals.Principals
+import com.openlattice.chronicle.authorization.principals.PrincipalsMapManager
+import com.openlattice.chronicle.authorization.principals.SecurePrincipalsManager
 import com.openlattice.chronicle.authorization.reservations.AclKeyReservationService
 import com.openlattice.chronicle.configuration.ChronicleConfiguration
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
+import com.openlattice.chronicle.organizations.ChronicleOrganizationService
+import com.openlattice.chronicle.organizations.initializers.OrganizationsInitializationDependencies
+import com.openlattice.chronicle.organizations.initializers.OrganizationsInitializationTask
 import com.openlattice.chronicle.serializers.FullQualifiedNameJacksonSerializer.registerWithMapper
 import com.openlattice.chronicle.services.ScheduledTasksManager
+import com.openlattice.chronicle.services.candidates.CandidatesService
 import com.openlattice.chronicle.services.delete.DataDeletionManager
 import com.openlattice.chronicle.services.delete.DataDeletionService
 import com.openlattice.chronicle.services.download.DataDownloadManager
@@ -56,14 +67,15 @@ import com.openlattice.chronicle.services.upload.AppDataUploadManager
 import com.openlattice.chronicle.services.upload.AppDataUploadService
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.tasks.PostConstructInitializerTaskDependencies
-import com.openlattice.chronicle.users.*
-import com.geekbeast.jdbc.DataSourceManager
-import com.openlattice.chronicle.authorization.initializers.AuthorizationInitializationDependencies
-import com.openlattice.chronicle.authorization.initializers.AuthorizationInitializationTask
-import com.openlattice.chronicle.organizations.ChronicleOrganizationService
-import com.openlattice.chronicle.organizations.initializers.OrganizationsInitializationDependencies
-import com.openlattice.chronicle.organizations.initializers.OrganizationsInitializationTask
-import com.openlattice.users.*
+import com.openlattice.chronicle.users.Auth0SyncInitializationTask
+import com.openlattice.chronicle.users.Auth0SyncService
+import com.openlattice.chronicle.users.Auth0SyncTask
+import com.openlattice.chronicle.users.Auth0SyncTaskDependencies
+import com.openlattice.chronicle.users.Auth0UserListingService
+import com.openlattice.chronicle.users.DefaultAuth0SyncTask
+import com.openlattice.chronicle.users.LocalAuth0SyncTask
+import com.openlattice.chronicle.users.LocalUserListingService
+import com.openlattice.users.UserListingService
 import com.openlattice.users.export.Auth0ApiExtension
 import org.slf4j.LoggerFactory
 import org.springframework.context.annotation.Bean
@@ -171,7 +183,7 @@ class ChronicleServerServicesPod {
     @Bean
     @Throws(IOException::class, ExecutionException::class)
     fun enrollmentManager(): EnrollmentManager {
-        return EnrollmentService(scheduledTasksManager())
+        return EnrollmentService(storageResolver, idGenerationService(), scheduledTasksManager())
     }
 
 
@@ -223,7 +235,7 @@ class ChronicleServerServicesPod {
     }
 
     @Bean
-    fun authorizationManager(): AuthorizationManager {
+    fun authorizationService(): AuthorizationManager {
         return HazelcastAuthorizationService(hazelcast!!, storageResolver, eventBus!!, principalsMapManager())
     }
 
@@ -232,7 +244,7 @@ class ChronicleServerServicesPod {
         return HazelcastPrincipalService(
             hazelcast!!,
             aclKeyReservationService(),
-            authorizationManager(),
+            authorizationService(),
             principalsMapManager(),
             auditingManager()
         )
@@ -261,7 +273,7 @@ class ChronicleServerServicesPod {
             storageResolver,
             aclKeyReservationService(),
             idGenerationService(),
-            authorizationManager(),
+            authorizationService(),
             auditingManager()
         )
     }
@@ -283,7 +295,7 @@ class ChronicleServerServicesPod {
 
     @Bean
     fun organizationsService(): ChronicleOrganizationService {
-        return ChronicleOrganizationService(storageResolver, authorizationManager())
+        return ChronicleOrganizationService(storageResolver, authorizationService())
     }
 
     @Bean
@@ -309,6 +321,11 @@ class ChronicleServerServicesPod {
             principalsManager(),
             chronicleConfiguration
         )
+    }
+
+    @Bean
+    fun candidatesService(): CandidatesService {
+        return CandidatesService(storageResolver, authorizationService())
     }
 
     companion object {

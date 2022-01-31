@@ -16,7 +16,7 @@ import java.util.*
  */
 @Service
 class DataDeletionService(
-        private val enrollmentManager: EnrollmentManager
+    private val enrollmentManager: EnrollmentManager
 ) : DataDeletionManager {
     companion object {
         private val logger = LoggerFactory.getLogger(DataDeletionService::class.java)
@@ -24,26 +24,24 @@ class DataDeletionService(
 
     // get a set of all participants to remove:
     private fun getParticipantsToDelete(
-            organizationId: UUID,
-            studyId: UUID,
-            participantId: Optional<String>
+        studyId: UUID,
+        participantId: Optional<String>
     ): Set<String> {
 
         // specific participant
         // no participant was specified, so remove all participants from entity set
         return participantId
-                .map { setOf(it) }
-                .orElseGet { enrollmentManager.getStudyParticipantIds(organizationId, studyId) }
+            .map { setOf(it) }
+            .orElseGet { enrollmentManager.getStudyParticipantIds(studyId) }
     }
-
 
 
     @Timed
     override fun deleteParticipantData(
-            organizationId: UUID,
-            studyId: UUID,
-            participantId: String,
-            chronicleDeleteType: ChronicleDeleteType,
+        organizationId: UUID,
+        studyId: UUID,
+        participantId: String,
+        chronicleDeleteType: ChronicleDeleteType,
     ) {
 
     }
@@ -53,18 +51,17 @@ class DataDeletionService(
      */
     @Timed
     override fun deleteStudyData(
-            organizationId: UUID,
-            studyId: UUID,
-            chronicleDeleteType: ChronicleDeleteType,
+        organizationId: UUID,
+        studyId: UUID,
+        chronicleDeleteType: ChronicleDeleteType,
     ) {
 
         // ensure study exists
-        check( enrollmentManager.studyExists( organizationId, studyId) ) {
+        check(enrollmentManager.studyExists(studyId)) {
             "Study $studyId in organization $organizationId does not exist."
         }
 
     }
-
 
 
 }
