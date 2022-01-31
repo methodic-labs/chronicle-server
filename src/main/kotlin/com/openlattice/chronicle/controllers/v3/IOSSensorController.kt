@@ -3,9 +3,13 @@ package com.openlattice.chronicle.controllers.v3
 import com.openlattice.chronicle.sensorkit.IOSSensorApi
 import com.openlattice.chronicle.sensorkit.IOSSensorApi.Companion.CONTROLLER
 import com.openlattice.chronicle.sensorkit.IOSSensorApi.Companion.DATASOURCE_ID
+import com.openlattice.chronicle.sensorkit.IOSSensorApi.Companion.DATASOURCE_ID_PATH
 import com.openlattice.chronicle.sensorkit.IOSSensorApi.Companion.ORGANIZATION_ID
+import com.openlattice.chronicle.sensorkit.IOSSensorApi.Companion.ORGANIZATION_ID_PATH
 import com.openlattice.chronicle.sensorkit.IOSSensorApi.Companion.PARTICIPANT_ID
+import com.openlattice.chronicle.sensorkit.IOSSensorApi.Companion.PARTICIPANT_ID_PATH
 import com.openlattice.chronicle.sensorkit.IOSSensorApi.Companion.STUDY_ID
+import com.openlattice.chronicle.sensorkit.IOSSensorApi.Companion.STUDY_ID_PATH
 import com.openlattice.chronicle.sensorkit.SensorDataSample
 import com.openlattice.chronicle.services.upload.IOSSensorDataManager
 import com.openlattice.chronicle.services.upload.IOSSensorDataService
@@ -30,7 +34,7 @@ class IOSSensorController: IOSSensorApi {
     private lateinit var iosSensorDataService: IOSSensorDataService
 
     @PostMapping(
-            path = [IOSSensorApi.BASE + IOSSensorApi.ORGANIZATION_ID_PATH + IOSSensorApi.STUDY_ID_PATH + IOSSensorApi.PARTICIPANT_ID_PATH + IOSSensorApi.DATASOURCE_ID_PATH],
+            path = [ORGANIZATION_ID_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH + DATASOURCE_ID_PATH],
             consumes = [MediaType.APPLICATION_JSON_VALUE]
     )
     override fun uploadIOSSensorData(
