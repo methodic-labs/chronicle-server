@@ -172,7 +172,6 @@ class AclKeyReservationService(private val dsm: DataSourceManager) {
         }
     }
 
-
     fun <T : AbstractSecurableObject> registerSecurableObject(
             obj: T, prefix: AclKey = AclKey(), name: String
     ): UUID {

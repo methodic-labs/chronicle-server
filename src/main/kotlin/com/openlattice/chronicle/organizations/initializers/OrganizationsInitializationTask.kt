@@ -21,19 +21,16 @@
 
 package com.openlattice.chronicle.organizations.initializers
 
-import com.google.common.base.Stopwatch
 import com.geekbeast.tasks.HazelcastInitializationTask
 import com.geekbeast.tasks.Task
+import com.google.common.base.Stopwatch
 import com.openlattice.chronicle.authorization.initializers.AuthorizationInitializationTask
 import com.openlattice.chronicle.authorization.initializers.AuthorizationInitializationTask.Companion.GLOBAL_ADMIN_ROLE
 import com.openlattice.chronicle.ids.IdConstants
 import com.openlattice.chronicle.organizations.Organization
-import com.openlattice.chronicle.organizations.OrganizationConstants.Companion.SYSTEM_ORG_PRINCIPAL
-import com.openlattice.chronicle.organizations.OrganizationPrincipal
-import com.openlattice.chronicle.organizations.ensureVanilla
 import com.openlattice.chronicle.tasks.PostConstructInitializerTaskDependencies
+import com.openlattice.chronicle.util.ensureVanilla
 import org.slf4j.LoggerFactory
-import java.util.*
 import java.util.concurrent.TimeUnit
 
 private val logger = LoggerFactory.getLogger(OrganizationsInitializationTask::class.java)
