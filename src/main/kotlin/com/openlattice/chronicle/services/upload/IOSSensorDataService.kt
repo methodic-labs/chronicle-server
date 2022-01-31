@@ -40,7 +40,7 @@ class IOSSensorDataService(
             try {
                 val (flavor, hds) = storageResolver.resolve(studyId)
 
-                val status = enrollmentManager.getParticipationStatus(organizationId, studyId, participantId)
+                val status = enrollmentManager.getParticipationStatus( studyId, participantId )
                 if (ParticipationStatus.NOT_ENROLLED == status) {
                     logger.warn(
                             "participant is not enrolled, ignoring upload" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE,
@@ -51,9 +51,7 @@ class IOSSensorDataService(
                     )
                     return 0
                 }
-                val isDeviceEnrolled = enrollmentManager.isKnownDatasource(
-                        organizationId, studyId, participantId, deviceId
-                )
+                val isDeviceEnrolled = enrollmentManager.isKnownDatasource( studyId, participantId, deviceId )
                 if (isDeviceEnrolled) {
                     logger.error(
                             "data source not found, ignoring upload" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE,

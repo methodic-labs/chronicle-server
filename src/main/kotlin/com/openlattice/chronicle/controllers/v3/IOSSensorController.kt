@@ -7,6 +7,8 @@ import com.openlattice.chronicle.sensorkit.IOSSensorApi.Companion.ORGANIZATION_I
 import com.openlattice.chronicle.sensorkit.IOSSensorApi.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.sensorkit.IOSSensorApi.Companion.STUDY_ID
 import com.openlattice.chronicle.sensorkit.SensorDataSample
+import com.openlattice.chronicle.services.upload.IOSSensorDataManager
+import com.openlattice.chronicle.services.upload.IOSSensorDataService
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
@@ -15,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import retrofit2.http.POST
 import java.util.*
+import javax.inject.Inject
 
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
@@ -23,6 +26,9 @@ import java.util.*
 @RestController
 @RequestMapping(CONTROLLER)
 class IOSSensorController: IOSSensorApi {
+    @Inject
+    private lateinit var iosSensorDataService: IOSSensorDataService
+
     @PostMapping(
             path = [IOSSensorApi.BASE + IOSSensorApi.ORGANIZATION_ID_PATH + IOSSensorApi.STUDY_ID_PATH + IOSSensorApi.PARTICIPANT_ID_PATH + IOSSensorApi.DATASOURCE_ID_PATH],
             consumes = [MediaType.APPLICATION_JSON_VALUE]
@@ -33,6 +39,6 @@ class IOSSensorController: IOSSensorApi {
             @PathVariable (PARTICIPANT_ID) participantId: String,
             @PathVariable(DATASOURCE_ID)  deviceId: String,
             @RequestBody data: List<SensorDataSample>) {
-        TODO("Not yet implemented")
+        iosSensorDataService.uploadData(organizationId, studyId, participantId, deviceId, data)
     }
 }
