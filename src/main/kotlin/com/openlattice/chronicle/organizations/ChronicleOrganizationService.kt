@@ -82,7 +82,7 @@ class ChronicleOrganizationService(
     }
 
     fun getOrganizations(organizationIds: Collection<UUID>): Iterable<Organization> {
-        val (flavor, hds) = storageResolver.getPlatformStorage()
+        val (flavor, hds) = storageResolver.getDefaultPlatformStorage()
         ensureVanilla(flavor)
         return BasePostgresIterable(
             PreparedStatementHolderSupplier(

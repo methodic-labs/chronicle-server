@@ -180,7 +180,11 @@ class StudyService(
         return ps.executeBatch().sum()
     }
 
-    override fun getStudy(studyIds: Collection<UUID>): Iterable<Study> {
+    override fun getStudy(studyId: UUID): Study {
+        return getStudies( listOf(studyId ) ).first()
+    }
+
+    override fun getStudies(studyIds: Collection<UUID>): Iterable<Study> {
         return storageResolver
             .getStudyIdsByDataSourceName(studyIds)
             .flatMap { (dataSourceName, studyIdsForDataSource) ->

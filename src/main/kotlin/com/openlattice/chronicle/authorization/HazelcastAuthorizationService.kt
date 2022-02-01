@@ -46,7 +46,7 @@ class HazelcastAuthorizationService(
     private val eventBus: EventBus,
     private val principalsMapManager: PrincipalsMapManager
 ) : AuthorizationManager {
-    private val authorizationStorage = storageResolver.getPlatformStorage()
+    private val authorizationStorage = storageResolver.getDefaultPlatformStorage()
 
     private val securableObjectTypes = HazelcastMap.SECURABLE_OBJECT_TYPES.getMap(hazelcastInstance)
     private val aces: IMap<AceKey, AceValue> = HazelcastMap.PERMISSIONS.getMap(hazelcastInstance)
