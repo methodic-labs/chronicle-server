@@ -20,6 +20,11 @@ import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.study.Study
 import com.openlattice.chronicle.study.StudyApi
 import com.openlattice.chronicle.study.StudyApi.Companion.CONTROLLER
+import com.openlattice.chronicle.study.StudyApi.Companion.DATA_SOURCE_ID
+import com.openlattice.chronicle.study.StudyApi.Companion.DATA_SOURCE_ID_PATH
+import com.openlattice.chronicle.study.StudyApi.Companion.ENROLL_PATH
+import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_ID
+import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_ID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.STUDY_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.STUDY_ID_PATH
 import com.openlattice.chronicle.study.StudyUpdate
@@ -60,19 +65,37 @@ class StudyController @Inject constructor(
 
     @Timed
     @PostMapping(
-        path = ["STUDY_ID_PATH + PARTICIPANT_ID_PATH + DATA_SOURCE_ID_PATH + ENROLL_PATH"],
+        path = [STUDY_ID_PATH + PARTICIPANT_ID_PATH + DATA_SOURCE_ID_PATH + ENROLL_PATH],
         consumes = [MediaType.APPLICATION_JSON_VALUE],
         produces = [MediaType.APPLICATION_JSON_VALUE],
     )
     override fun enroll(
-        studyId: UUID,
-        participantId: String,
-        datasourceId: String,
-        datasource: SourceDevice
+        @PathVariable(STUDY_ID) studyId: UUID,
+        @PathVariable(PARTICIPANT_ID) participantId: String,
+        @PathVariable(DATA_SOURCE_ID) datasourceId: String,
+        @RequestBody sourceDevice: SourceDevice
     ): UUID {
 //        check( enrollmentService.isKnownParticipant(studyId, participantId)) { "Cannot enroll device for an unknown participant." }
 //        TODO: Move checks out from enrollment data source into the controller.
-        return enrollmentService.registerDatasource(studyId, participantId, datasourceId, datasource)
+        val deviceId = enrollmentService.registerDatasource(studyId, participantId, datasourceId, sourceDevice)
+        val organizationIds = studyService.getStudy(studyId).organizationIds
+
+        /**
+         * We don't record an enrollment event into each organization as the organization associated with a study
+         * can change.
+         */
+        recordEvent(
+            AuditableEvent(
+                AclKey(deviceId),
+                eventType = AuditEventType.ENROLL_DEVICE,
+                description = "Enrolled ${sourceDevice.javaClass}",
+                study = studyId,
+                organization = IdConstants.UNINITIALIZED.id,
+                data = mapOf("device" to sourceDevice)
+            )
+        )
+
+        return deviceId
     }
 
     @Timed
@@ -84,7 +107,7 @@ class StudyController @Inject constructor(
     override fun createStudy(@RequestBody study: Study): UUID {
         ensureAuthenticated()
         logger.info("Creating study associated with organizations ${study.organizationIds}")
-        val (flavor, hds) = storageResolver.getPlatformStorage()
+        val (flavor, hds) = storageResolver.getDefaultPlatformStorage()
         check(flavor == PostgresFlavor.VANILLA) { "Only vanilla postgres supported for studies." }
         study.id = idGenerationService.getNextId()
         AuditedOperationBuilder<Unit>(hds.connection, auditingManager)
@@ -93,24 +116,20 @@ class StudyController @Inject constructor(
                 listOf(
                     AuditableEvent(
                         AclKey(study.id),
-                        Principals.getCurrentSecurablePrincipal().id,
-                        Principals.getCurrentUser().id,
-                        AuditEventType.CREATE_STUDY,
-                        "",
-                        study.id,
-                        UUID(0, 0),
-                        mapOf()
+                        eventType = AuditEventType.CREATE_STUDY,
+                        description = "",
+                        study = study.id,
+                        organization = IdConstants.UNINITIALIZED.id,
+                        data = mapOf()
                     )
                 ) + study.organizationIds.map { organizationId ->
                     AuditableEvent(
                         AclKey(study.id),
-                        Principals.getCurrentSecurablePrincipal().id,
-                        Principals.getCurrentUser().id,
-                        AuditEventType.CREATE_STUDY,
-                        "",
-                        study.id,
-                        organizationId,
-                        mapOf()
+                        eventType = AuditEventType.ASSOCIATE_STUDY,
+                        description = "",
+                        study = study.id,
+                        organization = organizationId,
+                        data = mapOf()
                     )
                 }
             }
@@ -129,7 +148,7 @@ class StudyController @Inject constructor(
         logger.info("Retrieving study with id $studyId")
 
         return try {
-            val study = studyService.getStudy(listOf(studyId)).first()
+            val study = studyService.getStudy(studyId)
             recordEvent(
                 AuditableEvent(
                     AclKey(studyId),
@@ -163,7 +182,7 @@ class StudyController @Inject constructor(
         val currentUserId = Principals.getCurrentUser().id;
         logger.info("Updating study with id $studyId on behalf of $currentUserId")
 
-        val (flavor, hds) = storageResolver.getPlatformStorage()
+        val (flavor, hds) = storageResolver.getDefaultPlatformStorage()
         ensureVanilla(flavor)
         AuditedOperationBuilder<Unit>(hds.connection, auditingManager)
             .operation { connection -> studyService.updateStudy(connection, studyId, study) }

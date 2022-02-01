@@ -19,20 +19,41 @@
  */
 package com.openlattice.chronicle.postgres
 
-import com.geekbeast.mappers.mappers.ObjectMappers
 import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
-import com.openlattice.chronicle.authorization.*
+import com.geekbeast.mappers.mappers.ObjectMappers
+import com.geekbeast.postgres.PostgresArrays
+import com.openlattice.chronicle.authorization.AceKey
+import com.openlattice.chronicle.authorization.AclKey
+import com.openlattice.chronicle.authorization.Permission
+import com.openlattice.chronicle.authorization.Principal
+import com.openlattice.chronicle.authorization.PrincipalType
+import com.openlattice.chronicle.authorization.Role
+import com.openlattice.chronicle.authorization.SecurableObjectType
+import com.openlattice.chronicle.authorization.SecurablePrincipal
+import com.openlattice.chronicle.candidates.Candidate
 import com.openlattice.chronicle.mapstores.ids.Range
+import com.openlattice.chronicle.organizations.Organization
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.CANDIDATE_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CATEGORY
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.CONTACT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.CREATED_AT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.DATE_OF_BIRTH
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DESCRIPTION
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.DEVICE_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.ENDED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.EXPIRATION_DATE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.FIRST_NAME
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.LAST_NAME
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.LAT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.LON
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LSB
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.MSB
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.NAME
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_IDS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTITION_INDEX
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PERMISSIONS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_ID
@@ -65,15 +86,22 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.STARTED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_GROUP
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_VERSION
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.TITLE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPDATED_AT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.URL
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.ID
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.USERNAME
 import com.openlattice.chronicle.study.Study
 import com.openlattice.chronicle.survey.AppUsage
 import org.slf4j.LoggerFactory
 import java.sql.ResultSet
 import java.sql.SQLException
+import java.time.LocalDate
 import java.time.OffsetDateTime
-import java.time.ZoneId
-import java.util.*
+import java.util.Base64
+import java.util.EnumSet
+import java.util.Optional
+import java.util.UUID
 
 /**
  * Use for reading count field when performing an aggregation.
@@ -283,6 +311,16 @@ class ResultSetAdapters {
 
             )
         }
+
+        @Throws(SQLException::class)
+        fun candidate(rs: ResultSet): Candidate {
+            return Candidate(
+                rs.getObject(CANDIDATE_ID.name, UUID::class.java),
+                rs.getString(FIRST_NAME.name),
+                rs.getString(LAST_NAME.name),
+                rs.getString(NAME.name),
+                rs.getObject(DATE_OF_BIRTH.name, LocalDate::class.java),
+            )
 
         @Throws(SQLException::class)
         fun systemApp(rs: ResultSet): String {

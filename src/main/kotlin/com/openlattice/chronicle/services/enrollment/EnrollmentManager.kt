@@ -14,7 +14,6 @@ import java.util.*
  */
 interface EnrollmentManager {
     fun registerDatasource(
-
         studyId: UUID,
         participantId: String,
         datasourceId: String,

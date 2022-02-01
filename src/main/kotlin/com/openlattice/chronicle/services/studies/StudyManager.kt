@@ -10,6 +10,7 @@ import java.util.UUID
  */
 interface StudyManager {
     fun createStudy(connection: Connection, study: Study)
-    fun getStudy(studyIds: Collection<UUID>): Iterable<Study>
+    fun getStudy(studyId: UUID): Study
+    fun getStudies(studyIds: Collection<UUID>): Iterable<Study>
     fun updateStudy(connection: Connection, studyId: UUID, study: StudyUpdate)
 }

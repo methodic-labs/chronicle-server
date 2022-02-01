@@ -1,5 +1,6 @@
 package com.openlattice.chronicle.services.enrollment
 
+import com.geekbeast.configuration.postgres.PostgresFlavor
 import com.geekbeast.controllers.exceptions.ResourceNotFoundException
 import com.geekbeast.mappers.mappers.ObjectMappers
 import com.openlattice.chronicle.data.ParticipationStatus
@@ -56,7 +57,7 @@ class EnrollmentService(
          */
         private val GET_DEVICE_ID = """
             SELECT ${DEVICE_ID.name} FROM ${DEVICES.name} 
-                WHERE ${STUDY_ID.name} = ? AND ${PARTICIPANT_ID.name} AND ${SOURCE_DEVICE_ID.name} = ? 
+                WHERE ${STUDY_ID.name} = ? AND ${PARTICIPANT_ID.name} = ? AND ${SOURCE_DEVICE_ID.name} = ? 
         """.trimIndent()
 
         /**
@@ -66,12 +67,12 @@ class EnrollmentService(
          */
         private val COUNT_DEVICE_ID = """
             SELECT count(*) FROM ${DEVICES.name} 
-                WHERE ${STUDY_ID.name} = ? AND ${PARTICIPANT_ID.name} AND ${SOURCE_DEVICE_ID.name} = ? 
+                WHERE ${STUDY_ID.name} = ? AND ${PARTICIPANT_ID.name} = ? AND ${SOURCE_DEVICE_ID.name} = ? 
         """.trimIndent()
 
         private val COUNT_STUDY_PARTICIPANTS = """
             SELECT count(*) FROM ${STUDY_PARTICIPANTS.name}
-                WHERE ${STUDY_ID.name} = ? AND ${PARTICIPANT_ID.name}
+                WHERE ${STUDY_ID.name} = ? AND ${PARTICIPANT_ID.name} = ?
         """.trimIndent()
     }
 
@@ -116,8 +117,7 @@ class EnrollmentService(
         sourceDeviceId: String,
         sourceDevice: SourceDevice
     ): UUID {
-        val (flavor, hds) = storageResolver.getPlatformStorage()
-        ensureVanilla(flavor)
+        val hds = storageResolver.getPlatformStorage()
         val deviceId = idGenerationService.getNextId()
         val insertCount = hds.connection.use { connection ->
             connection.prepareStatement(INSERT_DEVICE).use { ps ->
@@ -137,8 +137,8 @@ class EnrollmentService(
     }
 
     override fun getDeviceId(studyId: UUID, participantId: String, sourceDeviceId: String): UUID {
-        val (flavor, hds) = storageResolver.getPlatformStorage()
-        ensureVanilla(flavor)
+        val hds = storageResolver.getPlatformStorage()
+
         return hds.connection.use { connection ->
             connection.prepareStatement(GET_DEVICE_ID).use { ps ->
                 ps.setObject(1, studyId)
@@ -160,7 +160,7 @@ class EnrollmentService(
         participantId: String,
         sourceDeviceId: String
     ): Boolean {
-        val (flavor, hds) = storageResolver.getPlatformStorage()
+        val (flavor, hds) = storageResolver.getDefaultPlatformStorage()
         ensureVanilla(flavor)
         return hds.connection.use { connection ->
             connection.prepareStatement(COUNT_DEVICE_ID).use { ps ->
@@ -176,7 +176,7 @@ class EnrollmentService(
     }
 
     override fun isKnownParticipant(studyId: UUID, participantId: String): Boolean {
-        val (flavor, hds) = storageResolver.getPlatformStorage()
+        val (flavor, hds) = storageResolver.getDefaultPlatformStorage()
         ensureVanilla(flavor)
         return hds.connection.use { connection ->
             connection.prepareStatement(COUNT_STUDY_PARTICIPANTS).use { ps ->
