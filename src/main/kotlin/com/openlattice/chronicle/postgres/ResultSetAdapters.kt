@@ -36,6 +36,11 @@ import com.openlattice.chronicle.candidates.Candidate
 import com.openlattice.chronicle.mapstores.ids.Range
 import com.openlattice.chronicle.organizations.Organization
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_LABEL
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_PACKAGE_NAME
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_USAGE_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_USAGE_TIMESTAMP
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_USAGE_TIMEZONE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CANDIDATE_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CATEGORY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CONTACT
@@ -62,25 +67,6 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_TYP
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_NAME
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_TYPE
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.TITLE
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.URL
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.ID
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.USERNAME
-import com.geekbeast.postgres.PostgresArrays
-import com.openlattice.chronicle.organizations.Organization
-import com.openlattice.chronicle.organizations.OrganizationPrincipal
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_LABEL
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_PACKAGE_NAME
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_USAGE_ID
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_USAGE_TIMESTAMP
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_USAGE_TIMEZONE
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.CONTACT
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.CREATED_AT
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.DEVICE_ID
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.ENDED_AT
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.LAT
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.LON
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_IDS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SETTINGS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STARTED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_GROUP
@@ -98,10 +84,8 @@ import java.sql.ResultSet
 import java.sql.SQLException
 import java.time.LocalDate
 import java.time.OffsetDateTime
-import java.util.Base64
-import java.util.EnumSet
-import java.util.Optional
-import java.util.UUID
+import java.time.ZoneId
+import java.util.*
 
 /**
  * Use for reading count field when performing an aggregation.
@@ -284,30 +268,30 @@ class ResultSetAdapters {
         @Throws(SQLException::class)
         fun study(rs: ResultSet): Study {
             return Study(
-                rs.getObject(STUDY_ID.name, UUID::class.java),
-                rs.getString(TITLE.name),
-                rs.getString(DESCRIPTION.name),
-                rs.getObject(CREATED_AT.name, OffsetDateTime::class.java),
-                rs.getObject(UPDATED_AT.name, OffsetDateTime::class.java),
-                rs.getObject(STARTED_AT.name, OffsetDateTime::class.java),
-                rs.getObject(ENDED_AT.name, OffsetDateTime::class.java),
-                rs.getDouble(LAT.name),
-                rs.getDouble(LON.name),
-                rs.getString(STUDY_GROUP.name),
-                rs.getString(STUDY_VERSION.name),
-                rs.getString(CONTACT.name),
-                PostgresArrays.getUuidArray(rs, ORGANIZATION_IDS.name)?.toSet() ?: setOf(),
-                mapper.readValue(rs.getString(SETTINGS.name))
+                    rs.getObject(STUDY_ID.name, UUID::class.java),
+                    rs.getString(TITLE.name),
+                    rs.getString(DESCRIPTION.name),
+                    rs.getObject(CREATED_AT.name, OffsetDateTime::class.java),
+                    rs.getObject(UPDATED_AT.name, OffsetDateTime::class.java),
+                    rs.getObject(STARTED_AT.name, OffsetDateTime::class.java),
+                    rs.getObject(ENDED_AT.name, OffsetDateTime::class.java),
+                    rs.getDouble(LAT.name),
+                    rs.getDouble(LON.name),
+                    rs.getString(STUDY_GROUP.name),
+                    rs.getString(STUDY_VERSION.name),
+                    rs.getString(CONTACT.name),
+                    PostgresArrays.getUuidArray(rs, ORGANIZATION_IDS.name)?.toSet() ?: setOf(),
+                    mapper.readValue(rs.getString(SETTINGS.name))
             )
         }
 
         @Throws(SQLException::class)
         fun organization(rs: ResultSet): Organization {
             return Organization(
-                rs.getObject(ORGANIZATION_ID.name, UUID::class.java),
-                rs.getString(TITLE.name),
-                rs.getString(DESCRIPTION.name),
-                mapper.readValue(rs.getString(SETTINGS.name))
+                    rs.getObject(ORGANIZATION_ID.name, UUID::class.java),
+                    rs.getString(TITLE.name),
+                    rs.getString(DESCRIPTION.name),
+                    mapper.readValue(rs.getString(SETTINGS.name))
 
             )
         }
@@ -315,12 +299,13 @@ class ResultSetAdapters {
         @Throws(SQLException::class)
         fun candidate(rs: ResultSet): Candidate {
             return Candidate(
-                rs.getObject(CANDIDATE_ID.name, UUID::class.java),
-                rs.getString(FIRST_NAME.name),
-                rs.getString(LAST_NAME.name),
-                rs.getString(NAME.name),
-                rs.getObject(DATE_OF_BIRTH.name, LocalDate::class.java),
+                    rs.getObject(CANDIDATE_ID.name, UUID::class.java),
+                    rs.getString(FIRST_NAME.name),
+                    rs.getString(LAST_NAME.name),
+                    rs.getString(NAME.name),
+                    rs.getObject(DATE_OF_BIRTH.name, LocalDate::class.java),
             )
+        }
 
         @Throws(SQLException::class)
         fun systemApp(rs: ResultSet): String {
@@ -330,7 +315,7 @@ class ResultSetAdapters {
         @Throws(SQLException::class)
         fun appUsage(rs: ResultSet): AppUsage {
             val timezone = rs.getString(APP_USAGE_TIMEZONE.name)
-            val timestamp =  rs.getObject(APP_USAGE_TIMESTAMP.name, OffsetDateTime::class.java)
+            val timestamp = rs.getObject(APP_USAGE_TIMESTAMP.name, OffsetDateTime::class.java)
             val zoneId = ZoneId.of(timezone)
             val appUsage = AppUsage(
                     rs.getObject(APP_USAGE_ID.name, UUID::class.java),
