@@ -1,6 +1,5 @@
 package com.openlattice.chronicle.services.enrollment
 
-import com.geekbeast.configuration.postgres.PostgresFlavor
 import com.geekbeast.controllers.exceptions.ResourceNotFoundException
 import com.geekbeast.mappers.mappers.ObjectMappers
 import com.openlattice.chronicle.data.ParticipationStatus
@@ -21,7 +20,8 @@ import com.openlattice.chronicle.util.ChronicleServerUtil
 import com.openlattice.chronicle.util.ensureVanilla
 import org.slf4j.LoggerFactory
 import org.springframework.security.access.AccessDeniedException
-import java.util.UUID
+import java.sql.Connection
+import java.util.*
 
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
@@ -71,8 +71,16 @@ class EnrollmentService(
         """.trimIndent()
 
         private val COUNT_STUDY_PARTICIPANTS = """
-            SELECT count(*) FROM ${STUDY_PARTICIPANTS.name}
-                WHERE ${STUDY_ID.name} = ? AND ${PARTICIPANT_ID.name} = ?
+            SELECT count(*) FROM ${STUDY_PARTICIPANTS.name} WHERE ${STUDY_ID.name} = ? AND ${PARTICIPANT_ID.name} = ?
+        """.trimIndent()
+
+        /**
+         * 1. study id
+         * 2. participant id
+         * 3. candidate id
+         */
+        private val INSERT_PARTICIPANT = """
+            INSERT INTO ${STUDY_PARTICIPANTS.name} ($STUDY_PARTICIPANT_COLS) VALUES (?,?,?)
         """.trimIndent()
     }
 
@@ -155,6 +163,15 @@ class EnrollmentService(
         }
     }
 
+    override fun registerParticipant(connection: Connection, studyId: UUID, participantId: String, candidateId: UUID) {
+        connection.prepareStatement(INSERT_PARTICIPANT).use { ps ->
+            ps.setObject(1, studyId)
+            ps.setObject(2, participantId)
+            ps.setObject(3, candidateId)
+            ps.executeUpdate()
+        }
+    }
+
     override fun isKnownDatasource(
         studyId: UUID,
         participantId: String,
@@ -176,8 +193,8 @@ class EnrollmentService(
     }
 
     override fun isKnownParticipant(studyId: UUID, participantId: String): Boolean {
-        val (flavor, hds) = storageResolver.getDefaultPlatformStorage()
-        ensureVanilla(flavor)
+        val hds = storageResolver.getPlatformStorage()
+
         return hds.connection.use { connection ->
             connection.prepareStatement(COUNT_STUDY_PARTICIPANTS).use { ps ->
                 ps.setObject(1, studyId)

@@ -21,7 +21,7 @@ package com.openlattice.chronicle.pods;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.openlattice.chronicle.constants.CustomMediaType;
-import com.openlattice.chronicle.controllers.CandidatesController;
+import com.openlattice.chronicle.controllers.CandidateController;
 import com.openlattice.chronicle.controllers.ChronicleServerExceptionHandler;
 import com.openlattice.chronicle.controllers.StudyController;
 import com.openlattice.chronicle.controllers.legacy.ChronicleController;
@@ -47,7 +47,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurationSupp
 @Configuration
 @ComponentScan(
         basePackageClasses = {
-                CandidatesController.class,
+                CandidateController.class,
                 ChronicleController.class,
                 ChronicleServerExceptionHandler.class,
                 ChronicleControllerV2.class,

@@ -13,6 +13,7 @@ import com.openlattice.chronicle.authorization.Permission
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.ids.IdConstants
+import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.services.enrollment.EnrollmentService
 import com.openlattice.chronicle.services.studies.StudyService
 import com.openlattice.chronicle.sources.SourceDevice
@@ -25,6 +26,7 @@ import com.openlattice.chronicle.study.StudyApi.Companion.DATA_SOURCE_ID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.ENROLL_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_ID_PATH
+import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.STUDY_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.STUDY_ID_PATH
 import com.openlattice.chronicle.study.StudyUpdate
@@ -53,11 +55,11 @@ class StudyController @Inject constructor(
     val storageResolver: StorageResolver,
     val idGenerationService: HazelcastIdGenerationService,
     val enrollmentService: EnrollmentService,
+    val studyService: StudyService,
     override val authorizationManager: AuthorizationManager,
     override val auditingManager: AuditingManager
 ) : StudyApi, AuthorizingComponent {
-    @Inject
-    private lateinit var studyService: StudyService
+
 
     companion object {
         private val logger = LoggerFactory.getLogger(StudyController::class.java)!!
@@ -65,7 +67,7 @@ class StudyController @Inject constructor(
 
     @Timed
     @PostMapping(
-        path = [STUDY_ID_PATH + PARTICIPANT_ID_PATH + DATA_SOURCE_ID_PATH + ENROLL_PATH],
+        path = [STUDY_ID_PATH + PARTICIPANT_PATH + PARTICIPANT_ID_PATH + DATA_SOURCE_ID_PATH + ENROLL_PATH],
         consumes = [MediaType.APPLICATION_JSON_VALUE],
         produces = [MediaType.APPLICATION_JSON_VALUE],
     )
@@ -193,14 +195,50 @@ class StudyController @Inject constructor(
                         Principals.getCurrentSecurablePrincipal().id,
                         currentUserId,
                         AuditEventType.UPDATE_STUDY,
-                        "",
-                        studyId,
-                        UUID(0, 0),
-                        mapOf()
+                        study = studyId,
+                        data = mapOf()
                     )
                 )
             }
             .buildAndRun()
+    }
+
+    @Timed
+    @PostMapping(
+        path = [STUDY_ID_PATH + PARTICIPANT_PATH],
+        consumes = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    override fun registerParticipant(
+        @PathVariable(STUDY_ID) studyId: UUID,
+        @RequestBody participant: Participant
+    ): UUID {
+        ensureValidStudy(studyId)
+        ensureWriteAccess(AclKey(studyId))
+        val hds = storageResolver.getPlatformStorage()
+        if (participant.candidate.id == IdConstants.UNINITIALIZED.id) {
+            participant.candidate.id = idGenerationService.getNextId()
+        }
+
+        return AuditedOperationBuilder<UUID>(hds.connection, auditingManager)
+            .operation { connection -> studyService.registerParticipant(connection, studyId, participant) }
+            .audit { candidateId ->
+                listOf(
+                    AuditableEvent(
+                        AclKey(candidateId),
+                        eventType = AuditEventType.REGISTER_CANDIDATE,
+                        description = "Registering participant with $candidateId for study."
+                    )
+                )
+            }
+            .buildAndRun()
+    }
+
+    /**
+     * Ensures that study id provided is for a valid study.
+     *
+     */
+    private fun ensureValidStudy(studyId: UUID): Boolean {
+        return true
     }
 
 }
