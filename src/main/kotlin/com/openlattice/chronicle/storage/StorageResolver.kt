@@ -38,12 +38,12 @@ class StorageResolver constructor(
     }
 
     fun getPlatformStorage(requiredFlavor: PostgresFlavor = PostgresFlavor.VANILLA): HikariDataSource {
-        val (flavor, hds) = getPlatformStorage()
+        val (flavor, hds) = getDefaultPlatformStorage()
         check(flavor == requiredFlavor) { "Configured flavor $flavor does not much required flavor $requiredFlavor" }
         return hds
     }
 
-    fun getPlatformStorage(): Pair<PostgresFlavor, HikariDataSource> {
+    fun getDefaultPlatformStorage(): Pair<PostgresFlavor, HikariDataSource> {
         return with(dataSourceManager) {
             getFlavor(storageConfiguration.platformStorage) to getDataSource(storageConfiguration.platformStorage)
         }

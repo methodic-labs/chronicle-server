@@ -107,7 +107,7 @@ class StudyController @Inject constructor(
     override fun createStudy(@RequestBody study: Study): UUID {
         ensureAuthenticated()
         logger.info("Creating study associated with organizations ${study.organizationIds}")
-        val (flavor, hds) = storageResolver.getPlatformStorage()
+        val (flavor, hds) = storageResolver.getDefaultPlatformStorage()
         check(flavor == PostgresFlavor.VANILLA) { "Only vanilla postgres supported for studies." }
         study.id = idGenerationService.getNextId()
         AuditedOperationBuilder<Unit>(hds.connection, auditingManager)
@@ -182,7 +182,7 @@ class StudyController @Inject constructor(
         val currentUserId = Principals.getCurrentUser().id;
         logger.info("Updating study with id $studyId on behalf of $currentUserId")
 
-        val (flavor, hds) = storageResolver.getPlatformStorage()
+        val (flavor, hds) = storageResolver.getDefaultPlatformStorage()
         ensureVanilla(flavor)
         AuditedOperationBuilder<Unit>(hds.connection, auditingManager)
             .operation { connection -> studyService.updateStudy(connection, studyId, study) }

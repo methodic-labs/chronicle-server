@@ -81,7 +81,7 @@ class CandidatesController @Inject constructor(
     )
     override fun registerCandidate(@RequestBody candidate: Candidate): UUID {
         ensureAuthenticated()
-        val (flavor, hds) = storageResolver.getPlatformStorage()
+        val (flavor, hds) = storageResolver.getDefaultPlatformStorage()
         ensureVanilla(flavor)
         candidate.id = idGenerationService.getNextId()
         AuditedOperationBuilder<Unit>(hds.connection, auditingManager)
