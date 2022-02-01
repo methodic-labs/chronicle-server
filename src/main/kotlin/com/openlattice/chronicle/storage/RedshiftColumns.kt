@@ -76,6 +76,7 @@ class RedshiftColumns {
         // sensorKit
         val SENSOR_DATA = PostgresColumnDefinition("data", PostgresDatatype.JSONB).notNull()
         val SENSOR_TYPE = PostgresColumnDefinition("sensor_type", PostgresDatatype.TEXT).notNull()
-
+        val SENSOR_DEVICE = PostgresColumnDefinition("device", PostgresDatatype.JSONB).notNull()
+        val SENSOR_DURATION = PostgresColumnDefinition("duration", PostgresDatatype.DOUBLE).notNull()
     }
 }

@@ -19,6 +19,8 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PRINCIPAL_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.RECORDED_DATE_TIME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.SECURABLE_PRINCIPAL_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.SENSOR_DATA
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.SENSOR_DEVICE
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.SENSOR_DURATION
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.SENSOR_TYPE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.START_DATE_TIME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.START_TIME
@@ -96,13 +98,12 @@ class RedshiftDataTables {
                         STUDY_ID,
                         PARTICIPANT_ID,
                         RECORDED_DATE_TIME,
-                        START_DATE_TIME,
-                        END_DATE_TIME,
+                        SENSOR_DURATION,
                         TIMEZONE,
-                        SENSOR_DATA
+                        SENSOR_DATA,
+                        SENSOR_DEVICE
                 ).primaryKey(ID)
                 .addDataSourceNames(REDSHIFT_DATASOURCE_NAME)
-
 
         private val USAGE_EVENT_COLS = CHRONICLE_USAGE_EVENTS.columns.joinToString(",") { it.name }
         private val USAGE_EVENT_PARAMS = CHRONICLE_USAGE_EVENTS.columns.joinToString(",") { "?" }
