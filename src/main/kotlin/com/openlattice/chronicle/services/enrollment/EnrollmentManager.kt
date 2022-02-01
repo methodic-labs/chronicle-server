@@ -33,5 +33,11 @@ interface EnrollmentManager {
     fun getOrganizationIdForStudy(studyId: UUID): UUID
     fun getOrganizationIdForLegacyStudy(studyId: UUID): UUID
     fun getDeviceId(studyId: UUID, participantId: String, sourceDeviceId: String): UUID
-    fun registerParticipant(connection: Connection, studyId: UUID, participantId: String, candidateId: UUID)
+    fun registerParticipant(
+        connection: Connection,
+        studyId: UUID,
+        participantId: String,
+        candidateId: UUID,
+        participationStatus: ParticipationStatus
+    )
 }

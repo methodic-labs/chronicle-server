@@ -230,7 +230,13 @@ class StudyService(
 
     override fun registerParticipant(connection: Connection, studyId: UUID, participant: Participant): UUID {
         val candidateId = candidateService.registerCandidate(connection, participant.candidate)
-        enrollmentService.registerParticipant(connection, studyId, participant.participantId, candidateId)
+        enrollmentService.registerParticipant(
+            connection,
+            studyId,
+            participant.participantId,
+            candidateId,
+            participant.participationStatus
+        )
         return candidateId
     }
 }

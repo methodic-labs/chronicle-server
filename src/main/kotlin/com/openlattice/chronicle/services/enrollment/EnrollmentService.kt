@@ -183,11 +183,18 @@ class EnrollmentService(
         }
     }
 
-    override fun registerParticipant(connection: Connection, studyId: UUID, participantId: String, candidateId: UUID) {
+    override fun registerParticipant(
+        connection: Connection,
+        studyId: UUID,
+        participantId: String,
+        candidateId: UUID,
+        participationStatus: ParticipationStatus
+    ) {
         connection.prepareStatement(INSERT_PARTICIPANT).use { ps ->
             ps.setObject(1, studyId)
             ps.setString(2, participantId)
             ps.setObject(3, candidateId)
+            ps.setString(4, participationStatus.name)
             ps.executeUpdate()
         }
     }
