@@ -17,7 +17,7 @@ interface EnrollmentManager {
     fun registerDatasource(
         studyId: UUID,
         participantId: String,
-        datasourceId: String,
+        sourceDeviceId: String,
         sourceDevice: SourceDevice
     ): UUID
 

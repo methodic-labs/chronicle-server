@@ -13,6 +13,7 @@ import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.DEVIC
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.STUDY_PARTICIPANTS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DEVICE_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPATION_STATUS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SOURCE_DEVICE_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.StorageResolver
@@ -81,6 +82,14 @@ class EnrollmentService(
          */
         private val INSERT_PARTICIPANT = """
             INSERT INTO ${STUDY_PARTICIPANTS.name} ($STUDY_PARTICIPANT_COLS) VALUES (?,?,?)
+        """.trimIndent()
+
+        /**
+         * 1. study id
+         * 2. participant id
+         */
+        private val GET_PARTICIPATION_STATUS = """
+            SELECT ${PARTICIPATION_STATUS.name} FROM ${STUDY_PARTICIPANTS.name} WHERE ${STUDY_ID.name} = ? AND ${PARTICIPANT_ID.name} = ?
         """.trimIndent()
     }
 
@@ -166,7 +175,7 @@ class EnrollmentService(
     override fun registerParticipant(connection: Connection, studyId: UUID, participantId: String, candidateId: UUID) {
         connection.prepareStatement(INSERT_PARTICIPANT).use { ps ->
             ps.setObject(1, studyId)
-            ps.setObject(2, participantId)
+            ps.setString(2, participantId)
             ps.setObject(3, candidateId)
             ps.executeUpdate()
         }
@@ -215,12 +224,22 @@ class EnrollmentService(
         studyId: UUID,
         participantId: String
     ): ParticipationStatus {
-        val status: ParticipationStatus
         logger.info(
             "getting participation status" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT, studyId,
             participantId
         )
-        TODO("Not yet implemented")
+
+        val hds = storageResolver.getPlatformStorage()
+
+        return hds.connection.use { connection ->
+            connection.prepareStatement(COUNT_STUDY_PARTICIPANTS).use { ps ->
+                ps.setObject(1, studyId)
+                ps.setString(2, participantId)
+                ps.executeQuery().use {
+                    ResultSetAdapters.participantStatus(it)
+                }
+            }
+        }
     }
 
     override fun isNotificationsEnabled(studyId: UUID): Boolean {

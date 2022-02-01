@@ -109,7 +109,7 @@ class AppDataUploadService(
         organizationId: UUID,
         studyId: UUID,
         participantId: String,
-        dataSourceId: String,
+        sourceDeviceId: String,
         data: List<SetMultimap<UUID, Any>>
     ): Int {
         StopWatch(
@@ -120,7 +120,7 @@ class AppDataUploadService(
             organizationId,
             studyId,
             participantId,
-            dataSourceId
+            sourceDeviceId
         ).use {
             try {
                 val (flavor, hds) = storageResolver.resolve(studyId)
@@ -132,11 +132,11 @@ class AppDataUploadService(
                         organizationId,
                         studyId,
                         participantId,
-                        dataSourceId
+                        sourceDeviceId
                     )
                     return 0
                 }
-                val isDeviceEnrolled = enrollmentManager.isKnownDatasource(studyId, participantId, dataSourceId)
+                val isDeviceEnrolled = enrollmentManager.isKnownDatasource(studyId, participantId, sourceDeviceId)
 
                 if (isDeviceEnrolled) {
                     logger.error(
@@ -144,7 +144,7 @@ class AppDataUploadService(
                         organizationId,
                         studyId,
                         participantId,
-                        dataSourceId
+                        sourceDeviceId
                     )
                     return 0
                 }
@@ -154,7 +154,7 @@ class AppDataUploadService(
                     organizationId,
                     studyId,
                     participantId,
-                    dataSourceId
+                    sourceDeviceId
                 )
 
                 val mappedData = filter(organizationId, mapToStorageModel(data))
@@ -178,7 +178,7 @@ class AppDataUploadService(
                     organizationId,
                     studyId,
                     participantId,
-                    dataSourceId,
+                    sourceDeviceId,
                     exception
                 )
                 return 0

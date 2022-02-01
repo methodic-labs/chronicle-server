@@ -23,6 +23,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.MSB
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.NAME
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPATION_STATUS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTITION_INDEX
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PHONE_NUMBER
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_ID
@@ -98,7 +99,8 @@ class ChroniclePostgresTables {
             .addColumns(
                 STUDY_ID,
                 PARTICIPANT_ID,
-                CANDIDATE_ID
+                CANDIDATE_ID,
+                PARTICIPATION_STATUS
             )
             .primaryKey(STUDY_ID, PARTICIPANT_ID)
 
