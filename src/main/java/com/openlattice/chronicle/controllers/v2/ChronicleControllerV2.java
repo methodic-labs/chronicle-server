@@ -4,11 +4,7 @@ import com.codahale.metrics.annotation.Timed;
 import com.google.common.base.Optional;
 import com.google.common.collect.SetMultimap;
 import com.openlattice.chronicle.api.ChronicleApi;
-import com.openlattice.chronicle.data.ChronicleAppsUsageDetails;
-import com.openlattice.chronicle.data.ChronicleQuestionnaire;
-import com.openlattice.chronicle.data.MessageDetails;
-import com.openlattice.chronicle.data.MessageStatus;
-import com.openlattice.chronicle.data.ParticipationStatus;
+import com.openlattice.chronicle.data.*;
 import com.openlattice.chronicle.services.edm.EdmCacheManager;
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager;
 import com.openlattice.chronicle.services.entitysets.EntitySetIdsManager;
@@ -16,21 +12,17 @@ import com.openlattice.chronicle.services.message.MessageService;
 import com.openlattice.chronicle.services.surveys.SurveysManager;
 import com.openlattice.chronicle.services.upload.AppDataUploadManager;
 import com.openlattice.chronicle.sources.Datasource;
-import org.apache.commons.lang3.NotImplementedException;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import javax.inject.Inject;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
 
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
@@ -187,9 +179,18 @@ public class ChronicleControllerV2 implements ChronicleApi {
         messageService.sendMessages( organizationId, messageDetails );
     }
 
-    @Override public void updateMessageStatus(
-            UUID organizationId, String messageId, MessageStatus messageStatus ) {
-        throw new NotImplementedException( "not implemented" );
+    @RequestMapping(
+            path = { ORGANIZATION_ID_PATH + MESSAGE_PATH + STATUS_PATH },
+            method = RequestMethod.POST )
+    @ResponseStatus( HttpStatus.NO_CONTENT )
+    public void updateMessageStatus(
+            @PathVariable ( ORGANIZATION_ID ) UUID organizationId,
+            @RequestParam ( MESSAGE_ID ) String messageId,
+            @RequestParam ( MESSAGE_STATUS ) MessageStatus messageStatus
+    ) {
+        if ( messageStatus.equals( MessageStatus.undelivered ) || messageStatus.equals( MessageStatus.failed ) ) {
+            messageService.trackUndeliveredMessage( organizationId, messageId );
+        }
     }
 
     @RequestMapping(
