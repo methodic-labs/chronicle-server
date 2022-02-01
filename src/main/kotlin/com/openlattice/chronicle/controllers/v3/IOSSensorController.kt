@@ -42,7 +42,7 @@ class IOSSensorController: IOSSensorApi {
             @PathVariable (STUDY_ID) studyId: UUID,
             @PathVariable (PARTICIPANT_ID) participantId: String,
             @PathVariable(DATASOURCE_ID)  deviceId: String,
-            @RequestBody data: List<SensorDataSample>) {
-        iosSensorDataService.uploadData(organizationId, studyId, participantId, deviceId, data)
+            @RequestBody data: List<SensorDataSample>): Int {
+        return iosSensorDataService.uploadData(organizationId, studyId, participantId, deviceId, data)
     }
 }
