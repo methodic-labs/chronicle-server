@@ -7,6 +7,7 @@ import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.services.ScheduledTasksManager
+import com.openlattice.chronicle.services.candidates.CandidateManager
 import com.openlattice.chronicle.sources.AndroidDevice
 import com.openlattice.chronicle.sources.SourceDevice
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.DEVICES
@@ -31,6 +32,7 @@ import java.util.*
 class EnrollmentService(
     private val storageResolver: StorageResolver,
     private val idGenerationService: HazelcastIdGenerationService,
+    private val candidateManager: CandidateManager,
     private val scheduledTasksManager: ScheduledTasksManager
 ) : EnrollmentManager {
 
@@ -79,9 +81,18 @@ class EnrollmentService(
          * 1. study id
          * 2. participant id
          * 3. candidate id
+         * 4. participation status
          */
         private val INSERT_PARTICIPANT = """
-            INSERT INTO ${STUDY_PARTICIPANTS.name} ($STUDY_PARTICIPANT_COLS) VALUES (?,?,?)
+            INSERT INTO ${STUDY_PARTICIPANTS.name} ($STUDY_PARTICIPANT_COLS) VALUES (?,?,?,?)
+        """.trimIndent()
+
+        /**
+         * 1. study id
+         * 2. participant id
+         */
+        private val GET_PARTICIPANT = """
+            SELECT * FROM ${STUDY_PARTICIPANTS.name} WHERE ${STUDY_ID.name} = ? AND ${PARTICIPANT_ID.name} = ?
         """.trimIndent()
 
         /**
@@ -217,7 +228,19 @@ class EnrollmentService(
     }
 
     override fun getParticipant(studyId: UUID, participantId: String): Participant {
-        TODO("Not yet implemented")
+        val hds = storageResolver.getPlatformStorage()
+
+        val (participationStatus, candidateId) = hds.connection.use { connection ->
+            connection.prepareStatement(GET_PARTICIPANT).use { ps ->
+                ps.setObject(1, studyId)
+                ps.setString(2, participantId)
+                ps.executeQuery().use { rs ->
+                    check(rs.next()) { "No row returned for study=$studyId, participant=$participantId" }
+                    ResultSetAdapters.participantStatus(rs) to ResultSetAdapters.candidateId(rs)
+                }
+            }
+        }
+        return Participant(participantId, candidateManager.getCandidate(candidateId), participationStatus)
     }
 
     override fun getParticipationStatus(
@@ -232,10 +255,11 @@ class EnrollmentService(
         val hds = storageResolver.getPlatformStorage()
 
         return hds.connection.use { connection ->
-            connection.prepareStatement(COUNT_STUDY_PARTICIPANTS).use { ps ->
+            connection.prepareStatement(GET_PARTICIPATION_STATUS).use { ps ->
                 ps.setObject(1, studyId)
                 ps.setString(2, participantId)
                 ps.executeQuery().use {
+                    check(it.next()) { "No row returned for study=$studyId, participant=$participantId" }
                     ResultSetAdapters.participantStatus(it)
                 }
             }

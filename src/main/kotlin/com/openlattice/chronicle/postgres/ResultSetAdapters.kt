@@ -309,5 +309,10 @@ class ResultSetAdapters {
         fun participantStatus(rs: ResultSet): ParticipationStatus {
             return ParticipationStatus.valueOf(rs.getString(PARTICIPATION_STATUS.name))
         }
+
+        @Throws(SQLException::class)
+        fun candidateId(rs: ResultSet) : UUID {
+            return rs.getObject(CANDIDATE_ID.name, UUID::class.java)
+        }
     }
 }
