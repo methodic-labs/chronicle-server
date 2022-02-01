@@ -33,5 +33,7 @@ enum class AuditEventType {
     GET_STUDY,
     REGISTER_CANDIDATE,
     STUDY_NOT_FOUND,
-    UPDATE_STUDY
+    UPDATE_STUDY,
+    ENROLL_DEVICE,
+    ASSOCIATE_STUDY
 }

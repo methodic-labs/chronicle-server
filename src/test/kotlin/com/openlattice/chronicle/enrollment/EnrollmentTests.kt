@@ -19,7 +19,6 @@ class EnrollmentTests : ChronicleServerTests() {
 
     @Test
     fun testEnrollment() {
-        val chronicleApi = chronicleClient.chronicleApi
         val studyApi = chronicleClient.studyApi
         val organizationId = UUID.randomUUID()
         val participantId = "test1234"
@@ -36,9 +35,9 @@ class EnrollmentTests : ChronicleServerTests() {
             Optional.of(mutableMapOf())
         )
 
-        val expected = Study(title = "This is a test study.", contact = "foo@bar.com")
+        val expected = Study(title = "This is a test study.", contact = "tests@openlattice.com")
         val studyId = studyApi.createStudy(expected)
-    LoggerFactory.getLogger(EnrollmentTests::class.java).info(" Serialization: ")
-        chronicleApi.enroll(organizationId, studyId, participantId, sourceDeviceId, Optional.of(sourceDevice))
+        LoggerFactory.getLogger(EnrollmentTests::class.java).info(" Serialization: ")
+        val deviceId = studyApi.enroll(studyId, participantId, sourceDeviceId, sourceDevice)
     }
 }
