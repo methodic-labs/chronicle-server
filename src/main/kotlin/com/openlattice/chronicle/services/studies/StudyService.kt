@@ -14,7 +14,10 @@ import com.openlattice.chronicle.authorization.SecurableObjectType
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.authorization.reservations.AclKeyReservationService
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
+import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.postgres.ResultSetAdapters
+import com.openlattice.chronicle.services.candidates.CandidateManager
+import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.ORGANIZATION_STUDIES
 import com.openlattice.chronicle.study.Study
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.STUDIES
@@ -38,13 +41,15 @@ class StudyService(
     private val aclKeyReservationService: AclKeyReservationService,
     private val idGenerationService: HazelcastIdGenerationService,
     private val authorizationService: AuthorizationManager,
-    override val auditingManager: AuditingManager
+    private val candidateService: CandidateManager,
+    private val enrollmentService: EnrollmentManager,
+    override val auditingManager: AuditingManager,
 ) : StudyManager, AuditingComponent {
     companion object {
         private val logger = LoggerFactory.getLogger(StudyService::class.java)
         private val mapper = ObjectMappers.newJsonMapper()
         private val STUDY_COLUMNS = listOf(
-            PostgresColumns.STUDY_ID,
+            STUDY_ID,
             PostgresColumns.TITLE,
             PostgresColumns.DESCRIPTION,
             PostgresColumns.LAT,
@@ -73,12 +78,12 @@ class StudyService(
 
         private val COALESCED_STUDY_COLUMNS = UPDATE_STUDY_COLUMNS_LIST
             .joinToString(",") {
-            "coalesce(?${if(it.equals(PostgresColumns.SETTINGS)) "::jsonb" else ""}, ${it.name})"
-        }
+                "coalesce(?${if (it.equals(PostgresColumns.SETTINGS)) "::jsonb" else ""}, ${it.name})"
+            }
 
         private val ORG_STUDIES_COLS = listOf(
-            PostgresColumns.ORGANIZATION_ID,
-            PostgresColumns.STUDY_ID,
+            ORGANIZATION_ID,
+            STUDY_ID,
             PostgresColumns.USER_ID,
             PostgresColumns.SETTINGS
         ).joinToString(",") { it.name }
@@ -181,7 +186,7 @@ class StudyService(
     }
 
     override fun getStudy(studyId: UUID): Study {
-        return getStudies( listOf(studyId ) ).first()
+        return getStudies(listOf(studyId)).first()
     }
 
     override fun getStudies(studyIds: Collection<UUID>): Iterable<Study> {
@@ -214,13 +219,24 @@ class StudyService(
         ps.setString(index++, study.group)
         ps.setString(index++, study.version)
         ps.setString(index++, study.contact)
-        if (study.settings == null){
+        if (study.settings == null) {
             ps.setObject(index++, study.settings)
-        }
-        else {
+        } else {
             ps.setString(index++, mapper.writeValueAsString(study.settings))
         }
         ps.setObject(index++, studyId)
         ps.executeUpdate()
+    }
+
+    override fun registerParticipant(connection: Connection, studyId: UUID, participant: Participant): UUID {
+        val candidateId = candidateService.registerCandidate(connection, participant.candidate)
+        enrollmentService.registerParticipant(
+            connection,
+            studyId,
+            participant.participantId,
+            candidateId,
+            participant.participationStatus
+        )
+        return candidateId
     }
 }

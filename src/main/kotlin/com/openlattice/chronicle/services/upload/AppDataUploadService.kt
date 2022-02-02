@@ -117,21 +117,21 @@ class AppDataUploadService(
      * id/timestamp is unlikely to happen in the lifetime of our universe.
      */
     override fun upload(
-            organizationId: UUID,
-            studyId: UUID,
-            participantId: String,
-            dataSourceId: String,
-            data: List<SetMultimap<UUID, Any>>
+        organizationId: UUID,
+        studyId: UUID,
+        participantId: String,
+        sourceDeviceId: String,
+        data: List<SetMultimap<UUID, Any>>
     ): Int {
         StopWatch(
-                log = "logging ${data.size} entries for ${ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE}",
-                level = Level.INFO,
-                logger = logger,
-                data.size,
-                organizationId,
-                studyId,
-                participantId,
-                dataSourceId
+            log = "logging ${data.size} entries for ${ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE}",
+            level = Level.INFO,
+            logger = logger,
+            data.size,
+            organizationId,
+            studyId,
+            participantId,
+            sourceDeviceId
         ).use {
             try {
                 val (flavor, hds) = storageResolver.resolve(studyId)
@@ -139,23 +139,23 @@ class AppDataUploadService(
                 val status = enrollmentManager.getParticipationStatus(studyId, participantId)
                 if (ParticipationStatus.NOT_ENROLLED == status) {
                     logger.warn(
-                            "participant is not enrolled, ignoring upload" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE,
-                            organizationId,
-                            studyId,
-                            participantId,
-                            dataSourceId
+                        "participant is not enrolled, ignoring upload" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE,
+                        organizationId,
+                        studyId,
+                        participantId,
+                        sourceDeviceId
                     )
                     return 0
                 }
-                val isDeviceEnrolled = enrollmentManager.isKnownDatasource(studyId, participantId, dataSourceId)
+                val isDeviceEnrolled = enrollmentManager.isKnownDatasource(studyId, participantId, sourceDeviceId)
 
                 if (isDeviceEnrolled) {
                     logger.error(
-                            "data source not found, ignoring upload" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE,
-                            organizationId,
-                            studyId,
-                            participantId,
-                            dataSourceId
+                        "data source not found, ignoring upload" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE,
+                        organizationId,
+                        studyId,
+                        participantId,
+                        sourceDeviceId
                     )
                     return 0
                 }
@@ -178,12 +178,12 @@ class AppDataUploadService(
                 return data.size
             } catch (exception: Exception) {
                 logger.error(
-                        "error logging data" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE,
-                        organizationId,
-                        studyId,
-                        participantId,
-                        dataSourceId,
-                        exception
+                    "error logging data" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE,
+                    organizationId,
+                    studyId,
+                    participantId,
+                    sourceDeviceId,
+                    exception
                 )
                 return 0
             }

@@ -33,6 +33,7 @@ import com.openlattice.chronicle.authorization.Role
 import com.openlattice.chronicle.authorization.SecurableObjectType
 import com.openlattice.chronicle.authorization.SecurablePrincipal
 import com.openlattice.chronicle.candidates.Candidate
+import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.mapstores.ids.Range
 import com.openlattice.chronicle.organizations.Organization
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
@@ -59,6 +60,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.MSB
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.NAME
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_IDS
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPATION_STATUS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTITION_INDEX
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PERMISSIONS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_ID
@@ -328,6 +330,16 @@ class ResultSetAdapters {
             }
 
             return appUsage
+        }
+
+        @Throws(SQLException::class)
+        fun participantStatus(rs: ResultSet): ParticipationStatus {
+            return ParticipationStatus.valueOf(rs.getString(PARTICIPATION_STATUS.name))
+        }
+
+        @Throws(SQLException::class)
+        fun candidateId(rs: ResultSet) : UUID {
+            return rs.getObject(CANDIDATE_ID.name, UUID::class.java)
         }
     }
 }

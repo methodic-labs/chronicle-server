@@ -51,7 +51,7 @@ import com.openlattice.chronicle.organizations.initializers.OrganizationsInitial
 import com.openlattice.chronicle.organizations.initializers.OrganizationsInitializationTask
 import com.openlattice.chronicle.serializers.FullQualifiedNameJacksonSerializer.registerWithMapper
 import com.openlattice.chronicle.services.ScheduledTasksManager
-import com.openlattice.chronicle.services.candidates.CandidatesService
+import com.openlattice.chronicle.services.candidates.CandidateService
 import com.openlattice.chronicle.services.delete.DataDeletionManager
 import com.openlattice.chronicle.services.delete.DataDeletionService
 import com.openlattice.chronicle.services.download.DataDownloadManager
@@ -185,7 +185,7 @@ class ChronicleServerServicesPod {
     @Bean
     @Throws(IOException::class, ExecutionException::class)
     fun enrollmentManager(): EnrollmentManager {
-        return EnrollmentService(storageResolver, idGenerationService(), scheduledTasksManager())
+        return EnrollmentService(storageResolver, idGenerationService(), candidateService(), scheduledTasksManager())
     }
 
 
@@ -272,12 +272,14 @@ class ChronicleServerServicesPod {
     }
 
     @Bean
-    fun studiesService(): StudyService {
+    fun studyService(): StudyService {
         return StudyService(
             storageResolver,
             aclKeyReservationService(),
             idGenerationService(),
             authorizationService(),
+            candidateService(),
+            enrollmentManager(),
             auditingManager()
         )
     }
@@ -328,8 +330,8 @@ class ChronicleServerServicesPod {
     }
 
     @Bean
-    fun candidatesService(): CandidatesService {
-        return CandidatesService(storageResolver, authorizationService())
+    fun candidateService(): CandidateService {
+        return CandidateService(storageResolver, authorizationService())
     }
 
     companion object {

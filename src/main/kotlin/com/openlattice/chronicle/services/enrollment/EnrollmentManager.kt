@@ -3,6 +3,7 @@ package com.openlattice.chronicle.services.enrollment
 import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.sources.SourceDevice
+import java.sql.Connection
 import java.util.*
 
 /**
@@ -16,7 +17,7 @@ interface EnrollmentManager {
     fun registerDatasource(
         studyId: UUID,
         participantId: String,
-        datasourceId: String,
+        sourceDeviceId: String,
         sourceDevice: SourceDevice
     ): UUID
 
@@ -32,4 +33,11 @@ interface EnrollmentManager {
     fun getOrganizationIdForStudy(studyId: UUID): UUID
     fun getOrganizationIdForLegacyStudy(studyId: UUID): UUID
     fun getDeviceId(studyId: UUID, participantId: String, sourceDeviceId: String): UUID
+    fun registerParticipant(
+        connection: Connection,
+        studyId: UUID,
+        participantId: String,
+        candidateId: UUID,
+        participationStatus: ParticipationStatus
+    )
 }

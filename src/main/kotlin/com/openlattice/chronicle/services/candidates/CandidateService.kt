@@ -20,13 +20,13 @@ import java.sql.Connection
 import java.util.UUID
 
 @Service
-class CandidatesService(
+class CandidateService(
     private val storageResolver: StorageResolver,
     private val authorizationService: AuthorizationManager,
-) : CandidatesManager {
+) : CandidateManager {
 
     companion object {
-        private val logger = LoggerFactory.getLogger(CandidatesService::class.java)
+        private val logger = LoggerFactory.getLogger(CandidateService::class.java)
 
         private val CANDIDATES_COLUMNS = CANDIDATES
             .columns
@@ -51,7 +51,7 @@ class CandidatesService(
         return selectCandidates(candidateIds)
     }
 
-    override fun registerCandidate(connection: Connection, candidate: Candidate) {
+    override fun registerCandidate(connection: Connection, candidate: Candidate) : UUID {
         insertCandidate(connection, candidate)
         authorizationService.createSecurableObject(
             connection = connection,
@@ -59,6 +59,7 @@ class CandidatesService(
             principal = Principals.getCurrentUser(),
             objectType = SecurableObjectType.Candidate
         )
+        return candidate.id
     }
 
     //

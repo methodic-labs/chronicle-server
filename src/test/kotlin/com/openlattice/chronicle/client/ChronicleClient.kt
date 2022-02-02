@@ -1,7 +1,7 @@
 package com.openlattice.chronicle.client
 
 import com.openlattice.chronicle.api.ChronicleApi
-import com.openlattice.chronicle.candidates.CandidatesApi
+import com.openlattice.chronicle.candidates.CandidateApi
 import com.openlattice.chronicle.study.StudyApi
 
 /**
@@ -11,7 +11,7 @@ import com.openlattice.chronicle.study.StudyApi
 class ChronicleClient(jwt: () -> String) {
     private val retrofit = RetrofitClientFactory.newClient(Environment.TESTING_CHRONICLE, jwt)
     val studyApi: StudyApi = retrofit.create(StudyApi::class.java)
-    val candidatesApi: CandidatesApi = retrofit.create(CandidatesApi::class.java)
+    val candidateApi: CandidateApi = retrofit.create(CandidateApi::class.java)
 
     @Deprecated("This API is being deprecated.", level = DeprecationLevel.WARNING)
     val chronicleApi: ChronicleApi = retrofit.create(ChronicleApi::class.java)

@@ -1,6 +1,5 @@
 package com.openlattice.chronicle.services.enrollment
 
-import com.geekbeast.configuration.postgres.PostgresFlavor
 import com.geekbeast.controllers.exceptions.ResourceNotFoundException
 import com.geekbeast.mappers.mappers.ObjectMappers
 import com.openlattice.chronicle.data.ParticipationStatus
@@ -8,12 +7,14 @@ import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.services.ScheduledTasksManager
+import com.openlattice.chronicle.services.candidates.CandidateManager
 import com.openlattice.chronicle.sources.AndroidDevice
 import com.openlattice.chronicle.sources.SourceDevice
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.DEVICES
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.STUDY_PARTICIPANTS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DEVICE_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPATION_STATUS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SOURCE_DEVICE_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.StorageResolver
@@ -21,7 +22,8 @@ import com.openlattice.chronicle.util.ChronicleServerUtil
 import com.openlattice.chronicle.util.ensureVanilla
 import org.slf4j.LoggerFactory
 import org.springframework.security.access.AccessDeniedException
-import java.util.UUID
+import java.sql.Connection
+import java.util.*
 
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
@@ -30,6 +32,7 @@ import java.util.UUID
 class EnrollmentService(
     private val storageResolver: StorageResolver,
     private val idGenerationService: HazelcastIdGenerationService,
+    private val candidateManager: CandidateManager,
     private val scheduledTasksManager: ScheduledTasksManager
 ) : EnrollmentManager {
 
@@ -71,8 +74,33 @@ class EnrollmentService(
         """.trimIndent()
 
         private val COUNT_STUDY_PARTICIPANTS = """
-            SELECT count(*) FROM ${STUDY_PARTICIPANTS.name}
-                WHERE ${STUDY_ID.name} = ? AND ${PARTICIPANT_ID.name} = ?
+            SELECT count(*) FROM ${STUDY_PARTICIPANTS.name} WHERE ${STUDY_ID.name} = ? AND ${PARTICIPANT_ID.name} = ?
+        """.trimIndent()
+
+        /**
+         * 1. study id
+         * 2. participant id
+         * 3. candidate id
+         * 4. participation status
+         */
+        private val INSERT_PARTICIPANT = """
+            INSERT INTO ${STUDY_PARTICIPANTS.name} ($STUDY_PARTICIPANT_COLS) VALUES (?,?,?,?)
+        """.trimIndent()
+
+        /**
+         * 1. study id
+         * 2. participant id
+         */
+        private val GET_PARTICIPANT = """
+            SELECT * FROM ${STUDY_PARTICIPANTS.name} WHERE ${STUDY_ID.name} = ? AND ${PARTICIPANT_ID.name} = ?
+        """.trimIndent()
+
+        /**
+         * 1. study id
+         * 2. participant id
+         */
+        private val GET_PARTICIPATION_STATUS = """
+            SELECT ${PARTICIPATION_STATUS.name} FROM ${STUDY_PARTICIPANTS.name} WHERE ${STUDY_ID.name} = ? AND ${PARTICIPANT_ID.name} = ?
         """.trimIndent()
     }
 
@@ -155,6 +183,22 @@ class EnrollmentService(
         }
     }
 
+    override fun registerParticipant(
+        connection: Connection,
+        studyId: UUID,
+        participantId: String,
+        candidateId: UUID,
+        participationStatus: ParticipationStatus
+    ) {
+        connection.prepareStatement(INSERT_PARTICIPANT).use { ps ->
+            ps.setObject(1, studyId)
+            ps.setString(2, participantId)
+            ps.setObject(3, candidateId)
+            ps.setString(4, participationStatus.name)
+            ps.executeUpdate()
+        }
+    }
+
     override fun isKnownDatasource(
         studyId: UUID,
         participantId: String,
@@ -176,8 +220,8 @@ class EnrollmentService(
     }
 
     override fun isKnownParticipant(studyId: UUID, participantId: String): Boolean {
-        val (flavor, hds) = storageResolver.getDefaultPlatformStorage()
-        ensureVanilla(flavor)
+        val hds = storageResolver.getPlatformStorage()
+
         return hds.connection.use { connection ->
             connection.prepareStatement(COUNT_STUDY_PARTICIPANTS).use { ps ->
                 ps.setObject(1, studyId)
@@ -191,19 +235,42 @@ class EnrollmentService(
     }
 
     override fun getParticipant(studyId: UUID, participantId: String): Participant {
-        TODO("Not yet implemented")
+        val hds = storageResolver.getPlatformStorage()
+
+        val (participationStatus, candidateId) = hds.connection.use { connection ->
+            connection.prepareStatement(GET_PARTICIPANT).use { ps ->
+                ps.setObject(1, studyId)
+                ps.setString(2, participantId)
+                ps.executeQuery().use { rs ->
+                    check(rs.next()) { "No row returned for study=$studyId, participant=$participantId" }
+                    ResultSetAdapters.participantStatus(rs) to ResultSetAdapters.candidateId(rs)
+                }
+            }
+        }
+        return Participant(participantId, candidateManager.getCandidate(candidateId), participationStatus)
     }
 
     override fun getParticipationStatus(
         studyId: UUID,
         participantId: String
     ): ParticipationStatus {
-        val status: ParticipationStatus
         logger.info(
             "getting participation status" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT, studyId,
             participantId
         )
-        TODO("Not yet implemented")
+
+        val hds = storageResolver.getPlatformStorage()
+
+        return hds.connection.use { connection ->
+            connection.prepareStatement(GET_PARTICIPATION_STATUS).use { ps ->
+                ps.setObject(1, studyId)
+                ps.setString(2, participantId)
+                ps.executeQuery().use {
+                    check(it.next()) { "No row returned for study=$studyId, participant=$participantId" }
+                    ResultSetAdapters.participantStatus(it)
+                }
+            }
+        }
     }
 
     override fun isNotificationsEnabled(studyId: UUID): Boolean {
