@@ -112,7 +112,7 @@ class EnrollmentService(
         sourceDevice: SourceDevice
     ): UUID {
         logger.info(
-            "attempting to register data source" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE,
+            "attempting to register data source" + ChronicleServerUtil.STUDY_PARTICIPANT_DATASOURCE,
             studyId,
             participantId,
             sourceDeviceId
@@ -120,7 +120,7 @@ class EnrollmentService(
         val isKnownParticipant = isKnownParticipant(studyId, participantId)
         if (!isKnownParticipant) {
             logger.error(
-                "unknown participant, unable to register datasource" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE,
+                "unknown participant, unable to register datasource" + ChronicleServerUtil.STUDY_PARTICIPANT_DATASOURCE,
                 studyId,
                 participantId,
                 sourceDeviceId
@@ -161,6 +161,12 @@ class EnrollmentService(
         return if (insertCount > 0) {
             deviceId
         } else {
+            logger.info(
+                "Datasource for ${ChronicleServerUtil.STUDY_PARTICIPANT_DATASOURCE} is already registered. Returning",
+                studyId,
+                participantId,
+                sourceDeviceId
+            )
             getDeviceId(studyId, participantId, sourceDeviceId)
         }
     }
@@ -205,8 +211,8 @@ class EnrollmentService(
         participantId: String,
         sourceDeviceId: String
     ): Boolean {
-        val (flavor, hds) = storageResolver.getDefaultPlatformStorage()
-        ensureVanilla(flavor)
+        val hds = storageResolver.getPlatformStorage()
+
         return hds.connection.use { connection ->
             connection.prepareStatement(COUNT_DEVICE_ID).use { ps ->
                 ps.setObject(1, studyId)
@@ -272,11 +278,6 @@ class EnrollmentService(
                 }
             }
         }
-    }
-
-    override fun isNotificationsEnabled(studyId: UUID): Boolean {
-        logger.info("Checking notifications enabled on studyId = {}", studyId)
-        TODO("Not yet implemented")
     }
 
     override fun getStudyParticipantIds(studyId: UUID): Set<String> {

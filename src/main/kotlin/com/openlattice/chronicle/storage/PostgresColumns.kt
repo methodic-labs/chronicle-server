@@ -51,6 +51,7 @@ class PostgresColumns {
         val STUDY_GROUP = PostgresColumnDefinition("study_group", PostgresDatatype.TEXT)
         val STUDY_ID = PostgresColumnDefinition("study_id", PostgresDatatype.UUID).notNull()
         val STUDY_VERSION = PostgresColumnDefinition("study_version", PostgresDatatype.TEXT)
+        val NOTIFICATIONS_ENABLED = PostgresColumnDefinition("notifications_enabled", PostgresDatatype.BOOLEAN)
         val TITLE = PostgresColumnDefinition("title", PostgresDatatype.TEXT)
         val UPDATED_AT = PostgresColumnDefinition("updated_at", PostgresDatatype.TIMESTAMPTZ).notNull().withDefault("now()")
         val URL = PostgresColumnDefinition("url", PostgresDatatype.TEXT)

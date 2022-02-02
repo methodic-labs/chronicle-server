@@ -84,6 +84,7 @@ class HazelcastMap<K, V> internal constructor(val name: String) : TypedMapIdenti
 //        @JvmField val SCHEDULED_TASKS = HazelcastMap<UUID, ScheduledTask>("SCHEDULED_TASKS")
         @JvmField val SECURABLE_OBJECT_TYPES = HazelcastMap<AclKey, SecurableObjectType>("SECURABLE_OBJECT_TYPES")
         @JvmField val SECURABLE_PRINCIPALS = HazelcastMap<String, SecurablePrincipal>("SECURABLE_PRINCIPALS")
+        @JvmField val STUDY_STORAGE = HazelcastMap<UUID,String>("STUDY_STORAGE")
 //        @JvmField val SMS_INFORMATION = HazelcastMap<SmsInformationKey, SmsEntitySetInformation>("SMS_INFORMATION")
         @JvmField val USERS = HazelcastMap<String, User>("USERS")
 

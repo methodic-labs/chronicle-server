@@ -86,7 +86,7 @@ class ChronicleStudyController : ChronicleStudyApi {
         @PathVariable(ChronicleStudyApi.STUDY_ID) studyId: UUID
     ): Boolean {
         val organizationId = studyManager.getOrganizationIdForLegacyStudy(studyId)
-        return enrollmentManager.isNotificationsEnabled(studyId)
+        return studyManager.isNotificationsEnabled(studyId)
     }
 
     @Timed

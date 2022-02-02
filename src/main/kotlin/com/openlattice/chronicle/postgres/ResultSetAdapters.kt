@@ -53,6 +53,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.LON
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LSB
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.MSB
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.NAME
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.NOTIFICATIONS_ENABLED
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_IDS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPATION_STATUS
@@ -279,6 +280,7 @@ class ResultSetAdapters {
                 rs.getString(STUDY_VERSION.name),
                 rs.getString(CONTACT.name),
                 PostgresArrays.getUuidArray(rs, ORGANIZATION_IDS.name)?.toSet() ?: setOf(),
+                rs.getBoolean(NOTIFICATIONS_ENABLED.name),
                 mapper.readValue(rs.getString(SETTINGS.name))
             )
         }

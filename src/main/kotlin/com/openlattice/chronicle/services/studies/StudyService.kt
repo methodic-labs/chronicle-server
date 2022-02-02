@@ -19,6 +19,7 @@ import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.services.candidates.CandidateManager
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
+import com.openlattice.chronicle.services.enrollment.EnrollmentService
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.ORGANIZATION_STUDIES
 import com.openlattice.chronicle.study.Study
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.STUDIES
@@ -27,6 +28,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_IDS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.study.StudyUpdate
+import com.openlattice.chronicle.util.JsonFields.STUDY
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.sql.Connection
@@ -148,10 +150,10 @@ class StudyService(
         """.trimIndent()
 
         /**
-         *
+         * TODO: Retrieve
          */
         private val GET_ORGANIZATION_ID = """
-            
+            SELECT ${ORGANIZATION_ID.name} FROM ${ORGANIZATION_STUDIES.name} WHERE ${STUDY_ID.name} = ? LIMIT 1 
         """.trimIndent()
     }
 
@@ -164,6 +166,7 @@ class StudyService(
             principal = Principals.getCurrentUser(),
             objectType = SecurableObjectType.Study
         )
+        storageResolver.associateStudyWithStorage(study.id)
     }
 
     private fun insertStudy(connection: Connection, study: Study): Int {
@@ -215,25 +218,29 @@ class StudyService(
     }
 
     override fun updateStudy(connection: Connection, studyId: UUID, study: StudyUpdate) {
-        val ps = connection.prepareStatement(UPDATE_STUDY_SQL)
-        var index = 1;
-        ps.setString(index++, study.title)
-        ps.setString(index++, study.description)
-        ps.setObject(index++, OffsetDateTime.now())
-        ps.setObject(index++, study.startedAt)
-        ps.setObject(index++, study.endedAt)
-        ps.setObject(index++, study.lat)
-        ps.setObject(index++, study.lon)
-        ps.setString(index++, study.group)
-        ps.setString(index++, study.version)
-        ps.setString(index++, study.contact)
-        if (study.settings == null) {
-            ps.setObject(index++, study.settings)
-        } else {
-            ps.setString(index++, mapper.writeValueAsString(study.settings))
+        connection.prepareStatement(UPDATE_STUDY_SQL).use { ps ->
+            var index = 1
+            ps.setString(index++, study.title)
+            ps.setString(index++, study.description)
+            ps.setObject(index++, OffsetDateTime.now())
+            ps.setObject(index++, study.startedAt)
+            ps.setObject(index++, study.endedAt)
+            ps.setObject(index++, study.lat)
+            ps.setObject(index++, study.lon)
+            ps.setString(index++, study.group)
+            ps.setString(index++, study.version)
+            ps.setString(index++, study.contact)
+            if (study.settings == null) {
+                ps.setObject(index++, study.settings)
+            } else {
+                ps.setString(index++, mapper.writeValueAsString(study.settings))
+            }
+            ps.setObject(index++, studyId)
+            ps.executeUpdate()
+            if (study.storage != null) {
+                storageResolver.associateStudyWithStorage(studyId, study.storage!!)
+            }
         }
-        ps.setObject(index++, studyId)
-        ps.executeUpdate()
     }
 
     override fun registerParticipant(connection: Connection, studyId: UUID, participant: Participant): UUID {
@@ -248,7 +255,23 @@ class StudyService(
         return candidateId
     }
 
+    override fun isNotificationsEnabled(studyId: UUID): Boolean {
+        logger.info("Checking notifications enabled on studyId = {}", studyId)
+
+        //TODO: Write SQL query to just retrieve notifications enabled field.
+        return getStudy(studyId).notificationsEnabled
+    }
+
     override fun getOrganizationIdForLegacyStudy(studyId: UUID): UUID {
-        return getStudy(studyId).organizationIds.firstOrNull() ?: IdConstants.SYSTEM_ORGANIZATION.id
+        return storageResolver.getPlatformStorage().connection.use { connection ->
+            connection.prepareStatement(GET_ORGANIZATION_ID).use { ps ->
+                ps.setObject(1, studyId)
+                ps.executeQuery().use { rs ->
+                    if (rs.next()) rs.getObject(ORGANIZATION_ID.name, UUID::class.java)
+                    else IdConstants.SYSTEM_ORGANIZATION.id
+                }
+            }
+
+        }
     }
 }

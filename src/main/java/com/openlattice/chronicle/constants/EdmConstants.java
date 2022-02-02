@@ -89,6 +89,14 @@ public class EdmConstants {
     public static final FullQualifiedName NEW_PERIOD_FQN          = new FullQualifiedName( "ol.newperiod" );
     public static final FullQualifiedName WARNING_FQN             = new FullQualifiedName( "ol.warning" );
 
+    //Needed by android app not sure for what
+    public static final FullQualifiedName NAME_FQN = new FullQualifiedName( "ol.name" );
+    public static final FullQualifiedName ACTIVE_FQN = new FullQualifiedName( "ol.active" );
+    public static final FullQualifiedName LOC_LAT_FQN = new FullQualifiedName( "location.latitude" );
+    public static final FullQualifiedName LOC_LON_FQN = new FullQualifiedName( "location.longitude" );
+    public static final FullQualifiedName LOC_ALT_FQN = new FullQualifiedName( "location.altitude" );
+
     //Store schedule of recurring questionnaire notifications.
     public static final FullQualifiedName RRULE_FQN             = new FullQualifiedName( "ol.rrule" );
 }
+

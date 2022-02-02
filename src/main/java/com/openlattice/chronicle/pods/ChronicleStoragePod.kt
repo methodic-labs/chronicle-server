@@ -5,6 +5,7 @@ import com.geekbeast.ResourceConfigurationLoader
 import com.openlattice.chronicle.configuration.ChronicleConfiguration
 import com.openlattice.chronicle.storage.StorageResolver
 import com.geekbeast.jdbc.DataSourceManager
+import com.hazelcast.core.HazelcastInstance
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import java.io.IOException
