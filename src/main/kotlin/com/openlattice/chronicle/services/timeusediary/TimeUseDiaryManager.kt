@@ -36,5 +36,5 @@ interface TimeUseDiaryManager {
         participantId: String,
         type: TimeUseDiaryDownloadDataType,
         submissionsIds: Set<UUID>
-    )
+    ): Iterable<Map<String, Set<Any>>>
 }

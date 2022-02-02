@@ -7,6 +7,7 @@ import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.authorization.AuthorizationManager
 import com.openlattice.chronicle.authorization.SecurableObjectType
 import com.openlattice.chronicle.authorization.principals.Principals
+import com.openlattice.chronicle.services.download.ParticipantDataIterable
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryDownloadDataType
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryResponse
@@ -14,8 +15,10 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION_DATE
-import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.TIME_USE_DIARY_SUBMISSION
+import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.TIME_USE_DIARY_SUBMISSIONS
+import org.postgresql.util.PGobject
 import org.slf4j.LoggerFactory
 import java.sql.Connection
 import java.sql.ResultSet
@@ -111,8 +114,73 @@ class TimeUseDiaryService(
         participantId: String,
         type: TimeUseDiaryDownloadDataType,
         submissionsIds: Set<UUID>
-    ) {
-        TODO("Not yet implemented")
+    ): Iterable<Map<String, Set<Any>>> {
+        val submissionData: MutableList<TimeUseDiaryResponse> = mutableListOf()
+        val rows : MutableSet<MutableMap<String,Set<String>>> = mutableSetOf()
+        val columnTitles = mutableSetOf<String>("tud_id", "timestamp")
+        try {
+            // retrieve Time Use Diary data
+            val (flavor, hds) = storageResolver.getPlatformStorage()
+            check(flavor == PostgresFlavor.VANILLA)
+            val result = hds.connection.use { connection ->
+                executeDownloadTimeUseDiaryData(
+                    connection,
+                    organizationId,
+                    studyId,
+                    participantId,
+                    submissionsIds
+                )
+            }
+            // transform into CSV-convertible data structure
+            while(result.next()) {
+                val row : MutableMap<String, Set<String>> = mutableMapOf()
+                var timestamped = false
+                row[TUD_ID.name] = setOf(result.getString(TUD_ID.name))
+                row[PARTICIPANT_ID.name] = setOf(result.getString(PARTICIPANT_ID.name))
+
+                extractTudResponsesFromResult(result).forEach {
+                    if (containsKeywordOfDownloadType(it, type)) {
+                        row[firstString(it.questionCode)] = it.response
+                        columnTitles.add(firstString(it.questionCode))
+                        /*
+                         * TODO:
+                         * Check that this works as intended with night data.
+                         * May cause problems to consider timestamps from all responses
+                         */
+                        if (!timestamped && it.startDateTime.isNotEmpty()) {
+                            row["timestamp"] = setOf(firstString(it.startDateTime))
+                            timestamped = true
+                        }
+                        submissionData.add(it)
+                    }
+                }
+                rows.add(row)
+            }
+        } catch (ex: Exception) {
+            throw error("Error: $ex")
+        }
+        return ParticipantDataIterable(columnTitles.toList(), rows)
+    }
+
+    /* -------- Download Utils -------- */
+
+    private fun firstString(obj: Set<Any>): String {
+        return obj.first().toString()
+    }
+
+    private fun containsKeywordOfDownloadType(tudResponse: TimeUseDiaryResponse, type: TimeUseDiaryDownloadDataType): Boolean {
+        return !type.keywords.contains(tudResponse.questionCode.first())
+    }
+
+    private fun extractTudResponsesFromResult(resultSet: ResultSet): List<TimeUseDiaryResponse> {
+        val submissionJson = resultSet.getObject(SUBMISSION.name, PGobject::class.java)
+        return objectMapper.readValue(
+            submissionJson.value,
+            objectMapper.typeFactory.constructCollectionType(
+                List::class.java,
+                TimeUseDiaryResponse::class.java
+            )
+        )
     }
 
     /* -------- SQL helpers -------- */
@@ -153,6 +221,22 @@ class TimeUseDiaryService(
         return preparedStatement.executeQuery()
     }
 
+    private fun executeDownloadTimeUseDiaryData(
+        connection: Connection,
+        organizationId: UUID,
+        studyId: UUID,
+        participantId: String,
+        timeUseDiaryIds: Set<UUID>
+    ): ResultSet {
+        val preparedStatement = connection.prepareStatement(downloadTimeUseDiaryDataSql)
+        var index = 1
+        preparedStatement.setObject(index++, organizationId)
+        preparedStatement.setObject(index++, studyId)
+        preparedStatement.setString(index++, participantId)
+        preparedStatement.setArray(index, connection.createArrayOf("UUID", timeUseDiaryIds.toTypedArray()))
+        return preparedStatement.executeQuery()
+    }
+
     /**
      * SQL String to create a [java.sql.PreparedStatement] to submit a study response for a participant
      *
@@ -163,7 +247,7 @@ class TimeUseDiaryService(
      * @param responses         List of survey responses for a Time Use Diary study
      */
     private val insertTimeUseDiarySql = """
-            INSERT INTO ${TIME_USE_DIARY_SUBMISSION.name} 
+            INSERT INTO ${TIME_USE_DIARY_SUBMISSIONS.name} 
             VALUES ( ?, ?, ?, ?, '${LocalDateTime.now()}', ? )
             """.trimIndent()
 
@@ -178,11 +262,29 @@ class TimeUseDiaryService(
      */
     private val getSubmissionsByDateSql = """
                 SELECT ${SUBMISSION_DATE.name}, ${TUD_ID.name} 
-                FROM ${TIME_USE_DIARY_SUBMISSION.name}
+                FROM ${TIME_USE_DIARY_SUBMISSIONS.name}
                 WHERE ${ORGANIZATION_ID.name} = ?
                 AND ${STUDY_ID.name} = ?
                 AND ${PARTICIPANT_ID.name} = ?
                 AND ${SUBMISSION_DATE.name} BETWEEN ? AND ?
                 ORDER BY ${SUBMISSION_DATE.name} ASC
             """.trimIndent()
+
+    /**
+     * SQL String to create a [java.sql.PreparedStatement] to retrieve time use diary responses for download
+     *
+     * @param organizationId    Identifies the organization from which to retrieve submissions
+     * @param studyId           Identifies the study from which to retrieve submissions
+     * @param participantId     Identifies the participant for whom to retrieve submissions
+     * @param timeUseDiaryIds   Identifies the time use diaries from which to retrieve submissions
+     */
+    private val downloadTimeUseDiaryDataSql = """
+        SELECT ${TUD_ID.name}, ${PARTICIPANT_ID.name} ${SUBMISSION.name}
+        FROM ${TIME_USE_DIARY_SUBMISSIONS.name}
+        WHERE ${ORGANIZATION_ID.name} = ?
+        AND ${STUDY_ID.name} = ?
+        AND ${PARTICIPANT_ID.name} = ?
+        AND ${TUD_ID.name} = ANY (?)
+    """.trimIndent()
+
 }
