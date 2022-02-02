@@ -67,6 +67,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJ
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_TYPE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SETTINGS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STARTED_AT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.STORAGE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_GROUP
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_VERSION
@@ -265,6 +266,9 @@ class ResultSetAdapters {
         }
 
         @Throws(SQLException::class)
+        fun studyId(rs: ResultSet): UUID = rs.getObject(STUDY_ID.name, UUID::class.java)
+
+        @Throws(SQLException::class)
         fun study(rs: ResultSet): Study {
             return Study(
                 rs.getObject(STUDY_ID.name, UUID::class.java),
@@ -315,6 +319,11 @@ class ResultSetAdapters {
         @Throws(SQLException::class)
         fun candidateId(rs: ResultSet) : UUID {
             return rs.getObject(CANDIDATE_ID.name, UUID::class.java)
+        }
+
+        @Throws(SQLException::class)
+        fun storage(rs: ResultSet): String {
+            return rs.getString(STORAGE.name)
         }
     }
 }

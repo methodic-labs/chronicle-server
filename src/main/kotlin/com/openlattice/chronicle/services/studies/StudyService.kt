@@ -41,8 +41,6 @@ import java.util.UUID
 @Service
 class StudyService(
     private val storageResolver: StorageResolver,
-    private val aclKeyReservationService: AclKeyReservationService,
-    private val idGenerationService: HazelcastIdGenerationService,
     private val authorizationService: AuthorizationManager,
     private val candidateService: CandidateManager,
     private val enrollmentService: EnrollmentManager,
@@ -179,7 +177,9 @@ class StudyService(
         ps.setObject(6, study.group)
         ps.setObject(7, study.version)
         ps.setObject(8, study.contact)
-        ps.setString(9, mapper.writeValueAsString(study.settings))
+        ps.setObject(9, study.notificationsEnabled)
+        ps.setObject(10, study.storage)
+        ps.setString(11, mapper.writeValueAsString(study.settings))
         return ps.executeUpdate()
     }
 
@@ -190,7 +190,7 @@ class StudyService(
             ps.setObject(params++, organizationId)
             ps.setObject(params++, study.id)
             ps.setObject(params++, Principals.getCurrentUser().id)
-            ps.setString(params++, mapper.writeValueAsString(study.settings))
+            ps.setString(params, mapper.writeValueAsString(mapOf<String, Any>())) //Per org settings for studies aren't really defined yet.
             ps.addBatch()
         }
         return ps.executeBatch().sum()
@@ -201,20 +201,13 @@ class StudyService(
     }
 
     override fun getStudies(studyIds: Collection<UUID>): Iterable<Study> {
-        return storageResolver
-            .getStudyIdsByDataSourceName(studyIds)
-            .flatMap { (dataSourceName, studyIdsForDataSource) ->
-                val (flavor, hds) = storageResolver.getDataSource(dataSourceName)
-                check(flavor == PostgresFlavor.VANILLA) { "Only vanilla postgres is supported for studies." }
-                BasePostgresIterable(
-                    PreparedStatementHolderSupplier(hds, GET_STUDIES_SQL, 256) { ps ->
-                        val pgStudyIds = PostgresArrays.createUuidArray(ps.connection, studyIdsForDataSource)
-                        ps.setArray(1, pgStudyIds)
-                        ps.executeQuery()
-                    }
-                ) { ResultSetAdapters.study(it) }
-
+        return BasePostgresIterable(
+            PreparedStatementHolderSupplier(storageResolver.getPlatformStorage(), GET_STUDIES_SQL, 256) { ps ->
+                val pgStudyIds = PostgresArrays.createUuidArray(ps.connection, studyIds)
+                ps.setArray(1, pgStudyIds)
+                ps.executeQuery()
             }
+        ) { ResultSetAdapters.study(it) }
     }
 
     override fun updateStudy(connection: Connection, studyId: UUID, study: StudyUpdate) {
@@ -235,7 +228,7 @@ class StudyService(
             } else {
                 ps.setString(index++, mapper.writeValueAsString(study.settings))
             }
-            ps.setObject(index++, studyId)
+            ps.setObject(index, studyId)
             ps.executeUpdate()
             if (study.storage != null) {
                 storageResolver.associateStudyWithStorage(studyId, study.storage!!)

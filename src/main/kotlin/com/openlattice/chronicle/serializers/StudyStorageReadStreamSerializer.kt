@@ -21,38 +21,33 @@
 package com.openlattice.chronicle.serializers
 
 import com.geekbeast.rhizome.pods.hazelcast.SelfRegisteringStreamSerializer
-import kotlin.Throws
-import java.io.IOException
-import com.hazelcast.nio.ObjectDataOutput
 import com.hazelcast.nio.ObjectDataInput
+import com.hazelcast.nio.ObjectDataOutput
 import com.openlattice.chronicle.hazelcast.StreamSerializerTypeIds
-import com.openlattice.chronicle.mapstores.ids.Range
+import com.openlattice.chronicle.hazelcast.processors.storage.StudyStorageRead
 import org.springframework.stereotype.Component
+import java.io.IOException
 
 /**
  * @author Matthew Tamayo-Rios &lt;matthew@openlattice.com&gt;
  */
 @Component
-class RangeStreamSerializer : SelfRegisteringStreamSerializer<Range> {
-    override fun getClazz(): Class<Range> {
-        return Range::class.java
+class StudyStorageReadStreamSerializer : SelfRegisteringStreamSerializer<StudyStorageRead> {
+    override fun getClazz(): Class<StudyStorageRead> {
+        return StudyStorageRead::class.java
     }
 
     @Throws(IOException::class)
-    override fun write(out: ObjectDataOutput, `object`: Range) {
-        out.writeLong(`object`.base)
-        out.writeLong(`object`.msb)
-        out.writeLong(`object`.lsb)
+    override fun write(out: ObjectDataOutput, obj: StudyStorageRead) {
+
     }
 
     @Throws(IOException::class)
-    override fun read(`in`: ObjectDataInput): Range {
-        return Range(`in`.readLong(), `in`.readLong(), `in`.readLong())
+    override fun read(`in`: ObjectDataInput): StudyStorageRead {
+        return StudyStorageRead()
     }
 
     override fun getTypeId(): Int {
-        return StreamSerializerTypeIds.RANGE.ordinal
+        return StreamSerializerTypeIds.STUDY_STORAGE_READ.ordinal
     }
-
-    override fun destroy() {}
 }

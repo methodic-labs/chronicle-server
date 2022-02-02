@@ -190,7 +190,8 @@ class AppDataUploadService(
     }
 
     private fun filter(
-        organizationId: UUID, mappedData: Sequence<Map<String, UsageEventColumn>>
+        organizationId: UUID,
+        mappedData: Sequence<Map<String, UsageEventColumn>>
     ): Sequence<Map<String, UsageEventColumn>> {
         return mappedData.filter { mappedUsageEventCols ->
             val appName = mappedUsageEventCols[FQNS_TO_COLUMNS.getValue(FULL_NAME_FQN).name]?.value as String
