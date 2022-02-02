@@ -4,27 +4,29 @@ import com.geekbeast.postgres.PostgresColumnsIndexDefinition
 import com.geekbeast.postgres.PostgresTableDefinition
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.BASE
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.CONTACT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CANDIDATE_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.CONTACT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CREATED_AT
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.SOURCE_DEVICE
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.SOURCE_DEVICE_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DATE_OF_BIRTH
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.DELETE_ME
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DESCRIPTION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DEVICE_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.EMAIL
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ENDED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.EXPIRATION
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.EXPIRATION_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.FIRST_NAME
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LAST_NAME
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LAT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LON
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LSB
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.MSB
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.NAME
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.NOTIFICATIONS_ENABLED
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPATION_STATUS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTITION_INDEX
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.PHONE_NUMBER
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_OF_ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_TYPE
@@ -33,6 +35,8 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJ
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_NAME
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_TYPE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SETTINGS
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.SOURCE_DEVICE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.SOURCE_DEVICE_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STARTED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_GROUP
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
@@ -78,6 +82,7 @@ class ChroniclePostgresTables {
                 STUDY_GROUP,
                 STUDY_VERSION,
                 CONTACT,
+                NOTIFICATIONS_ENABLED,
                 SETTINGS,
             )
             .primaryKey(STUDY_ID)
@@ -96,10 +101,10 @@ class ChroniclePostgresTables {
         @JvmField
         val STUDY_PARTICIPANTS = PostgresTableDefinition("study_participants")
             .addColumns(
-                ORGANIZATION_ID,
                 STUDY_ID,
+                PARTICIPANT_ID,
                 CANDIDATE_ID,
-                PARTICIPANT_ID
+                PARTICIPATION_STATUS
             )
             .primaryKey(STUDY_ID, PARTICIPANT_ID)
 
@@ -111,7 +116,9 @@ class ChroniclePostgresTables {
                 LAST_NAME,
                 NAME,
                 DATE_OF_BIRTH,
-                DELETE_ME
+                EMAIL,
+                PHONE_NUMBER,
+                EXPIRATION_DATE
             )
             .primaryKey(CANDIDATE_ID)
 

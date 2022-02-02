@@ -62,8 +62,7 @@ class TimeUseDiaryController(
         @RequestBody responses: List<TimeUseDiaryResponse>
     ): UUID {
         ensureAuthenticated()
-        val (flavor, hds) = storageResolver.getPlatformStorage()
-        check(flavor == PostgresFlavor.VANILLA)
+        val hds = storageResolver.getPlatformStorage(PostgresFlavor.VANILLA)
         val timeUseDiaryId = idGenerationService.getNextId()
         AuditedOperationBuilder<Unit>(hds.connection, auditingManager)
             .operation { connection ->
@@ -140,7 +139,7 @@ class TimeUseDiaryController(
         @PathVariable(TimeUseDiaryApi.PARTICIPANT_ID) participantId: String,
         @RequestParam(TimeUseDiaryApi.DATA_TYPE) type: TimeUseDiaryDownloadDataType,
         @RequestBody submissionIds: Set<UUID>
-    ) {
+    ): Iterable<Map<String, Set<Any>>> {
         TODO("Not yet implemented")
     }
 

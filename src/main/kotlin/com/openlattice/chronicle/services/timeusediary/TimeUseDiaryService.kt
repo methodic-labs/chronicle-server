@@ -78,8 +78,7 @@ class TimeUseDiaryService(
         // Use Calendar to convert response to user's timezone
         cal.timeZone = TimeZone.getTimeZone("GMT${zoneOffset.id}")
         try {
-            val (flavor, hds) = storageResolver.getPlatformStorage()
-            check(flavor == PostgresFlavor.VANILLA)
+            val hds = storageResolver.getPlatformStorage(PostgresFlavor.VANILLA)
             val result = hds.connection.use { connection ->
                 executeGetSubmissionByDateSql(
                     connection,
