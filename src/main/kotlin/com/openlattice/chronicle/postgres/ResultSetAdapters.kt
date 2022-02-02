@@ -285,7 +285,8 @@ class ResultSetAdapters {
                 rs.getString(CONTACT.name),
                 PostgresArrays.getUuidArray(rs, ORGANIZATION_IDS.name)?.toSet() ?: setOf(),
                 rs.getBoolean(NOTIFICATIONS_ENABLED.name),
-                mapper.readValue(rs.getString(SETTINGS.name))
+                rs.getString(STORAGE.name),
+                settings = mapper.readValue(rs.getString(SETTINGS.name))
             )
         }
 

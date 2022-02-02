@@ -274,7 +274,8 @@ class ChronicleServerServicesPod {
             authorizationService(),
             candidateService(),
             enrollmentManager(),
-            auditingManager()
+            auditingManager(),
+            hazelcast
         )
     }
 

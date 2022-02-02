@@ -6,6 +6,7 @@ import com.geekbeast.configuration.postgres.PostgresFlavor
 import com.geekbeast.postgres.PostgresArrays
 import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
+import com.hazelcast.core.HazelcastInstance
 import com.openlattice.chronicle.auditing.AuditingComponent
 import com.openlattice.chronicle.auditing.AuditingManager
 import com.openlattice.chronicle.authorization.AclKey
@@ -13,6 +14,7 @@ import com.openlattice.chronicle.authorization.AuthorizationManager
 import com.openlattice.chronicle.authorization.SecurableObjectType
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.authorization.reservations.AclKeyReservationService
+import com.openlattice.chronicle.hazelcast.HazelcastMap
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.ids.IdConstants
 import com.openlattice.chronicle.participants.Participant
@@ -45,7 +47,9 @@ class StudyService(
     private val candidateService: CandidateManager,
     private val enrollmentService: EnrollmentManager,
     override val auditingManager: AuditingManager,
+    hazelcast: HazelcastInstance,
 ) : StudyManager, AuditingComponent {
+    private val studies = HazelcastMap.STUDIES.getMap(hazelcast)
     companion object {
         private val logger = LoggerFactory.getLogger(StudyService::class.java)
         private val mapper = ObjectMappers.newJsonMapper()
@@ -266,5 +270,9 @@ class StudyService(
             }
 
         }
+    }
+
+    override fun refreshStudyCache(studyIds: Set<UUID>) {
+        studies.loadAll(studyIds, true)
     }
 }

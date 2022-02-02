@@ -201,6 +201,7 @@ class StudyController @Inject constructor(
                 )
             }
             .buildAndRun()
+        studyService.refreshStudyCache(setOf(studyId))
     }
 
     @Timed
