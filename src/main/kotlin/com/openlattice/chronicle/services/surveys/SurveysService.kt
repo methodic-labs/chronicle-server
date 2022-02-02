@@ -19,6 +19,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.survey.AppUsage
 import com.openlattice.chronicle.util.ChronicleServerUtil.ORG_STUDY_PARTICIPANT
+import com.openlattice.chronicle.util.ensureVanilla
 import org.apache.olingo.commons.api.edm.FullQualifiedName
 import org.slf4j.LoggerFactory
 import java.time.LocalDate
@@ -118,7 +119,8 @@ class SurveysService(
         try {
             val requestedDate = LocalDate.parse(date)
 
-            val (_, hds) = storageResolver.getDefaultStorage()
+            val (flavor, hds) = storageResolver.resolveAndGetFlavor(studyId)
+            ensureVanilla(flavor)
 
             val result = BasePostgresIterable(
                     PreparedStatementHolderSupplier(hds, GET_APP_USAGE_SQL) { ps ->
@@ -150,7 +152,8 @@ class SurveysService(
     }
 
     private fun updateAppUsage( organizationId: UUID, studyId: UUID, participantId: String, data: Map<UUID, Set<String>>): Int {
-        val (_, hds) = storageResolver.resolveAndGetFlavor(studyId)
+        val (flavor, hds) = storageResolver.resolveAndGetFlavor(studyId)
+        ensureVanilla(flavor)
 
         return hds.connection.use { conn ->
             try {
