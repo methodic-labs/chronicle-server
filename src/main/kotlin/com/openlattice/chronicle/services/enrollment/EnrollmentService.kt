@@ -106,7 +106,7 @@ class EnrollmentService(
         /**
          *
          */
-        private val GET_ORGANIZATION_ID
+//        private val GET_ORGANIZATION_ID
     }
 
     override fun registerDatasource(
