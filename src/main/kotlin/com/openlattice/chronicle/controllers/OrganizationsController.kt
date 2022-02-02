@@ -61,7 +61,7 @@ class OrganizationsController @Inject constructor(
         ensureAuthenticated()
         logger.info("Creating organization with title ${organization.title}")
         organization.id = idGenerationService.getNextId()
-        val (flavor, hds) = storageResolver.getPlatformStorage()
+        val (flavor, hds) = storageResolver.getDefaultPlatformStorage()
         ensureVanilla(flavor)
         AuditedOperationBuilder<Unit>(hds.connection, auditingManager)
             .operation { connection ->

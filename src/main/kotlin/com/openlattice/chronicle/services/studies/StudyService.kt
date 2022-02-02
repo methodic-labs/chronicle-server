@@ -14,7 +14,12 @@ import com.openlattice.chronicle.authorization.SecurableObjectType
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.authorization.reservations.AclKeyReservationService
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
+import com.openlattice.chronicle.ids.IdConstants
+import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.postgres.ResultSetAdapters
+import com.openlattice.chronicle.services.candidates.CandidateManager
+import com.openlattice.chronicle.services.enrollment.EnrollmentManager
+import com.openlattice.chronicle.services.enrollment.EnrollmentService
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.ORGANIZATION_STUDIES
 import com.openlattice.chronicle.study.Study
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.STUDIES
@@ -23,6 +28,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_IDS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.study.StudyUpdate
+import com.openlattice.chronicle.util.JsonFields.STUDY
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.sql.Connection
@@ -38,13 +44,15 @@ class StudyService(
     private val aclKeyReservationService: AclKeyReservationService,
     private val idGenerationService: HazelcastIdGenerationService,
     private val authorizationService: AuthorizationManager,
-    override val auditingManager: AuditingManager
+    private val candidateService: CandidateManager,
+    private val enrollmentService: EnrollmentManager,
+    override val auditingManager: AuditingManager,
 ) : StudyManager, AuditingComponent {
     companion object {
         private val logger = LoggerFactory.getLogger(StudyService::class.java)
         private val mapper = ObjectMappers.newJsonMapper()
         private val STUDY_COLUMNS = listOf(
-            PostgresColumns.STUDY_ID,
+            STUDY_ID,
             PostgresColumns.TITLE,
             PostgresColumns.DESCRIPTION,
             PostgresColumns.LAT,
@@ -73,12 +81,12 @@ class StudyService(
 
         private val COALESCED_STUDY_COLUMNS = UPDATE_STUDY_COLUMNS_LIST
             .joinToString(",") {
-            "coalesce(?${if(it.equals(PostgresColumns.SETTINGS)) "::jsonb" else ""}, ${it.name})"
-        }
+                "coalesce(?${if (it.equals(PostgresColumns.SETTINGS)) "::jsonb" else ""}, ${it.name})"
+            }
 
         private val ORG_STUDIES_COLS = listOf(
-            PostgresColumns.ORGANIZATION_ID,
-            PostgresColumns.STUDY_ID,
+            ORGANIZATION_ID,
+            STUDY_ID,
             PostgresColumns.USER_ID,
             PostgresColumns.SETTINGS
         ).joinToString(",") { it.name }
@@ -140,6 +148,13 @@ class StudyService(
             SET (${UPDATE_STUDY_COLUMNS}) = (${COALESCED_STUDY_COLUMNS})
             WHERE ${STUDY_ID.name} = ?
         """.trimIndent()
+
+        /**
+         * TODO: Retrieve
+         */
+        private val GET_ORGANIZATION_ID = """
+            SELECT ${ORGANIZATION_ID.name} FROM ${ORGANIZATION_STUDIES.name} WHERE ${STUDY_ID.name} = ? LIMIT 1 
+        """.trimIndent()
     }
 
     override fun createStudy(connection: Connection, study: Study) {
@@ -151,6 +166,7 @@ class StudyService(
             principal = Principals.getCurrentUser(),
             objectType = SecurableObjectType.Study
         )
+        storageResolver.associateStudyWithStorage(study.id)
     }
 
     private fun insertStudy(connection: Connection, study: Study): Int {
@@ -180,7 +196,11 @@ class StudyService(
         return ps.executeBatch().sum()
     }
 
-    override fun getStudy(studyIds: Collection<UUID>): Iterable<Study> {
+    override fun getStudy(studyId: UUID): Study {
+        return getStudies(listOf(studyId)).first()
+    }
+
+    override fun getStudies(studyIds: Collection<UUID>): Iterable<Study> {
         return storageResolver
             .getStudyIdsByDataSourceName(studyIds)
             .flatMap { (dataSourceName, studyIdsForDataSource) ->
@@ -198,25 +218,60 @@ class StudyService(
     }
 
     override fun updateStudy(connection: Connection, studyId: UUID, study: StudyUpdate) {
-        val ps = connection.prepareStatement(UPDATE_STUDY_SQL)
-        var index = 1;
-        ps.setString(index++, study.title)
-        ps.setString(index++, study.description)
-        ps.setObject(index++, OffsetDateTime.now())
-        ps.setObject(index++, study.startedAt)
-        ps.setObject(index++, study.endedAt)
-        ps.setObject(index++, study.lat)
-        ps.setObject(index++, study.lon)
-        ps.setString(index++, study.group)
-        ps.setString(index++, study.version)
-        ps.setString(index++, study.contact)
-        if (study.settings == null){
-            ps.setObject(index++, study.settings)
+        connection.prepareStatement(UPDATE_STUDY_SQL).use { ps ->
+            var index = 1
+            ps.setString(index++, study.title)
+            ps.setString(index++, study.description)
+            ps.setObject(index++, OffsetDateTime.now())
+            ps.setObject(index++, study.startedAt)
+            ps.setObject(index++, study.endedAt)
+            ps.setObject(index++, study.lat)
+            ps.setObject(index++, study.lon)
+            ps.setString(index++, study.group)
+            ps.setString(index++, study.version)
+            ps.setString(index++, study.contact)
+            if (study.settings == null) {
+                ps.setObject(index++, study.settings)
+            } else {
+                ps.setString(index++, mapper.writeValueAsString(study.settings))
+            }
+            ps.setObject(index++, studyId)
+            ps.executeUpdate()
+            if (study.storage != null) {
+                storageResolver.associateStudyWithStorage(studyId, study.storage!!)
+            }
         }
-        else {
-            ps.setString(index++, mapper.writeValueAsString(study.settings))
+    }
+
+    override fun registerParticipant(connection: Connection, studyId: UUID, participant: Participant): UUID {
+        val candidateId = candidateService.registerCandidate(connection, participant.candidate)
+        enrollmentService.registerParticipant(
+            connection,
+            studyId,
+            participant.participantId,
+            candidateId,
+            participant.participationStatus
+        )
+        return candidateId
+    }
+
+    override fun isNotificationsEnabled(studyId: UUID): Boolean {
+        logger.info("Checking notifications enabled on studyId = {}", studyId)
+
+        //TODO: Write SQL query to just retrieve notifications enabled field.
+        return getStudy(studyId).notificationsEnabled
+    }
+
+    override fun getOrganizationIdForLegacyStudy(studyId: UUID): UUID {
+        return storageResolver.getPlatformStorage().connection.use { connection ->
+            connection.prepareStatement(GET_ORGANIZATION_ID).use { ps ->
+                ps.setObject(1, studyId)
+                ps.executeQuery().use { rs ->
+                    if (rs.next()) rs.getObject(ORGANIZATION_ID.name, UUID::class.java)
+                    else IdConstants.SYSTEM_ORGANIZATION.id
+                }
+            }
+
         }
-        ps.setObject(index++, studyId)
-        ps.executeUpdate()
     }
 }

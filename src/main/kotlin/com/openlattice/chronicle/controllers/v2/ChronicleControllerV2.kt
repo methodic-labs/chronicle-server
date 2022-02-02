@@ -12,6 +12,7 @@ import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import com.openlattice.chronicle.services.legacy.LegacyEdmResolver
 import com.openlattice.chronicle.services.legacy.LegacyUtil
 import com.openlattice.chronicle.services.settings.OrganizationSettingsManager
+import com.openlattice.chronicle.services.studies.StudyManager
 import com.openlattice.chronicle.services.surveys.SurveysManager
 import com.openlattice.chronicle.services.upload.AppDataUploadManager
 import com.openlattice.chronicle.sources.SourceDevice
@@ -40,6 +41,9 @@ class ChronicleControllerV2 : ChronicleApi {
 
     @Inject
     private lateinit var organizationSettingsManager: OrganizationSettingsManager
+
+    @Inject
+    private lateinit var studyManager: StudyManager
 
     @Timed
     @RequestMapping(
@@ -74,7 +78,7 @@ class ChronicleControllerV2 : ChronicleApi {
             @PathVariable(ChronicleApi.ORGANIZATION_ID) organizationId: UUID,
             @PathVariable(ChronicleApi.STUDY_ID) studyId: UUID
     ): Boolean {
-        return enrollmentManager.isNotificationsEnabled(studyId)
+        return studyManager.isNotificationsEnabled(studyId)
     }
 
     @Timed

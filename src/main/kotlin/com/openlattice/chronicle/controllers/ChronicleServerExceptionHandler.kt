@@ -132,4 +132,5 @@ class StudyRegistrationNotFoundException : RuntimeException {
     constructor(message: String, cause: Throwable) : super(message, cause)
 }
 
+class CandidateNotFoundException(message: String) : RuntimeException(message)
 class StudyNotFoundException(val studyId: UUID, message: String) : RuntimeException(message)

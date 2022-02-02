@@ -59,7 +59,7 @@ class OrganizationsInitializationTask : HazelcastInitializationTask<Organization
             }
         } else {
             val org = createGlobalOrg()
-            val (flavor, hds) = dependencies.storageResolver.getPlatformStorage()
+            val (flavor, hds) = dependencies.storageResolver.getDefaultPlatformStorage()
             ensureVanilla(flavor)
             hds.connection.use { connection ->
                 try {

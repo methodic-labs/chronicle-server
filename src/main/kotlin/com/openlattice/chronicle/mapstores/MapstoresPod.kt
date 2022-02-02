@@ -56,9 +56,6 @@ import javax.inject.Inject
 class MapstoresPod {
     @Inject
     private lateinit var hikariDataSource: HikariDataSource
-    
-    @Inject
-    private lateinit var storageResolver: StorageResolver
 
     @Inject
     private lateinit var ptMgr: PostgresTableManager
