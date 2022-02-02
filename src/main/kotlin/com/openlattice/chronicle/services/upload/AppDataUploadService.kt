@@ -123,7 +123,7 @@ class AppDataUploadService(
             sourceDeviceId
         ).use {
             try {
-                val (flavor, hds) = storageResolver.resolve(studyId)
+                val (flavor, hds) = storageResolver.resolveAndGetFlavor(studyId)
 
                 val status = enrollmentManager.getParticipationStatus(studyId, participantId)
                 if (ParticipationStatus.NOT_ENROLLED == status) {

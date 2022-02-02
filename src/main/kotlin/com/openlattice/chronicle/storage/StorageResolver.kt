@@ -15,7 +15,14 @@ class StorageResolver constructor(
     private val storageConfiguration: ChronicleStorageConfiguration
 ) {
     private val datasourceMappings: Map<UUID, String> = mutableMapOf()
-    fun resolve(studyId: UUID): Pair<PostgresFlavor, HikariDataSource> {
+
+    fun resolve(studyId: UUID, requiredFlavor: PostgresFlavor = PostgresFlavor.REDSHIFT): HikariDataSource {
+        val (flavor, hds) = resolveAndGetFlavor(studyId)
+        check(flavor == PostgresFlavor.ANY || flavor == requiredFlavor) { "Configured flavor $flavor does not much required flavor $requiredFlavor" }
+        return hds
+    }
+
+    fun resolveAndGetFlavor(studyId: UUID): Pair<PostgresFlavor, HikariDataSource> {
         return getDataSource(resolveDataSourceName(studyId))
     }
 
@@ -39,7 +46,7 @@ class StorageResolver constructor(
 
     fun getPlatformStorage(requiredFlavor: PostgresFlavor = PostgresFlavor.VANILLA): HikariDataSource {
         val (flavor, hds) = getDefaultPlatformStorage()
-        check(flavor == requiredFlavor) { "Configured flavor $flavor does not much required flavor $requiredFlavor" }
+        check(flavor == PostgresFlavor.ANY || flavor == requiredFlavor) { "Configured flavor $flavor does not much required flavor $requiredFlavor" }
         return hds
     }
 

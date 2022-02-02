@@ -102,6 +102,11 @@ class EnrollmentService(
         private val GET_PARTICIPATION_STATUS = """
             SELECT ${PARTICIPATION_STATUS.name} FROM ${STUDY_PARTICIPANTS.name} WHERE ${STUDY_ID.name} = ? AND ${PARTICIPANT_ID.name} = ?
         """.trimIndent()
+
+        /**
+         *
+         */
+        private val GET_ORGANIZATION_ID
     }
 
     override fun registerDatasource(
