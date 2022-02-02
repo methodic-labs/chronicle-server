@@ -150,7 +150,7 @@ class SurveysService(
     }
 
     private fun updateAppUsage( organizationId: UUID, studyId: UUID, participantId: String, data: Map<UUID, Set<String>>): Int {
-        val (_, hds) = storageResolver.resolve(studyId)
+        val (_, hds) = storageResolver.resolveAndGetFlavor(studyId)
 
         return hds.connection.use { conn ->
             try {
