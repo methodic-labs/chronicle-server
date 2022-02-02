@@ -336,7 +336,7 @@ class ChronicleServerServicesPod {
 
     @Bean
     fun iosSensorDataService(): IOSSensorDataManager {
-        return IOSSensorDataService(storageResolver, enrollmentManager())
+        return IOSSensorDataService(storageResolver(), enrollmentManager())
     }
 
     companion object {
