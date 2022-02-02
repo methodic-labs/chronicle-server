@@ -10,13 +10,13 @@ import com.openlattice.chronicle.authorization.AuthorizationManager
 import com.openlattice.chronicle.authorization.AuthorizingComponent
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.candidates.Candidate
-import com.openlattice.chronicle.candidates.CandidatesApi
-import com.openlattice.chronicle.candidates.CandidatesApi.Companion.BULK_PATH
-import com.openlattice.chronicle.candidates.CandidatesApi.Companion.CANDIDATE_ID_PARAM
-import com.openlattice.chronicle.candidates.CandidatesApi.Companion.CANDIDATE_ID_PATH
-import com.openlattice.chronicle.candidates.CandidatesApi.Companion.CONTROLLER
+import com.openlattice.chronicle.candidates.CandidateApi
+import com.openlattice.chronicle.candidates.CandidateApi.Companion.BULK_PATH
+import com.openlattice.chronicle.candidates.CandidateApi.Companion.CANDIDATE_ID_PARAM
+import com.openlattice.chronicle.candidates.CandidateApi.Companion.CANDIDATE_ID_PATH
+import com.openlattice.chronicle.candidates.CandidateApi.Companion.CONTROLLER
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
-import com.openlattice.chronicle.services.candidates.CandidatesService
+import com.openlattice.chronicle.services.candidates.CandidateService
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.util.ensureVanilla
 import org.slf4j.LoggerFactory
@@ -32,19 +32,19 @@ import javax.inject.Inject
 
 @RestController
 @RequestMapping(CONTROLLER)
-class CandidatesController @Inject constructor(
+class CandidateController @Inject constructor(
     val idGenerationService: HazelcastIdGenerationService,
     val storageResolver: StorageResolver,
     override val auditingManager: AuditingManager,
     override val authorizationManager: AuthorizationManager
-) : CandidatesApi, AuthorizingComponent {
+) : CandidateApi, AuthorizingComponent {
 
     companion object {
-        private val logger = LoggerFactory.getLogger(CandidatesController::class.java)
+        private val logger = LoggerFactory.getLogger(CandidateController::class.java)
     }
 
     @Inject
-    private lateinit var candidatesService: CandidatesService
+    private lateinit var candidateService: CandidateService
 
     @Timed
     @GetMapping(
@@ -55,7 +55,7 @@ class CandidatesController @Inject constructor(
         ensureAuthenticated()
         ensureReadAccess(AclKey(candidateId))
         return try {
-            candidatesService.getCandidate(candidateId)
+            candidateService.getCandidate(candidateId)
         }
         catch (e: NoSuchElementException) {
             throw CandidateNotFoundException("candidate not found - $candidateId")
@@ -71,7 +71,7 @@ class CandidatesController @Inject constructor(
     override fun getCandidates(@RequestBody candidateIds: Set<UUID>): Iterable<Candidate> {
         ensureAuthenticated()
         ensureReadAccess(candidateIds.mapTo(mutableSetOf()) { AclKey(it) })
-        return candidatesService.getCandidates(candidateIds)
+        return candidateService.getCandidates(candidateIds)
     }
 
     @Timed
@@ -81,11 +81,10 @@ class CandidatesController @Inject constructor(
     )
     override fun registerCandidate(@RequestBody candidate: Candidate): UUID {
         ensureAuthenticated()
-        val (flavor, hds) = storageResolver.getDefaultPlatformStorage()
-        ensureVanilla(flavor)
+        val hds = storageResolver.getPlatformStorage()
         candidate.id = idGenerationService.getNextId()
         AuditedOperationBuilder<Unit>(hds.connection, auditingManager)
-            .operation { connection -> candidatesService.registerCandidate(connection, candidate) }
+            .operation { connection -> candidateService.registerCandidate(connection, candidate) }
             .audit { listOf(
                 AuditableEvent(
                     AclKey(candidate.id),

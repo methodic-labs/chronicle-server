@@ -2,9 +2,14 @@ package com.openlattice.chronicle.util
 
 import com.google.common.collect.ImmutableList
 import com.openlattice.chronicle.authorization.*
+import com.openlattice.chronicle.candidates.Candidate
+import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.organizations.OrganizationPrincipal
+import com.openlattice.chronicle.participants.Participant
+import org.apache.commons.lang3.RandomStringUtils
 import org.apache.commons.text.CharacterPredicates
 import org.apache.commons.text.RandomStringGenerator
+import java.time.LocalDate
 import java.util.*
 
 /**
@@ -139,6 +144,23 @@ class TestDataFactory {
                 organizationPrincipal(),
                 randomAlphanumeric(5),
                 Optional.of<String>(randomAlphanumeric(10))
+            )
+        }
+
+        fun candidate(): Candidate {
+            return Candidate(
+                firstName = RandomStringUtils.randomAlphabetic(10),
+                lastName = RandomStringUtils.randomAlphabetic(10),
+                dateOfBirth = LocalDate.of(1920 + r.nextInt(100), 1 + r.nextInt(11), 1 + r.nextInt(27)),
+                email = "${RandomStringUtils.randomAlphanumeric(10)}@openlattice.com"
+            )
+        }
+
+        fun participant(participationStatus: ParticipationStatus = ParticipationStatus.ENROLLED): Participant {
+            return Participant(
+                RandomStringUtils.randomAlphanumeric(8),
+                candidate(),
+                participationStatus
             )
         }
     }

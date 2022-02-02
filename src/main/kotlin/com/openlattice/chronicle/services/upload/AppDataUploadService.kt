@@ -21,7 +21,10 @@ import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.util.ChronicleServerUtil
 import com.geekbeast.postgres.PostgresColumnDefinition
 import com.geekbeast.postgres.PostgresDatatype
+import com.geekbeast.postgres.PostgresTableDefinition
+import com.openlattice.chronicle.storage.PostgresDataTables
 import com.zaxxer.hikari.HikariDataSource
+import org.apache.commons.lang3.RandomStringUtils
 import org.apache.olingo.commons.api.edm.FullQualifiedName
 import org.slf4j.LoggerFactory
 import org.slf4j.event.Level
@@ -109,7 +112,7 @@ class AppDataUploadService(
         organizationId: UUID,
         studyId: UUID,
         participantId: String,
-        dataSourceId: String,
+        sourceDeviceId: String,
         data: List<SetMultimap<UUID, Any>>
     ): Int {
         StopWatch(
@@ -120,10 +123,10 @@ class AppDataUploadService(
             organizationId,
             studyId,
             participantId,
-            dataSourceId
+            sourceDeviceId
         ).use {
             try {
-                val (flavor, hds) = storageResolver.resolve(studyId)
+                val (flavor, hds) = storageResolver.resolveAndGetFlavor(studyId)
 
                 val status = enrollmentManager.getParticipationStatus(studyId, participantId)
                 if (ParticipationStatus.NOT_ENROLLED == status) {
@@ -132,19 +135,19 @@ class AppDataUploadService(
                         organizationId,
                         studyId,
                         participantId,
-                        dataSourceId
+                        sourceDeviceId
                     )
                     return 0
                 }
-                val isDeviceEnrolled = enrollmentManager.isKnownDatasource(studyId, participantId, dataSourceId)
+                val deviceEnrolled = enrollmentManager.isKnownDatasource(studyId, participantId, sourceDeviceId)
 
-                if (isDeviceEnrolled) {
+                if (!deviceEnrolled) {
                     logger.error(
                         "data source not found, ignoring upload" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE,
                         organizationId,
                         studyId,
                         participantId,
-                        dataSourceId
+                        sourceDeviceId
                     )
                     return 0
                 }
@@ -154,7 +157,7 @@ class AppDataUploadService(
                     organizationId,
                     studyId,
                     participantId,
-                    dataSourceId
+                    sourceDeviceId
                 )
 
                 val mappedData = filter(organizationId, mapToStorageModel(data))
@@ -178,7 +181,7 @@ class AppDataUploadService(
                     organizationId,
                     studyId,
                     participantId,
-                    dataSourceId,
+                    sourceDeviceId,
                     exception
                 )
                 return 0
@@ -214,11 +217,11 @@ class AppDataUploadService(
         organizationId: UUID,
         studyId: UUID,
         participantId: String,
-        data: Sequence<Map<String, UsageEventColumn>>
+        data: Sequence<Map<String, UsageEventColumn>>,
+        tempMergeTable: PostgresTableDefinition = CHRONICLE_USAGE_EVENTS.createTempTable()
     ): Int {
         return hds.connection.use { connection ->
             //Create the temporary merge table
-            val tempMergeTable = CHRONICLE_USAGE_EVENTS.createTempTable()
             try {
                 connection.autoCommit = false
 
@@ -281,7 +284,16 @@ class AppDataUploadService(
         participantId: String,
         data: Sequence<Map<String, UsageEventColumn>>
     ): Int {
-        return writeToRedshift(hds, organizationId, studyId, participantId, data)
+        return writeToRedshift(
+            hds,
+            organizationId,
+            studyId,
+            participantId,
+            data,
+            PostgresDataTables.CHRONICLE_USAGE_EVENTS.createTempTableWithSuffix(
+                RandomStringUtils.randomAlphanumeric(10)
+            )
+        )
     }
 
 
