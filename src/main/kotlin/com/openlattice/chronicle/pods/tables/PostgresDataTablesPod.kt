@@ -1,4 +1,4 @@
-package com.openlattice.chronicle.pods
+package com.openlattice.chronicle.pods.tables
 
 import com.openlattice.chronicle.storage.PostgresDataTables
 import com.geekbeast.postgres.PostgresTableDefinition

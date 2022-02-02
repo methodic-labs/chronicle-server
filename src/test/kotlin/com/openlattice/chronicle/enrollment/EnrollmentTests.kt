@@ -66,8 +66,7 @@ class EnrollmentTests : ChronicleServerTests() {
         val study = Study(title = "Test Study", contact = "tests@openlattice.com")
         val studyId = studyApi.createStudy(study)
         studyApi.registerParticipant(studyId, participant)
-        val deviceId = studyApi.enroll(studyId, participantId, sourceDeviceId, sourceDevice)
-
+        studyApi.enroll(studyId, participantId, sourceDeviceId, sourceDevice) // expect this not to throw
     }
 
     @Test(expected=RhizomeRetrofitCallFailedException::class)

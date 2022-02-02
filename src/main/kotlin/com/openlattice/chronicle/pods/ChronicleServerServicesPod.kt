@@ -107,10 +107,7 @@ class ChronicleServerServicesPod {
 
     @Inject
     private lateinit var eventBus: EventBus
-
-    @Inject
-    private lateinit var storageResolver: StorageResolver
-
+    
     @Inject
     private lateinit var chronicleConfiguration: ChronicleConfiguration
 
@@ -119,6 +116,11 @@ class ChronicleServerServicesPod {
         val mapper = ObjectMappers.getJsonMapper()
         registerWithMapper(mapper)
         return mapper
+    }
+
+    @Bean
+    fun storageResolver() : StorageResolver {
+        return StorageResolver(dataSourceManager, chronicleConfiguration.storageConfiguration, hazelcast)
     }
 
     @Bean
@@ -183,7 +185,7 @@ class ChronicleServerServicesPod {
     @Bean
     @Throws(IOException::class, ExecutionException::class)
     fun enrollmentManager(): EnrollmentManager {
-        return EnrollmentService(storageResolver, idGenerationService(), candidateService(), scheduledTasksManager())
+        return EnrollmentService(storageResolver(), idGenerationService(), candidateService(), scheduledTasksManager())
     }
 
 
@@ -196,7 +198,7 @@ class ChronicleServerServicesPod {
     @Throws(IOException::class, ExecutionException::class)
     fun appDataUploadManager(): AppDataUploadManager {
         return AppDataUploadService(
-            storageResolver,
+            storageResolver(),
             scheduledTasksManager(),
             enrollmentManager(),
             organizationSettingsManager()
@@ -236,7 +238,7 @@ class ChronicleServerServicesPod {
 
     @Bean
     fun authorizationService(): AuthorizationManager {
-        return HazelcastAuthorizationService(hazelcast!!, storageResolver, eventBus!!, principalsMapManager())
+        return HazelcastAuthorizationService(hazelcast!!, storageResolver(), eventBus!!, principalsMapManager())
     }
 
     @Bean
@@ -270,7 +272,7 @@ class ChronicleServerServicesPod {
     @Bean
     fun studyService(): StudyService {
         return StudyService(
-            storageResolver,
+            storageResolver(),
             aclKeyReservationService(),
             idGenerationService(),
             authorizationService(),
@@ -292,12 +294,12 @@ class ChronicleServerServicesPod {
 
     @Bean
     fun auditingManager(): AuditingManager {
-        return RedshiftAuditingManager(storageResolver)
+        return RedshiftAuditingManager(storageResolver())
     }
 
     @Bean
     fun organizationsService(): ChronicleOrganizationService {
-        return ChronicleOrganizationService(storageResolver, authorizationService())
+        return ChronicleOrganizationService(storageResolver(), authorizationService())
     }
 
     @Bean
@@ -318,7 +320,7 @@ class ChronicleServerServicesPod {
     @Bean
     fun orgInitTaskDependencies(): OrganizationsInitializationDependencies {
         return OrganizationsInitializationDependencies(
-            storageResolver,
+            storageResolver(),
             organizationsService(),
             principalsManager(),
             chronicleConfiguration
@@ -327,7 +329,7 @@ class ChronicleServerServicesPod {
 
     @Bean
     fun candidateService(): CandidateService {
-        return CandidateService(storageResolver, authorizationService())
+        return CandidateService(storageResolver(), authorizationService())
     }
 
     companion object {
