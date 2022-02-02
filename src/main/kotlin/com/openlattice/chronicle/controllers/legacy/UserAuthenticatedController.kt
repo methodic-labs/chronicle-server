@@ -10,6 +10,7 @@ import com.openlattice.chronicle.data.FileType
 import com.openlattice.chronicle.services.delete.DataDeletionManager
 import com.openlattice.chronicle.services.download.DataDownloadManager
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
+import com.openlattice.chronicle.services.studies.StudyManager
 import com.openlattice.chronicle.util.ChronicleServerUtil
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
@@ -33,6 +34,9 @@ class UserAuthenticatedController : UserAuthenticatedApi {
 
     @Inject
     private lateinit var enrollmentManager: EnrollmentManager
+    
+    @Inject
+    private lateinit var studyManager: StudyManager
 
     @Timed
     @RequestMapping(
@@ -44,7 +48,7 @@ class UserAuthenticatedController : UserAuthenticatedApi {
             @PathVariable(UserAuthenticatedApi.PARTICIPANT_ID) participantId: String,
             @RequestParam(UserAuthenticatedApi.TYPE) chronicleDeleteType: ChronicleDeleteType
     ): Void? {
-        val organizationId = enrollmentManager.getOrganizationIdForLegacyStudy( studyId )
+        val organizationId = studyManager.getOrganizationIdForLegacyStudy( studyId )
         dataDeletionManager.deleteParticipantData(organizationId, studyId, participantId, chronicleDeleteType)
         return null
     }
@@ -61,7 +65,7 @@ class UserAuthenticatedController : UserAuthenticatedApi {
             @PathVariable(UserAuthenticatedApi.STUDY_ID) studyId: UUID,
             @RequestParam(UserAuthenticatedApi.TYPE) chronicleDeleteType: ChronicleDeleteType
     ): Void? {
-        val organizationId = enrollmentManager.getOrganizationIdForLegacyStudy( studyId )
+        val organizationId = studyManager.getOrganizationIdForLegacyStudy( studyId )
         dataDeletionManager.deleteStudyData(organizationId, studyId, chronicleDeleteType)
         return null
     }
