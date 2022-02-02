@@ -14,6 +14,7 @@ import com.openlattice.chronicle.authorization.SecurableObjectType
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.authorization.reservations.AclKeyReservationService
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
+import com.openlattice.chronicle.ids.IdConstants
 import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.services.candidates.CandidateManager
@@ -145,6 +146,13 @@ class StudyService(
             SET (${UPDATE_STUDY_COLUMNS}) = (${COALESCED_STUDY_COLUMNS})
             WHERE ${STUDY_ID.name} = ?
         """.trimIndent()
+
+        /**
+         *
+         */
+        private val GET_ORGANIZATION_ID = """
+            
+        """.trimIndent()
     }
 
     override fun createStudy(connection: Connection, study: Study) {
@@ -238,5 +246,9 @@ class StudyService(
             participant.participationStatus
         )
         return candidateId
+    }
+
+    override fun getOrganizationIdForLegacyStudy(studyId: UUID): UUID {
+        return getStudy(studyId).organizationIds.firstOrNull() ?: IdConstants.SYSTEM_ORGANIZATION.id
     }
 }

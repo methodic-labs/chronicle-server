@@ -5,6 +5,7 @@ import com.google.common.collect.SetMultimap
 import com.openlattice.chronicle.ChronicleApi
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import com.openlattice.chronicle.services.legacy.LegacyEdmResolver
+import com.openlattice.chronicle.services.studies.StudyManager
 import com.openlattice.chronicle.services.upload.AppDataUploadManager
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.*
@@ -24,6 +25,9 @@ class ChronicleController : ChronicleApi {
     @Inject
     private lateinit var enrollmentManager: EnrollmentManager
 
+    @Inject
+    private lateinit var studyManager: StudyManager
+
     @Timed
     @RequestMapping(
             path = [ChronicleApi.STUDY_ID_PATH + ChronicleApi.PARTICIPANT_ID_PATH + ChronicleApi.DATASOURCE_ID_PATH],
@@ -35,7 +39,7 @@ class ChronicleController : ChronicleApi {
             @PathVariable(ChronicleApi.DATASOURCE_ID) datasourceId: String,
             @RequestBody data: List<SetMultimap<UUID, Any>>
     ): Int {
-        val organizationId = enrollmentManager.getOrganizationIdForLegacyStudy( studyId )
+        val organizationId = studyManager.getOrganizationIdForLegacyStudy( studyId )
         return dataUploadManager.upload(organizationId, studyId, participantId, datasourceId, data)
     }
 

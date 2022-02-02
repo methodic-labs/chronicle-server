@@ -103,10 +103,6 @@ class EnrollmentService(
             SELECT ${PARTICIPATION_STATUS.name} FROM ${STUDY_PARTICIPANTS.name} WHERE ${STUDY_ID.name} = ? AND ${PARTICIPANT_ID.name} = ?
         """.trimIndent()
 
-        /**
-         *
-         */
-//        private val GET_ORGANIZATION_ID
     }
 
     override fun registerDatasource(
@@ -299,7 +295,5 @@ class EnrollmentService(
         TODO("Not yet implemented")
     }
 
-    override fun getOrganizationIdForLegacyStudy(studyId: UUID): UUID {
-        TODO("Not yet implemented")
-    }
+
 }

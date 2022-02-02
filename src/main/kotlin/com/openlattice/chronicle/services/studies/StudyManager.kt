@@ -15,4 +15,6 @@ interface StudyManager {
     fun getStudies(studyIds: Collection<UUID>): Iterable<Study>
     fun updateStudy(connection: Connection, studyId: UUID, study: StudyUpdate)
     fun registerParticipant(connection: Connection, studyId: UUID, participant: Participant): UUID
+
+    fun getOrganizationIdForLegacyStudy(studyId: UUID): UUID
 }
