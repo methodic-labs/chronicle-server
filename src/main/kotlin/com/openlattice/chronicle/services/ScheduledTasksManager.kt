@@ -64,61 +64,48 @@ class ScheduledTasksManager(
     val systemAppPackageNames: MutableSet<String> = Sets.newHashSet()
 
 
-    @Scheduled(fixedRate = SYSTEM_APPS_REFRESH_INTERVAL)
-    fun refreshSystemApps() {
-        logger.info("Refreshing system apps cache")
-
-        val (_, hds ) = storageResolver.getDefaultStorage()
-
-        val systemAppNames = BasePostgresIterable(
-                PreparedStatementHolderSupplier(hds, GET_SYSTEM_APPS_SQL) { ps ->
-                    ps.executeQuery()
-                }
-        ) {
-            ResultSetAdapters.systemApp(it)
-        }.toSet()
-
-        logger.info("loaded ${systemAppNames.size} system apps")
-
-        systemAppPackageNames.addAll(systemAppNames)
-    }
-
-    @Scheduled(fixedRate = USER_APPS_REFRESH_INTERVAL)
-    @Deprecated("")
-    fun legacyRefreshUserAppsFullNames() {
-        logger.info("refreshing user apps cache")
-        TODO("Not yet implemented")
-    }
-
-    @Scheduled(fixedRate = USER_APPS_REFRESH_INTERVAL)
-    fun refreshAllOrgsUserAppFullNames() {
-        logger.info("refreshing all orgs user apps fullnames")
-        TODO("Not yet implemented")
-    }
-
-    @Scheduled(fixedRate = STUDY_INFO_REFRESH_INTERVAL)
-    fun refreshAllOrgsStudyInformation() {
-        logger.info("refreshing study information for all organizations")
-        TODO("Not yet implemented")
-    }
-
-    @Scheduled(fixedRate = STUDY_INFO_REFRESH_INTERVAL)
-    @Deprecated("")
-    fun legacyRefreshStudyInformation() {
-        logger.info("refreshing cache for legacy studies")
-        TODO("Not yet implemented")
-    }
-
-    @Scheduled(fixedRate = DEVICES_INFO_REFRESH_INTERVAL)
-    fun refreshAllOrgsDevicesCache() {
-        logger.info("refreshing devices info for all orgs")
-        TODO("Not yet implemented")
-    }
-
-    @Scheduled(fixedRate = DEVICES_INFO_REFRESH_INTERVAL)
-    @Deprecated("")
-    fun legacyRefreshDevicesCache() {
-        logger.info("refreshing devices info for legacy devices")
-        TODO("Not yet implemented")
-    }
+//    @Scheduled(fixedRate = SYSTEM_APPS_REFRESH_INTERVAL)
+//    fun refreshSystemApps() {
+//        logger.info("Refreshing system apps cache")
+//        TODO("Not yet implemented")
+//    }
+//
+//    @Scheduled(fixedRate = USER_APPS_REFRESH_INTERVAL)
+//    @Deprecated("")
+//    fun legacyRefreshUserAppsFullNames() {
+//        logger.info("refreshing user apps cache")
+//        TODO("Not yet implemented")
+//    }
+//
+//    @Scheduled(fixedRate = USER_APPS_REFRESH_INTERVAL)
+//    fun refreshAllOrgsUserAppFullNames() {
+//        logger.info("refreshing all orgs user apps fullnames")
+//        TODO("Not yet implemented")
+//    }
+//
+//    @Scheduled(fixedRate = STUDY_INFO_REFRESH_INTERVAL)
+//    fun refreshAllOrgsStudyInformation() {
+//        logger.info("refreshing study information for all organizations")
+//        TODO("Not yet implemented")
+//    }
+//
+//    @Scheduled(fixedRate = STUDY_INFO_REFRESH_INTERVAL)
+//    @Deprecated("")
+//    fun legacyRefreshStudyInformation() {
+//        logger.info("refreshing cache for legacy studies")
+//        TODO("Not yet implemented")
+//    }
+//
+//    @Scheduled(fixedRate = DEVICES_INFO_REFRESH_INTERVAL)
+//    fun refreshAllOrgsDevicesCache() {
+//        logger.info("refreshing devices info for all orgs")
+//        TODO("Not yet implemented")
+//    }
+//
+//    @Scheduled(fixedRate = DEVICES_INFO_REFRESH_INTERVAL)
+//    @Deprecated("")
+//    fun legacyRefreshDevicesCache() {
+//        logger.info("refreshing devices info for legacy devices")
+//        TODO("Not yet implemented")
+//    }
 }

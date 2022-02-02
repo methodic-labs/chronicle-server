@@ -14,6 +14,7 @@ class LegacyEdmResolver() {
         private val propertyTypes = mutableMapOf<FullQualifiedName, UUID>()
 
         init {
+            propertyTypes[EdmConstants.RRULE_FQN] = UUID.fromString("2d7e9eaf-8404-42b6-ba98-4287eab4901d")
             propertyTypes[EdmConstants.DATE_LOGGED_FQN] = UUID.fromString("e90a306c-ee37-4cd1-8a0e-71ad5a180340")
             propertyTypes[EdmConstants.STRING_ID_FQN] = UUID.fromString("ee3a7573-aa70-4afb-814d-3fad27cda988")
             propertyTypes[EdmConstants.FULL_NAME_FQN] = UUID.fromString("70d2ff1c-2450-4a47-a954-a7641b7399ae")
