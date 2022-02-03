@@ -23,11 +23,7 @@ import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.util.ensureVanilla
 import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PathVariable
-import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.*
 import java.util.UUID
 import javax.inject.Inject
 
@@ -57,7 +53,7 @@ class OrganizationsController @Inject constructor(
         consumes = [MediaType.APPLICATION_JSON_VALUE],
         produces = [MediaType.APPLICATION_JSON_VALUE],
     )
-    override fun createOrganization(organization: Organization): UUID {
+    override fun createOrganization(@RequestBody organization: Organization): UUID {
         ensureAuthenticated()
         logger.info("Creating organization with title ${organization.title}")
         organization.id = idGenerationService.getNextId()
