@@ -10,16 +10,25 @@ import com.openlattice.chronicle.authorization.AuthorizationManager
 import com.openlattice.chronicle.authorization.AuthorizingComponent
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
-import com.openlattice.chronicle.organizations.*
+import com.openlattice.chronicle.organizations.ChronicleDataCollectionSettings
+import com.openlattice.chronicle.organizations.ChronicleOrganizationService
+import com.openlattice.chronicle.organizations.Organization
+import com.openlattice.chronicle.organizations.OrganizationSettings
+import com.openlattice.chronicle.organizations.OrganizationsApi
 import com.openlattice.chronicle.organizations.OrganizationsApi.Companion.CONTROLLER
 import com.openlattice.chronicle.organizations.OrganizationsApi.Companion.ORGANIZATION_ID
 import com.openlattice.chronicle.organizations.OrganizationsApi.Companion.ORGANIZATION_ID_PATH
 import com.openlattice.chronicle.settings.AppComponent
 import com.openlattice.chronicle.storage.StorageResolver
+import com.openlattice.chronicle.util.ensureVanilla
 import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
-import org.springframework.web.bind.annotation.*
-import java.util.*
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RestController
+import java.util.UUID
 import javax.inject.Inject
 
 /**
@@ -52,31 +61,32 @@ class OrganizationsController @Inject constructor(
         ensureAuthenticated()
         logger.info("Creating organization with title ${organization.title}")
         organization.id = idGenerationService.getNextId()
-        val (flavor, hds) = storageResolver.getPlatformStorage()
-        ensureVanilla(flavor)
-        AuditedOperationBuilder<Unit>(hds.connection, auditingManager)
-            .operation { connection ->
-                chronicleOrganizationService.createOrganization(
-                    connection,
-                    Principals.getCurrentUser(),
-                    organization
-                )
-            }
-            .audit {
-                listOf(
-                    AuditableEvent(
-                        AclKey(organization.id),
-                        Principals.getCurrentSecurablePrincipal().id,
-                        Principals.getCurrentUser().id,
-                        AuditEventType.CREATE_ORGANIZATION,
-                        "",
-                        organization.id,
-                        UUID(0, 0),
-                        mapOf()
+        val hds = storageResolver.getPlatformStorage()
+        hds.connection.use { connection ->
+            AuditedOperationBuilder<Unit>(connection, auditingManager)
+                .operation { connection ->
+                    chronicleOrganizationService.createOrganization(
+                        connection,
+                        Principals.getCurrentUser(),
+                        organization
                     )
-                )
-            }
-            .buildAndRun()
+                }
+                .audit {
+                    listOf(
+                        AuditableEvent(
+                            AclKey(organization.id),
+                            Principals.getCurrentSecurablePrincipal().id,
+                            Principals.getCurrentUser().id,
+                            AuditEventType.CREATE_ORGANIZATION,
+                            "",
+                            organization.id,
+                            UUID(0, 0),
+                            mapOf()
+                        )
+                    )
+                }
+                .buildAndRun()
+        }
         return organization.id
     }
 

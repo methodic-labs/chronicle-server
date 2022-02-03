@@ -39,7 +39,7 @@ class SurveysService(
     override fun getStudyQuestionnaires(
             organizationId: UUID, studyId: UUID
     ): Map<UUID, Map<FullQualifiedName, Set<Any>>> {
-        TODO("Not yet implemented")
+        return mapOf()
     }
 
     override fun submitQuestionnaire(

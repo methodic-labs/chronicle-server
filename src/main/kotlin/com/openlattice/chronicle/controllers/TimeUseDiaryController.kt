@@ -8,7 +8,6 @@ import com.openlattice.chronicle.api.TimeUseDiaryApi.Companion.STUDY_ID
 import com.openlattice.chronicle.api.TimeUseDiaryApi.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.api.TimeUseDiaryApi.Companion.START_DATE
 import com.openlattice.chronicle.api.TimeUseDiaryApi.Companion.END_DATE
-import com.openlattice.chronicle.api.TimeUseDiaryApi.Companion.ZONE_OFFSET
 import com.openlattice.chronicle.api.TimeUseDiaryApi.Companion.DATA_TYPE
 import com.openlattice.chronicle.auditing.AuditEventType
 import com.openlattice.chronicle.auditing.AuditableEvent
@@ -30,8 +29,7 @@ import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.*
 import java.time.LocalDate
-import java.time.LocalDateTime
-import java.time.ZoneOffset
+import java.time.OffsetDateTime
 import java.util.*
 import javax.inject.Inject
 import javax.servlet.http.HttpServletResponse
@@ -70,8 +68,7 @@ class TimeUseDiaryController(
         @RequestBody responses: List<TimeUseDiaryResponse>
     ): UUID {
         ensureAuthenticated()
-        val (flavor, hds) = storageResolver.getPlatformStorage()
-        check(flavor == PostgresFlavor.VANILLA)
+        val hds = storageResolver.getPlatformStorage(PostgresFlavor.VANILLA)
         val timeUseDiaryId = idGenerationService.getNextId()
         AuditedOperationBuilder<Unit>(hds.connection, auditingManager)
             .operation { connection ->
@@ -105,9 +102,8 @@ class TimeUseDiaryController(
         @PathVariable(ORGANIZATION_ID) organizationId: UUID,
         @PathVariable(STUDY_ID) studyId: UUID,
         @PathVariable(PARTICIPANT_ID) participantId: String,
-        @RequestParam(START_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) startDateTime: LocalDateTime,
-        @RequestParam(END_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) endDateTime: LocalDateTime,
-        @RequestParam(value = TimeUseDiaryApi.ZONE_OFFSET, defaultValue = pstOffset) @DateTimeFormat(pattern = "Z") zoneOffset: ZoneOffset
+        @RequestParam(START_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) startDateTime: OffsetDateTime,
+        @RequestParam(END_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) endDateTime: OffsetDateTime,
     ): Map<LocalDate, Set<UUID>> {
         accessCheck(AclKey(studyId), EnumSet.of(Permission.READ))
         logger.info("Retrieving TimeUseDiary ids from study $studyId")
@@ -116,8 +112,7 @@ class TimeUseDiaryController(
             studyId,
             participantId,
             startDateTime,
-            endDateTime,
-            zoneOffset
+            endDateTime
         )
         recordEvent(
             AuditableEvent(

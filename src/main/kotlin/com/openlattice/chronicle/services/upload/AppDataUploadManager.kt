@@ -8,10 +8,10 @@ import java.util.*
  */
 interface AppDataUploadManager {
     fun upload(
-        universityId: UUID,
+        organizationId: UUID,
         studyId: UUID,
         participantId: String,
-        datasourceId: String,
+        sourceDeviceId: String,
         data: List<SetMultimap<UUID, Any>>
     ): Int
 

@@ -1,4 +1,4 @@
-package com.openlattice.chronicle.pods
+package com.openlattice.chronicle.pods.tables
 
 import com.openlattice.chronicle.storage.RedshiftDataTables
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.REDSHIFT_ENVIRONMENT

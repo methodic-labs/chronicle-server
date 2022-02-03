@@ -43,8 +43,8 @@ import com.openlattice.chronicle.ids.mapstores.LongIdsMapstore
 import com.openlattice.chronicle.mapstores.authorization.PermissionMapstore
 import com.openlattice.chronicle.mapstores.authorization.PrincipalTreesMapstore
 import com.openlattice.chronicle.mapstores.ids.Range
+import com.openlattice.chronicle.mapstores.storage.StudyMapstore
 import com.openlattice.chronicle.storage.StorageResolver
-import com.zaxxer.hikari.HikariDataSource
 import org.slf4j.LoggerFactory
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -55,12 +55,6 @@ import javax.inject.Inject
 @Import(PostgresPod::class, Auth0Pod::class)
 class MapstoresPod {
     @Inject
-    private lateinit var hikariDataSource: HikariDataSource
-    
-    @Inject
-    private lateinit var storageResolver: StorageResolver
-
-    @Inject
     private lateinit var ptMgr: PostgresTableManager
 
     @Inject
@@ -68,51 +62,59 @@ class MapstoresPod {
 
     @Inject
     private lateinit var eventBus: EventBus
+    
+    @Inject
+    private lateinit var storageResolver: StorageResolver
 
     @Inject
     private lateinit var jdbi: Jdbi
 
     @Bean
     fun jobsMapstore(): SelfRegisteringMapStore<UUID, DistributableJob<*>> {
-        return PostgresJobsMapStore(hikariDataSource)
+        return PostgresJobsMapStore(storageResolver.getPlatformStorage())
+    }
+
+    @Bean
+    fun studyMapstore() : StudyMapstore {
+        return StudyMapstore(storageResolver.getPlatformStorage())
     }
 
     @Bean
     fun permissionMapstore(): SelfRegisteringMapStore<AceKey, AceValue> {
-        return PermissionMapstore(hikariDataSource, eventBus)
+        return PermissionMapstore(storageResolver.getPlatformStorage(), eventBus)
     }
 
     //    @Bean
     //    public SelfRegisteringMapStore<AclKey, SecurableObjectType> securableObjectTypeMapstore() {
-    //        return new SecurableObjectTypeMapstore( hikariDataSource );
+    //        return new SecurableObjectTypeMapstore( storageResolver.getPlatformStorage() );
     //    }
     //    @Bean
     //    public SelfRegisteringMapStore<String, UUID> aclKeysMapstore() {
-    //        return new AclKeysMapstore( hikariDataSource );
+    //        return new AclKeysMapstore( storageResolver.getPlatformStorage() );
     //    }
     @Bean
     fun principalsMapstore(): SelfRegisteringMapStore<AclKey, SecurablePrincipal> {
-        return PrincipalMapstore(hikariDataSource)
+        return PrincipalMapstore(storageResolver.getPlatformStorage())
     }
 
     @Bean
     fun longIdsMapstore(): SelfRegisteringMapStore<String, Long> {
-        return LongIdsMapstore(hikariDataSource)
+        return LongIdsMapstore(storageResolver.getPlatformStorage())
     }
 
     @Bean
     fun userMapstore(): SelfRegisteringMapStore<String, User> {
-        return UserMapstore(hikariDataSource)
+        return UserMapstore(storageResolver.getPlatformStorage())
     }
 
     //
     //    @Bean
     //    public SelfRegisteringMapStore<UUID, Organization> organizationsMapstore() {
-    //        return new OrganizationsMapstore( hikariDataSource );
+    //        return new OrganizationsMapstore( storageResolver.getPlatformStorage() );
     //    }
     @Bean
     fun idGenerationMapstore(): SelfRegisteringMapStore<Long, Range> {
-        return IdGenerationMapstore(hikariDataSource)
+        return IdGenerationMapstore(storageResolver.getPlatformStorage())
     }
 
     @Bean
@@ -122,7 +124,7 @@ class MapstoresPod {
 
     @Bean
     fun principalTreesMapstore(): PrincipalTreesMapstore {
-        return PrincipalTreesMapstore(hikariDataSource)
+        return PrincipalTreesMapstore(storageResolver.getPlatformStorage())
     } //
 
     //    @Bean
