@@ -1,5 +1,6 @@
 package com.openlattice.chronicle.enrollment
 
+import com.geekbeast.retrofit.RhizomeRetrofitCallException
 import com.geekbeast.retrofit.RhizomeRetrofitCallFailedException
 import com.google.common.base.Optional
 import com.openlattice.chronicle.ChronicleServerTests
@@ -46,7 +47,7 @@ class EnrollmentTests : ChronicleServerTests() {
         val deviceId = studyApi.enroll(studyId, participantId, sourceDeviceId, sourceDevice)
     }
 
-    @Test(expected=RhizomeRetrofitCallFailedException::class)
+    @Test(expected= RhizomeRetrofitCallException::class)
     fun testEnrollmentWithBadParticipantId() {
         val studyApi = chronicleClient.studyApi
         val participant = TestDataFactory.participant()

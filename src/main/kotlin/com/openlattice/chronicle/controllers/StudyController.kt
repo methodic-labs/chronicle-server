@@ -27,19 +27,14 @@ import com.openlattice.chronicle.study.StudyApi.Companion.ENROLL_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_ID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_PATH
+import com.openlattice.chronicle.study.StudyApi.Companion.RETRIEVE
 import com.openlattice.chronicle.study.StudyApi.Companion.STUDY_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.STUDY_ID_PATH
 import com.openlattice.chronicle.study.StudyUpdate
 import com.openlattice.chronicle.util.ensureVanilla
 import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PatchMapping
-import org.springframework.web.bind.annotation.PathVariable
-import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.*
 import java.util.EnumSet
 import java.util.UUID
 import javax.inject.Inject
@@ -177,8 +172,9 @@ class StudyController @Inject constructor(
     )
     override fun updateStudy(
         @PathVariable(STUDY_ID) studyId: UUID,
-        @RequestBody study: StudyUpdate
-    ) {
+        @RequestBody study: StudyUpdate,
+        @RequestParam(value = RETRIEVE, required = false, defaultValue = "false") retrieve: Boolean
+    ): Study? {
         val studyAclKey = AclKey(studyId);
         ensureOwnerAccess(studyAclKey)
         val currentUserId = Principals.getCurrentUser().id;
@@ -202,6 +198,7 @@ class StudyController @Inject constructor(
             }
             .buildAndRun()
         studyService.refreshStudyCache(setOf(studyId))
+        return if (retrieve) studyService.getStudy(studyId) else null
     }
 
     @Timed
