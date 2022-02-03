@@ -11,6 +11,7 @@ import com.openlattice.chronicle.util.ChronicleServerUtil
 import com.zaxxer.hikari.HikariDataSource
 import org.slf4j.LoggerFactory
 import org.slf4j.event.Level
+import java.time.OffsetDateTime
 import java.util.*
 
 /**
@@ -31,8 +32,8 @@ class IOSSensorDataService(
          * 1) organizationId,
          * 2) studyId,
          * 3) participantId,
-         * 4) sampleId
-         * 5) sensorName
+         * 4) id
+         * 5) sensorType
          * 6) dateRecorded
          * 7) duration
          * 8) timezone
@@ -51,7 +52,6 @@ class IOSSensorDataService(
             deviceId: String,
             data: List<SensorDataSample>
     ): Int {
-
         StopWatch(
                 log = "logging ${data.size} entries for ${ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE}",
                 level = Level.INFO,
@@ -63,7 +63,6 @@ class IOSSensorDataService(
                 deviceId
         ).use {
             try {
-                val (flavor, hds) = storageResolver.resolveAndGetFlavor(studyId)
 
                 logger.info(
                         "attempting to log data" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE,
@@ -72,9 +71,12 @@ class IOSSensorDataService(
                         participantId,
                         deviceId
                 )
-                val written = writeDataToStorage(hds, organizationId, studyId, participantId, deviceId, data)
+                val written = writeDataToStorage(organizationId, studyId, participantId, deviceId, data)
+                if (written != data.size) {
+                    logger.warn("Wrote $written entities, but wrote ${data.size}")
+                }
 
-                return 0 // need to return number of rows written
+                return written
             } catch (ex: Exception) {
                 return 0
             }
@@ -82,7 +84,6 @@ class IOSSensorDataService(
     }
 
     private fun writeDataToStorage(
-            hds: HikariDataSource,
             organizationId: UUID,
             studyId: UUID,
             participantId: String,
@@ -90,11 +91,26 @@ class IOSSensorDataService(
             data: List<SensorDataSample>
     ) : Int {
 
+        val (_, hds) = storageResolver.resolveAndGetFlavor(studyId)
+
         return hds.connection.use { connection ->
             try {
                 val wc = connection.prepareStatement(INSERT_SENSOR_DATA_SQL).use { ps ->
                     ps.setString(1, organizationId.toString())
-//                    ps.setString(2, )
+                    ps.setString(2, studyId.toString())
+                    ps.setString(3, participantId)
+
+                    data.forEach { sample ->
+                        ps.setString(4, sample.id.toString())
+                        ps.setString(5, sample.sensor)
+                        ps.setObject(6, sample.dateRecorded)
+                        ps.setDouble(7, sample.duration)
+                        ps.setString(8, sample.timezone)
+                        ps.setString(9, sample.data)
+                        ps.setString(10, sample.device)
+
+                        ps.addBatch()
+                    }
                     ps.executeBatch().sum()
                 }
                 return@use wc
