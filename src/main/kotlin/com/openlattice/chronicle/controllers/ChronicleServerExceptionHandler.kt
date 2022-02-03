@@ -21,7 +21,6 @@ package com.openlattice.chronicle.controllers
 
 import com.geekbeast.controllers.exceptions.wrappers.ErrorsDTO
 import com.geekbeast.controllers.util.ApiExceptions
-import com.openlattice.chronicle.ReservedIds
 import com.openlattice.chronicle.auditing.AuditEventType
 import com.openlattice.chronicle.auditing.AuditableEvent
 import com.openlattice.chronicle.auditing.AuditingComponent
@@ -29,6 +28,7 @@ import com.openlattice.chronicle.auditing.AuditingManager
 import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.controllers.ChronicleServerExceptionHandler
+import com.openlattice.chronicle.ids.IdConstants
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -65,12 +65,12 @@ class ChronicleServerExceptionHandler @Inject constructor(override val auditingM
             }
             else -> {
                 AuditableEvent(
-                    AclKey(ReservedIds.SYSTEM.id),
+                    AclKey(IdConstants.SYSTEM.id),
                     principal.id,
                     principal.principal.id,
                     AuditEventType.STUDY_NOT_FOUND,
                     e.message ?: "Exception did not include message",
-                    ReservedIds.STUDY.id,
+                    IdConstants.UNINITIALIZED.id,
                     data = mapOf("principals" to principals)
                 )
             }
@@ -132,4 +132,5 @@ class StudyRegistrationNotFoundException : RuntimeException {
     constructor(message: String, cause: Throwable) : super(message, cause)
 }
 
+class CandidateNotFoundException(message: String) : RuntimeException(message)
 class StudyNotFoundException(val studyId: UUID, message: String) : RuntimeException(message)

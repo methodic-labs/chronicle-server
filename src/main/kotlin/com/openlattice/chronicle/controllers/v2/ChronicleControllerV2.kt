@@ -12,12 +12,14 @@ import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import com.openlattice.chronicle.services.legacy.LegacyEdmResolver
 import com.openlattice.chronicle.services.legacy.LegacyUtil
 import com.openlattice.chronicle.services.settings.OrganizationSettingsManager
+import com.openlattice.chronicle.services.studies.StudyManager
 import com.openlattice.chronicle.services.surveys.SurveysManager
 import com.openlattice.chronicle.services.upload.AppDataUploadManager
-import com.openlattice.chronicle.sources.Datasource
+import com.openlattice.chronicle.sources.SourceDevice
 import org.apache.olingo.commons.api.edm.FullQualifiedName
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.*
+import java.security.InvalidParameterException
 import java.util.*
 import javax.inject.Inject
 
@@ -40,6 +42,9 @@ class ChronicleControllerV2 : ChronicleApi {
     @Inject
     private lateinit var organizationSettingsManager: OrganizationSettingsManager
 
+    @Inject
+    private lateinit var studyManager: StudyManager
+
     @Timed
     @RequestMapping(
             path = [ChronicleApi.ORGANIZATION_ID_PATH + ChronicleApi.STUDY_ID_PATH + ChronicleApi.PARTICIPANT_ID_PATH + ChronicleApi.DATASOURCE_ID_PATH + ChronicleApi.ENROLL_PATH],
@@ -50,9 +55,18 @@ class ChronicleControllerV2 : ChronicleApi {
             @PathVariable(ChronicleApi.STUDY_ID) studyId: UUID,
             @PathVariable(ChronicleApi.PARTICIPANT_ID) participantId: String,
             @PathVariable(ChronicleApi.DATASOURCE_ID) datasourceId: String,
-            @RequestBody datasource: Optional<Datasource>
+            @RequestBody datasource: Optional<SourceDevice>
     ): UUID {
-        return enrollmentManager!!.registerDatasource(organizationId, studyId, participantId, datasourceId, datasource)
+        if( datasource.isPresent ) {
+            return enrollmentManager.registerDatasource(
+                studyId,
+                participantId,
+                datasourceId,
+                datasource.get()
+            )
+        } else {
+            throw InvalidParameterException("Datasource must be specified when enrolling.")
+        }
     }
 
     @Timed
@@ -64,7 +78,7 @@ class ChronicleControllerV2 : ChronicleApi {
             @PathVariable(ChronicleApi.ORGANIZATION_ID) organizationId: UUID,
             @PathVariable(ChronicleApi.STUDY_ID) studyId: UUID
     ): Boolean {
-        return enrollmentManager!!.isNotificationsEnabled(organizationId, studyId)
+        return studyManager.isNotificationsEnabled(studyId)
     }
 
     @Timed
@@ -77,7 +91,7 @@ class ChronicleControllerV2 : ChronicleApi {
             @PathVariable(ChronicleApi.STUDY_ID) studyId: UUID,
             @PathVariable(ChronicleApi.PARTICIPANT_ID) participantId: String
     ): ParticipationStatus {
-        return enrollmentManager!!.getParticipationStatus(organizationId, studyId, participantId)
+        return enrollmentManager.getParticipationStatus(studyId, participantId)
     }
 
     @Timed
@@ -90,7 +104,7 @@ class ChronicleControllerV2 : ChronicleApi {
             @PathVariable(ChronicleApi.STUDY_ID) studyId: UUID,
             @PathVariable(ChronicleApi.ENTITY_KEY_ID) questionnaireEKID: UUID
     ): ChronicleQuestionnaire {
-        return surveysManager!!.getQuestionnaire(organizationId, studyId, questionnaireEKID)
+        return surveysManager.getQuestionnaire(organizationId, studyId, questionnaireEKID)
     }
 
     @Timed
@@ -104,7 +118,7 @@ class ChronicleControllerV2 : ChronicleApi {
             @PathVariable(ChronicleApi.PARTICIPANT_ID) participantId: String,
             @RequestBody associationDetails: Map<UUID, Map<FullQualifiedName, Set<Any>>>
     ) {
-        surveysManager!!.submitAppUsageSurvey(organizationId, studyId, participantId, associationDetails)
+        surveysManager.submitAppUsageSurvey(organizationId, studyId, participantId, associationDetails)
     }
 
     @Timed
@@ -118,7 +132,7 @@ class ChronicleControllerV2 : ChronicleApi {
             @PathVariable(ChronicleApi.PARTICIPANT_ID) participantId: String,
             @RequestBody questionnaireResponses: Map<UUID, Map<FullQualifiedName, Set<Any>>>
     ) {
-        surveysManager!!.submitQuestionnaire(organizationId, studyId, participantId, questionnaireResponses)
+        surveysManager.submitQuestionnaire(organizationId, studyId, participantId, questionnaireResponses)
     }
 
     @Timed
@@ -132,7 +146,7 @@ class ChronicleControllerV2 : ChronicleApi {
             @PathVariable(ChronicleApi.PARTICIPANT_ID) participantId: String,
             @RequestParam(value = ChronicleApi.DATE) date: String
     ): List<ChronicleAppsUsageDetails> {
-        return surveysManager!!.getParticipantAppsUsageData(organizationId, studyId, participantId, date)
+        return surveysManager.getParticipantAppsUsageData(organizationId, studyId, participantId, date)
     }
 
     @Timed
@@ -144,7 +158,7 @@ class ChronicleControllerV2 : ChronicleApi {
             @PathVariable(ChronicleApi.ORGANIZATION_ID) organizationId: UUID,
             @PathVariable(ChronicleApi.STUDY_ID) studyId: UUID
     ): Map<UUID, Map<FullQualifiedName, Set<Any>>> {
-        return surveysManager!!.getStudyQuestionnaires(organizationId, studyId)
+        return surveysManager.getStudyQuestionnaires(organizationId, studyId)
     }
 
     @RequestMapping(
@@ -157,7 +171,7 @@ class ChronicleControllerV2 : ChronicleApi {
             @PathVariable(ChronicleApi.PARTICIPANT_ID) participantId: String,
             @RequestBody surveyData: List<Map<FullQualifiedName, Set<Any>>>
     ) {
-        surveysManager!!.submitTimeUseDiarySurvey(organizationId, studyId, participantId, surveyData)
+        surveysManager.submitTimeUseDiarySurvey(organizationId, studyId, participantId, surveyData)
     }
 
     @Timed
@@ -172,7 +186,7 @@ class ChronicleControllerV2 : ChronicleApi {
             @PathVariable(ChronicleApi.DATASOURCE_ID) datasourceId: String,
             @RequestBody data: List<SetMultimap<UUID, Any>>
     ): Int {
-        return dataUploadManager!!.upload(organizationId, studyId, participantId, datasourceId, data)
+        return dataUploadManager.upload(organizationId, studyId, participantId, datasourceId, data)
     }
 
     @Timed

@@ -33,7 +33,7 @@ import org.springframework.stereotype.Component
  * @author Matthew Tamayo-Rios &lt;matthew@openlattice.com&gt;
  */
 @Component
-class RangeStreamSerializer : SelfRegisteringStreamSerializer<Range?> {
+class RangeStreamSerializer : SelfRegisteringStreamSerializer<Range> {
     override fun getClazz(): Class<Range> {
         return Range::class.java
     }

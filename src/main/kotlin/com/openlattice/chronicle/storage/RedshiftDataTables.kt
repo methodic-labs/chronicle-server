@@ -28,56 +28,57 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.USERNAME
 class RedshiftDataTables {
     companion object {
         const val REDSHIFT_ENVIRONMENT = "redshift"
-        private const val REDSHIFT_DATASOURCE_NAME = "chronicle"
+        internal const val REDSHIFT_DATASOURCE_NAME = "chronicle"
 
         @JvmField
         val CHRONICLE_USAGE_EVENTS = RedshiftTableDefinition("chronicle_usage_events")
-                .sortKey(STUDY_ID)
-                .addColumns(
-                        ORGANIZATION_ID,
-                        STUDY_ID,
-                        PARTICIPANT_ID,
-                        APP_PACKAGE_NAME,
-                        INTERACTION_TYPE,
-                        TIMESTAMP,
-                        TIMEZONE,
-                        USERNAME,
-                        APPLICATION_LABEL
-                )
-                .addDataSourceNames(REDSHIFT_DATASOURCE_NAME)
+            .sortKey(STUDY_ID)
+            .addColumns(
+                ORGANIZATION_ID,
+                STUDY_ID,
+                PARTICIPANT_ID,
+                APP_PACKAGE_NAME,
+                INTERACTION_TYPE,
+                TIMESTAMP,
+                TIMEZONE,
+                USERNAME,
+                APPLICATION_LABEL
+            )
+            .addDataSourceNames(REDSHIFT_DATASOURCE_NAME)
 
         @JvmField
         val CHRONICLE_USAGE_STATS = RedshiftTableDefinition("chronicle_usage_stats")
-                .sortKey(STUDY_ID)
-                .addColumns(
-                        ORGANIZATION_ID,
-                        STUDY_ID,
-                        PARTICIPANT_ID,
-                        APP_PACKAGE_NAME,
-                        INTERACTION_TYPE,
-                        START_TIME,
-                        END_TIME,
-                        DURATION,
-                        TIMESTAMP,
-                        TIMEZONE,
-                        APPLICATION_LABEL
-                )
-                .addDataSourceNames(REDSHIFT_DATASOURCE_NAME)
+            .sortKey(STUDY_ID)
+            .addColumns(
+                ORGANIZATION_ID,
+                STUDY_ID,
+                PARTICIPANT_ID,
+                APP_PACKAGE_NAME,
+                INTERACTION_TYPE,
+                START_TIME,
+                END_TIME,
+                DURATION,
+                TIMESTAMP,
+                TIMEZONE,
+                APPLICATION_LABEL
+            )
+            .addDataSourceNames(REDSHIFT_DATASOURCE_NAME)
 
 
         @JvmField
         val AUDIT = RedshiftTableDefinition("audit")
             .sortKey(ACL_KEY)
             .addColumns(
-                        ACL_KEY,
-                        SECURABLE_PRINCIPAL_ID,
-                        PRINCIPAL_ID,
-                        AUDIT_EVENT_TYPE,
-                        STUDY_ID,
-                        ORGANIZATION_ID,
-                        DESCRIPTION,
-                        DATA,
-                        TIMESTAMP)
+                ACL_KEY,
+                SECURABLE_PRINCIPAL_ID,
+                PRINCIPAL_ID,
+                AUDIT_EVENT_TYPE,
+                STUDY_ID,
+                ORGANIZATION_ID,
+                DESCRIPTION,
+                DATA,
+                TIMESTAMP
+            )
             .addDataSourceNames(REDSHIFT_DATASOURCE_NAME)
         private val USAGE_EVENT_COLS = CHRONICLE_USAGE_EVENTS.columns.joinToString(",") { it.name }
         private val USAGE_EVENT_PARAMS = CHRONICLE_USAGE_EVENTS.columns.joinToString(",") { "?" }
@@ -87,7 +88,7 @@ class RedshiftDataTables {
          */
         private fun getMergeClause(srcMergeTableName: String): String {
             return CHRONICLE_USAGE_EVENTS.columns.joinToString(
-                    " AND "
+                " AND "
             ) { "${CHRONICLE_USAGE_EVENTS.name}.${it.name} = ${srcMergeTableName}.${it.name}" }
         }
 
@@ -107,9 +108,17 @@ class RedshiftDataTables {
          * 8. user (text)
          * 9. application_label (text)
          */
-        fun getInsertIntoMergeUsageEventsTableSql(srcMergeTableName: String) = """
-        INSERT INTO $srcMergeTableName (${USAGE_EVENT_COLS}) VALUES (${USAGE_EVENT_PARAMS}) ON CONFLICT DO NOTHING
-        """.trimIndent()
+        fun getInsertIntoMergeUsageEventsTableSql(srcMergeTableName: String, includeOnConflict: Boolean = false): String {
+            return if (includeOnConflict) {
+                """
+                    INSERT INTO $srcMergeTableName (${USAGE_EVENT_COLS}) VALUES (${USAGE_EVENT_PARAMS}) ON CONFLICT DO NOTHING
+                    """.trimIndent()
+            } else {
+                """
+                    INSERT INTO $srcMergeTableName (${USAGE_EVENT_COLS}) VALUES (${USAGE_EVENT_PARAMS}) 
+                    """.trimIndent()
+            }
+        }
 
         fun getDeleteTempTableEntriesSql(srcMergeTableName: String): String {
             return """
@@ -138,14 +147,17 @@ class RedshiftDataTables {
         INSERT INTO $CHRONICLE_USAGE_EVENTS (${USAGE_EVENT_COLS}) VALUES (USAGE_EVENT_PARAMS) 
         """.trimIndent()
 
-        val INSERT_USAGE_EVENT_COLUMN_INDICES: Map<String, Int> = CHRONICLE_USAGE_EVENTS.columns.mapIndexed { index, pcd -> pcd.name to index }.toMap()
-        val INSERT_USAGE_STATS_COLUMN_INDICES: Map<String, Int> = CHRONICLE_USAGE_STATS.columns.mapIndexed { index, pcd -> pcd.name to index }.toMap()
+        val INSERT_USAGE_EVENT_COLUMN_INDICES: Map<String, Int> =
+            CHRONICLE_USAGE_EVENTS.columns.mapIndexed { index, pcd -> pcd.name to (index + 1) }.toMap() //remeber postgres is 1 based index
+        val INSERT_USAGE_STATS_COLUMN_INDICES: Map<String, Int> =
+            CHRONICLE_USAGE_STATS.columns.mapIndexed { index, pcd -> pcd.name to (index + 1) }.toMap()
+
         fun getInsertUsageEventColumnIndex(
-                column: PostgresColumnDefinition
+            column: PostgresColumnDefinition
         ): Int = INSERT_USAGE_EVENT_COLUMN_INDICES.getValue(column.name)
 
         fun getInsertUsageStatColumnIndex(
-                column: PostgresColumnDefinition
+            column: PostgresColumnDefinition
         ): Int = INSERT_USAGE_STATS_COLUMN_INDICES.getValue(column.name)
     }
 }

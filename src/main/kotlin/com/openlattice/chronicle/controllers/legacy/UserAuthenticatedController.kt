@@ -10,6 +10,7 @@ import com.openlattice.chronicle.data.FileType
 import com.openlattice.chronicle.services.delete.DataDeletionManager
 import com.openlattice.chronicle.services.download.DataDownloadManager
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
+import com.openlattice.chronicle.services.studies.StudyManager
 import com.openlattice.chronicle.util.ChronicleServerUtil
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
@@ -33,6 +34,9 @@ class UserAuthenticatedController : UserAuthenticatedApi {
 
     @Inject
     private lateinit var enrollmentManager: EnrollmentManager
+    
+    @Inject
+    private lateinit var studyManager: StudyManager
 
     @Timed
     @RequestMapping(
@@ -44,7 +48,7 @@ class UserAuthenticatedController : UserAuthenticatedApi {
             @PathVariable(UserAuthenticatedApi.PARTICIPANT_ID) participantId: String,
             @RequestParam(UserAuthenticatedApi.TYPE) chronicleDeleteType: ChronicleDeleteType
     ): Void? {
-        val organizationId = enrollmentManager.getOrganizationIdForLegacyStudy( studyId )
+        val organizationId = studyManager.getOrganizationIdForLegacyStudy( studyId )
         dataDeletionManager.deleteParticipantData(organizationId, studyId, participantId, chronicleDeleteType)
         return null
     }
@@ -61,19 +65,19 @@ class UserAuthenticatedController : UserAuthenticatedApi {
             @PathVariable(UserAuthenticatedApi.STUDY_ID) studyId: UUID,
             @RequestParam(UserAuthenticatedApi.TYPE) chronicleDeleteType: ChronicleDeleteType
     ): Void? {
-        val organizationId = enrollmentManager.getOrganizationIdForLegacyStudy( studyId )
+        val organizationId = studyManager.getOrganizationIdForLegacyStudy( studyId )
         dataDeletionManager.deleteStudyData(organizationId, studyId, chronicleDeleteType)
         return null
     }
 
     override fun getAllPreprocessedParticipantData(
-            studyId: UUID,
-            participantEntityKeyId: UUID,
-            fileType: FileType
+        studyId: UUID,
+        participantId: String,
+        fileType: FileType
     ): Iterable<Map<String, Set<Any>>> {
         val token = ChronicleServerUtil.getTokenFromContext()
         return dataDownloadManager
-                .getParticipantData(null, studyId!!, participantEntityKeyId!!, ParticipantDataType.PREPROCESSED, token)
+                .getParticipantData(null, studyId, participantId, ParticipantDataType.PREPROCESSED, token)
     }
 
     @Timed
@@ -84,22 +88,22 @@ class UserAuthenticatedController : UserAuthenticatedApi {
             produces = [MediaType.APPLICATION_JSON_VALUE, CustomMediaType.TEXT_CSV_VALUE]
     )
     fun getAllPreprocessedParticipantData(
-            @PathVariable(UserAuthenticatedApi.STUDY_ID) studyId: UUID,
-            @PathVariable(UserAuthenticatedApi.ENTITY_KEY_ID) participantEntityKeyId: UUID,
-            @RequestParam(value = UserAuthenticatedApi.FILE_TYPE, required = false) fileType: FileType,
-            response: HttpServletResponse
+        @PathVariable(UserAuthenticatedApi.STUDY_ID) studyId: UUID,
+        @PathVariable(UserAuthenticatedApi.ENTITY_KEY_ID) participantId: String,
+        @RequestParam(value = UserAuthenticatedApi.FILE_TYPE, required = false) fileType: FileType,
+        response: HttpServletResponse
     ): Iterable<Map<String, Set<Any>>> {
         val data = getAllPreprocessedParticipantData(
-                studyId,
-                participantEntityKeyId,
-                fileType
+            studyId,
+            participantId,
+            fileType
         )
         val fileName = ChronicleServerUtil.getParticipantDataFileName(
-                enrollmentManager,
-                FilenamePrefixConstants.PREPROCESSED_DATA_PREFIX,
-                null,
-                studyId,
-                participantEntityKeyId
+            enrollmentManager,
+            FilenamePrefixConstants.PREPROCESSED_DATA_PREFIX,
+            null,
+            studyId,
+            participantId
         )
         ChronicleServerUtil.setContentDisposition(response, fileName, fileType)
         ChronicleServerUtil.setDownloadContentType(response, fileType)
@@ -107,13 +111,13 @@ class UserAuthenticatedController : UserAuthenticatedApi {
     }
 
     override fun getAllParticipantData(
-            studyId: UUID,
-            participantEntityKeyId: UUID,
-            fileType: FileType
+        studyId: UUID,
+        participantId: String,
+        fileType: FileType
     ): Iterable<Map<String, Set<Any>>> {
         val token = ChronicleServerUtil.getTokenFromContext()
         return dataDownloadManager
-                .getParticipantData(null, studyId!!, participantEntityKeyId!!, ParticipantDataType.RAW_DATA, token)
+                .getParticipantData(null, studyId, participantId, ParticipantDataType.RAW_DATA, token)
     }
 
     @Timed
@@ -123,22 +127,22 @@ class UserAuthenticatedController : UserAuthenticatedApi {
             produces = [MediaType.APPLICATION_JSON_VALUE, CustomMediaType.TEXT_CSV_VALUE]
     )
     fun getAllParticipantData(
-            @PathVariable(UserAuthenticatedApi.STUDY_ID) studyId: UUID,
-            @PathVariable(UserAuthenticatedApi.ENTITY_KEY_ID) participantEntityKeyId: UUID,
-            @RequestParam(value = UserAuthenticatedApi.FILE_TYPE, required = false) fileType: FileType,
-            response: HttpServletResponse
+        @PathVariable(UserAuthenticatedApi.STUDY_ID) studyId: UUID,
+        @PathVariable(UserAuthenticatedApi.ENTITY_KEY_ID) participantId: String,
+        @RequestParam(value = UserAuthenticatedApi.FILE_TYPE, required = false) fileType: FileType,
+        response: HttpServletResponse
     ): Iterable<Map<String, Set<Any>>> {
         val data = getAllParticipantData(
-                studyId,
-                participantEntityKeyId,
-                fileType
+            studyId,
+            participantId,
+            fileType
         )
         val fileName = ChronicleServerUtil.getParticipantDataFileName(
-                enrollmentManager,
-                FilenamePrefixConstants.RAW_DATA_PREFIX,
-                null,
-                studyId,
-                participantEntityKeyId
+            enrollmentManager,
+            FilenamePrefixConstants.RAW_DATA_PREFIX,
+            null,
+            studyId,
+            participantId
         )
         ChronicleServerUtil.setContentDisposition(response, fileName, fileType)
         ChronicleServerUtil.setDownloadContentType(response, fileType)
@@ -146,13 +150,13 @@ class UserAuthenticatedController : UserAuthenticatedApi {
     }
 
     override fun getAllParticipantAppsUsageData(
-            studyId: UUID,
-            participantEntityKeyId: UUID,
-            fileType: FileType
+        studyId: UUID,
+        participantId: String,
+        fileType: FileType
     ): Iterable<Map<String, Set<Any>>> {
         val token = ChronicleServerUtil.getTokenFromContext()
         return dataDownloadManager
-                .getParticipantData(null, studyId!!, participantEntityKeyId!!, ParticipantDataType.USAGE_DATA, token)
+                .getParticipantData(null, studyId, participantId, ParticipantDataType.USAGE_DATA, token)
     }
 
     @Timed
@@ -162,22 +166,22 @@ class UserAuthenticatedController : UserAuthenticatedApi {
             method = [RequestMethod.GET], produces = [MediaType.APPLICATION_JSON_VALUE, CustomMediaType.TEXT_CSV_VALUE]
     )
     fun getAllParticipantAppsUsageData(
-            @PathVariable(UserAuthenticatedApi.STUDY_ID) studyId: UUID,
-            @PathVariable(UserAuthenticatedApi.ENTITY_KEY_ID) participantEntityKeyId: UUID,
-            @RequestParam(value = UserAuthenticatedApi.FILE_TYPE, required = false) fileType: FileType,
-            response: HttpServletResponse
+        @PathVariable(UserAuthenticatedApi.STUDY_ID) studyId: UUID,
+        @PathVariable(UserAuthenticatedApi.ENTITY_KEY_ID) participantId: String,
+        @RequestParam(value = UserAuthenticatedApi.FILE_TYPE, required = false) fileType: FileType,
+        response: HttpServletResponse
     ): Iterable<Map<String, Set<Any>>> {
         val data = getAllParticipantAppsUsageData(
-                studyId,
-                participantEntityKeyId,
-                fileType
+            studyId,
+            participantId,
+            fileType
         )
         val fileName = ChronicleServerUtil.getParticipantDataFileName(
-                enrollmentManager,
-                FilenamePrefixConstants.USAGE_DATA_PREFIX,
-                null,
-                studyId,
-                participantEntityKeyId
+            enrollmentManager,
+            FilenamePrefixConstants.USAGE_DATA_PREFIX,
+            null,
+            studyId,
+            participantId
         )
         ChronicleServerUtil.setContentDisposition(response, fileName, fileType)
         ChronicleServerUtil.setDownloadContentType(response, fileType)

@@ -23,6 +23,8 @@ package com.openlattice.chronicle.auditing
 
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.openlattice.chronicle.authorization.AclKey
+import com.openlattice.chronicle.authorization.principals.Principals
+import com.openlattice.chronicle.ids.IdConstants
 import com.openlattice.chronicle.util.JsonFields.*
 import java.time.OffsetDateTime
 import java.util.*
@@ -44,12 +46,12 @@ import java.util.*
  */
 data class AuditableEvent(
     @JsonProperty(ACL_KEY) val aclKey: AclKey,
-    @JsonProperty(SECURABLE_PRINCIPAL) val securablePrincipalId: UUID,
-    @JsonProperty(PRINCIPAL) val principalId: String,
+    @JsonProperty(SECURABLE_PRINCIPAL) val securablePrincipalId: UUID = Principals.getCurrentSecurablePrincipal().id,
+    @JsonProperty(PRINCIPAL) val principalId: String = Principals.getCurrentUser().id,
     @JsonProperty(EVENT_TYPE) val eventType: AuditEventType,
-    @JsonProperty(DESCRIPTION_FIELD) val description: String,
-    @JsonProperty(STUDY_ID) val study: UUID = UUID(0,0),
-    @JsonProperty(ORGANIZATION_ID) val organization: UUID = UUID(0,0),
+    @JsonProperty(DESCRIPTION_FIELD) val description: String = "",
+    @JsonProperty(STUDY_ID) val study: UUID = IdConstants.UNINITIALIZED.id,
+    @JsonProperty(ORGANIZATION_ID) val organization: UUID = IdConstants.UNINITIALIZED.id,
     @JsonProperty(DATA) val data: Map<String, Any> = mapOf(),
     @JsonProperty(TIMESTAMP) val timestamp: OffsetDateTime = OffsetDateTime.now(),
 )
