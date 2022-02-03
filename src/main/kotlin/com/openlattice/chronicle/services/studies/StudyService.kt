@@ -157,6 +157,18 @@ class StudyService(
         private val GET_ORGANIZATION_ID = """
             SELECT ${ORGANIZATION_ID.name} FROM ${ORGANIZATION_STUDIES.name} WHERE ${STUDY_ID.name} = ? LIMIT 1 
         """.trimIndent()
+
+        // How to only get studies that also the current user has READ permissions on?
+        // This currently grabs all org studies regardless of access
+        private val GET_ORG_STUDIES_SQL = """
+            SELECT * from ${STUDIES.name}
+            WHERE ${STUDY_ID.name}
+            IN (
+                SELECT ${STUDY_ID.name} FROM ${ORGANIZATION_STUDIES.name}
+                WHERE ${ORGANIZATION_ID.name} = ?
+            )
+            ORDER BY ${PostgresColumns.CREATED_AT.name} DESC
+        """.trimIndent()
     }
 
     override fun createStudy(connection: Connection, study: Study) {
@@ -209,6 +221,15 @@ class StudyService(
             PreparedStatementHolderSupplier(storageResolver.getPlatformStorage(), GET_STUDIES_SQL, 256) { ps ->
                 val pgStudyIds = PostgresArrays.createUuidArray(ps.connection, studyIds)
                 ps.setArray(1, pgStudyIds)
+                ps.executeQuery()
+            }
+        ) { ResultSetAdapters.study(it) }
+    }
+
+    override fun getOrgStudies(organiaztionId: UUID): Iterable<Study> {
+        return BasePostgresIterable(
+            PreparedStatementHolderSupplier(storageResolver.getPlatformStorage(), GET_ORG_STUDIES_SQL, 256) { ps ->
+                ps.setObject(1, organiaztionId)
                 ps.executeQuery()
             }
         ) { ResultSetAdapters.study(it) }
