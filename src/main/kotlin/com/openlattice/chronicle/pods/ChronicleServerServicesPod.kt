@@ -180,7 +180,7 @@ class ChronicleServerServicesPod {
     @Bean
     @Throws(IOException::class, ExecutionException::class)
     fun dataDownloadManager(): DataDownloadManager {
-        return DataDownloadService()
+        return DataDownloadService(storageResolver)
     }
 
     @Bean

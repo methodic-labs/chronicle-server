@@ -4,6 +4,8 @@ import com.openlattice.chronicle.constants.EdmConstants
 import com.geekbeast.postgres.PostgresColumnDefinition
 import com.geekbeast.postgres.PostgresDatatype
 import org.apache.olingo.commons.api.edm.FullQualifiedName
+import java.lang.reflect.Field
+import java.lang.reflect.Modifier
 
 /**
  *
@@ -72,5 +74,21 @@ class RedshiftColumns {
         val AUDIT_EVENT_TYPE = PostgresColumnDefinition("audit_event_type", PostgresDatatype.TEXT_256).notNull()
         val DESCRIPTION = PostgresColumnDefinition("description", PostgresDatatype.TEXT_256).notNull()
         val DATA = PostgresColumnDefinition("data", PostgresDatatype.VARCHAR_MAX).notNull()
+
+        val columnTypes : Map<String, PostgresDatatype> = redshiftColumns().associate { it.name to it.datatype }
+
+        @JvmStatic
+        fun redshiftColumns(): List<PostgresColumnDefinition> {
+            return (RedshiftColumns::class.java.fields.asList() + RedshiftColumns::class.java.declaredFields)
+                .filter { field: Field -> (Modifier.isStatic(field.modifiers) && Modifier.isFinal(field.modifiers)) }
+                .filter { field: Field -> PostgresColumnDefinition::class.java.isAssignableFrom(field.type) }
+                .mapNotNull { field: Field ->
+                    try {
+                        return@mapNotNull field[null] as PostgresColumnDefinition
+                    } catch (e: IllegalAccessException) {
+                        return@mapNotNull null
+                    }
+                }
+        }
     }
 }
