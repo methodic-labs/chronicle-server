@@ -107,31 +107,33 @@ class StudyController @Inject constructor(
         val (flavor, hds) = storageResolver.getDefaultPlatformStorage()
         check(flavor == PostgresFlavor.VANILLA) { "Only vanilla postgres supported for studies." }
         study.id = idGenerationService.getNextId()
-        AuditedOperationBuilder<Unit>(hds.connection, auditingManager)
-            .operation { connection -> studyService.createStudy(connection, study) }
-            .audit {
-                listOf(
-                    AuditableEvent(
-                        AclKey(study.id),
-                        eventType = AuditEventType.CREATE_STUDY,
-                        description = "",
-                        study = study.id,
-                        organization = IdConstants.UNINITIALIZED.id,
-                        data = mapOf()
-                    )
-                ) + study.organizationIds.map { organizationId ->
-                    AuditableEvent(
-                        AclKey(study.id),
-                        eventType = AuditEventType.ASSOCIATE_STUDY,
-                        description = "",
-                        study = study.id,
-                        organization = organizationId,
-                        data = mapOf()
-                    )
-                }
-            }
-            .buildAndRun()
 
+        hds.connection.use { connection ->
+            AuditedOperationBuilder<Unit>(connection, auditingManager)
+                .operation { connection -> studyService.createStudy(connection, study) }
+                .audit {
+                    listOf(
+                        AuditableEvent(
+                            AclKey(study.id),
+                            eventType = AuditEventType.CREATE_STUDY,
+                            description = "",
+                            study = study.id,
+                            organization = IdConstants.UNINITIALIZED.id,
+                            data = mapOf()
+                        )
+                    ) + study.organizationIds.map { organizationId ->
+                        AuditableEvent(
+                            AclKey(study.id),
+                            eventType = AuditEventType.ASSOCIATE_STUDY,
+                            description = "",
+                            study = study.id,
+                            organization = organizationId,
+                            data = mapOf()
+                        )
+                    }
+                }
+                .buildAndRun()
+        }
         return study.id
     }
 
@@ -180,23 +182,24 @@ class StudyController @Inject constructor(
         val currentUserId = Principals.getCurrentUser().id;
         logger.info("Updating study with id $studyId on behalf of $currentUserId")
 
-        val (flavor, hds) = storageResolver.getDefaultPlatformStorage()
-        ensureVanilla(flavor)
-        AuditedOperationBuilder<Unit>(hds.connection, auditingManager)
-            .operation { connection -> studyService.updateStudy(connection, studyId, study) }
-            .audit {
-                listOf(
-                    AuditableEvent(
-                        studyAclKey,
-                        Principals.getCurrentSecurablePrincipal().id,
-                        currentUserId,
-                        AuditEventType.UPDATE_STUDY,
-                        study = studyId,
-                        data = mapOf()
+        val hds = storageResolver.getPlatformStorage()
+        hds.connection.use { connection ->
+            AuditedOperationBuilder<Unit>(connection, auditingManager)
+                .operation { connection -> studyService.updateStudy(connection, studyId, study) }
+                .audit {
+                    listOf(
+                        AuditableEvent(
+                            studyAclKey,
+                            Principals.getCurrentSecurablePrincipal().id,
+                            currentUserId,
+                            AuditEventType.UPDATE_STUDY,
+                            study = studyId,
+                            data = mapOf()
+                        )
                     )
-                )
-            }
-            .buildAndRun()
+                }
+                .buildAndRun()
+        }
         studyService.refreshStudyCache(setOf(studyId))
         return if (retrieve) studyService.getStudy(studyId) else null
     }
