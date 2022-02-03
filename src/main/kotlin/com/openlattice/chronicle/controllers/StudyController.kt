@@ -33,13 +33,7 @@ import com.openlattice.chronicle.study.StudyUpdate
 import com.openlattice.chronicle.util.ensureVanilla
 import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PatchMapping
-import org.springframework.web.bind.annotation.PathVariable
-import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.*
 import java.util.EnumSet
 import java.util.UUID
 import javax.inject.Inject
@@ -202,6 +196,36 @@ class StudyController @Inject constructor(
             }
             .buildAndRun()
         studyService.refreshStudyCache(setOf(studyId))
+    }
+
+    @Timed
+    @DeleteMapping(
+        path = [STUDY_ID_PATH],
+        produces = [MediaType.APPLICATION_JSON_VALUE],
+    )
+    override fun destroyStudy(@PathVariable studyId: UUID) {
+        accessCheck(AclKey(studyId), EnumSet.of(Permission.OWNER))
+        logger.info("Deleting study with id $studyId")
+
+        val hds = storageResolver.getPlatformStorage()
+        AuditedOperationBuilder<Unit>(hds.connection, auditingManager)
+            .operation { connection -> studyService.deleteStudies(connection, listOf(studyId)) }
+            .audit {
+                listOf(
+                    AuditableEvent(
+                        AclKey(studyId),
+                        Principals.getCurrentSecurablePrincipal().id,
+                        Principals.getCurrentUser().id,
+                        AuditEventType.DELETE_STUDY,
+                        "",
+                        studyId,
+                        UUID(0, 0),
+                        mapOf()
+                    )
+                )
+            }
+            .buildAndRun()
+
     }
 
     @Timed
