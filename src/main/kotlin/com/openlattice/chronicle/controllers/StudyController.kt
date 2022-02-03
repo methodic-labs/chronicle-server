@@ -27,19 +27,14 @@ import com.openlattice.chronicle.study.StudyApi.Companion.ENROLL_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_ID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_PATH
+import com.openlattice.chronicle.study.StudyApi.Companion.RETRIEVE
 import com.openlattice.chronicle.study.StudyApi.Companion.STUDY_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.STUDY_ID_PATH
 import com.openlattice.chronicle.study.StudyUpdate
 import com.openlattice.chronicle.util.ensureVanilla
 import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PatchMapping
-import org.springframework.web.bind.annotation.PathVariable
-import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.*
 import java.util.EnumSet
 import java.util.UUID
 import javax.inject.Inject
@@ -112,31 +107,33 @@ class StudyController @Inject constructor(
         val (flavor, hds) = storageResolver.getDefaultPlatformStorage()
         check(flavor == PostgresFlavor.VANILLA) { "Only vanilla postgres supported for studies." }
         study.id = idGenerationService.getNextId()
-        AuditedOperationBuilder<Unit>(hds.connection, auditingManager)
-            .operation { connection -> studyService.createStudy(connection, study) }
-            .audit {
-                listOf(
-                    AuditableEvent(
-                        AclKey(study.id),
-                        eventType = AuditEventType.CREATE_STUDY,
-                        description = "",
-                        study = study.id,
-                        organization = IdConstants.UNINITIALIZED.id,
-                        data = mapOf()
-                    )
-                ) + study.organizationIds.map { organizationId ->
-                    AuditableEvent(
-                        AclKey(study.id),
-                        eventType = AuditEventType.ASSOCIATE_STUDY,
-                        description = "",
-                        study = study.id,
-                        organization = organizationId,
-                        data = mapOf()
-                    )
-                }
-            }
-            .buildAndRun()
 
+        hds.connection.use { connection ->
+            AuditedOperationBuilder<Unit>(connection, auditingManager)
+                .operation { connection -> studyService.createStudy(connection, study) }
+                .audit {
+                    listOf(
+                        AuditableEvent(
+                            AclKey(study.id),
+                            eventType = AuditEventType.CREATE_STUDY,
+                            description = "",
+                            study = study.id,
+                            organization = IdConstants.UNINITIALIZED.id,
+                            data = mapOf()
+                        )
+                    ) + study.organizationIds.map { organizationId ->
+                        AuditableEvent(
+                            AclKey(study.id),
+                            eventType = AuditEventType.ASSOCIATE_STUDY,
+                            description = "",
+                            study = study.id,
+                            organization = organizationId,
+                            data = mapOf()
+                        )
+                    }
+                }
+                .buildAndRun()
+        }
         return study.id
     }
 
@@ -177,31 +174,34 @@ class StudyController @Inject constructor(
     )
     override fun updateStudy(
         @PathVariable(STUDY_ID) studyId: UUID,
-        @RequestBody study: StudyUpdate
-    ) {
+        @RequestBody study: StudyUpdate,
+        @RequestParam(value = RETRIEVE, required = false, defaultValue = "false") retrieve: Boolean
+    ): Study? {
         val studyAclKey = AclKey(studyId);
         ensureOwnerAccess(studyAclKey)
         val currentUserId = Principals.getCurrentUser().id;
         logger.info("Updating study with id $studyId on behalf of $currentUserId")
 
-        val (flavor, hds) = storageResolver.getDefaultPlatformStorage()
-        ensureVanilla(flavor)
-        AuditedOperationBuilder<Unit>(hds.connection, auditingManager)
-            .operation { connection -> studyService.updateStudy(connection, studyId, study) }
-            .audit {
-                listOf(
-                    AuditableEvent(
-                        studyAclKey,
-                        Principals.getCurrentSecurablePrincipal().id,
-                        currentUserId,
-                        AuditEventType.UPDATE_STUDY,
-                        study = studyId,
-                        data = mapOf()
+        val hds = storageResolver.getPlatformStorage()
+        hds.connection.use { connection ->
+            AuditedOperationBuilder<Unit>(connection, auditingManager)
+                .operation { connection -> studyService.updateStudy(connection, studyId, study) }
+                .audit {
+                    listOf(
+                        AuditableEvent(
+                            studyAclKey,
+                            Principals.getCurrentSecurablePrincipal().id,
+                            currentUserId,
+                            AuditEventType.UPDATE_STUDY,
+                            study = studyId,
+                            data = mapOf()
+                        )
                     )
-                )
-            }
-            .buildAndRun()
+                }
+                .buildAndRun()
+        }
         studyService.refreshStudyCache(setOf(studyId))
+        return if (retrieve) studyService.getStudy(studyId) else null
     }
 
     @Timed
