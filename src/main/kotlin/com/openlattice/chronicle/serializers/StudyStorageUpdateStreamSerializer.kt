@@ -20,11 +20,14 @@
  */
 package com.openlattice.chronicle.serializers
 
+import com.geekbeast.hazelcast.serializers.TestableSelfRegisteringStreamSerializer
 import com.geekbeast.rhizome.pods.hazelcast.SelfRegisteringStreamSerializer
 import com.hazelcast.nio.ObjectDataInput
 import com.hazelcast.nio.ObjectDataOutput
 import com.openlattice.chronicle.hazelcast.StreamSerializerTypeIds
 import com.openlattice.chronicle.hazelcast.processors.storage.StudyStorageUpdate
+import jodd.util.RandomString
+import org.apache.commons.lang3.RandomStringUtils
 import org.springframework.stereotype.Component
 import java.io.IOException
 
@@ -32,7 +35,7 @@ import java.io.IOException
  * @author Matthew Tamayo-Rios &lt;matthew@openlattice.com&gt;
  */
 @Component
-class StudyStorageUpdateStreamSerializer : SelfRegisteringStreamSerializer<StudyStorageUpdate> {
+class StudyStorageUpdateStreamSerializer : TestableSelfRegisteringStreamSerializer<StudyStorageUpdate> {
     override fun getClazz(): Class<StudyStorageUpdate> {
         return StudyStorageUpdate::class.java
     }
@@ -49,5 +52,9 @@ class StudyStorageUpdateStreamSerializer : SelfRegisteringStreamSerializer<Study
 
     override fun getTypeId(): Int {
         return StreamSerializerTypeIds.STUDY_STORAGE_UPDATE.ordinal
+    }
+
+    override fun generateTestValue(): StudyStorageUpdate {
+        return StudyStorageUpdate(RandomStringUtils.randomAlphanumeric(5))
     }
 }

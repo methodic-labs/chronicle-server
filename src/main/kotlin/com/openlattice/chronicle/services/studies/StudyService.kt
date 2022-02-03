@@ -119,7 +119,7 @@ class StudyService(
                 INSERT INTO ${ORGANIZATION_STUDIES.name} (${ORG_STUDIES_COLS}) VALUES (?,?,?,?::jsonb)
             """.trimIndent()
 
-        private val GET_STUDIES_SQL = """
+        internal val GET_STUDIES_SQL = """
             SELECT * FROM ${STUDIES.name} 
             LEFT JOIN (
                 SELECT ${STUDY_ID.name}, array_agg(${ORGANIZATION_ID.name}) as ${ORGANIZATION_IDS.name} 
@@ -168,7 +168,6 @@ class StudyService(
             principal = Principals.getCurrentUser(),
             objectType = SecurableObjectType.Study
         )
-        storageResolver.associateStudyWithStorage(study.id)
     }
 
     private fun insertStudy(connection: Connection, study: Study): Int {
@@ -234,9 +233,6 @@ class StudyService(
             }
             ps.setObject(index, studyId)
             ps.executeUpdate()
-            if (study.storage != null) {
-                storageResolver.associateStudyWithStorage(studyId, study.storage!!)
-            }
         }
     }
 

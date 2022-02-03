@@ -326,4 +326,5 @@ enum class StreamSerializerTypeIds {
     JDBC_CONNECTION_PARAMETERS,
     STUDY_STORAGE_UPDATE,
     STUDY_STORAGE_READ,
+    STUDY,
 }

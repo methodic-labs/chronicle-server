@@ -43,6 +43,7 @@ import com.openlattice.chronicle.ids.mapstores.LongIdsMapstore
 import com.openlattice.chronicle.mapstores.authorization.PermissionMapstore
 import com.openlattice.chronicle.mapstores.authorization.PrincipalTreesMapstore
 import com.openlattice.chronicle.mapstores.ids.Range
+import com.openlattice.chronicle.mapstores.storage.StudyMapstore
 import com.openlattice.chronicle.storage.StorageResolver
 import org.slf4j.LoggerFactory
 import org.springframework.context.annotation.Bean
@@ -71,6 +72,11 @@ class MapstoresPod {
     @Bean
     fun jobsMapstore(): SelfRegisteringMapStore<UUID, DistributableJob<*>> {
         return PostgresJobsMapStore(storageResolver.getPlatformStorage())
+    }
+
+    @Bean
+    fun studyMapstore() : StudyMapstore {
+        return StudyMapstore(storageResolver.getPlatformStorage())
     }
 
     @Bean

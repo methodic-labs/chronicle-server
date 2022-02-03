@@ -20,7 +20,7 @@
  */
 package com.openlattice.chronicle.serializers
 
-import com.geekbeast.rhizome.pods.hazelcast.SelfRegisteringStreamSerializer
+import com.geekbeast.hazelcast.serializers.TestableSelfRegisteringStreamSerializer
 import com.hazelcast.nio.ObjectDataInput
 import com.hazelcast.nio.ObjectDataOutput
 import com.openlattice.chronicle.hazelcast.StreamSerializerTypeIds
@@ -32,7 +32,7 @@ import java.io.IOException
  * @author Matthew Tamayo-Rios &lt;matthew@openlattice.com&gt;
  */
 @Component
-class StudyStorageReadStreamSerializer : SelfRegisteringStreamSerializer<StudyStorageRead> {
+class StudyStorageReadStreamSerializer : TestableSelfRegisteringStreamSerializer<StudyStorageRead> {
     override fun getClazz(): Class<StudyStorageRead> {
         return StudyStorageRead::class.java
     }
@@ -49,5 +49,9 @@ class StudyStorageReadStreamSerializer : SelfRegisteringStreamSerializer<StudySt
 
     override fun getTypeId(): Int {
         return StreamSerializerTypeIds.STUDY_STORAGE_READ.ordinal
+    }
+
+    override fun generateTestValue(): StudyStorageRead {
+        return StudyStorageRead()
     }
 }
