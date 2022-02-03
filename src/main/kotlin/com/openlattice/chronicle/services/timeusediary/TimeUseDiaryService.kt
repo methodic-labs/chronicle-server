@@ -10,7 +10,7 @@ import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryDownloadDataType
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryResponse
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_ID
@@ -23,9 +23,7 @@ import java.sql.SQLException
 import java.time.LocalDate
 import java.util.*
 import java.sql.Types
-import java.time.LocalDateTime
 import java.time.OffsetDateTime
-import java.time.ZoneOffset
 
 /**
  * @author Andrew Carter andrew@openlattice.com
@@ -70,13 +68,12 @@ class TimeUseDiaryService(
         organizationId: UUID,
         studyId: UUID,
         participantId: String,
-        startDate: LocalDateTime,
-        endDate: LocalDateTime,
-        zoneOffset: ZoneOffset
+        startDate: OffsetDateTime,
+        endDate: OffsetDateTime,
     ): Map<LocalDate, Set<UUID>> {
         val submissionsByDate = mutableMapOf<LocalDate,MutableSet<UUID>>()
         // Use Calendar to convert response to user's timezone
-        cal.timeZone = TimeZone.getTimeZone("GMT${zoneOffset.id}")
+        cal.timeZone = TimeZone.getTimeZone("GMT${startDate.offset.id}")
         try {
             val hds = storageResolver.getPlatformStorage(PostgresFlavor.VANILLA)
             val result = hds.connection.use { connection ->
@@ -85,13 +82,13 @@ class TimeUseDiaryService(
                     organizationId,
                     studyId,
                     participantId,
-                    startDate.atOffset(zoneOffset),
-                    endDate.atOffset(zoneOffset)
+                    startDate,
+                    endDate
                 )
             }
             while (result.next()) {
                 val currentDate = result.getDate(SUBMISSION_DATE.name, cal).toLocalDate()
-                val currentUUID = UUID.fromString(result.getString(TUD_ID.name))
+                val currentUUID = UUID.fromString(result.getString(SUBMISSION_ID.name))
                 if (submissionsByDate[currentDate].isNullOrEmpty()) {
                     submissionsByDate[currentDate] = mutableSetOf(currentUUID)
                 } else {
@@ -163,7 +160,7 @@ class TimeUseDiaryService(
      */
     private val insertTimeUseDiarySql = """
             INSERT INTO ${TIME_USE_DIARY_SUBMISSION.name} 
-            VALUES ( ?, ?, ?, ?, '${LocalDateTime.now()}', ? )
+            VALUES ( ?, ?, ?, ?, now(), ? )
             """.trimIndent()
 
     /**
@@ -176,7 +173,7 @@ class TimeUseDiaryService(
      * @param endDate           Date that submissions must be submitted before or on
      */
     private val getSubmissionsByDateSql = """
-                SELECT ${SUBMISSION_DATE.name}, ${TUD_ID.name} 
+                SELECT ${SUBMISSION_ID.name}, ${SUBMISSION_DATE.name}
                 FROM ${TIME_USE_DIARY_SUBMISSION.name}
                 WHERE ${ORGANIZATION_ID.name} = ?
                 AND ${STUDY_ID.name} = ?

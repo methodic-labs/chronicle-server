@@ -21,10 +21,8 @@ import org.slf4j.LoggerFactory
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.*
-import java.sql.SQLException
 import java.time.LocalDate
-import java.time.LocalDateTime
-import java.time.ZoneOffset
+import java.time.OffsetDateTime
 import java.util.*
 import javax.inject.Inject
 
@@ -96,9 +94,8 @@ class TimeUseDiaryController(
         @PathVariable(TimeUseDiaryApi.ORGANIZATION_ID) organizationId: UUID,
         @PathVariable(TimeUseDiaryApi.STUDY_ID) studyId: UUID,
         @PathVariable(TimeUseDiaryApi.PARTICIPANT_ID) participantId: String,
-        @RequestParam(TimeUseDiaryApi.START_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) startDateTime: LocalDateTime,
-        @RequestParam(TimeUseDiaryApi.END_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) endDateTime: LocalDateTime,
-        @RequestParam(value = TimeUseDiaryApi.ZONE_OFFSET, defaultValue = pstOffset) @DateTimeFormat(pattern = "Z") zoneOffset: ZoneOffset
+        @RequestParam(TimeUseDiaryApi.START_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) startDateTime: OffsetDateTime,
+        @RequestParam(TimeUseDiaryApi.END_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) endDateTime: OffsetDateTime,
     ): Map<LocalDate, Set<UUID>> {
         accessCheck(AclKey(studyId), EnumSet.of(Permission.READ))
         logger.info("Retrieving TimeUseDiary ids from study $studyId")
@@ -107,8 +104,7 @@ class TimeUseDiaryController(
             studyId,
             participantId,
             startDateTime,
-            endDateTime,
-            zoneOffset
+            endDateTime
         )
         recordEvent(
             AuditableEvent(

@@ -4,8 +4,7 @@ import com.openlattice.chronicle.timeusediary.TimeUseDiaryDownloadDataType
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryResponse
 import java.sql.Connection
 import java.time.LocalDate
-import java.time.LocalDateTime
-import java.time.ZoneOffset
+import java.time.OffsetDateTime
 import java.util.UUID
 
 /**
@@ -25,9 +24,8 @@ interface TimeUseDiaryManager {
         organizationId: UUID,
         studyId: UUID,
         participantId: String,
-        startDate: LocalDateTime,
-        endDate: LocalDateTime,
-        zoneOffset: ZoneOffset
+        startDate: OffsetDateTime,
+        endDate: OffsetDateTime,
     ): Map<LocalDate, Set<UUID>>
 
     fun downloadTimeUseDiaryData(
