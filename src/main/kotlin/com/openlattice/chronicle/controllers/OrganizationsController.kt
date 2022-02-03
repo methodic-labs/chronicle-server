@@ -41,7 +41,7 @@ class OrganizationsController @Inject constructor(
 ) : AuthorizingComponent, OrganizationsApi {
 
     companion object {
-        private val logger = LoggerFactory.getLogger(StudyController::class.java)!!
+        private val logger = LoggerFactory.getLogger(OrganizationsController::class.java)!!
     }
 
     @Inject
@@ -89,7 +89,6 @@ class OrganizationsController @Inject constructor(
     @Timed
     @GetMapping(
         path = [ORGANIZATION_ID_PATH],
-        consumes = [MediaType.APPLICATION_JSON_VALUE],
         produces = [MediaType.APPLICATION_JSON_VALUE],
     )
     override fun getOrganization(@PathVariable(ORGANIZATION_ID) organizationId: UUID): Organization {
