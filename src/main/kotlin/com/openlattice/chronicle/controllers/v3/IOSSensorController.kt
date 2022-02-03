@@ -67,7 +67,7 @@ class IOSSensorController: IOSSensorApi {
             return 0
         }
         val isDeviceEnrolled = enrollmentManager.isKnownDatasource( studyId, participantId, deviceId )
-        if (isDeviceEnrolled) {
+        if (!isDeviceEnrolled) {
             logger.error(
                     "data source not found, ignoring upload" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE,
                     organizationId,
