@@ -22,6 +22,7 @@ import com.openlattice.chronicle.util.ChronicleServerUtil
 import com.geekbeast.postgres.PostgresColumnDefinition
 import com.geekbeast.postgres.PostgresDatatype
 import com.geekbeast.postgres.PostgresTableDefinition
+import com.geekbeast.postgres.RedshiftTableDefinition
 import com.openlattice.chronicle.storage.PostgresDataTables
 import com.zaxxer.hikari.HikariDataSource
 import org.apache.commons.lang3.RandomStringUtils
@@ -229,7 +230,13 @@ class AppDataUploadService(
                 connection.createStatement().use { stmt -> stmt.execute(tempMergeTable.createTableQuery()) }
 
                 val wc = connection
-                    .prepareStatement(getInsertIntoMergeUsageEventsTableSql(tempMergeTable.name)).use { ps ->
+                    .prepareStatement(
+                        getInsertIntoMergeUsageEventsTableSql(
+                            tempMergeTable.name,
+                            tempMergeTable !is RedshiftTableDefinition
+                        )
+                    )
+                    .use { ps ->
                         //Should only need to set these once for prepared statement.
                         ps.setString(1, organizationId.toString())
                         ps.setString(2, studyId.toString())
