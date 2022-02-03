@@ -24,6 +24,9 @@ import com.openlattice.chronicle.study.StudyApi.Companion.CONTROLLER
 import com.openlattice.chronicle.study.StudyApi.Companion.DATA_SOURCE_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.DATA_SOURCE_ID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.ENROLL_PATH
+import com.openlattice.chronicle.study.StudyApi.Companion.ORGANIZATION_ID
+import com.openlattice.chronicle.study.StudyApi.Companion.ORGANIZATION_ID_PATH
+import com.openlattice.chronicle.study.StudyApi.Companion.ORGANIZATION_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_ID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_PATH
@@ -166,6 +169,45 @@ class StudyController @Inject constructor(
             study
         } catch (ex: NoSuchElementException) {
             throw StudyNotFoundException(studyId, "No study with id $studyId found.")
+        }
+
+    }
+
+    @Timed
+    @GetMapping(
+        path = [ORGANIZATION_PATH + ORGANIZATION_ID_PATH],
+        produces = [MediaType.APPLICATION_JSON_VALUE],
+    )
+    override fun getOrgStudies(@PathVariable(ORGANIZATION_ID) organizationId: UUID): Iterable<Study> {
+
+        // What's the right check here?
+        ensureReadAccess(AclKey(organizationId))
+        val currentUserId = Principals.getCurrentUser().id;
+        logger.info("Retrieving studies with organization id $organizationId on behalf of $currentUserId")
+
+        return try {
+            val (flavor, hds) = storageResolver.getDefaultPlatformStorage()
+            ensureVanilla(flavor)
+            val studies = studyService.getOrgStudies(organizationId)
+            AuditedOperationBuilder<Unit>(hds.connection, auditingManager)
+                .audit {
+                    studies.map { study ->
+                        AuditableEvent(
+                            AclKey(study.id),
+                            Principals.getCurrentSecurablePrincipal().id,
+                            currentUserId,
+                            AuditEventType.GET_STUDY,
+                            "",
+                            study.id,
+                            IdConstants.UNINITIALIZED.id,
+                            mapOf()
+                        )
+                    }
+                }
+                .buildAndRun()
+            studies
+        } catch (ex: NoSuchElementException) {
+            throw OrganizationNotFoundException(organizationId, "No organization with id $organizationId found.")
         }
 
     }
