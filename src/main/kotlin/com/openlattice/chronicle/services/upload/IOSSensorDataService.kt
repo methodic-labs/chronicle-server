@@ -19,7 +19,6 @@ import java.util.*
  */
 class IOSSensorDataService(
         private val storageResolver: StorageResolver,
-        private val enrollmentManager: EnrollmentManager
 ) : IOSSensorDataManager {
 
     companion object {
