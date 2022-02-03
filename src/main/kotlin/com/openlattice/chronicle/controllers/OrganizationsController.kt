@@ -61,31 +61,32 @@ class OrganizationsController @Inject constructor(
         ensureAuthenticated()
         logger.info("Creating organization with title ${organization.title}")
         organization.id = idGenerationService.getNextId()
-        val (flavor, hds) = storageResolver.getDefaultPlatformStorage()
-        ensureVanilla(flavor)
-        AuditedOperationBuilder<Unit>(hds.connection, auditingManager)
-            .operation { connection ->
-                chronicleOrganizationService.createOrganization(
-                    connection,
-                    Principals.getCurrentUser(),
-                    organization
-                )
-            }
-            .audit {
-                listOf(
-                    AuditableEvent(
-                        AclKey(organization.id),
-                        Principals.getCurrentSecurablePrincipal().id,
-                        Principals.getCurrentUser().id,
-                        AuditEventType.CREATE_ORGANIZATION,
-                        "",
-                        organization.id,
-                        UUID(0, 0),
-                        mapOf()
+        val hds = storageResolver.getPlatformStorage()
+        hds.connection.use { connection ->
+            AuditedOperationBuilder<Unit>(connection, auditingManager)
+                .operation { connection ->
+                    chronicleOrganizationService.createOrganization(
+                        connection,
+                        Principals.getCurrentUser(),
+                        organization
                     )
-                )
-            }
-            .buildAndRun()
+                }
+                .audit {
+                    listOf(
+                        AuditableEvent(
+                            AclKey(organization.id),
+                            Principals.getCurrentSecurablePrincipal().id,
+                            Principals.getCurrentUser().id,
+                            AuditEventType.CREATE_ORGANIZATION,
+                            "",
+                            organization.id,
+                            UUID(0, 0),
+                            mapOf()
+                        )
+                    )
+                }
+                .buildAndRun()
+        }
         return organization.id
     }
 

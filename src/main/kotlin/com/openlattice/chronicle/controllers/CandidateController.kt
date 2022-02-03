@@ -83,18 +83,22 @@ class CandidateController @Inject constructor(
         ensureAuthenticated()
         val hds = storageResolver.getPlatformStorage()
         candidate.id = idGenerationService.getNextId()
-        AuditedOperationBuilder<Unit>(hds.connection, auditingManager)
-            .operation { connection -> candidateService.registerCandidate(connection, candidate) }
-            .audit { listOf(
-                AuditableEvent(
-                    AclKey(candidate.id),
-                    Principals.getCurrentSecurablePrincipal().id,
-                    Principals.getCurrentUser().id,
-                    AuditEventType.REGISTER_CANDIDATE,
-                    ""
-                )
-            ) }
-            .buildAndRun()
+        hds.connection.use { connection ->
+            AuditedOperationBuilder<Unit>(connection, auditingManager)
+                .operation { connection -> candidateService.registerCandidate(connection, candidate) }
+                .audit {
+                    listOf(
+                        AuditableEvent(
+                            AclKey(candidate.id),
+                            Principals.getCurrentSecurablePrincipal().id,
+                            Principals.getCurrentUser().id,
+                            AuditEventType.REGISTER_CANDIDATE,
+                            ""
+                        )
+                    )
+                }
+                .buildAndRun()
+        }
         return candidate.id
     }
 }

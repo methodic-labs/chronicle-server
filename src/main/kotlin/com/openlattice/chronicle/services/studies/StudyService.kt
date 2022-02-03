@@ -4,6 +4,7 @@ import com.geekbeast.mappers.mappers.ObjectMappers
 import com.openlattice.chronicle.storage.StorageResolver
 import com.geekbeast.configuration.postgres.PostgresFlavor
 import com.geekbeast.postgres.PostgresArrays
+import com.geekbeast.postgres.PostgresDatatype
 import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
 import com.hazelcast.core.HazelcastInstance
@@ -25,14 +26,28 @@ import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import com.openlattice.chronicle.services.enrollment.EnrollmentService
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.ORGANIZATION_STUDIES
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.PERMISSIONS
-import com.openlattice.chronicle.study.Study
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.STUDIES
 import com.openlattice.chronicle.storage.PostgresColumns
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.CONTACT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.DESCRIPTION
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.ENDED_AT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.LAT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.LON
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.NOTIFICATIONS_ENABLED
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_IDS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.SETTINGS
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.STARTED_AT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.STORAGE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_GROUP
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_VERSION
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.TITLE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPDATED_AT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_ID
+import com.openlattice.chronicle.study.Study
 import com.openlattice.chronicle.study.StudyUpdate
 import com.openlattice.chronicle.util.JsonFields.STUDY
 import org.slf4j.LoggerFactory
@@ -55,47 +70,55 @@ class StudyService(
     hazelcast: HazelcastInstance,
 ) : StudyManager, AuditingComponent {
     private val studies = HazelcastMap.STUDIES.getMap(hazelcast)
+
     companion object {
         private val logger = LoggerFactory.getLogger(StudyService::class.java)
         private val mapper = ObjectMappers.newJsonMapper()
-        private val STUDY_COLUMNS = listOf(
+        private val STUDY_COLUMNS_LIST = listOf(
             STUDY_ID,
-            PostgresColumns.TITLE,
-            PostgresColumns.DESCRIPTION,
-            PostgresColumns.LAT,
-            PostgresColumns.LON,
-            PostgresColumns.STUDY_GROUP,
-            PostgresColumns.STUDY_VERSION,
-            PostgresColumns.CONTACT,
-            PostgresColumns.SETTINGS
-        ).joinToString(",") { it.name }
+            TITLE,
+            DESCRIPTION,
+            LAT,
+            LON,
+            STUDY_GROUP,
+            STUDY_VERSION,
+            CONTACT,
+            NOTIFICATIONS_ENABLED,
+            STORAGE,
+            SETTINGS
+        )
+        private val STUDY_COLUMNS = STUDY_COLUMNS_LIST.joinToString(",") { it.name }
+        private val STUDY_COLUMNS_BIND = STUDY_COLUMNS_LIST.joinToString(",") {
+            if (it.datatype == PostgresDatatype.JSONB) "?::jsonb" else "?"
+        }
 
         private val UPDATE_STUDY_COLUMNS_LIST = listOf(
-            PostgresColumns.TITLE,
-            PostgresColumns.DESCRIPTION,
-            PostgresColumns.UPDATED_AT,
-            PostgresColumns.STARTED_AT,
-            PostgresColumns.ENDED_AT,
-            PostgresColumns.LAT,
-            PostgresColumns.LON,
-            PostgresColumns.STUDY_GROUP,
-            PostgresColumns.STUDY_VERSION,
-            PostgresColumns.CONTACT,
-            PostgresColumns.SETTINGS
+            TITLE,
+            DESCRIPTION,
+            UPDATED_AT,
+            STARTED_AT,
+            ENDED_AT,
+            LAT,
+            LON,
+            STUDY_GROUP,
+            STUDY_VERSION,
+            CONTACT,
+            NOTIFICATIONS_ENABLED,
+            STORAGE,
+            SETTINGS
         )
 
         private val UPDATE_STUDY_COLUMNS = UPDATE_STUDY_COLUMNS_LIST.joinToString(",") { it.name }
-
         private val COALESCED_STUDY_COLUMNS = UPDATE_STUDY_COLUMNS_LIST
             .joinToString(",") {
-                "coalesce(?${if (it.equals(PostgresColumns.SETTINGS)) "::jsonb" else ""}, ${it.name})"
+                "coalesce(?${if (it.equals(SETTINGS)) "::jsonb" else ""}, ${it.name})"
             }
 
         private val ORG_STUDIES_COLS = listOf(
             ORGANIZATION_ID,
             STUDY_ID,
-            PostgresColumns.USER_ID,
-            PostgresColumns.SETTINGS
+            USER_ID,
+            SETTINGS
         ).joinToString(",") { it.name }
 
         /**
@@ -107,10 +130,12 @@ class StudyService(
          * 6. study group
          * 7. study version
          * 8. contact
-         * 9. settings
+         * 9. notifications enabled
+         * 10. storage
+         * 11. settings
          */
         private val INSERT_STUDY_SQL = """
-            INSERT INTO ${STUDIES.name} ($STUDY_COLUMNS) VALUES (?,?,?,?,?,?,?,?,?::jsonb)
+            INSERT INTO ${STUDIES.name} ($STUDY_COLUMNS) VALUES ($STUDY_COLUMNS_BIND)
         """.trimIndent()
 
         /**
@@ -146,8 +171,10 @@ class StudyService(
          * 8. study_group,
          * 9. study_version,
          * 10. contact,
-         * 11. settings
-         * 12. study_id
+         * 11. notifications enabled
+         * 12. storage
+         * 13. settings
+         * 14. study_id
          */
 
         private val UPDATE_STUDY_SQL = """
@@ -214,7 +241,10 @@ class StudyService(
             ps.setObject(params++, organizationId)
             ps.setObject(params++, study.id)
             ps.setObject(params++, Principals.getCurrentUser().id)
-            ps.setString(params, mapper.writeValueAsString(mapOf<String, Any>())) //Per org settings for studies aren't really defined yet.
+            ps.setString(
+                params,
+                mapper.writeValueAsString(mapOf<String, Any>())
+            ) //Per org settings for studies aren't really defined yet.
             ps.addBatch()
         }
         return ps.executeBatch().sum()
@@ -246,23 +276,24 @@ class StudyService(
 
     override fun updateStudy(connection: Connection, studyId: UUID, study: StudyUpdate) {
         connection.prepareStatement(UPDATE_STUDY_SQL).use { ps ->
-            var index = 1
-            ps.setString(index++, study.title)
-            ps.setString(index++, study.description)
-            ps.setObject(index++, OffsetDateTime.now())
-            ps.setObject(index++, study.startedAt)
-            ps.setObject(index++, study.endedAt)
-            ps.setObject(index++, study.lat)
-            ps.setObject(index++, study.lon)
-            ps.setString(index++, study.group)
-            ps.setString(index++, study.version)
-            ps.setString(index++, study.contact)
+            ps.setString(1, study.title)
+            ps.setString(2, study.description)
+            ps.setObject(3, OffsetDateTime.now())
+            ps.setObject(4, study.startedAt)
+            ps.setObject(5, study.endedAt)
+            ps.setObject(6, study.lat)
+            ps.setObject(7, study.lon)
+            ps.setString(8, study.group)
+            ps.setString(9, study.version)
+            ps.setString(10, study.contact)
+            ps.setObject(11, study.notificationsEnabled)
+            ps.setString(12, study.storage)
             if (study.settings == null) {
-                ps.setObject(index++, study.settings)
+                ps.setObject(13, study.settings)
             } else {
-                ps.setString(index++, mapper.writeValueAsString(study.settings))
+                ps.setString(13, mapper.writeValueAsString(study.settings))
             }
-            ps.setObject(index, studyId)
+            ps.setObject(14, studyId)
             ps.executeUpdate()
         }
     }
