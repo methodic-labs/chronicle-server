@@ -10,6 +10,7 @@ import com.openlattice.chronicle.hazelcast.processors.storage.StudyStorageRead
 import com.openlattice.chronicle.hazelcast.processors.storage.StudyStorageUpdate
 import com.openlattice.chronicle.study.Study
 import com.zaxxer.hikari.HikariDataSource
+import org.springframework.stereotype.Component
 import java.util.*
 
 /**

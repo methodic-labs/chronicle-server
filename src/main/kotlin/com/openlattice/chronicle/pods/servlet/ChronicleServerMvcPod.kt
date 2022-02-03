@@ -20,6 +20,7 @@ package com.openlattice.chronicle.pods.servlet
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.openlattice.chronicle.constants.CustomMediaType
+import com.openlattice.chronicle.controllers.AdminController
 import org.springframework.context.annotation.ComponentScan
 import com.openlattice.chronicle.controllers.CandidateController
 import com.openlattice.chronicle.controllers.legacy.ChronicleController
@@ -50,7 +51,14 @@ import javax.inject.Inject
 
 @Configuration
 @ComponentScan(
-    basePackageClasses = [CandidateController::class, ChronicleController::class, ChronicleServerExceptionHandler::class, ChronicleControllerV2::class, StudyController::class],
+    basePackageClasses = [
+        CandidateController::class,
+        ChronicleController::class,
+        ChronicleServerExceptionHandler::class,
+        ChronicleControllerV2::class,
+        StudyController::class,
+        AdminController::class,
+    ],
     includeFilters = [ComponentScan.Filter(
         value = [Controller::class, RestControllerAdvice::class],
         type = FilterType.ANNOTATION

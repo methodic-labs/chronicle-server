@@ -14,4 +14,15 @@ class StudyStorageRead : AbstractReadOnlyRhizomeEntryProcessor<UUID, Study, Stri
     override fun process(entry: MutableMap.MutableEntry<UUID, Study?>): String? {
         return entry.value?.storage
     }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+        return true
+    }
+
+    override fun hashCode(): Int {
+        return javaClass.hashCode()
+    }
+
 }

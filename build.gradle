@@ -47,6 +47,8 @@ plugins {
     id 'signing'
     id 'org.jetbrains.kotlin.jvm'
     id 'org.jetbrains.kotlin.plugin.spring'
+    id 'com.github.jk1.dependency-license-report'
+    id 'com.github.spotbugs' version '5.0.4'
 }
 
 description = "Chronicle Server"
@@ -111,6 +113,18 @@ jacoco {
     toolVersion = "${jacoco_tool_version}"
 }
 
+spotbugs {
+    reportLevel = 'high'
+    toolVersion = "${spotbugs_annotations_version}"
+}
+
+spotbugsMain {
+    reports {
+        xml.enabled = false
+        html.enabled = true
+    }
+}
+
 run {
     if (CS_ARGS != null) {
         args CS_ARGS.split();
@@ -132,6 +146,12 @@ checkstyle {
     config project.resources.text.fromUri('https://raw.githubusercontent.com/openlattice/openlattice/main/gradles/checkstyle.xml')
 }
 
+import com.github.jk1.license.render.InventoryHtmlReportRenderer
+
+licenseReport {
+    renderers = [new InventoryHtmlReportRenderer()]
+}
+
 tasks.withType(Checkstyle) {
     reports {
         xml.enabled = false
@@ -147,6 +167,13 @@ ext.odata_version = '4.2.0'
 ext.chronicle_api_version = '0.0.17'
 
 dependencies {
+    //Spotbugs related
+    spotbugsPlugins "com.h3xstream.findsecbugs:findsecbugs-plugin:${findsecbugs_version}"
+    compileOnly "net.jcip:jcip-annotations:${jcip_version}"
+    compileOnly "com.github.spotbugs:spotbugs-annotations:${spotbugs_annotations_version}"
+    testCompileOnly "net.jcip:jcip-annotations:${jcip_version}"
+    testCompileOnly "com.github.spotbugs:spotbugs-annotations:${spotbugs_annotations_version}"
+
     implementation "com.google.guava:guava:${guava_version}"
     implementation "com.amazon.redshift:redshift-jdbc42:2.1.0.3"
     implementation "org.apache.commons:commons-text:${commonsText_version}"
