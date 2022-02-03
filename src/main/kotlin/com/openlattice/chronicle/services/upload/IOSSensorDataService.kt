@@ -62,7 +62,6 @@ class IOSSensorDataService(
                 deviceId
         ).use {
             try {
-
                 logger.info(
                         "attempting to log data" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE,
                         organizationId,
@@ -70,13 +69,20 @@ class IOSSensorDataService(
                         participantId,
                         deviceId
                 )
-                val written = writeDataToStorage(organizationId, studyId, participantId, deviceId, data)
+                val written = writeDataToStorage(organizationId, studyId, participantId, data)
                 if (written != data.size) {
                     logger.warn("Wrote $written entities, but wrote ${data.size}")
                 }
 
                 return written
             } catch (ex: Exception) {
+                logger.error(
+                        "error writing sensor data" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE,
+                        organizationId,
+                        studyId,
+                        deviceId,
+                        ex
+                )
                 return 0
             }
         }
@@ -86,7 +92,6 @@ class IOSSensorDataService(
             organizationId: UUID,
             studyId: UUID,
             participantId: String,
-            deviceId: String,
             data: List<SensorDataSample>
     ) : Int {
 
@@ -114,13 +119,7 @@ class IOSSensorDataService(
                 }
                 return@use wc
             } catch (ex: Exception) {
-                logger.error(
-                        "error writing sensor data" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE,
-                        organizationId,
-                        studyId,
-                        deviceId
-                )
-                return 0
+                throw ex
             }
         }
     }
