@@ -92,11 +92,11 @@ class RedshiftDataTables {
         val IOS_SENSOR = RedshiftTableDefinition("ios_sensor")
                 .sortKey(STUDY_ID)
                 .addColumns(
-                        ID,
-                        SENSOR_TYPE,
                         ORGANIZATION_ID,
                         STUDY_ID,
                         PARTICIPANT_ID,
+                        ID,
+                        SENSOR_TYPE,
                         RECORDED_DATE_TIME,
                         SENSOR_DURATION,
                         TIMEZONE,
