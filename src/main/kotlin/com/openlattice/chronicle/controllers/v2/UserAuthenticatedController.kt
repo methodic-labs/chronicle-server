@@ -5,6 +5,7 @@ import com.openlattice.chronicle.api.UserAuthenticatedApi
 import com.openlattice.chronicle.constants.CustomMediaType
 import com.openlattice.chronicle.constants.FilenamePrefixConstants
 import com.openlattice.chronicle.constants.ParticipantDataType
+import com.openlattice.chronicle.converters.LegacyPostgresDownloadWrapper
 import com.openlattice.chronicle.data.ChronicleDeleteType
 import com.openlattice.chronicle.data.FileType
 import com.openlattice.chronicle.services.delete.DataDeletionManager
@@ -70,14 +71,17 @@ class UserAuthenticatedController : UserAuthenticatedApi {
         fileType: FileType
     ): Iterable<Map<String, Set<Any>>> {
         val token = ChronicleServerUtil.getTokenFromContext()
-        return dataDownloadManager
-            .getParticipantData(
-                organizationId,
-                studyId,
-                participantId,
-                ParticipantDataType.PREPROCESSED,
-                token
+        return LegacyPostgresDownloadWrapper(
+            LegacyPostgresDownloadWrapper.adapt(
+                dataDownloadManager
+                    .getParticipantData(
+                        studyId,
+                        participantId,
+                        ParticipantDataType.PREPROCESSED,
+                        token
+                    )
             )
+        )
     }
 
     @Timed
@@ -118,8 +122,15 @@ class UserAuthenticatedController : UserAuthenticatedApi {
         fileType: FileType
     ): Iterable<Map<String, Set<Any>>> {
         val token = ChronicleServerUtil.getTokenFromContext()
-        return dataDownloadManager!!.getParticipantData(
-            organizationId, studyId, participantId, ParticipantDataType.RAW_DATA, token
+        return LegacyPostgresDownloadWrapper(
+            LegacyPostgresDownloadWrapper.adapt(
+                dataDownloadManager.getParticipantData(
+                    studyId,
+                    participantId,
+                    ParticipantDataType.RAW_DATA,
+                    token
+                )
+            )
         )
     }
 
@@ -157,10 +168,16 @@ class UserAuthenticatedController : UserAuthenticatedApi {
         organizationId: UUID, studyId: UUID, participantId: String, fileType: FileType
     ): Iterable<Map<String, Set<Any>>> {
         val token = ChronicleServerUtil.getTokenFromContext()
-        return dataDownloadManager
-            .getParticipantData(
-                organizationId, studyId, participantId, ParticipantDataType.USAGE_DATA, token
+        return LegacyPostgresDownloadWrapper(
+            LegacyPostgresDownloadWrapper.adapt(
+                dataDownloadManager.getParticipantData(
+                    studyId,
+                    participantId,
+                    ParticipantDataType.USAGE_DATA,
+                    token
+                )
             )
+        )
     }
 
     @Timed
