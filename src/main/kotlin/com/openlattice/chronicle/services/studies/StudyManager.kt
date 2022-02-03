@@ -19,4 +19,5 @@ interface StudyManager {
     fun isNotificationsEnabled(studyId: UUID): Boolean
 
     fun getOrganizationIdForLegacyStudy(studyId: UUID): UUID
+    fun refreshStudyCache(studyIds: Set<UUID>)
 }

@@ -51,6 +51,7 @@ class PostgresColumns {
         val STUDY_GROUP = PostgresColumnDefinition("study_group", PostgresDatatype.TEXT)
         val STUDY_ID = PostgresColumnDefinition("study_id", PostgresDatatype.UUID).notNull()
         val STUDY_VERSION = PostgresColumnDefinition("study_version", PostgresDatatype.TEXT)
+        val STORAGE = PostgresColumnDefinition("storage", PostgresDatatype.TEXT).notNull().withDefault("'default'")
         val SUBMISSION = PostgresColumnDefinition("submission", PostgresDatatype.JSONB)
         val SUBMISSION_DATE = PostgresColumnDefinition("submission_date", PostgresDatatype.TIMESTAMP).notNull().withDefault("NOW()")
         val SUBMISSION_ID = PostgresColumnDefinition("submission_id", PostgresDatatype.UUID).notNull()

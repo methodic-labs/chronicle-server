@@ -38,6 +38,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.SETTINGS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SOURCE_DEVICE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SOURCE_DEVICE_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STARTED_AT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.STORAGE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_GROUP
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_VERSION
@@ -83,9 +84,16 @@ class ChroniclePostgresTables {
                 STUDY_VERSION,
                 CONTACT,
                 NOTIFICATIONS_ENABLED,
+                STORAGE,
                 SETTINGS,
             )
             .primaryKey(STUDY_ID)
+            .overwriteOnConflict()
+
+        @JvmField
+        val LEGACY_STUDY_SETTINGS = PostgresTableDefinition("legacy_study_settings")
+            .addColumns(ORGANIZATION_ID, SETTINGS)
+            .primaryKey(ORGANIZATION_ID)
 
         @JvmField
         val ORGANIZATION_STUDIES = PostgresTableDefinition("organization_studies")

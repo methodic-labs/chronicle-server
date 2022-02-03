@@ -6,6 +6,7 @@ import com.geekbeast.configuration.postgres.PostgresFlavor
 import com.geekbeast.postgres.PostgresArrays
 import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
+import com.hazelcast.core.HazelcastInstance
 import com.openlattice.chronicle.auditing.AuditingComponent
 import com.openlattice.chronicle.auditing.AuditingManager
 import com.openlattice.chronicle.authorization.AclKey
@@ -13,6 +14,7 @@ import com.openlattice.chronicle.authorization.AuthorizationManager
 import com.openlattice.chronicle.authorization.SecurableObjectType
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.authorization.reservations.AclKeyReservationService
+import com.openlattice.chronicle.hazelcast.HazelcastMap
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.ids.IdConstants
 import com.openlattice.chronicle.participants.Participant
@@ -41,13 +43,13 @@ import java.util.UUID
 @Service
 class StudyService(
     private val storageResolver: StorageResolver,
-    private val aclKeyReservationService: AclKeyReservationService,
-    private val idGenerationService: HazelcastIdGenerationService,
     private val authorizationService: AuthorizationManager,
     private val candidateService: CandidateManager,
     private val enrollmentService: EnrollmentManager,
     override val auditingManager: AuditingManager,
+    hazelcast: HazelcastInstance,
 ) : StudyManager, AuditingComponent {
+    private val studies = HazelcastMap.STUDIES.getMap(hazelcast)
     companion object {
         private val logger = LoggerFactory.getLogger(StudyService::class.java)
         private val mapper = ObjectMappers.newJsonMapper()
@@ -117,7 +119,7 @@ class StudyService(
                 INSERT INTO ${ORGANIZATION_STUDIES.name} (${ORG_STUDIES_COLS}) VALUES (?,?,?,?::jsonb)
             """.trimIndent()
 
-        private val GET_STUDIES_SQL = """
+        internal val GET_STUDIES_SQL = """
             SELECT * FROM ${STUDIES.name} 
             LEFT JOIN (
                 SELECT ${STUDY_ID.name}, array_agg(${ORGANIZATION_ID.name}) as ${ORGANIZATION_IDS.name} 
@@ -166,7 +168,6 @@ class StudyService(
             principal = Principals.getCurrentUser(),
             objectType = SecurableObjectType.Study
         )
-        storageResolver.associateStudyWithStorage(study.id)
     }
 
     private fun insertStudy(connection: Connection, study: Study): Int {
@@ -179,7 +180,9 @@ class StudyService(
         ps.setObject(6, study.group)
         ps.setObject(7, study.version)
         ps.setObject(8, study.contact)
-        ps.setString(9, mapper.writeValueAsString(study.settings))
+        ps.setObject(9, study.notificationsEnabled)
+        ps.setObject(10, study.storage)
+        ps.setString(11, mapper.writeValueAsString(study.settings))
         return ps.executeUpdate()
     }
 
@@ -190,7 +193,7 @@ class StudyService(
             ps.setObject(params++, organizationId)
             ps.setObject(params++, study.id)
             ps.setObject(params++, Principals.getCurrentUser().id)
-            ps.setString(params++, mapper.writeValueAsString(study.settings))
+            ps.setString(params, mapper.writeValueAsString(mapOf<String, Any>())) //Per org settings for studies aren't really defined yet.
             ps.addBatch()
         }
         return ps.executeBatch().sum()
@@ -201,20 +204,13 @@ class StudyService(
     }
 
     override fun getStudies(studyIds: Collection<UUID>): Iterable<Study> {
-        return storageResolver
-            .getStudyIdsByDataSourceName(studyIds)
-            .flatMap { (dataSourceName, studyIdsForDataSource) ->
-                val (flavor, hds) = storageResolver.getDataSource(dataSourceName)
-                check(flavor == PostgresFlavor.VANILLA) { "Only vanilla postgres is supported for studies." }
-                BasePostgresIterable(
-                    PreparedStatementHolderSupplier(hds, GET_STUDIES_SQL, 256) { ps ->
-                        val pgStudyIds = PostgresArrays.createUuidArray(ps.connection, studyIdsForDataSource)
-                        ps.setArray(1, pgStudyIds)
-                        ps.executeQuery()
-                    }
-                ) { ResultSetAdapters.study(it) }
-
+        return BasePostgresIterable(
+            PreparedStatementHolderSupplier(storageResolver.getPlatformStorage(), GET_STUDIES_SQL, 256) { ps ->
+                val pgStudyIds = PostgresArrays.createUuidArray(ps.connection, studyIds)
+                ps.setArray(1, pgStudyIds)
+                ps.executeQuery()
             }
+        ) { ResultSetAdapters.study(it) }
     }
 
     override fun updateStudy(connection: Connection, studyId: UUID, study: StudyUpdate) {
@@ -235,11 +231,8 @@ class StudyService(
             } else {
                 ps.setString(index++, mapper.writeValueAsString(study.settings))
             }
-            ps.setObject(index++, studyId)
+            ps.setObject(index, studyId)
             ps.executeUpdate()
-            if (study.storage != null) {
-                storageResolver.associateStudyWithStorage(studyId, study.storage!!)
-            }
         }
     }
 
@@ -273,5 +266,9 @@ class StudyService(
             }
 
         }
+    }
+
+    override fun refreshStudyCache(studyIds: Set<UUID>) {
+        studies.loadAll(studyIds, true)
     }
 }
