@@ -2,7 +2,6 @@ package com.openlattice.chronicle.services.studies
 
 import com.geekbeast.mappers.mappers.ObjectMappers
 import com.openlattice.chronicle.storage.StorageResolver
-import com.geekbeast.configuration.postgres.PostgresFlavor
 import com.geekbeast.postgres.PostgresArrays
 import com.geekbeast.postgres.PostgresDatatype
 import com.geekbeast.postgres.streams.BasePostgresIterable
@@ -14,19 +13,15 @@ import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.authorization.AuthorizationManager
 import com.openlattice.chronicle.authorization.SecurableObjectType
 import com.openlattice.chronicle.authorization.principals.Principals
-import com.openlattice.chronicle.authorization.reservations.AclKeyReservationService
 import com.openlattice.chronicle.hazelcast.HazelcastMap
-import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.ids.IdConstants
 import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.services.candidates.CandidateManager
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
-import com.openlattice.chronicle.services.enrollment.EnrollmentService
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.ORGANIZATION_STUDIES
 import com.openlattice.chronicle.study.Study
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.STUDIES
-import com.openlattice.chronicle.storage.PostgresColumns
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CONTACT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DESCRIPTION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ENDED_AT
@@ -45,7 +40,6 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.TITLE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPDATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_ID
 import com.openlattice.chronicle.study.StudyUpdate
-import com.openlattice.chronicle.util.JsonFields.STUDY
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.sql.Connection
@@ -184,6 +178,10 @@ class StudyService(
         private val GET_ORGANIZATION_ID = """
             SELECT ${ORGANIZATION_ID.name} FROM ${ORGANIZATION_STUDIES.name} WHERE ${STUDY_ID.name} = ? LIMIT 1 
         """.trimIndent()
+
+        private val GET_NOTIFICATION_STATUS_SQL = """
+            SELECT ${NOTIFICATIONS_ENABLED.name} FROM ${STUDIES.name} WHERE ${STUDY_ID.name} = ?
+        """.trimIndent()
     }
 
     override fun createStudy(connection: Connection, study: Study) {
@@ -282,8 +280,15 @@ class StudyService(
     override fun isNotificationsEnabled(studyId: UUID): Boolean {
         logger.info("Checking notifications enabled on studyId = {}", studyId)
 
-        //TODO: Write SQL query to just retrieve notifications enabled field.
-        return getStudy(studyId).notificationsEnabled
+        return storageResolver.getPlatformStorage().connection.use { connection ->
+            connection.prepareStatement(GET_NOTIFICATION_STATUS_SQL).use { ps ->
+                ps.setObject(1, studyId)
+                ps.executeQuery().use { rs ->
+                    if (rs.next()) rs.getBoolean(NOTIFICATIONS_ENABLED.name)
+                    else false
+                }
+            }
+        }
     }
 
     override fun getOrganizationIdForLegacyStudy(studyId: UUID): UUID {
