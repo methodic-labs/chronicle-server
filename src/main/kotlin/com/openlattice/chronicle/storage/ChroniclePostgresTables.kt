@@ -142,7 +142,7 @@ class ChroniclePostgresTables {
             .primaryKey(STUDY_ID, DEVICE_ID) //Just in case device is used across multiple studies
 
         @JvmField
-        val TIME_USE_DIARY_SUBMISSION = PostgresTableDefinition("time_use_diary_submissions")
+        val TIME_USE_DIARY_SUBMISSIONS = PostgresTableDefinition("time_use_diary_submissions")
             .addColumns(
                 SUBMISSION_ID,
                 ORGANIZATION_ID,

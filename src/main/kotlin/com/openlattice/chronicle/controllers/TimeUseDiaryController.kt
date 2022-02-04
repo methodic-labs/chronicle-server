@@ -2,7 +2,19 @@ package com.openlattice.chronicle.controllers
 
 import com.codahale.metrics.annotation.Timed
 import com.geekbeast.configuration.postgres.PostgresFlavor
-import com.openlattice.chronicle.api.TimeUseDiaryApi
+import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi
+import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.CONTROLLER
+import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.DOWNLOAD_TYPE
+import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.END_DATE
+import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.IDS_PATH
+import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.ORGANIZATION_ID
+import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.ORGANIZATION_ID_PATH
+import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.PARTICIPANT_ID
+import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.PARTICIPANT_ID_PATH
+import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.STUDY_ID
+import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.STUDY_ID_PATH
+import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.START_DATE
+import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.STATUS_PATH
 import com.openlattice.chronicle.auditing.AuditEventType
 import com.openlattice.chronicle.auditing.AuditableEvent
 import com.openlattice.chronicle.auditing.AuditedOperationBuilder
@@ -31,7 +43,7 @@ import javax.inject.Inject
  */
 
 @RestController
-@RequestMapping(TimeUseDiaryApi.CONTROLLER)
+@RequestMapping(CONTROLLER)
 class TimeUseDiaryController(
     override val authorizationManager: AuthorizationManager,
     override val auditingManager: AuditingManager,
@@ -44,19 +56,18 @@ class TimeUseDiaryController(
 
     companion object {
         private val logger = LoggerFactory.getLogger(TimeUseDiaryController::class.java)!!
-        private const val pstOffset = "-08:00"
     }
 
     @Timed
     @PostMapping(
-        path = [TimeUseDiaryApi.ORGANIZATION_ID_PATH + TimeUseDiaryApi.STUDY_ID_PATH + TimeUseDiaryApi.PARTICIPANT_ID_PATH],
+        path = [ORGANIZATION_ID_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH],
         consumes = [MediaType.APPLICATION_JSON_VALUE],
         produces = [MediaType.APPLICATION_JSON_VALUE]
     )
     override fun submitTimeUseDiary(
-        @PathVariable(TimeUseDiaryApi.ORGANIZATION_ID) organizationId: UUID,
-        @PathVariable(TimeUseDiaryApi.STUDY_ID) studyId: UUID,
-        @PathVariable(TimeUseDiaryApi.PARTICIPANT_ID) participantId: String,
+        @PathVariable(ORGANIZATION_ID) organizationId: UUID,
+        @PathVariable(STUDY_ID) studyId: UUID,
+        @PathVariable(PARTICIPANT_ID) participantId: String,
         @RequestBody responses: List<TimeUseDiaryResponse>
     ): UUID {
         ensureAuthenticated()
@@ -87,15 +98,15 @@ class TimeUseDiaryController(
 
     @Timed
     @GetMapping(
-        path = [TimeUseDiaryApi.IDS_PATH + TimeUseDiaryApi.ORGANIZATION_ID_PATH + TimeUseDiaryApi.STUDY_ID_PATH + TimeUseDiaryApi.PARTICIPANT_ID_PATH],
+        path = [IDS_PATH + ORGANIZATION_ID_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH],
         produces = [MediaType.APPLICATION_JSON_VALUE]
     )
     override fun getSubmissionsByDate(
-        @PathVariable(TimeUseDiaryApi.ORGANIZATION_ID) organizationId: UUID,
-        @PathVariable(TimeUseDiaryApi.STUDY_ID) studyId: UUID,
-        @PathVariable(TimeUseDiaryApi.PARTICIPANT_ID) participantId: String,
-        @RequestParam(TimeUseDiaryApi.START_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) startDateTime: OffsetDateTime,
-        @RequestParam(TimeUseDiaryApi.END_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) endDateTime: OffsetDateTime,
+        @PathVariable(ORGANIZATION_ID) organizationId: UUID,
+        @PathVariable(STUDY_ID) studyId: UUID,
+        @PathVariable(PARTICIPANT_ID) participantId: String,
+        @RequestParam(START_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) startDateTime: OffsetDateTime,
+        @RequestParam(END_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) endDateTime: OffsetDateTime,
     ): Map<LocalDate, Set<UUID>> {
         accessCheck(AclKey(studyId), EnumSet.of(Permission.READ))
         logger.info("Retrieving TimeUseDiary ids from study $studyId")
@@ -126,14 +137,14 @@ class TimeUseDiaryController(
 
     @Timed
     @GetMapping(
-        path = [TimeUseDiaryApi.ORGANIZATION_ID_PATH + TimeUseDiaryApi.STUDY_ID_PATH + TimeUseDiaryApi.PARTICIPANT_ID_PATH],
+        path = [ORGANIZATION_ID_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH],
         consumes = [MediaType.APPLICATION_JSON_VALUE]
     )
     override fun downloadTimeUseDiaryData(
-        @PathVariable(TimeUseDiaryApi.ORGANIZATION_ID) organizationId: UUID,
-        @PathVariable(TimeUseDiaryApi.STUDY_ID) studyId: UUID,
-        @PathVariable(TimeUseDiaryApi.PARTICIPANT_ID) participantId: String,
-        @RequestParam(TimeUseDiaryApi.DATA_TYPE) type: TimeUseDiaryDownloadDataType,
+        @PathVariable(ORGANIZATION_ID) organizationId: UUID,
+        @PathVariable(STUDY_ID) studyId: UUID,
+        @PathVariable(PARTICIPANT_ID) participantId: String,
+        @RequestParam(DOWNLOAD_TYPE) downloadType: TimeUseDiaryDownloadDataType,
         @RequestBody submissionIds: Set<UUID>
     ): Iterable<Map<String, Set<Any>>> {
         TODO("Not yet implemented")
@@ -141,10 +152,10 @@ class TimeUseDiaryController(
 
     @Timed
     @GetMapping(
-        path = [TimeUseDiaryApi.STATUS_PATH]
+        path = [STATUS_PATH]
     )
     override fun isRunning(): Boolean {
-        logger.info("TimeUseDiaryAPI is running...")
+        logger.info("Time Use Diary API is running...")
         return true
     }
 }

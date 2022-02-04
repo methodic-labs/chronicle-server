@@ -15,7 +15,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION_DATE
-import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.TIME_USE_DIARY_SUBMISSION
+import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.TIME_USE_DIARY_SUBMISSIONS
 import org.slf4j.LoggerFactory
 import java.sql.Connection
 import java.sql.ResultSet
@@ -159,7 +159,7 @@ class TimeUseDiaryService(
      * @param responses         List of survey responses for a Time Use Diary study
      */
     private val insertTimeUseDiarySql = """
-            INSERT INTO ${TIME_USE_DIARY_SUBMISSION.name} 
+            INSERT INTO ${TIME_USE_DIARY_SUBMISSIONS.name} 
             VALUES ( ?, ?, ?, ?, now(), ? )
             """.trimIndent()
 
@@ -174,7 +174,7 @@ class TimeUseDiaryService(
      */
     private val getSubmissionsByDateSql = """
                 SELECT ${SUBMISSION_ID.name}, ${SUBMISSION_DATE.name}
-                FROM ${TIME_USE_DIARY_SUBMISSION.name}
+                FROM ${TIME_USE_DIARY_SUBMISSIONS.name}
                 WHERE ${ORGANIZATION_ID.name} = ?
                 AND ${STUDY_ID.name} = ?
                 AND ${PARTICIPANT_ID.name} = ?
