@@ -51,7 +51,7 @@ class AppDataUploadService(
     private val logger = LoggerFactory.getLogger(AppDataUploadService::class.java)
 
     companion object {
-        private val SENSOR_DATA_COLUMNS = RedshiftDataTables.IOS_SENSOR.columns.joinToString(",") { it.name }
+        private val SENSOR_DATA_COLUMNS = RedshiftDataTables.IOS_SENSOR_DATA.columns.joinToString(",") { it.name }
 
         /**
          * PreparedStatement bind order
@@ -66,7 +66,7 @@ class AppDataUploadService(
          * 9) sensorData,
          */
         private val INSERT_SENSOR_DATA_SQL = """
-            INSERT INTO ${RedshiftDataTables.IOS_SENSOR.name}($SENSOR_DATA_COLUMNS) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO ${RedshiftDataTables.IOS_SENSOR_DATA.name}($SENSOR_DATA_COLUMNS) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT DO NOTHING
         """.trimIndent()
     }
