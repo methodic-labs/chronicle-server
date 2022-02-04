@@ -193,8 +193,7 @@ class StudyService(
          * sort by most recently created
          * 1. current user principal id
          * 2. organization id
-        */ 
-
+        */
         private val GET_ORG_STUDIES_SQL = """
             SELECT ${STUDIES.name}.*, org_studies.${ORGANIZATION_IDS.name}
             FROM ${STUDIES.name}
