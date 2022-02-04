@@ -89,11 +89,11 @@ class RedshiftColumns {
         val TOTAL_SCREEN_WAKES = PostgresColumnDefinition("total_screen_wakes", PostgresDatatype.INTEGER)
         val TOTAL_UNLOCK_DURATION = PostgresColumnDefinition("total_unlock_duration", PostgresDatatype.DOUBLE) // seconds
         val APP_CATEGORY = PostgresColumnDefinition("app_category", PostgresDatatype.TEXT)
-        val APP_CATEGORY_USAGE_TIME = PostgresColumnDefinition("usage_time", PostgresDatatype.DOUBLE)
+        val APP_USAGE_TIME = PostgresColumnDefinition("app_usage_time", PostgresDatatype.DOUBLE)
         val TEXT_INPUT_DEVICE = PostgresColumnDefinition("text_input_device", PostgresDatatype.TEXT)
         val TEXT_INPUT_DURATION = PostgresColumnDefinition("text_input_duration", PostgresDatatype.TEXT)
         val BUNDLE_IDENTIFIER = PostgresColumnDefinition("bundle_identifier", PostgresDatatype.TEXT)
-        val WEB_USAGE_DURATION = PostgresColumnDefinition("app_category_web_duration", PostgresDatatype.DOUBLE)
+        val APP_CATEGORY_WEB_DURATION = PostgresColumnDefinition("app_category_web_duration", PostgresDatatype.DOUBLE)
         val NOTIFICATION_INTERACTION_TYPE = PostgresColumnDefinition("notification_interaction_type", PostgresDatatype.TEXT)
 
         // columns specific to phoneUsage sensor

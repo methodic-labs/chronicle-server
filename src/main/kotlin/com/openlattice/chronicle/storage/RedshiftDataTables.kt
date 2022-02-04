@@ -5,12 +5,11 @@ import com.geekbeast.postgres.RedshiftTableDefinition
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.ACL_KEY
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APPLICATION_LABEL
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_CATEGORY
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_CATEGORY_USAGE_TIME
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_USAGE_TIME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_PACKAGE_NAME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.AUDIT_EVENT_TYPE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.BUNDLE_IDENTIFIER
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DATA
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DATE_LOGGED
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DESCRIPTION
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DEVICE_MODEL
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DEVICE_NAME
@@ -73,7 +72,7 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TOTAL_UNLOCK_
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TOTAL_WORDS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TYPING_SPEED
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.USERNAME
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.WEB_USAGE_DURATION
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_CATEGORY_WEB_DURATION
 
 /**
  *
@@ -156,11 +155,11 @@ class RedshiftDataTables {
                 TOTAL_SCREEN_WAKES,
                 TOTAL_UNLOCK_DURATION,
                 APP_CATEGORY,
-                APP_CATEGORY_USAGE_TIME,
+                APP_USAGE_TIME,
                 TEXT_INPUT_DEVICE,
                 TEXT_INPUT_DURATION,
                 BUNDLE_IDENTIFIER,
-                WEB_USAGE_DURATION,
+                APP_CATEGORY_WEB_DURATION,
                 NOTIFICATION_INTERACTION_TYPE
         )
 
