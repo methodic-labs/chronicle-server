@@ -92,6 +92,7 @@ class OrganizationsController @Inject constructor(
         produces = [MediaType.APPLICATION_JSON_VALUE],
     )
     override fun getOrganization(@PathVariable(ORGANIZATION_ID) organizationId: UUID): Organization {
+        ensureReadAccess(AclKey(organizationId))
         return chronicleOrganizationService.getOrganization(organizationId)
     }
 
