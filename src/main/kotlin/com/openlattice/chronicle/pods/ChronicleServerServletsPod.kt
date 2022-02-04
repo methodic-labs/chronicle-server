@@ -30,7 +30,7 @@ class ChronicleServerServletsPod {
     @Bean
     fun edmServlet(): DispatcherServletConfiguration {
         return DispatcherServletConfiguration(
-            "chronicle", arrayOf("/chronicle/*"),
+            "chronicle", arrayOf("/chronicle/v3/*"),
             1,
             Lists.newArrayList<Class<*>>(ChronicleServerMvcPod::class.java)
         )
