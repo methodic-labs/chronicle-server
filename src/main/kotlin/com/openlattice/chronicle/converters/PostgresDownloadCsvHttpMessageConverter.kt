@@ -105,7 +105,7 @@ class PostgresDownloadCsvHttpMessageConverter : AbstractGenericHttpMessageConver
         val schemaBuilder = CsvSchema.builder()
         val columns: List<String> = iterable.columnAdvice
         columns.forEach(Consumer { col: String ->
-            schemaBuilder.addColumn(col, csvTypes.getValue(resolutionMap.getValue(col)))
+            schemaBuilder.addColumn(col, csvTypes.getValue(resolutionMap.getOrDefault(col, PostgresDatatype.TEXT)))
         })
 
         return schemaBuilder.setUseHeader(true).build()

@@ -8,7 +8,7 @@ import com.openlattice.chronicle.api.TimeUseDiaryApi.Companion.STUDY_ID
 import com.openlattice.chronicle.api.TimeUseDiaryApi.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.api.TimeUseDiaryApi.Companion.START_DATE
 import com.openlattice.chronicle.api.TimeUseDiaryApi.Companion.END_DATE
-import com.openlattice.chronicle.api.TimeUseDiaryApi.Companion.DATA_TYPE
+import com.openlattice.chronicle.api.TimeUseDiaryApi.Companion.DOWNLOAD_TYPE
 import com.openlattice.chronicle.auditing.AuditEventType
 import com.openlattice.chronicle.auditing.AuditableEvent
 import com.openlattice.chronicle.auditing.AuditedOperationBuilder
@@ -137,14 +137,14 @@ class TimeUseDiaryController(
         @PathVariable(ORGANIZATION_ID) organizationId: UUID,
         @PathVariable(STUDY_ID) studyId: UUID,
         @PathVariable(PARTICIPANT_ID) participantId: String,
-        @RequestParam(DATA_TYPE) type: TimeUseDiaryDownloadDataType,
+        @RequestParam(DOWNLOAD_TYPE) downloadType: TimeUseDiaryDownloadDataType,
         @RequestBody submissionIds: Set<UUID>
-    ): Iterable<Map<String, Set<Any>>> {
+    ): Iterable<Map<String,Any>> {
         return timeUseDiaryManager.downloadTimeUseDiaryData(
             organizationId,
             studyId,
             participantId,
-            type,
+            downloadType,
             submissionIds
         )
     }
@@ -159,15 +159,15 @@ class TimeUseDiaryController(
         @PathVariable(ORGANIZATION_ID) organizationId: UUID,
         @PathVariable(STUDY_ID) studyId: UUID,
         @PathVariable(PARTICIPANT_ID) participantId: String,
-        @RequestParam(DATA_TYPE) type: TimeUseDiaryDownloadDataType,
+        @RequestParam(DOWNLOAD_TYPE) downloadType: TimeUseDiaryDownloadDataType,
         @RequestBody submissionIds: Set<UUID>,
         response: HttpServletResponse
-    ): Iterable<Map<String, Set<Any>>> {
+    ): Iterable<Map<String,Any>> {
         val data = timeUseDiaryManager.downloadTimeUseDiaryData(
             organizationId,
             studyId,
             participantId,
-            type,
+            downloadType,
             submissionIds
         )
         response.contentType = CustomMediaType.TEXT_CSV_VALUE

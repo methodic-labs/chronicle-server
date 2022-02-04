@@ -3,11 +3,13 @@ package com.openlattice.chronicle.services.timeusediary
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.geekbeast.configuration.postgres.PostgresFlavor
+import com.geekbeast.postgres.streams.BasePostgresIterable
+import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
 import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.authorization.AuthorizationManager
 import com.openlattice.chronicle.authorization.SecurableObjectType
 import com.openlattice.chronicle.authorization.principals.Principals
-import com.openlattice.chronicle.services.download.ParticipantDataIterable
+import com.openlattice.chronicle.converters.PostgresDownloadWrapper
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryDownloadDataType
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryResponse
@@ -108,63 +110,53 @@ class TimeUseDiaryService(
         organizationId: UUID,
         studyId: UUID,
         participantId: String,
-        type: TimeUseDiaryDownloadDataType,
-        submissionsIds: Set<UUID>
-    ): Iterable<Map<String, Set<Any>>> {
-        val submissionData: MutableList<TimeUseDiaryResponse> = mutableListOf()
-        val rows : MutableSet<MutableMap<String,Set<String>>> = mutableSetOf()
-        val columnTitles = mutableSetOf<String>("tud_id", "timestamp")
+        downloadType: TimeUseDiaryDownloadDataType,
+        submissionIds: Set<UUID>
+    ): PostgresDownloadWrapper {
+        var resultSet: ResultSet
         try {
             // retrieve Time Use Diary data
             val hds = storageResolver.getPlatformStorage(PostgresFlavor.VANILLA)
-            val result = hds.connection.use { connection ->
-                executeDownloadTimeUseDiaryData(
-                    connection,
-                    organizationId,
-                    studyId,
-                    participantId,
-                    submissionsIds
-                )
+            val postgresIterable = BasePostgresIterable<Map<String, Any>>(
+                PreparedStatementHolderSupplier(
+                    hds,
+                    downloadTimeUseDiaryDataSql,
+                    1024
+                ) { ps ->
+                    var index = 1
+                    ps.setObject(index++, organizationId)
+                    ps.setObject(index++, studyId)
+                    ps.setString(index++, participantId)
+                    ps.setArray(index, hds.connection.createArrayOf("UUID", submissionIds.toTypedArray()))
+                }) { rs ->
+                mapOf(
+                    SUBMISSION_ID.name to setOf(rs.getString(SUBMISSION_ID.name)),
+                    PARTICIPANT_ID.name to setOf(rs.getString(PARTICIPANT_ID.name)),
+                    SUBMISSION_DATE.name to rs.getObject(SUBMISSION_DATE.name, OffsetDateTime::class.java)
+                ) + convertTudJsonbToMap(rs, downloadType)
             }
-            // transform into CSV-convertible data structure
-            while(result.next()) {
-                val row : MutableMap<String, Set<String>> = mutableMapOf()
-                var timestamped = false
-                row[SUBMISSION_ID.name] = setOf(result.getString(SUBMISSION_ID.name))
-                row[PARTICIPANT_ID.name] = setOf(result.getString(PARTICIPANT_ID.name))
-
-                extractTudResponsesFromResult(result).forEach {
-                    if (containsKeywordOfDownloadType(it, type)) {
-                        row[firstString(it.questionCode)] = it.response
-                        columnTitles.add(firstString(it.questionCode))
-                        /*
-                         * TODO:
-                         * Check that this works as intended with night data.
-                         * May cause problems to consider timestamps from all responses
-                         */
-                        if (!timestamped && it.startDateTime.isNotEmpty()) {
-                            row["timestamp"] = setOf(firstString(it.startDateTime))
-                            timestamped = true
-                        }
-                        submissionData.add(it)
-                    }
-                }
-                rows.add(row)
-            }
+            return PostgresDownloadWrapper(postgresIterable).withColumnAdvice(
+                listOf(
+                    SUBMISSION_ID.name,
+                    PARTICIPANT_ID.name,
+                    SUBMISSION_DATE.name
+                ) + downloadType.downloadColumnTitles
+            )
         } catch (ex: Exception) {
             throw error("Error: $ex")
         }
-        return ParticipantDataIterable(columnTitles.toList(), rows)
     }
 
     /* -------- Download Utils -------- */
 
-    private fun firstString(obj: Set<Any>): String {
-        return obj.first().toString()
-    }
-
-    private fun containsKeywordOfDownloadType(tudResponse: TimeUseDiaryResponse, type: TimeUseDiaryDownloadDataType): Boolean {
-        return !type.keywords.contains(tudResponse.questionCode.first())
+    private fun convertTudJsonbToMap(
+        rs: ResultSet,
+        type: TimeUseDiaryDownloadDataType,
+    ): Map<String, Set<String>> {
+        val responses = extractTudResponsesFromResult(rs)
+        return type.downloadColumnTitles.associateWith { kw ->
+            responses.firstOrNull { it.questionCode.first() == kw }?.response ?: setOf("")
+        }
     }
 
     private fun extractTudResponsesFromResult(resultSet: ResultSet): List<TimeUseDiaryResponse> {
@@ -274,7 +266,7 @@ class TimeUseDiaryService(
      * @param timeUseDiaryIds   Identifies the time use diaries from which to retrieve submissions
      */
     private val downloadTimeUseDiaryDataSql = """
-        SELECT ${SUBMISSION_ID.name}, ${PARTICIPANT_ID.name} ${SUBMISSION.name}
+        SELECT ${SUBMISSION_ID.name}, ${PARTICIPANT_ID.name}, ${SUBMISSION_DATE.name}, ${SUBMISSION.name}
         FROM ${TIME_USE_DIARY_SUBMISSIONS.name}
         WHERE ${ORGANIZATION_ID.name} = ?
         AND ${STUDY_ID.name} = ?
