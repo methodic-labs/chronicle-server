@@ -20,10 +20,14 @@ import com.openlattice.chronicle.organizations.OrganizationsApi.Companion.ORGANI
 import com.openlattice.chronicle.organizations.OrganizationsApi.Companion.ORGANIZATION_ID_PATH
 import com.openlattice.chronicle.settings.AppComponent
 import com.openlattice.chronicle.storage.StorageResolver
-import com.openlattice.chronicle.util.ensureVanilla
 import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
-import org.springframework.web.bind.annotation.*
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RestController
 import java.util.UUID
 import javax.inject.Inject
 
