@@ -10,8 +10,8 @@ import com.hazelcast.core.HazelcastInstance
 import com.openlattice.chronicle.auditing.AuditingComponent
 import com.openlattice.chronicle.auditing.AuditingManager
 import com.openlattice.chronicle.authorization.AclKey
+import com.openlattice.chronicle.authorization.Permission.READ
 import com.openlattice.chronicle.authorization.AuthorizationManager
-import com.openlattice.chronicle.authorization.READ_PERMISSION
 import com.openlattice.chronicle.authorization.SecurableObjectType
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.hazelcast.HazelcastMap
@@ -191,7 +191,7 @@ class StudyService(
                 INNER JOIN ${PERMISSIONS.name}
                 ON ${STUDIES.name}.${STUDY_ID.name} = ANY(${PERMISSIONS.name}.${ACL_KEY.name})
                     AND ${PRINCIPAL_ID.name} = ?
-                    AND $READ_PERMISSION = ANY(${PostgresColumns.PERMISSIONS.name})
+                    AND 'READ' = ANY(${PostgresColumns.PERMISSIONS.name})
                 LEFT JOIN (
                     SELECT ${STUDY_ID.name}, array_agg(${ORGANIZATION_ID.name}) as ${ORGANIZATION_IDS.name} 
                         FROM ${ORGANIZATION_STUDIES.name}
