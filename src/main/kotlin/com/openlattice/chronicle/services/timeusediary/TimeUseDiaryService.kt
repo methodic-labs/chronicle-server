@@ -113,7 +113,6 @@ class TimeUseDiaryService(
         downloadType: TimeUseDiaryDownloadDataType,
         submissionIds: Set<UUID>
     ): PostgresDownloadWrapper {
-        var resultSet: ResultSet
         try {
             // retrieve Time Use Diary data
             val hds = storageResolver.getPlatformStorage(PostgresFlavor.VANILLA)

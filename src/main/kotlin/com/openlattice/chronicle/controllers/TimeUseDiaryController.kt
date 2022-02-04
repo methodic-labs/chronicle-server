@@ -168,6 +168,7 @@ class TimeUseDiaryController(
         @RequestBody submissionIds: Set<UUID>,
         response: HttpServletResponse
     ): Iterable<Map<String,Any>> {
+        accessCheck(AclKey(studyId), EnumSet.of(Permission.READ))
         val data = timeUseDiaryManager.downloadTimeUseDiaryData(
             organizationId,
             studyId,
@@ -177,6 +178,20 @@ class TimeUseDiaryController(
         )
         response.contentType = CustomMediaType.TEXT_CSV_VALUE
         response.setHeader("Content-Disposition","attachment; filename=test_file.csv")
+
+        recordEvent(
+            AuditableEvent(
+                AclKey(studyId),
+                Principals.getCurrentSecurablePrincipal().id,
+                Principals.getCurrentUser().id,
+                AuditEventType.DOWNLOAD_TIME_USE_DIARY_SUBMISSIONS,
+                downloadType.toString(),
+                studyId,
+                organizationId,
+                mapOf()
+            )
+        )
+
         return data
     }
 
