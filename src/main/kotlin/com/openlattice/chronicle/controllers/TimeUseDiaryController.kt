@@ -36,6 +36,7 @@ import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.*
 import java.time.LocalDate
 import java.time.OffsetDateTime
+import java.time.format.DateTimeFormatter
 import java.util.*
 import javax.inject.Inject
 import javax.servlet.http.HttpServletResponse
@@ -176,8 +177,10 @@ class TimeUseDiaryController(
             downloadType,
             submissionIds
         )
+
+        val filename = "$participantId-$downloadType-${LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE)}.csv"
         response.contentType = CustomMediaType.TEXT_CSV_VALUE
-        response.setHeader("Content-Disposition","attachment; filename=test_file.csv")
+        response.setHeader("Content-Disposition","attachment; filename=$filename")
 
         recordEvent(
             AuditableEvent(
