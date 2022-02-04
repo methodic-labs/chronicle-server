@@ -185,6 +185,15 @@ class StudyService(
             SELECT ${ORGANIZATION_ID.name} FROM ${ORGANIZATION_STUDIES.name} WHERE ${STUDY_ID.name} = ? LIMIT 1 
         """.trimIndent()
 
+        /**
+         * get studies that belong to the provided organizationId where the
+         * current user has read access
+         * include list of all organizationIds each study is a part of.
+         * sort by most recently created
+         * 1. current user principal id
+         * 2. organization id
+        */ 
+
         private val GET_ORG_STUDIES_SQL = """
             SELECT ${STUDIES.name}.*, org_studies.${ORGANIZATION_IDS.name}
             FROM ${STUDIES.name}

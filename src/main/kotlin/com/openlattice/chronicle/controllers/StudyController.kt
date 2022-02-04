@@ -177,7 +177,6 @@ class StudyController @Inject constructor(
     )
     override fun getOrgStudies(@PathVariable(ORGANIZATION_ID) organizationId: UUID): Iterable<Study> {
 
-        // What's the right check here?
         ensureReadAccess(AclKey(organizationId))
         val currentUserId = Principals.getCurrentUser().id;
         logger.info("Retrieving studies with organization id $organizationId on behalf of $currentUserId")
