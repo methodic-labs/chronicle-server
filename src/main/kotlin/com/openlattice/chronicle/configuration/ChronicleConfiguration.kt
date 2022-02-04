@@ -11,7 +11,7 @@ const val REGION_NAME = "regionName"
 const val TIME_TO_LIVE = "timeToLive"
 const val ACCESS_KEY_ID = "accessKeyId"
 const val SECRET_ACCESS_KEY = "secretAccessKey"
-const val SEARCH_CONFIGURATION = "searchConfiguration"
+const val STORAGE_CONFIGURATION = "storageConfiguration"
 
 @ReloadableConfiguration(uri = "chronicle.yaml")
 data class ChronicleConfiguration(
@@ -20,8 +20,7 @@ data class ChronicleConfiguration(
     @JsonProperty(TIME_TO_LIVE) val timeToLive: Long,
     @JsonProperty(ACCESS_KEY_ID) val accessKeyId: String,
     @JsonProperty(SECRET_ACCESS_KEY) val secretAccessKey: String,
-    @JsonProperty(SEARCH_CONFIGURATION) val searchConfiguration: SearchConfiguration,
-    @JsonProperty("storageConfiguration") val storageConfiguration: ChronicleStorageConfiguration = ChronicleStorageConfiguration()
+    @JsonProperty(STORAGE_CONFIGURATION) val storageConfiguration: ChronicleStorageConfiguration = ChronicleStorageConfiguration()
 ) : Configuration {
 
     companion object {

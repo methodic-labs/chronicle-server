@@ -5,6 +5,8 @@ import com.openlattice.chronicle.UserAuthenticatedApi
 import com.openlattice.chronicle.constants.CustomMediaType
 import com.openlattice.chronicle.constants.FilenamePrefixConstants
 import com.openlattice.chronicle.constants.ParticipantDataType
+import com.openlattice.chronicle.converters.LegacyPostgresDownloadWrapper
+import com.openlattice.chronicle.converters.LegacyPostgresDownloadWrapper.Companion.adapt
 import com.openlattice.chronicle.data.ChronicleDeleteType
 import com.openlattice.chronicle.data.FileType
 import com.openlattice.chronicle.services.delete.DataDeletionManager
@@ -34,38 +36,38 @@ class UserAuthenticatedController : UserAuthenticatedApi {
 
     @Inject
     private lateinit var enrollmentManager: EnrollmentManager
-    
+
     @Inject
     private lateinit var studyManager: StudyManager
 
     @Timed
     @RequestMapping(
-            path = [UserAuthenticatedApi.AUTHENTICATED + UserAuthenticatedApi.STUDY_ID_PATH + UserAuthenticatedApi.PARTICIPANT_ID_PATH],
-            method = [RequestMethod.DELETE]
+        path = [UserAuthenticatedApi.AUTHENTICATED + UserAuthenticatedApi.STUDY_ID_PATH + UserAuthenticatedApi.PARTICIPANT_ID_PATH],
+        method = [RequestMethod.DELETE]
     )
     override fun deleteParticipantAndAllNeighbors(
-            @PathVariable(UserAuthenticatedApi.STUDY_ID) studyId: UUID,
-            @PathVariable(UserAuthenticatedApi.PARTICIPANT_ID) participantId: String,
-            @RequestParam(UserAuthenticatedApi.TYPE) chronicleDeleteType: ChronicleDeleteType
+        @PathVariable(UserAuthenticatedApi.STUDY_ID) studyId: UUID,
+        @PathVariable(UserAuthenticatedApi.PARTICIPANT_ID) participantId: String,
+        @RequestParam(UserAuthenticatedApi.TYPE) chronicleDeleteType: ChronicleDeleteType
     ): Void? {
-        val organizationId = studyManager.getOrganizationIdForLegacyStudy( studyId )
+        val organizationId = studyManager.getOrganizationIdForLegacyStudy(studyId)
         dataDeletionManager.deleteParticipantData(organizationId, studyId, participantId, chronicleDeleteType)
         return null
     }
 
     @Timed
     @RequestMapping(
-            path = [UserAuthenticatedApi.AUTHENTICATED + UserAuthenticatedApi.STUDY_ID_PATH],
-            method = [RequestMethod.DELETE]
+        path = [UserAuthenticatedApi.AUTHENTICATED + UserAuthenticatedApi.STUDY_ID_PATH],
+        method = [RequestMethod.DELETE]
     )
     @ResponseStatus(
-            HttpStatus.OK
+        HttpStatus.OK
     )
     override fun deleteStudyAndAllNeighbors(
-            @PathVariable(UserAuthenticatedApi.STUDY_ID) studyId: UUID,
-            @RequestParam(UserAuthenticatedApi.TYPE) chronicleDeleteType: ChronicleDeleteType
+        @PathVariable(UserAuthenticatedApi.STUDY_ID) studyId: UUID,
+        @RequestParam(UserAuthenticatedApi.TYPE) chronicleDeleteType: ChronicleDeleteType
     ): Void? {
-        val organizationId = studyManager.getOrganizationIdForLegacyStudy( studyId )
+        val organizationId = studyManager.getOrganizationIdForLegacyStudy(studyId)
         dataDeletionManager.deleteStudyData(organizationId, studyId, chronicleDeleteType)
         return null
     }
@@ -76,16 +78,20 @@ class UserAuthenticatedController : UserAuthenticatedApi {
         fileType: FileType
     ): Iterable<Map<String, Set<Any>>> {
         val token = ChronicleServerUtil.getTokenFromContext()
-        return dataDownloadManager
-                .getParticipantData(null, studyId, participantId, ParticipantDataType.PREPROCESSED, token)
+        return LegacyPostgresDownloadWrapper(
+            adapt(
+                dataDownloadManager
+                    .getParticipantData(studyId, participantId, ParticipantDataType.PREPROCESSED, token)
+            )
+        )
     }
 
     @Timed
     @RequestMapping(
-            path = [UserAuthenticatedApi.AUTHENTICATED + UserAuthenticatedApi.PARTICIPANT_PATH + UserAuthenticatedApi.DATA_PATH + UserAuthenticatedApi.STUDY_ID_PATH
-                    + UserAuthenticatedApi.ENTITY_KEY_ID_PATH
-                    + UserAuthenticatedApi.PREPROCESSED_PATH], method = [RequestMethod.GET],
-            produces = [MediaType.APPLICATION_JSON_VALUE, CustomMediaType.TEXT_CSV_VALUE]
+        path = [UserAuthenticatedApi.AUTHENTICATED + UserAuthenticatedApi.PARTICIPANT_PATH + UserAuthenticatedApi.DATA_PATH + UserAuthenticatedApi.STUDY_ID_PATH
+                + UserAuthenticatedApi.ENTITY_KEY_ID_PATH
+                + UserAuthenticatedApi.PREPROCESSED_PATH], method = [RequestMethod.GET],
+        produces = [MediaType.APPLICATION_JSON_VALUE, CustomMediaType.TEXT_CSV_VALUE]
     )
     fun getAllPreprocessedParticipantData(
         @PathVariable(UserAuthenticatedApi.STUDY_ID) studyId: UUID,
@@ -116,15 +122,23 @@ class UserAuthenticatedController : UserAuthenticatedApi {
         fileType: FileType
     ): Iterable<Map<String, Set<Any>>> {
         val token = ChronicleServerUtil.getTokenFromContext()
-        return dataDownloadManager
-                .getParticipantData(null, studyId, participantId, ParticipantDataType.RAW_DATA, token)
+        return LegacyPostgresDownloadWrapper(
+            adapt(
+                dataDownloadManager.getParticipantData(
+                    studyId,
+                    participantId,
+                    ParticipantDataType.RAW_DATA,
+                    token
+                )
+            )
+        )
     }
 
     @Timed
     @RequestMapping(
-            path = [UserAuthenticatedApi.AUTHENTICATED + UserAuthenticatedApi.PARTICIPANT_PATH + UserAuthenticatedApi.DATA_PATH + UserAuthenticatedApi.STUDY_ID_PATH
-                    + UserAuthenticatedApi.ENTITY_KEY_ID_PATH], method = [RequestMethod.GET],
-            produces = [MediaType.APPLICATION_JSON_VALUE, CustomMediaType.TEXT_CSV_VALUE]
+        path = [UserAuthenticatedApi.AUTHENTICATED + UserAuthenticatedApi.PARTICIPANT_PATH + UserAuthenticatedApi.DATA_PATH + UserAuthenticatedApi.STUDY_ID_PATH
+                + UserAuthenticatedApi.ENTITY_KEY_ID_PATH], method = [RequestMethod.GET],
+        produces = [MediaType.APPLICATION_JSON_VALUE, CustomMediaType.TEXT_CSV_VALUE]
     )
     fun getAllParticipantData(
         @PathVariable(UserAuthenticatedApi.STUDY_ID) studyId: UUID,
@@ -155,15 +169,19 @@ class UserAuthenticatedController : UserAuthenticatedApi {
         fileType: FileType
     ): Iterable<Map<String, Set<Any>>> {
         val token = ChronicleServerUtil.getTokenFromContext()
-        return dataDownloadManager
-                .getParticipantData(null, studyId, participantId, ParticipantDataType.USAGE_DATA, token)
+        return LegacyPostgresDownloadWrapper(
+            adapt(
+                dataDownloadManager
+                    .getParticipantData(studyId, participantId, ParticipantDataType.USAGE_DATA, token)
+            )
+        )
     }
 
     @Timed
     @RequestMapping(
-            path = [UserAuthenticatedApi.AUTHENTICATED + UserAuthenticatedApi.PARTICIPANT_PATH + UserAuthenticatedApi.DATA_PATH + UserAuthenticatedApi.STUDY_ID_PATH
-                    + UserAuthenticatedApi.ENTITY_KEY_ID_PATH + UserAuthenticatedApi.USAGE_PATH],
-            method = [RequestMethod.GET], produces = [MediaType.APPLICATION_JSON_VALUE, CustomMediaType.TEXT_CSV_VALUE]
+        path = [UserAuthenticatedApi.AUTHENTICATED + UserAuthenticatedApi.PARTICIPANT_PATH + UserAuthenticatedApi.DATA_PATH + UserAuthenticatedApi.STUDY_ID_PATH
+                + UserAuthenticatedApi.ENTITY_KEY_ID_PATH + UserAuthenticatedApi.USAGE_PATH],
+        method = [RequestMethod.GET], produces = [MediaType.APPLICATION_JSON_VALUE, CustomMediaType.TEXT_CSV_VALUE]
     )
     fun getAllParticipantAppsUsageData(
         @PathVariable(UserAuthenticatedApi.STUDY_ID) studyId: UUID,

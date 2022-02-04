@@ -5,9 +5,12 @@ import com.openlattice.chronicle.configuration.ChronicleStorageConfiguration
 import com.geekbeast.jdbc.DataSourceManager
 import com.hazelcast.core.HazelcastInstance
 import com.hazelcast.map.IMap
-import com.openlattice.chronicle.configuration.CHRONICLE_STORAGE
 import com.openlattice.chronicle.hazelcast.HazelcastMap
+import com.openlattice.chronicle.hazelcast.processors.storage.StudyStorageRead
+import com.openlattice.chronicle.hazelcast.processors.storage.StudyStorageUpdate
+import com.openlattice.chronicle.study.Study
 import com.zaxxer.hikari.HikariDataSource
+import org.springframework.stereotype.Component
 import java.util.*
 
 /**
@@ -16,13 +19,12 @@ import java.util.*
  */
 class StorageResolver constructor(
     private val dataSourceManager: DataSourceManager,
-    private val storageConfiguration: ChronicleStorageConfiguration,
-    hazelcastInstance: HazelcastInstance
+    private val storageConfiguration: ChronicleStorageConfiguration
 ) {
-    private val studyStorage: IMap<UUID, String> = HazelcastMap.STUDY_STORAGE.getMap(hazelcastInstance)
+    private lateinit var studyStorage: IMap<UUID, Study>
 
-    fun associateStudyWithStorage(studyId: UUID, storage: String = CHRONICLE_STORAGE) {
-        studyStorage[studyId] = storage
+    fun associateStudyWithStorage(studyId: UUID, storage: String = ChronicleStorage.CHRONICLE.id) {
+        studyStorage.executeOnKey(studyId, StudyStorageUpdate(storage))
     }
 
     fun resolve(studyId: UUID, requiredFlavor: PostgresFlavor = PostgresFlavor.REDSHIFT): HikariDataSource {
@@ -36,7 +38,7 @@ class StorageResolver constructor(
     }
 
     fun resolveDataSourceName(studyId: UUID): String {
-        return studyStorage[studyId] ?: storageConfiguration.defaultEventStorage
+        return studyStorage.executeOnKey(studyId, StudyStorageRead()) ?: storageConfiguration.defaultEventStorage
     }
 
     fun getStudyIdsByDataSourceName(studyIds: Collection<UUID>): Map<String, List<UUID>> {
@@ -75,6 +77,10 @@ class StorageResolver constructor(
         return with(dataSourceManager) {
             getFlavor(storageConfiguration.defaultEventStorage) to getDataSource(storageConfiguration.defaultEventStorage)
         }
+    }
+
+    fun setStudyStorage( hazelcastInstance: HazelcastInstance ) {
+        studyStorage = HazelcastMap.STUDIES.getMap(hazelcastInstance)
     }
 }
 

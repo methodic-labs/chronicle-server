@@ -22,6 +22,7 @@ import com.openlattice.chronicle.util.ChronicleServerUtil
 import com.geekbeast.postgres.PostgresColumnDefinition
 import com.geekbeast.postgres.PostgresDatatype
 import com.geekbeast.postgres.PostgresTableDefinition
+import com.geekbeast.postgres.RedshiftTableDefinition
 import com.openlattice.chronicle.sensorkit.SensorDataSample
 import com.openlattice.chronicle.storage.PostgresDataTables
 import com.openlattice.chronicle.storage.RedshiftDataTables
@@ -65,7 +66,7 @@ class AppDataUploadService(
          * 9) sensorData,
          */
         private val INSERT_SENSOR_DATA_SQL = """
-            INSERT INTO ${RedshiftDataTables.IOS_SENSOR.name}($SENSOR_DATA_COLUMNS) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) 
+            INSERT INTO ${RedshiftDataTables.IOS_SENSOR.name}($SENSOR_DATA_COLUMNS) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT DO NOTHING
         """.trimIndent()
     }
@@ -272,7 +273,8 @@ class AppDataUploadService(
     }
 
     private fun filter(
-        organizationId: UUID, mappedData: Sequence<Map<String, UsageEventColumn>>
+        organizationId: UUID,
+        mappedData: Sequence<Map<String, UsageEventColumn>>
     ): Sequence<Map<String, UsageEventColumn>> {
         return mappedData.filter { mappedUsageEventCols ->
             val appName = mappedUsageEventCols[FQNS_TO_COLUMNS.getValue(FULL_NAME_FQN).name]?.value as String
@@ -310,7 +312,13 @@ class AppDataUploadService(
                 connection.createStatement().use { stmt -> stmt.execute(tempMergeTable.createTableQuery()) }
 
                 val wc = connection
-                    .prepareStatement(getInsertIntoMergeUsageEventsTableSql(tempMergeTable.name)).use { ps ->
+                    .prepareStatement(
+                        getInsertIntoMergeUsageEventsTableSql(
+                            tempMergeTable.name,
+                            tempMergeTable !is RedshiftTableDefinition
+                        )
+                    )
+                    .use { ps ->
                         //Should only need to set these once for prepared statement.
                         ps.setString(1, organizationId.toString())
                         ps.setString(2, studyId.toString())
