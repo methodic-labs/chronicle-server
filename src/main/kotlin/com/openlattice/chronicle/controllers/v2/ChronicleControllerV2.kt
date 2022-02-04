@@ -8,6 +8,7 @@ import com.openlattice.chronicle.settings.AppComponent
 import com.openlattice.chronicle.data.ChronicleAppsUsageDetails
 import com.openlattice.chronicle.data.ChronicleQuestionnaire
 import com.openlattice.chronicle.data.ParticipationStatus
+import com.openlattice.chronicle.sensorkit.SensorDataSample
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import com.openlattice.chronicle.services.legacy.LegacyEdmResolver
 import com.openlattice.chronicle.services.legacy.LegacyUtil
@@ -187,6 +188,15 @@ class ChronicleControllerV2 : ChronicleApi {
             @RequestBody data: List<SetMultimap<UUID, Any>>
     ): Int {
         return dataUploadManager.upload(organizationId, studyId, participantId, datasourceId, data)
+    }
+
+    override fun uploadSensorData(
+            @PathVariable(ChronicleApi.STUDY_ID) studyId: UUID,
+            @PathVariable(ChronicleApi.PARTICIPANT_ID) participantId: String,
+            @PathVariable(ChronicleApi.DATASOURCE_ID) datasourceId: String,
+            @RequestBody data: MutableList<SensorDataSample>
+    ): Int {
+        return dataUploadManager.uploadSensorData(studyId, participantId, datasourceId, data)
     }
 
     @Timed

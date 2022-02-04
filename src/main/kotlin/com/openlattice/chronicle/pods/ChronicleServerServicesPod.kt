@@ -65,8 +65,6 @@ import com.openlattice.chronicle.services.surveys.SurveysManager
 import com.openlattice.chronicle.services.surveys.SurveysService
 import com.openlattice.chronicle.services.upload.AppDataUploadManager
 import com.openlattice.chronicle.services.upload.AppDataUploadService
-import com.openlattice.chronicle.services.upload.IOSSensorDataManager
-import com.openlattice.chronicle.services.upload.IOSSensorDataService
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.tasks.PostConstructInitializerTaskDependencies
 import com.openlattice.chronicle.users.Auth0SyncInitializationTask
@@ -332,11 +330,6 @@ class ChronicleServerServicesPod {
     @Bean
     fun candidateService(): CandidateService {
         return CandidateService(storageResolver(), authorizationService())
-    }
-
-    @Bean
-    fun iosSensorDataService(): IOSSensorDataManager {
-        return IOSSensorDataService(storageResolver())
     }
 
     companion object {

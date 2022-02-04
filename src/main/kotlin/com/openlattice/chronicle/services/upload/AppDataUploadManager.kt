@@ -1,6 +1,7 @@
 package com.openlattice.chronicle.services.upload
 
 import com.google.common.collect.SetMultimap
+import com.openlattice.chronicle.sensorkit.SensorDataSample
 import java.util.*
 
 /**
@@ -15,4 +16,10 @@ interface AppDataUploadManager {
         data: List<SetMultimap<UUID, Any>>
     ): Int
 
+    fun uploadSensorData(
+            studyId: UUID,
+            participantId: String,
+            sourceDeviceId: String,
+            data: List<SensorDataSample>
+    ): Int
 }
