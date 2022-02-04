@@ -100,8 +100,8 @@ class TimeUseDiaryService(
                     submissionsByDate[currentDate]!!.add(currentUUID)
                 }
             }
-        } catch (e: SQLException) {
-            logger.error("hds error: $e")
+        } catch (ex: SQLException) {
+            logger.error("hds error: $ex")
         }
         return submissionsByDate
     }
@@ -114,7 +114,6 @@ class TimeUseDiaryService(
         submissionIds: Set<UUID>
     ): PostgresDownloadWrapper {
         try {
-            // retrieve Time Use Diary data
             val hds = storageResolver.getPlatformStorage(PostgresFlavor.VANILLA)
             val postgresIterable = BasePostgresIterable<Map<String, Any>>(
                 PreparedStatementHolderSupplier(
