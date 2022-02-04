@@ -20,37 +20,42 @@ package com.openlattice.chronicle.pods.servlet
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.openlattice.chronicle.constants.CustomMediaType
-import org.springframework.context.annotation.ComponentScan
+import com.openlattice.chronicle.controllers.AdminController
 import com.openlattice.chronicle.controllers.CandidateController
-import com.openlattice.chronicle.controllers.legacy.ChronicleController
 import com.openlattice.chronicle.controllers.ChronicleServerExceptionHandler
-import com.openlattice.chronicle.controllers.v2.ChronicleControllerV2
 import com.openlattice.chronicle.controllers.StudyController
-import com.openlattice.chronicle.converters.IterableCsvHttpMessageConverter
+import com.openlattice.chronicle.controllers.legacy.ChronicleController
+import com.openlattice.chronicle.controllers.v2.ChronicleControllerV2
+import com.openlattice.chronicle.converters.LegacyPostgresDownloadCsvHttpMessageConverter
+import com.openlattice.chronicle.converters.PostgresDownloadCsvHttpMessageConverter
 import com.openlattice.chronicle.converters.YamlHttpMessageConverter
-import org.springframework.web.bind.annotation.RestControllerAdvice
-import org.springframework.scheduling.annotation.EnableAsync
 import com.ryantenney.metrics.spring.config.annotation.EnableMetrics
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurationSupport
-import com.openlattice.chronicle.pods.servlet.ChronicleServerSecurityPod
-import org.springframework.http.converter.HttpMessageConverter
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter
-import org.springframework.web.servlet.config.annotation.CorsRegistry
-import org.springframework.web.servlet.config.annotation.ContentNegotiationConfigurer
-import com.openlattice.chronicle.pods.servlet.ChronicleServerMvcPod
 import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.ComponentScan
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.FilterType
 import org.springframework.http.MediaType
-import kotlin.Throws
+import org.springframework.http.converter.HttpMessageConverter
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter
+import org.springframework.scheduling.annotation.EnableAsync
 import org.springframework.security.authentication.AuthenticationManager
 import org.springframework.stereotype.Controller
-import java.lang.Exception
+import org.springframework.web.bind.annotation.RestControllerAdvice
+import org.springframework.web.servlet.config.annotation.ContentNegotiationConfigurer
+import org.springframework.web.servlet.config.annotation.CorsRegistry
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurationSupport
 import javax.inject.Inject
 
 @Configuration
 @ComponentScan(
-    basePackageClasses = [CandidateController::class, ChronicleController::class, ChronicleServerExceptionHandler::class, ChronicleControllerV2::class, StudyController::class],
+    basePackageClasses = [
+        CandidateController::class,
+        ChronicleController::class,
+        ChronicleServerExceptionHandler::class,
+        ChronicleControllerV2::class,
+        StudyController::class,
+        AdminController::class,
+    ],
     includeFilters = [ComponentScan.Filter(
         value = [Controller::class, RestControllerAdvice::class],
         type = FilterType.ANNOTATION
@@ -71,7 +76,8 @@ class ChronicleServerMvcPod : WebMvcConfigurationSupport() {
                 converter.objectMapper = defaultObjectMapper
             }
         }
-        converters.add(IterableCsvHttpMessageConverter())
+        converters.add(PostgresDownloadCsvHttpMessageConverter())
+        converters.add(LegacyPostgresDownloadCsvHttpMessageConverter())
         converters.add(YamlHttpMessageConverter())
     }
 

@@ -10,9 +10,9 @@ import java.util.*
 interface DataDownloadManager {
 
     fun getParticipantData(
-            organizationId: UUID?,
-            studyId: UUID,
-            participantId: String,
-            dataType: ParticipantDataType,
-            token: String?): Iterable<Map<String, Set<Any>>>
+        studyId: UUID,
+        participantId: String,
+        dataType: ParticipantDataType,
+        token: String
+    ): Iterable<Map<String, Any>>
 }

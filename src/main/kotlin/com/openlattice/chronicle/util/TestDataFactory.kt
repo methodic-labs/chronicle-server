@@ -6,6 +6,7 @@ import com.openlattice.chronicle.candidates.Candidate
 import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.organizations.OrganizationPrincipal
 import com.openlattice.chronicle.participants.Participant
+import com.openlattice.chronicle.study.Study
 import org.apache.commons.lang3.RandomStringUtils
 import org.apache.commons.text.CharacterPredicates
 import org.apache.commons.text.RandomStringGenerator
@@ -162,6 +163,10 @@ class TestDataFactory {
                 candidate(),
                 participationStatus
             )
+        }
+
+        fun study(): Study {
+            return Study(title = "This is a test study.", contact = "${RandomStringUtils.randomAlphabetic(5)}@openlattice.com")
         }
     }
 }
