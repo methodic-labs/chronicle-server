@@ -2,7 +2,6 @@ package com.openlattice.chronicle.services.studies
 
 import com.geekbeast.mappers.mappers.ObjectMappers
 import com.openlattice.chronicle.storage.StorageResolver
-import com.geekbeast.configuration.postgres.PostgresFlavor
 import com.geekbeast.postgres.PostgresArrays
 import com.geekbeast.postgres.PostgresDatatype
 import com.geekbeast.postgres.streams.BasePostgresIterable
@@ -15,21 +14,19 @@ import com.openlattice.chronicle.authorization.AuthorizationManager
 import com.openlattice.chronicle.authorization.READ_PERMISSION
 import com.openlattice.chronicle.authorization.SecurableObjectType
 import com.openlattice.chronicle.authorization.principals.Principals
-import com.openlattice.chronicle.authorization.reservations.AclKeyReservationService
 import com.openlattice.chronicle.hazelcast.HazelcastMap
-import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.ids.IdConstants
 import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.services.candidates.CandidateManager
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
-import com.openlattice.chronicle.services.enrollment.EnrollmentService
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.ORGANIZATION_STUDIES
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.PERMISSIONS
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.STUDIES
 import com.openlattice.chronicle.storage.PostgresColumns
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CONTACT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.CREATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DESCRIPTION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ENDED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LAT
@@ -49,10 +46,8 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPDATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_ID
 import com.openlattice.chronicle.study.Study
 import com.openlattice.chronicle.study.StudyUpdate
-import com.openlattice.chronicle.util.JsonFields.STUDY
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
-import java.security.Permissions
 import java.sql.Connection
 import java.time.OffsetDateTime
 import java.util.UUID
@@ -190,20 +185,25 @@ class StudyService(
             SELECT ${ORGANIZATION_ID.name} FROM ${ORGANIZATION_STUDIES.name} WHERE ${STUDY_ID.name} = ? LIMIT 1 
         """.trimIndent()
 
-        // How to only get studies that also the current user has READ permissions on?
-        // This currently grabs all org studies regardless of access
         private val GET_ORG_STUDIES_SQL = """
-            SELECT * from ${STUDIES.name}
-            INNER JOIN ${PERMISSIONS.name}
-            ON ${STUDIES.name}.${STUDY_ID.name} = ANY(${PERMISSIONS.name}.${ACL_KEY.name})
-                AND ${PRINCIPAL_ID.name} = ?
-                AND $READ_PERMISSION = ANY(${PostgresColumns.PERMISSIONS.name})
+            SELECT ${STUDIES.name}.*, org_studies.${ORGANIZATION_IDS.name}
+            FROM ${STUDIES.name}
+                INNER JOIN ${PERMISSIONS.name}
+                ON ${STUDIES.name}.${STUDY_ID.name} = ANY(${PERMISSIONS.name}.${ACL_KEY.name})
+                    AND ${PRINCIPAL_ID.name} = ?
+                    AND $READ_PERMISSION = ANY(${PostgresColumns.PERMISSIONS.name})
+                LEFT JOIN (
+                    SELECT ${STUDY_ID.name}, array_agg(${ORGANIZATION_ID.name}) as ${ORGANIZATION_IDS.name} 
+                        FROM ${ORGANIZATION_STUDIES.name}
+                        GROUP BY ${STUDY_ID.name}
+                    ) as org_studies
+                USING (${STUDY_ID.name}) 
             WHERE ${STUDY_ID.name}
             IN (
                 SELECT ${STUDY_ID.name} FROM ${ORGANIZATION_STUDIES.name}
                 WHERE ${ORGANIZATION_ID.name} = ?
             )
-            ORDER BY ${PostgresColumns.CREATED_AT.name} DESC
+            ORDER BY ${CREATED_AT.name} DESC
         """.trimIndent()
     }
 
@@ -264,14 +264,14 @@ class StudyService(
         ) { ResultSetAdapters.study(it) }
     }
 
-    override fun getOrgStudies(organiaztionId: UUID): Iterable<Study> {
+    override fun getOrgStudies(organizationId: UUID): List<Study> {
         return BasePostgresIterable(
             PreparedStatementHolderSupplier(storageResolver.getPlatformStorage(), GET_ORG_STUDIES_SQL, 256) { ps ->
-                ps.setObject(1,Principals.getCurrentUser().id)
-                ps.setObject(2, organiaztionId)
+                ps.setObject(1, Principals.getCurrentUser().id)
+                ps.setObject(2, organizationId)
                 ps.executeQuery()
             }
-        ) { ResultSetAdapters.study(it) }
+        ) { ResultSetAdapters.study(it) }.toList()
     }
 
     override fun updateStudy(connection: Connection, studyId: UUID, study: StudyUpdate) {
