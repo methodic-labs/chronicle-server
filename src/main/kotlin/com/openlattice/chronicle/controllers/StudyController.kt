@@ -183,25 +183,20 @@ class StudyController @Inject constructor(
         logger.info("Retrieving studies with organization id $organizationId on behalf of $currentUserId")
 
         return try {
-            val (flavor, hds) = storageResolver.getDefaultPlatformStorage()
-            ensureVanilla(flavor)
             val studies = studyService.getOrgStudies(organizationId)
-            AuditedOperationBuilder<Unit>(hds.connection, auditingManager)
-                .audit {
-                    studies.map { study ->
-                        AuditableEvent(
-                            AclKey(study.id),
-                            Principals.getCurrentSecurablePrincipal().id,
-                            currentUserId,
-                            AuditEventType.GET_STUDY,
-                            "",
-                            study.id,
-                            IdConstants.UNINITIALIZED.id,
-                            mapOf()
-                        )
-                    }
-                }
-                .buildAndRun()
+            studies.forEach { study ->
+                recordEvent(
+                    AuditableEvent(
+                        AclKey(study.id),
+                        Principals.getCurrentSecurablePrincipal().id,
+                        currentUserId,
+                        eventType = AuditEventType.GET_STUDY,
+                        study = study.id,
+                        organization = organizationId,
+                    )
+                )
+            }
+
             studies
         } catch (ex: NoSuchElementException) {
             throw OrganizationNotFoundException(organizationId, "No organization with id $organizationId found.")
