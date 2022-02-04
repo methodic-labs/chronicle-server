@@ -1,7 +1,7 @@
 package com.openlattice.chronicle.enrollment
 
-import com.auth0.json.mgmt.client.IOS
-import com.geekbeast.retrofit.RhizomeRetrofitCallFailedException
+
+import com.geekbeast.retrofit.RhizomeRetrofitCallException
 import com.google.common.base.Optional
 import com.openlattice.chronicle.ChronicleServerTests
 import com.openlattice.chronicle.client.ChronicleClient
@@ -12,7 +12,6 @@ import com.openlattice.chronicle.util.TestDataFactory
 import org.apache.commons.lang3.RandomStringUtils
 import org.junit.Test
 import org.slf4j.LoggerFactory
-import java.util.*
 
 /**
  *
@@ -69,7 +68,7 @@ class EnrollmentTests : ChronicleServerTests() {
         studyApi.enroll(studyId, participantId, sourceDeviceId, sourceDevice) // expect this not to throw
     }
 
-    @Test(expected=RhizomeRetrofitCallFailedException::class)
+    @Test(expected= RhizomeRetrofitCallException::class)
     fun testEnrollmentWithBadParticipantId() {
         val studyApi = chronicleClient.studyApi
         val participant = TestDataFactory.participant()
