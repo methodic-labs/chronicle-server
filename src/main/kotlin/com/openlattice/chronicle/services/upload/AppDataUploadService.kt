@@ -1,6 +1,9 @@
 package com.openlattice.chronicle.services.upload
 
+import com.auth0.json.mgmt.client.IOS
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.geekbeast.configuration.postgres.PostgresFlavor
+import com.geekbeast.mappers.mappers.ObjectMappers
 import com.geekbeast.util.StopWatch
 import com.google.common.collect.*
 import com.openlattice.chronicle.constants.EdmConstants.*
@@ -25,7 +28,14 @@ import com.geekbeast.postgres.PostgresTableDefinition
 import com.geekbeast.postgres.RedshiftTableDefinition
 import com.openlattice.chronicle.sensorkit.SensorDataSample
 import com.openlattice.chronicle.storage.PostgresDataTables
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.KEYBOARD_IDENTIFIER
 import com.openlattice.chronicle.storage.RedshiftDataTables
+import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.ALL_SENSOR_COLS
+import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.DEVICE_USAGE_SENSOR_COLS
+import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.IOS_SENSOR_DATA
+import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.KEYBOARD_METRICS_SENSOR_COLS
+import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.MESSAGES_USAGE_SENSOR_COLS
+import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.PHONE_USAGE_SENSOR_COLS
 import com.zaxxer.hikari.HikariDataSource
 import org.apache.commons.lang3.RandomStringUtils
 import org.apache.olingo.commons.api.edm.FullQualifiedName
@@ -51,23 +61,43 @@ class AppDataUploadService(
     private val logger = LoggerFactory.getLogger(AppDataUploadService::class.java)
 
     companion object {
+
+        private val mapper: ObjectMapper = ObjectMappers.newJsonMapper()
+
         private val SENSOR_DATA_COLUMNS = RedshiftDataTables.IOS_SENSOR_DATA.columns.joinToString(",") { it.name }
 
-        /**
-         * PreparedStatement bind order
-         * 1) organizationId,
-         * 2) studyId,
-         * 3) participantId,
-         * 4) id
-         * 5) sensorType
-         * 6) dateRecorded
-         * 7) duration
-         * 8) timezone
-         * 9) sensorData,
-         */
+
+        private val DEVICE_USAGE_COLS = (ALL_SENSOR_COLS +  DEVICE_USAGE_SENSOR_COLS).joinToString(", ") { it.name }
+        private val DEVICE_USAGE_COLS_BIND = (ALL_SENSOR_COLS + DEVICE_USAGE_SENSOR_COLS).joinToString(", ") { "?" }
+
+        private val MESSAGES_USAGE_COLS = (ALL_SENSOR_COLS +  MESSAGES_USAGE_SENSOR_COLS).joinToString(", ") { it.name }
+        private val MESSAGE_USAGE_COLS_BIND = (ALL_SENSOR_COLS + MESSAGES_USAGE_SENSOR_COLS).joinToString(", ") { "?" }
+
+        private val KEYBOARD_METRICS_COLS = (ALL_SENSOR_COLS +  KEYBOARD_METRICS_SENSOR_COLS).joinToString(", ") { it.name }
+        private val KEYBOARD_METRICS_COLS_BIND = (ALL_SENSOR_COLS + KEYBOARD_METRICS_SENSOR_COLS).joinToString(", ") { "?"}
+
+        private val PHONE_USAGE_COLS = (ALL_SENSOR_COLS +  PHONE_USAGE_SENSOR_COLS).joinToString(", ") { it.name }
+        private val PHONE_USAGE_COLS_BIND = (ALL_SENSOR_COLS + PHONE_USAGE_SENSOR_COLS).joinToString(", ") { "?"}
+
         private val INSERT_SENSOR_DATA_SQL = """
             INSERT INTO ${RedshiftDataTables.IOS_SENSOR_DATA.name}($SENSOR_DATA_COLUMNS) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT DO NOTHING
+        """.trimIndent()
+
+        private val INSERT_DEVICE_USAGE_SENSOR_SQL = """
+            INSERT INTO ${IOS_SENSOR_DATA.name} ( $DEVICE_USAGE_SENSOR_COLS ) VALUES ( $DEVICE_USAGE_COLS_BIND )
+        """.trimIndent()
+
+        private val INSERT_MESSAGES_USAGE_SENSOR_SQL = """
+             INSERT INTO ${IOS_SENSOR_DATA.name} ( $MESSAGES_USAGE_COLS ) VALUES ( $MESSAGE_USAGE_COLS_BIND )
+        """.trimIndent()
+
+        private val INSERT_PHONE_USAGE_SENSOR_SQL = """
+            INSERT INTO ${IOS_SENSOR_DATA.name} ( $PHONE_USAGE_COLS ) VALUES ( $PHONE_USAGE_COLS_BIND )
+        """.trimIndent()
+
+        private val INSERT_KEYBOARD_METRICS_SENSOR_SQL = """
+            INSERT INTO ${IOS_SENSOR_DATA.name} ( $KEYBOARD_METRICS_COLS ) VALUES ($KEYBOARD_METRICS_COLS_BIND)
         """.trimIndent()
     }
 
@@ -403,7 +433,7 @@ class AppDataUploadService(
 
                     data.forEach { sample ->
                         ps.setString(4, sample.id.toString())
-                        ps.setString(5, sample.sensor)
+                        ps.setString(5, sample.sensor.name)
                         ps.setObject(6, sample.dateRecorded)
                         ps.setDouble(7, sample.duration)
                         ps.setString(8, sample.timezone)

@@ -117,7 +117,7 @@ class RedshiftColumns {
         val TOTAL_EMOJIS = PostgresColumnDefinition("total_emojis", PostgresDatatype.INTEGER)
         val TOTAL_PATHS = PostgresColumnDefinition("total_paths", PostgresDatatype.INTEGER)
         val TOTAL_PATH_TIME = PostgresColumnDefinition("total_path_time", PostgresDatatype.DOUBLE)
-        val TOTAL_PATH_LENGTH = PostgresColumnDefinition("total_path_length", PostgresDatatype.INTEGER)
+        val TOTAL_PATH_LENGTH = PostgresColumnDefinition("total_path_length", PostgresDatatype.DOUBLE)
         val TOTAL_AUTO_CORRECTIONS = PostgresColumnDefinition("total_autocorrections", PostgresDatatype.INTEGER)
         val TOTAL_SPACE_CORRECTIONS = PostgresColumnDefinition("total_space_corrections", PostgresDatatype.INTEGER)
         val TOTAL_TRANSPOSITION_CORRECTIONS = PostgresColumnDefinition("total_transposition_corrections", PostgresDatatype.INTEGER)
