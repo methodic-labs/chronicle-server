@@ -77,13 +77,13 @@ class RedshiftColumns {
 
         // SENSOR_DATA
         // these columns apply to all sensor types
-        val SAMPLE_ID = PostgresColumnDefinition("sample_id", PostgresDatatype.TEXT)
+        val SAMPLE_ID = PostgresColumnDefinition("sample_id", PostgresDatatype.TEXT_UUID).notNull()
         val SENSOR_TYPE = PostgresColumnDefinition("sensor_type", PostgresDatatype.TEXT).notNull()
         val SAMPLE_DURATION = PostgresColumnDefinition("sample_duration", PostgresDatatype.DOUBLE).notNull() // seconds
         val DEVICE_VERSION = PostgresColumnDefinition("device_version", PostgresDatatype.TEXT).notNull()
         val DEVICE_NAME = PostgresColumnDefinition("device_name", PostgresDatatype.TEXT).notNull()
         val DEVICE_MODEL = PostgresColumnDefinition("device_model", PostgresDatatype.TEXT).notNull()
-        val DEVICE_SYSTEM_NAME = PostgresColumnDefinition("device_system_name", PostgresDatatype.TEXT)
+        val DEVICE_SYSTEM_NAME = PostgresColumnDefinition("device_system_name", PostgresDatatype.TEXT).notNull()
 
         // columns specific to deviceUsage sensor
         val TOTAL_SCREEN_WAKES = PostgresColumnDefinition("total_screen_wakes", PostgresDatatype.INTEGER)
