@@ -90,7 +90,7 @@ class RedshiftColumns {
         val TOTAL_UNLOCK_DURATION = PostgresColumnDefinition("total_unlock_duration", PostgresDatatype.DOUBLE) // seconds
         val APP_CATEGORY = PostgresColumnDefinition("app_category", PostgresDatatype.TEXT)
         val APP_USAGE_TIME = PostgresColumnDefinition("app_usage_time", PostgresDatatype.DOUBLE)
-        val TEXT_INPUT_DEVICE = PostgresColumnDefinition("text_input_device", PostgresDatatype.TEXT)
+        val TEXT_INPUT_SOURCE = PostgresColumnDefinition("text_input_source", PostgresDatatype.TEXT)
         val TEXT_INPUT_DURATION = PostgresColumnDefinition("text_input_duration", PostgresDatatype.TEXT)
         val BUNDLE_IDENTIFIER = PostgresColumnDefinition("bundle_identifier", PostgresDatatype.TEXT)
         val APP_CATEGORY_WEB_DURATION = PostgresColumnDefinition("app_category_web_duration", PostgresDatatype.DOUBLE)
