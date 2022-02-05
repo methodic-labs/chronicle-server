@@ -66,20 +66,26 @@ class StudyTests : ChronicleServerTests() {
         val client2OrgId3 = chronicleClient2.organizationsApi.createOrganization(organization3)
 
         // study 1 owned by client 1, org 1
+        val study1OrgIds = setOf(client1OrgId1)
+        val study1Title = "org 1 study 1"
         val expectedStudy1 = Study(
-            title = "org 1 study 1",
+            title = study1Title,
             contact = "test@openlattice.com",
-            organizationIds = setOf(client1OrgId1)
+            organizationIds = study1OrgIds
         )
         // Study 2 is owned by client 1, in both org 1 and org 2
+        val study2OrgIds = setOf(client1OrgId1, client1OrgId2)
+        val study2Title = "org 2 study 2"
         val expectedStudy2 = Study(
-            title = "org 2 study 2",
+            title = study2Title,
             contact = "test@openlattice.com",
-            organizationIds = setOf(client1OrgId1, client1OrgId2)
+            organizationIds = study2OrgIds
         )
         // Study 3 is owned by client 2, org 3
+        val study3OrgIds = setOf(client2OrgId3)
+        val study3Title = "org 3 study 3"
         val expectedStudy3 = Study(
-            title = "test 3",
+            title = study3Title,
             contact = "test@openlattice.com",
             organizationIds = setOf(client2OrgId3)
         )
@@ -88,17 +94,27 @@ class StudyTests : ChronicleServerTests() {
         val study2Id = chronicleClient.studyApi.createStudy(expectedStudy2)
         val study3Id = chronicleClient2.studyApi.createStudy(expectedStudy3)
 
-        val client1Org1Studies = chronicleClient.studyApi.getOrgStudies(client1OrgId1)
+        val actualOrg1Studies = chronicleClient.studyApi.getOrgStudies(client1OrgId1)
         // API returns list in descending creation times (recent first)
-        Assert.assertEquals(client1Org1Studies.size, 2)
-        Assert.assertEquals(client1Org1Studies.map { study -> study.id }, listOf(study2Id, study1Id))
+        // expect [study 2, study 1] from org 1
+        Assert.assertEquals(2, actualOrg1Studies.size)
+        Assert.assertEquals(listOf(study2Id, study1Id), actualOrg1Studies.map { study -> study.id })
+        Assert.assertEquals(listOf(study2Title, study1Title), actualOrg1Studies.map { study -> study.title })
+        Assert.assertEquals(study2OrgIds, actualOrg1Studies[0].organizationIds)
+        Assert.assertEquals(study1OrgIds, actualOrg1Studies[1].organizationIds)
 
-        val client1Org2Studies = chronicleClient.studyApi.getOrgStudies(client1OrgId2)
-        Assert.assertEquals(client1Org2Studies.size, 1)
-        Assert.assertEquals(client1Org2Studies.map { study -> study.id }, listOf(study2Id))
+        // expect [study 2] from org 2
+        val actualOrg2Studies = chronicleClient.studyApi.getOrgStudies(client1OrgId2)
+        Assert.assertEquals(1, actualOrg2Studies.size)
+        Assert.assertEquals(listOf(study2Id), actualOrg2Studies.map { study -> study.id }, )
+        Assert.assertEquals(listOf(study2Title), actualOrg2Studies.map { study -> study.title })
+        Assert.assertEquals(study2OrgIds, actualOrg2Studies[0].organizationIds)
 
-        val client2Org3Studies = chronicleClient.studyApi.getOrgStudies(client2OrgId3)
-        Assert.assertEquals(client2Org3Studies.size, 1)
-        Assert.assertEquals(client2Org3Studies.map { study -> study.id }, listOf(study3Id))
+        // expect [study 3] from org 3
+        val actualOrg3Studies = chronicleClient2.studyApi.getOrgStudies(client2OrgId3)
+        Assert.assertEquals(1, actualOrg3Studies.size)
+        Assert.assertEquals(listOf(study3Id), actualOrg3Studies.map { study -> study.id })
+        Assert.assertEquals(listOf(study3Title),actualOrg3Studies.map { study -> study.title })
+        Assert.assertEquals(study3OrgIds, actualOrg3Studies[0].organizationIds)
     }
 }
