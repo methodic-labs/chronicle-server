@@ -175,7 +175,7 @@ class StudyController @Inject constructor(
         path = [ORGANIZATION_PATH + ORGANIZATION_ID_PATH],
         produces = [MediaType.APPLICATION_JSON_VALUE],
     )
-    override fun getOrgStudies(@PathVariable(ORGANIZATION_ID) organizationId: UUID): Iterable<Study> {
+    override fun getOrgStudies(@PathVariable(ORGANIZATION_ID) organizationId: UUID): List<Study> {
 
         ensureReadAccess(AclKey(organizationId))
         val currentUserId = Principals.getCurrentUser().id;
