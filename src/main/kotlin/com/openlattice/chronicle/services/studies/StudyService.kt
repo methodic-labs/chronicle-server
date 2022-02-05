@@ -198,7 +198,7 @@ class StudyService(
             SELECT ${STUDIES.name}.*, org_studies.${ORGANIZATION_IDS.name}
             FROM ${STUDIES.name}
                 INNER JOIN ${PERMISSIONS.name}
-                ON ${STUDIES.name}.${STUDY_ID.name} = ANY(${PERMISSIONS.name}.${ACL_KEY.name})
+                ON ${STUDIES.name}.${STUDY_ID.name} = ${PERMISSIONS.name}.${ACL_KEY.name}[1]
                     AND ${PRINCIPAL_ID.name} = ?
                     AND '${READ.name}' = ANY(${PostgresColumns.PERMISSIONS.name})
                 LEFT JOIN (
