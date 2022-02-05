@@ -36,7 +36,7 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.SENTIMENT_EMO
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.SENTIMENT_WORD_COUNT
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.START_TIME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.STUDY_ID
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TEXT_INPUT_DEVICE
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TEXT_INPUT_SOURCE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TEXT_INPUT_DURATION
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMESTAMP
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMEZONE
@@ -156,7 +156,7 @@ class RedshiftDataTables {
                 TOTAL_UNLOCK_DURATION,
                 APP_CATEGORY,
                 APP_USAGE_TIME,
-                TEXT_INPUT_DEVICE,
+                TEXT_INPUT_SOURCE,
                 TEXT_INPUT_DURATION,
                 BUNDLE_IDENTIFIER,
                 APP_CATEGORY_WEB_DURATION,
@@ -215,6 +215,7 @@ class RedshiftDataTables {
                 ).primaryKey(ID)
                 .addDataSourceNames(REDSHIFT_DATASOURCE_NAME)
 
+        val INSERT_SENSOR_DATA_COL_INDICES = IOS_SENSOR_DATA.columns.mapIndexed { index, col -> col.name to index + 1  }
 
         private val USAGE_EVENT_COLS = CHRONICLE_USAGE_EVENTS.columns.joinToString(",") { it.name }
         private val USAGE_EVENT_PARAMS = CHRONICLE_USAGE_EVENTS.columns.joinToString(",") { "?" }
