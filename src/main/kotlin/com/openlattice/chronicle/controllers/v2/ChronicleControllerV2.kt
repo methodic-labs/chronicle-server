@@ -4,7 +4,11 @@ import com.codahale.metrics.annotation.Timed
 import com.google.common.base.Optional
 import com.google.common.collect.SetMultimap
 import com.openlattice.chronicle.api.ChronicleApi
-import com.openlattice.chronicle.settings.AppComponent
+import com.openlattice.chronicle.api.ChronicleApi.DATASOURCE_ID_PATH
+import com.openlattice.chronicle.api.ChronicleApi.PARTICIPANT_ID_PATH
+import com.openlattice.chronicle.api.ChronicleApi.SENSOR_PATH
+import com.openlattice.chronicle.api.ChronicleApi.STUDY_ID_PATH
+import com.openlattice.chronicle.api.ChronicleApi.UPLOAD_PATH
 import com.openlattice.chronicle.data.ChronicleAppsUsageDetails
 import com.openlattice.chronicle.data.ChronicleQuestionnaire
 import com.openlattice.chronicle.data.ParticipationStatus
@@ -16,10 +20,17 @@ import com.openlattice.chronicle.services.settings.OrganizationSettingsManager
 import com.openlattice.chronicle.services.studies.StudyManager
 import com.openlattice.chronicle.services.surveys.SurveysManager
 import com.openlattice.chronicle.services.upload.AppDataUploadManager
+import com.openlattice.chronicle.settings.AppComponent
 import com.openlattice.chronicle.sources.SourceDevice
 import org.apache.olingo.commons.api.edm.FullQualifiedName
 import org.springframework.http.MediaType
-import org.springframework.web.bind.annotation.*
+import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestMethod
+import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.bind.annotation.RestController
 import java.security.InvalidParameterException
 import java.util.*
 import javax.inject.Inject
@@ -58,12 +69,12 @@ class ChronicleControllerV2 : ChronicleApi {
             @PathVariable(ChronicleApi.DATASOURCE_ID) datasourceId: String,
             @RequestBody datasource: Optional<SourceDevice>
     ): UUID {
-        if( datasource.isPresent ) {
+        if (datasource.isPresent) {
             return enrollmentManager.registerDatasource(
-                studyId,
-                participantId,
-                datasourceId,
-                datasource.get()
+                    studyId,
+                    participantId,
+                    datasourceId,
+                    datasource.get()
             )
         } else {
             throw InvalidParameterException("Datasource must be specified when enrolling.")
@@ -190,6 +201,12 @@ class ChronicleControllerV2 : ChronicleApi {
         return dataUploadManager.upload(organizationId, studyId, participantId, datasourceId, data)
     }
 
+    @Timed
+    @PostMapping(
+            path = [STUDY_ID_PATH + PARTICIPANT_ID_PATH + DATASOURCE_ID_PATH + UPLOAD_PATH + SENSOR_PATH],
+            consumes = [MediaType.APPLICATION_JSON_VALUE],
+            produces = [MediaType.APPLICATION_JSON_VALUE]
+    )
     override fun uploadSensorData(
             @PathVariable(ChronicleApi.STUDY_ID) studyId: UUID,
             @PathVariable(ChronicleApi.PARTICIPANT_ID) participantId: String,
