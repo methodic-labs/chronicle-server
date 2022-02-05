@@ -106,6 +106,7 @@ class StudyController @Inject constructor(
     )
     override fun createStudy(@RequestBody study: Study): UUID {
         ensureAuthenticated()
+        study.organizationIds.forEach { organizationId -> ensureOwnerAccess(AclKey(organizationId)) }
         logger.info("Creating study associated with organizations ${study.organizationIds}")
         val (flavor, hds) = storageResolver.getDefaultPlatformStorage()
         check(flavor == PostgresFlavor.VANILLA) { "Only vanilla postgres supported for studies." }
