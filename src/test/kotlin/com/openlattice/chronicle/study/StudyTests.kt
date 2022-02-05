@@ -89,12 +89,16 @@ class StudyTests : ChronicleServerTests() {
         val study3Id = chronicleClient2.studyApi.createStudy(expectedStudy3)
 
         val client1Org1Studies = chronicleClient.studyApi.getOrgStudies(client1OrgId1)
+        // API returns list in descending creation times (recent first)
         Assert.assertEquals(client1Org1Studies.size, 2)
+        Assert.assertEquals(client1Org1Studies.map { study -> study.id }, listOf(study2Id, study1Id))
 
         val client1Org2Studies = chronicleClient.studyApi.getOrgStudies(client1OrgId2)
         Assert.assertEquals(client1Org2Studies.size, 1)
+        Assert.assertEquals(client1Org2Studies.map { study -> study.id }, listOf(study2Id))
 
         val client2Org3Studies = chronicleClient.studyApi.getOrgStudies(client2OrgId3)
         Assert.assertEquals(client2Org3Studies.size, 1)
+        Assert.assertEquals(client2Org3Studies.map { study -> study.id }, listOf(study3Id))
     }
 }
