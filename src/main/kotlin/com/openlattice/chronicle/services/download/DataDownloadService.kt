@@ -3,6 +3,7 @@ package com.openlattice.chronicle.services.download
 import com.geekbeast.postgres.PostgresColumnDefinition
 import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
+import com.openlattice.chronicle.constants.OutputConstants
 import com.openlattice.chronicle.constants.ParticipantDataType
 import com.openlattice.chronicle.converters.PostgresDownloadWrapper
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APPLICATION_LABEL
@@ -19,6 +20,7 @@ import com.openlattice.chronicle.storage.StorageResolver
 import org.slf4j.LoggerFactory
 import java.sql.ResultSet
 import java.time.OffsetDateTime
+import java.time.ZoneId
 import java.util.*
 
 /**
@@ -36,6 +38,16 @@ class DataDownloadService(private val storageResolver: StorageResolver) : DataDo
         """.trimIndent()
 
         fun associateString(rs: ResultSet, pcd: PostgresColumnDefinition) = pcd.name to rs.getString(pcd.name)
+        fun associateOffsetDatetimeWithTimezone(
+            rs: ResultSet,
+            timezoneColumn: PostgresColumnDefinition,
+            timestampColumn: PostgresColumnDefinition
+        ): Pair<String, OffsetDateTime> {
+            val zoneId = ZoneId.of( rs.getString( timezoneColumn.name ) ?: OutputConstants.DEFAULT_TIMEZONE )
+            val odt = rs.getObject( timezoneColumn.name , OffsetDateTime::class.java )
+            return timestampColumn.name to odt.toInstant().atZone(zoneId).toOffsetDateTime()
+        }
+
         fun associateObject(rs: ResultSet, pcd: PostgresColumnDefinition, clazz: Class<*>) =
             pcd.name to rs.getObject(pcd.name, clazz)
     }
@@ -61,14 +73,14 @@ class DataDownloadService(private val storageResolver: StorageResolver) : DataDo
                 associateString(rs, PARTICIPANT_ID),
                 associateString(rs, APP_PACKAGE_NAME),
                 associateString(rs, INTERACTION_TYPE),
-                associateObject(rs, TIMESTAMP, OffsetDateTime::class.java),
+                associateOffsetDatetimeWithTimezone(rs, TIMEZONE, TIMESTAMP),
                 associateString(rs, TIMEZONE),
                 associateString(rs, USERNAME),
                 associateString(rs, APPLICATION_LABEL)
             )
-
         }
-        return PostgresDownloadWrapper( pgIter ).withColumnAdvice(CHRONICLE_USAGE_EVENTS.columns.map{ it.name } )
+
+        return PostgresDownloadWrapper(pgIter).withColumnAdvice(CHRONICLE_USAGE_EVENTS.columns.map { it.name })
     }
 
     override fun getParticipantData(
