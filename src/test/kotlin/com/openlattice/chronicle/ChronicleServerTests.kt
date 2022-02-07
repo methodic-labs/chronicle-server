@@ -71,13 +71,13 @@ open class ChronicleServerTests {
         }
 
         @JvmField
-        val testUser1 = Principal(PrincipalType.USER, "test_user")
+        val testUser1 = Principal(PrincipalType.USER, "test_user1")
         @JvmField
-        val testUser2 = Principal(PrincipalType.USER, "test_user")
+        val testUser2 = Principal(PrincipalType.USER, "test_user2")
         @JvmField
-        val testUser3 = Principal(PrincipalType.USER, "test_user")
+        val testUser3 = Principal(PrincipalType.USER, "test_user3")
         @JvmField
-        val adminUser = Principal(PrincipalType.USER, "test_user")
+        val adminUser = Principal(PrincipalType.USER, "test_admin")
 
         @JvmField
         val clientUser1 = ChronicleClient { jwtTokens.getValue(testUser1.id).first() }
