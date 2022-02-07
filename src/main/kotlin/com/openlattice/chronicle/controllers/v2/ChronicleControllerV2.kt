@@ -202,21 +202,6 @@ class ChronicleControllerV2 : ChronicleApi {
     }
 
     @Timed
-    @PostMapping(
-            path = [STUDY_ID_PATH + PARTICIPANT_ID_PATH + DATASOURCE_ID_PATH + UPLOAD_PATH + SENSOR_PATH],
-            consumes = [MediaType.APPLICATION_JSON_VALUE],
-            produces = [MediaType.APPLICATION_JSON_VALUE]
-    )
-    override fun uploadSensorData(
-            @PathVariable(ChronicleApi.STUDY_ID) studyId: UUID,
-            @PathVariable(ChronicleApi.PARTICIPANT_ID) participantId: String,
-            @PathVariable(ChronicleApi.DATASOURCE_ID) datasourceId: String,
-            @RequestBody data: MutableList<SensorDataSample>
-    ): Int {
-        return dataUploadManager.uploadSensorData(studyId, participantId, datasourceId, data)
-    }
-
-    @Timed
     @RequestMapping(
             path = [ChronicleApi.EDM_PATH], method = [RequestMethod.POST],
             consumes = [MediaType.APPLICATION_JSON_VALUE], produces = [MediaType.APPLICATION_JSON_VALUE]

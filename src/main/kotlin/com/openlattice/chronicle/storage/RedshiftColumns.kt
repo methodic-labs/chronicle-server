@@ -88,13 +88,13 @@ class RedshiftColumns {
         // columns specific to deviceUsage sensor
         val TOTAL_SCREEN_WAKES = PostgresColumnDefinition("total_screen_wakes", PostgresDatatype.INTEGER)
         val TOTAL_UNLOCK_DURATION = PostgresColumnDefinition("total_unlock_duration", PostgresDatatype.DOUBLE) // seconds
+        val TOTAL_UNLOCKS = PostgresColumnDefinition("total_unlocks", PostgresDatatype.INTEGER)
         val APP_CATEGORY = PostgresColumnDefinition("app_category", PostgresDatatype.TEXT)
         val APP_USAGE_TIME = PostgresColumnDefinition("app_usage_time", PostgresDatatype.DOUBLE)
         val TEXT_INPUT_SOURCE = PostgresColumnDefinition("text_input_source", PostgresDatatype.TEXT)
-        val TEXT_INPUT_DURATION = PostgresColumnDefinition("text_input_duration", PostgresDatatype.TEXT)
+        val TEXT_INPUT_DURATION = PostgresColumnDefinition("text_input_duration", PostgresDatatype.DOUBLE)
         val BUNDLE_IDENTIFIER = PostgresColumnDefinition("bundle_identifier", PostgresDatatype.TEXT)
         val APP_CATEGORY_WEB_DURATION = PostgresColumnDefinition("app_category_web_duration", PostgresDatatype.DOUBLE)
-        val NOTIFICATION_INTERACTION_TYPE = PostgresColumnDefinition("notification_interaction_type", PostgresDatatype.TEXT)
 
         // columns specific to phoneUsage sensor
         val TOTAL_INCOMING_CALLS = PostgresColumnDefinition("total_incoming_calls", PostgresDatatype.INTEGER)
@@ -152,5 +152,77 @@ class RedshiftColumns {
                     }
                 }
         }
+
+        // applies to all sensor types
+        val SHARED_SENSOR_COLS = linkedSetOf(
+                STUDY_ID,
+                PARTICIPANT_ID,
+                SAMPLE_ID, // uniquely identifies a sample
+                SENSOR_TYPE,
+                SAMPLE_DURATION,
+                RECORDED_DATE_TIME, //when sample was recorded by framework
+                START_DATE_TIME, // lower date bound for sample record
+                END_DATE_TIME, // upper date bound for sample record
+                TIMEZONE,
+                DEVICE_VERSION,
+                DEVICE_NAME,
+                DEVICE_MODEL,
+                DEVICE_SYSTEM_NAME
+        )
+
+        val DEVICE_USAGE_SENSOR_COLS = linkedSetOf(
+                TOTAL_SCREEN_WAKES,
+                TOTAL_UNLOCK_DURATION,
+                TOTAL_UNLOCKS,
+                APP_CATEGORY,
+                APP_USAGE_TIME,
+                TEXT_INPUT_SOURCE,
+                TEXT_INPUT_DURATION,
+                BUNDLE_IDENTIFIER,
+                APP_CATEGORY_WEB_DURATION
+        )
+
+        val PHONE_USAGE_SENSOR_COLS = linkedSetOf(
+                TOTAL_INCOMING_CALLS,
+                TOTAL_OUTGOING_CALLS,
+                TOTAL_CALL_DURATION,
+                TOTAL_UNIQUE_CONTACTS
+        )
+
+        val MESSAGES_USAGE_SENSOR_COLS = linkedSetOf(
+                TOTAL_INCOMING_MESSAGES,
+                TOTAL_OUTGOING_MESSAGES,
+                TOTAL_UNIQUE_CONTACTS
+        )
+
+        val KEYBOARD_METRICS_SENSOR_COLS = linkedSetOf(
+                TOTAL_WORDS,
+                TOTAL_ALTERED_WORDS,
+                TOTAL_TAPS,
+                TOTAL_DRAGS,
+                TOTAL_DELETES,
+                TOTAL_EMOJIS,
+                TOTAL_PATHS,
+                TOTAL_PATH_TIME, //time to complete paths in seconds
+                TOTAL_PATH_LENGTH, //length of completed paths in cm
+                TOTAL_AUTO_CORRECTIONS,
+                TOTAL_SPACE_CORRECTIONS,
+                TOTAL_TRANSPOSITION_CORRECTIONS,
+                TOTAL_INSERT_KEY_CORRECTIONS,
+                TOTAL_RETRO_CORRECTIONS,
+                TOTAL_SKIP_TOUCH_CORRECTIONS,
+                TOTAL_NEAR_KEY_CORRECTIONS,
+                TOTAL_SUBSTITUTION_CORRECTIONS,
+                TOTAL_TEST_HIT_CORRECTIONS,
+                TOTAL_TYPING_DURATION, // seconds
+                TOTAL_PATH_PAUSES, //number of pauses while drawing path for a word
+                TOTAL_PAUSES,
+                TOTAL_TYPING_EPISODES, //number of continuous typing episodes
+                SENTIMENT,
+                SENTIMENT_WORD_COUNT,
+                SENTIMENT_EMOJI_COUNT,
+                TYPING_SPEED, // characters per second
+                PATH_TYPING_SPEED //QuickType words per minute
+        )
     }
 }

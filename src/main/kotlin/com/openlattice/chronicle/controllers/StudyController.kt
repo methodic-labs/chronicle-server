@@ -14,8 +14,10 @@ import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.ids.IdConstants
 import com.openlattice.chronicle.participants.Participant
+import com.openlattice.chronicle.sensorkit.SensorDataSample
 import com.openlattice.chronicle.services.enrollment.EnrollmentService
 import com.openlattice.chronicle.services.studies.StudyService
+import com.openlattice.chronicle.services.upload.SensorDataUploadService
 import com.openlattice.chronicle.sources.SourceDevice
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.study.Study
@@ -28,15 +30,22 @@ import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_ID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.RETRIEVE
+import com.openlattice.chronicle.study.StudyApi.Companion.SENSOR_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.STUDY_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.STUDY_ID_PATH
+import com.openlattice.chronicle.study.StudyApi.Companion.UPLOAD_PATH
 import com.openlattice.chronicle.study.StudyUpdate
-import com.openlattice.chronicle.util.ensureVanilla
 import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
-import org.springframework.web.bind.annotation.*
-import java.util.EnumSet
-import java.util.UUID
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PatchMapping
+import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.bind.annotation.RestController
+import java.util.*
 import javax.inject.Inject
 
 
@@ -51,6 +60,7 @@ class StudyController @Inject constructor(
     val idGenerationService: HazelcastIdGenerationService,
     val enrollmentService: EnrollmentService,
     val studyService: StudyService,
+    val sensorDataUploadService: SensorDataUploadService,
     override val authorizationManager: AuthorizationManager,
     override val auditingManager: AuditingManager
 ) : StudyApi, AuthorizingComponent {
@@ -167,6 +177,10 @@ class StudyController @Inject constructor(
 
     }
 
+    override fun getOrgStudies(organizationId: UUID): Iterable<Study> {
+        TODO("Not yet implemented")
+    }
+
     @Timed
     @PatchMapping(
         path = [STUDY_ID_PATH],
@@ -232,6 +246,21 @@ class StudyController @Inject constructor(
                 )
             }
             .buildAndRun()
+    }
+
+    @Timed
+    @PostMapping(
+            path = [STUDY_ID_PATH + PARTICIPANT_ID_PATH + DATA_SOURCE_ID_PATH + UPLOAD_PATH + SENSOR_PATH],
+            consumes = [MediaType.APPLICATION_JSON_VALUE],
+            produces = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    override fun uploadSensorData(
+            @PathVariable(STUDY_ID) studyId: UUID,
+            @PathVariable(PARTICIPANT_ID) participantId: String,
+            @PathVariable(DATA_SOURCE_ID) datasourceId: String,
+            @RequestBody data: List<SensorDataSample>
+    ): Int {
+        return sensorDataUploadService.upload(studyId, participantId, datasourceId, data)
     }
 
     /**
