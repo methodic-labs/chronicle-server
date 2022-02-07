@@ -386,6 +386,10 @@ class SensorDataUploadService(
 
         return hds.connection.use { connection ->
             try {
+                connection.autoCommit = false
+                // create table
+                connection.createStatement().use { stmt -> stmt.execute(IOS_SENSOR_DATA.createTableQuery()) }
+
                 val wc = connection.prepareStatement(INSERT_SENSOR_DATA_SQL).use { ps ->
                     ps.setString(RedshiftDataTables.getInsertSensorDataColumnIndex(STUDY_ID), studyId.toString())
                     ps.setString(RedshiftDataTables.getInsertSensorDataColumnIndex(PARTICIPANT_ID), participantId)
@@ -416,10 +420,13 @@ class SensorDataUploadService(
                     ps.executeBatch().sum()
                 }
 
-                // TODO: need to record metadata (lastDate recorded, firstDate recorded) in another table - Android data upload endpoint also needs a similar update
+                // TODO: need to record metadata (lastDate recorded, firstDate recorded) - Android data upload endpoint also needs a similar update
 
+                connection.commit()
+                connection.autoCommit = true
                 return@use wc
             } catch (ex: Exception) {
+                connection.rollback()
                 throw ex
             }
         }
