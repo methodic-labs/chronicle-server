@@ -1,16 +1,20 @@
 package com.openlattice.chronicle.services.upload
 
 import com.geekbeast.configuration.postgres.PostgresFlavor
+import com.geekbeast.postgres.PostgresColumnDefinition
+import com.geekbeast.postgres.PostgresDatatype
+import com.geekbeast.postgres.PostgresTableDefinition
+import com.geekbeast.postgres.RedshiftTableDefinition
 import com.geekbeast.util.StopWatch
-import com.google.common.collect.*
+import com.google.common.collect.SetMultimap
 import com.openlattice.chronicle.constants.EdmConstants.*
-import com.openlattice.chronicle.constants.OutputConstants
 import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.services.ScheduledTasksManager
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import com.openlattice.chronicle.services.legacy.LegacyEdmResolver
 import com.openlattice.chronicle.services.settings.OrganizationSettingsManager
 import com.openlattice.chronicle.settings.AppUsageFrequency
+import com.openlattice.chronicle.storage.PostgresDataTables
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.FQNS_TO_COLUMNS
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.CHRONICLE_USAGE_EVENTS
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.getAppendTembTableSql
@@ -19,21 +23,14 @@ import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.getInsertI
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.getInsertUsageEventColumnIndex
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.util.ChronicleServerUtil
-import com.geekbeast.postgres.PostgresColumnDefinition
-import com.geekbeast.postgres.PostgresDatatype
-import com.geekbeast.postgres.PostgresTableDefinition
-import com.geekbeast.postgres.RedshiftTableDefinition
-import com.openlattice.chronicle.storage.PostgresDataTables
 import com.zaxxer.hikari.HikariDataSource
 import org.apache.commons.lang3.RandomStringUtils
-import org.apache.olingo.commons.api.edm.FullQualifiedName
 import org.slf4j.LoggerFactory
 import org.slf4j.event.Level
 import java.security.InvalidParameterException
 import java.time.OffsetDateTime
 import java.time.temporal.ChronoUnit
 import java.util.*
-import java.util.function.Consumer
 
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
