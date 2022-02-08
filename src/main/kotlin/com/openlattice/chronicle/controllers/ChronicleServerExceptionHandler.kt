@@ -134,3 +134,4 @@ class StudyRegistrationNotFoundException : RuntimeException {
 
 class CandidateNotFoundException(message: String) : RuntimeException(message)
 class StudyNotFoundException(val studyId: UUID, message: String) : RuntimeException(message)
+class OrganizationNotFoundException(val organization: UUID, message: String) : RuntimeException(message)

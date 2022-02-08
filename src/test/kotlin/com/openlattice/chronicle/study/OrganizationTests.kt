@@ -19,7 +19,7 @@ class OrganizationTests : ChronicleServerTests() {
         val organizationsApi = chronicleClient.organizationsApi
         val expected = Organization(title = "This is a test study.")
         val orgId =  organizationsApi.createOrganization(expected)
-        expected.id = orgId 
+        expected.id = orgId
         val org = organizationsApi.getOrganization(orgId)
         Assert.assertEquals(expected, org)
     }

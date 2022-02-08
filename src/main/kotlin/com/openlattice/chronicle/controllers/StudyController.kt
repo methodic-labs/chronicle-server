@@ -26,6 +26,9 @@ import com.openlattice.chronicle.study.StudyApi.Companion.CONTROLLER
 import com.openlattice.chronicle.study.StudyApi.Companion.DATA_SOURCE_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.DATA_SOURCE_ID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.ENROLL_PATH
+import com.openlattice.chronicle.study.StudyApi.Companion.ORGANIZATION_ID
+import com.openlattice.chronicle.study.StudyApi.Companion.ORGANIZATION_ID_PATH
+import com.openlattice.chronicle.study.StudyApi.Companion.ORGANIZATION_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_ID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_PATH
@@ -113,6 +116,7 @@ class StudyController @Inject constructor(
     )
     override fun createStudy(@RequestBody study: Study): UUID {
         ensureAuthenticated()
+        study.organizationIds.forEach { organizationId -> ensureOwnerAccess(AclKey(organizationId)) }
         logger.info("Creating study associated with organizations ${study.organizationIds}")
         val (flavor, hds) = storageResolver.getDefaultPlatformStorage()
         check(flavor == PostgresFlavor.VANILLA) { "Only vanilla postgres supported for studies." }
@@ -179,6 +183,39 @@ class StudyController @Inject constructor(
 
     override fun getOrgStudies(organizationId: UUID): Iterable<Study> {
         TODO("Not yet implemented")
+    }
+
+    @Timed
+    @GetMapping(
+        path = [ORGANIZATION_PATH + ORGANIZATION_ID_PATH],
+        produces = [MediaType.APPLICATION_JSON_VALUE],
+    )
+    override fun getOrgStudies(@PathVariable(ORGANIZATION_ID) organizationId: UUID): List<Study> {
+
+        ensureReadAccess(AclKey(organizationId))
+        val currentUserId = Principals.getCurrentUser().id;
+        logger.info("Retrieving studies with organization id $organizationId on behalf of $currentUserId")
+
+        return try {
+            val studies = studyService.getOrgStudies(organizationId)
+            studies.forEach { study ->
+                recordEvent(
+                    AuditableEvent(
+                        AclKey(study.id),
+                        Principals.getCurrentSecurablePrincipal().id,
+                        currentUserId,
+                        eventType = AuditEventType.GET_STUDY,
+                        study = study.id,
+                        organization = organizationId,
+                    )
+                )
+            }
+
+            studies
+        } catch (ex: NoSuchElementException) {
+            throw OrganizationNotFoundException(organizationId, "No organization with id $organizationId found.")
+        }
+
     }
 
     @Timed
