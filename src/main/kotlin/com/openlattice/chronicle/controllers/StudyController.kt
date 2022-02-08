@@ -24,9 +24,13 @@ import com.openlattice.chronicle.study.StudyApi.Companion.CONTROLLER
 import com.openlattice.chronicle.study.StudyApi.Companion.DATA_SOURCE_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.DATA_SOURCE_ID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.ENROLL_PATH
+import com.openlattice.chronicle.study.StudyApi.Companion.ORGANIZATION_ID
+import com.openlattice.chronicle.study.StudyApi.Companion.ORGANIZATION_ID_PATH
+import com.openlattice.chronicle.study.StudyApi.Companion.ORGANIZATION_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_ID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_PATH
+import com.openlattice.chronicle.study.StudyApi.Companion.RETRIEVE
 import com.openlattice.chronicle.study.StudyApi.Companion.STUDY_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.STUDY_ID_PATH
 import com.openlattice.chronicle.study.StudyUpdate
@@ -102,35 +106,38 @@ class StudyController @Inject constructor(
     )
     override fun createStudy(@RequestBody study: Study): UUID {
         ensureAuthenticated()
+        study.organizationIds.forEach { organizationId -> ensureOwnerAccess(AclKey(organizationId)) }
         logger.info("Creating study associated with organizations ${study.organizationIds}")
         val (flavor, hds) = storageResolver.getDefaultPlatformStorage()
         check(flavor == PostgresFlavor.VANILLA) { "Only vanilla postgres supported for studies." }
         study.id = idGenerationService.getNextId()
-        AuditedOperationBuilder<Unit>(hds.connection, auditingManager)
-            .operation { connection -> studyService.createStudy(connection, study) }
-            .audit {
-                listOf(
-                    AuditableEvent(
-                        AclKey(study.id),
-                        eventType = AuditEventType.CREATE_STUDY,
-                        description = "",
-                        study = study.id,
-                        organization = IdConstants.UNINITIALIZED.id,
-                        data = mapOf()
-                    )
-                ) + study.organizationIds.map { organizationId ->
-                    AuditableEvent(
-                        AclKey(study.id),
-                        eventType = AuditEventType.ASSOCIATE_STUDY,
-                        description = "",
-                        study = study.id,
-                        organization = organizationId,
-                        data = mapOf()
-                    )
-                }
-            }
-            .buildAndRun()
 
+        hds.connection.use { connection ->
+            AuditedOperationBuilder<Unit>(connection, auditingManager)
+                .operation { connection -> studyService.createStudy(connection, study) }
+                .audit {
+                    listOf(
+                        AuditableEvent(
+                            AclKey(study.id),
+                            eventType = AuditEventType.CREATE_STUDY,
+                            description = "",
+                            study = study.id,
+                            organization = IdConstants.UNINITIALIZED.id,
+                            data = mapOf()
+                        )
+                    ) + study.organizationIds.map { organizationId ->
+                        AuditableEvent(
+                            AclKey(study.id),
+                            eventType = AuditEventType.ASSOCIATE_STUDY,
+                            description = "",
+                            study = study.id,
+                            organization = organizationId,
+                            data = mapOf()
+                        )
+                    }
+                }
+                .buildAndRun()
+        }
         return study.id
     }
 
@@ -165,37 +172,73 @@ class StudyController @Inject constructor(
     }
 
     @Timed
+    @GetMapping(
+        path = [ORGANIZATION_PATH + ORGANIZATION_ID_PATH],
+        produces = [MediaType.APPLICATION_JSON_VALUE],
+    )
+    override fun getOrgStudies(@PathVariable(ORGANIZATION_ID) organizationId: UUID): List<Study> {
+
+        ensureReadAccess(AclKey(organizationId))
+        val currentUserId = Principals.getCurrentUser().id;
+        logger.info("Retrieving studies with organization id $organizationId on behalf of $currentUserId")
+
+        return try {
+            val studies = studyService.getOrgStudies(organizationId)
+            studies.forEach { study ->
+                recordEvent(
+                    AuditableEvent(
+                        AclKey(study.id),
+                        Principals.getCurrentSecurablePrincipal().id,
+                        currentUserId,
+                        eventType = AuditEventType.GET_STUDY,
+                        study = study.id,
+                        organization = organizationId,
+                    )
+                )
+            }
+
+            studies
+        } catch (ex: NoSuchElementException) {
+            throw OrganizationNotFoundException(organizationId, "No organization with id $organizationId found.")
+        }
+
+    }
+
+    @Timed
     @PatchMapping(
         path = [STUDY_ID_PATH],
         consumes = [MediaType.APPLICATION_JSON_VALUE]
     )
     override fun updateStudy(
         @PathVariable(STUDY_ID) studyId: UUID,
-        @RequestBody study: StudyUpdate
-    ) {
+        @RequestBody study: StudyUpdate,
+        @RequestParam(value = RETRIEVE, required = false, defaultValue = "false") retrieve: Boolean
+    ): Study? {
         val studyAclKey = AclKey(studyId);
         ensureOwnerAccess(studyAclKey)
         val currentUserId = Principals.getCurrentUser().id;
         logger.info("Updating study with id $studyId on behalf of $currentUserId")
 
-        val (flavor, hds) = storageResolver.getDefaultPlatformStorage()
-        ensureVanilla(flavor)
-        AuditedOperationBuilder<Unit>(hds.connection, auditingManager)
-            .operation { connection -> studyService.updateStudy(connection, studyId, study) }
-            .audit {
-                listOf(
-                    AuditableEvent(
-                        studyAclKey,
-                        Principals.getCurrentSecurablePrincipal().id,
-                        currentUserId,
-                        AuditEventType.UPDATE_STUDY,
-                        study = studyId,
-                        data = mapOf()
+        val hds = storageResolver.getPlatformStorage()
+        hds.connection.use { connection ->
+            AuditedOperationBuilder<Unit>(connection, auditingManager)
+                .operation { connection -> studyService.updateStudy(connection, studyId, study) }
+                .audit {
+                    listOf(
+                        AuditableEvent(
+                            studyAclKey,
+                            Principals.getCurrentSecurablePrincipal().id,
+                            currentUserId,
+                            AuditEventType.UPDATE_STUDY,
+                            study = studyId,
+                            data = mapOf()
+                        )
                     )
-                )
-            }
-            .buildAndRun()
+                }
+                .buildAndRun()
+        }
         studyService.refreshStudyCache(setOf(studyId))
+        return if (retrieve) studyService.getStudy(studyId) else null
     }
 
     @Timed

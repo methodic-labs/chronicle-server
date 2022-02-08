@@ -21,12 +21,25 @@ users:
         - AuthenticatedUser
         - admin
         - user
-  - user_id: "test_user"
+  - user_id: "test_user1"
     email: "test_admin@openlattice.com"
     email_verified: true
     app_metadata:
       roles:
         - AuthenticatedUser
-        - admin
+        - user
+  - user_id: "test_user2"
+    email: "test_admin@openlattice.com"
+    email_verified: true
+    app_metadata:
+      roles:
+        - AuthenticatedUser
+        - user
+  - user_id: "test_user3"
+    email: "test_admin@openlattice.com"
+    email_verified: true
+    app_metadata:
+      roles:
+        - AuthenticatedUser
         - user
 managementApiUrl: "localhost"

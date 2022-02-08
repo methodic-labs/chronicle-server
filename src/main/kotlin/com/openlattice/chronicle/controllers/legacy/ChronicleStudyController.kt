@@ -43,7 +43,6 @@ class ChronicleStudyController : ChronicleStudyApi {
         @PathVariable(ChronicleStudyApi.DATASOURCE_ID) datasourceId: String,
         @RequestBody datasource: Optional<SourceDevice>
     ): UUID {
-        val organizationId = studyManager.getOrganizationIdForLegacyStudy(studyId)
         return enrollmentManager.registerDatasource(studyId, participantId, datasourceId, datasource.get())
     }
 
@@ -57,7 +56,6 @@ class ChronicleStudyController : ChronicleStudyApi {
         @PathVariable(ChronicleStudyApi.PARTICIPANT_ID) participantId: String,
         @PathVariable(ChronicleStudyApi.DATASOURCE_ID) datasourceId: String
     ): Boolean {
-        val organizationId = studyManager.getOrganizationIdForLegacyStudy(studyId)
         //  validate that this device belongs to this participant in this study
         //  look up in association entitySet between device and participant, and device and study to see if it exists
         //  DataApi.getEntity(entitySetId :UUID, entityKeyId :UUID)
@@ -85,7 +83,6 @@ class ChronicleStudyController : ChronicleStudyApi {
     override fun isNotificationsEnabled(
         @PathVariable(ChronicleStudyApi.STUDY_ID) studyId: UUID
     ): Boolean {
-        val organizationId = studyManager.getOrganizationIdForLegacyStudy(studyId)
         return studyManager.isNotificationsEnabled(studyId)
     }
 
@@ -98,7 +95,6 @@ class ChronicleStudyController : ChronicleStudyApi {
         @PathVariable(ChronicleStudyApi.STUDY_ID) studyId: UUID,
         @PathVariable(ChronicleStudyApi.PARTICIPANT_ID) participantId: String
     ): ParticipationStatus {
-        val organizationId = studyManager.getOrganizationIdForLegacyStudy(studyId)
         return enrollmentManager.getParticipationStatus(studyId, participantId)
     }
 

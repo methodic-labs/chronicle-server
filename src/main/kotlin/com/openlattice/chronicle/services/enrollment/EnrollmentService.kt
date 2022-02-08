@@ -9,6 +9,7 @@ import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.services.ScheduledTasksManager
 import com.openlattice.chronicle.services.candidates.CandidateManager
 import com.openlattice.chronicle.sources.AndroidDevice
+import com.openlattice.chronicle.sources.IOSDevice
 import com.openlattice.chronicle.sources.SourceDevice
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.DEVICES
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.STUDY_PARTICIPANTS
@@ -130,7 +131,7 @@ class EnrollmentService(
 
 
         return when (sourceDevice) {
-            is AndroidDevice -> registerDatasourceOrGetId(
+            is AndroidDevice, is IOSDevice -> registerDatasourceOrGetId(
                 studyId,
                 participantId,
                 sourceDeviceId,

@@ -20,12 +20,12 @@ import com.openlattice.chronicle.organizations.OrganizationsApi.Companion.ORGANI
 import com.openlattice.chronicle.organizations.OrganizationsApi.Companion.ORGANIZATION_ID_PATH
 import com.openlattice.chronicle.settings.AppComponent
 import com.openlattice.chronicle.storage.StorageResolver
-import com.openlattice.chronicle.util.ensureVanilla
 import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import java.util.UUID
@@ -45,7 +45,7 @@ class OrganizationsController @Inject constructor(
 ) : AuthorizingComponent, OrganizationsApi {
 
     companion object {
-        private val logger = LoggerFactory.getLogger(StudyController::class.java)!!
+        private val logger = LoggerFactory.getLogger(OrganizationsController::class.java)!!
     }
 
     @Inject
@@ -57,45 +57,46 @@ class OrganizationsController @Inject constructor(
         consumes = [MediaType.APPLICATION_JSON_VALUE],
         produces = [MediaType.APPLICATION_JSON_VALUE],
     )
-    override fun createOrganization(organization: Organization): UUID {
+    override fun createOrganization(@RequestBody organization: Organization): UUID {
         ensureAuthenticated()
         logger.info("Creating organization with title ${organization.title}")
         organization.id = idGenerationService.getNextId()
-        val (flavor, hds) = storageResolver.getDefaultPlatformStorage()
-        ensureVanilla(flavor)
-        AuditedOperationBuilder<Unit>(hds.connection, auditingManager)
-            .operation { connection ->
-                chronicleOrganizationService.createOrganization(
-                    connection,
-                    Principals.getCurrentUser(),
-                    organization
-                )
-            }
-            .audit {
-                listOf(
-                    AuditableEvent(
-                        AclKey(organization.id),
-                        Principals.getCurrentSecurablePrincipal().id,
-                        Principals.getCurrentUser().id,
-                        AuditEventType.CREATE_ORGANIZATION,
-                        "",
-                        organization.id,
-                        UUID(0, 0),
-                        mapOf()
+        val hds = storageResolver.getPlatformStorage()
+        hds.connection.use { connection ->
+            AuditedOperationBuilder<Unit>(connection, auditingManager)
+                .operation { connection ->
+                    chronicleOrganizationService.createOrganization(
+                        connection,
+                        Principals.getCurrentUser(),
+                        organization
                     )
-                )
-            }
-            .buildAndRun()
+                }
+                .audit {
+                    listOf(
+                        AuditableEvent(
+                            AclKey(organization.id),
+                            Principals.getCurrentSecurablePrincipal().id,
+                            Principals.getCurrentUser().id,
+                            AuditEventType.CREATE_ORGANIZATION,
+                            "",
+                            organization.id,
+                            UUID(0, 0),
+                            mapOf()
+                        )
+                    )
+                }
+                .buildAndRun()
+        }
         return organization.id
     }
 
     @Timed
     @GetMapping(
         path = [ORGANIZATION_ID_PATH],
-        consumes = [MediaType.APPLICATION_JSON_VALUE],
         produces = [MediaType.APPLICATION_JSON_VALUE],
     )
     override fun getOrganization(@PathVariable(ORGANIZATION_ID) organizationId: UUID): Organization {
+        ensureReadAccess(AclKey(organizationId))
         return chronicleOrganizationService.getOrganization(organizationId)
     }
 

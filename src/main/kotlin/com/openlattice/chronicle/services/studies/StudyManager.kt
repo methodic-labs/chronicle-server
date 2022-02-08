@@ -15,6 +15,7 @@ interface StudyManager {
     fun getStudy(studyId: UUID): Study
     fun getStudies(studyIds: Collection<UUID>): Iterable<Study>
     fun deleteStudies(connection: Connection, studyIds: Collection<UUID>): Int
+    fun getOrgStudies(organizationId: UUID): List<Study>
     fun updateStudy(connection: Connection, studyId: UUID, study: StudyUpdate)
     fun registerParticipant(connection: Connection, studyId: UUID, participant: Participant): UUID
     fun isNotificationsEnabled(studyId: UUID): Boolean
