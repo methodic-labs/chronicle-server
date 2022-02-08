@@ -186,6 +186,10 @@ class StudyService(
             SELECT ${ORGANIZATION_ID.name} FROM ${ORGANIZATION_STUDIES.name} WHERE ${STUDY_ID.name} = ? LIMIT 1 
         """.trimIndent()
 
+        private val GET_NOTIFICATION_STATUS_SQL = """
+            SELECT ${NOTIFICATIONS_ENABLED.name} FROM ${STUDIES.name} WHERE ${STUDY_ID.name} = ?
+        """
+
         /**
          * get studies that belong to the provided organizationId where the
          * current user has read access
@@ -322,8 +326,15 @@ class StudyService(
     override fun isNotificationsEnabled(studyId: UUID): Boolean {
         logger.info("Checking notifications enabled on studyId = {}", studyId)
 
-        //TODO: Write SQL query to just retrieve notifications enabled field.
-        return getStudy(studyId).notificationsEnabled
+        return storageResolver.getPlatformStorage().connection.use { connection ->
+            connection.prepareStatement(GET_NOTIFICATION_STATUS_SQL).use { ps ->
+                ps.setObject(1, studyId)
+                ps.executeQuery().use { rs ->
+                    if (rs.next()) rs.getBoolean(NOTIFICATIONS_ENABLED.name)
+                    else false
+                }
+            }
+        }
     }
 
     override fun getOrganizationIdForLegacyStudy(studyId: UUID): UUID {
