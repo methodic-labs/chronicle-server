@@ -181,10 +181,6 @@ class StudyController @Inject constructor(
 
     }
 
-    override fun getOrgStudies(organizationId: UUID): Iterable<Study> {
-        TODO("Not yet implemented")
-    }
-
     @Timed
     @GetMapping(
         path = [ORGANIZATION_PATH + ORGANIZATION_ID_PATH],
