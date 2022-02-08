@@ -64,39 +64,6 @@ class AppDataUploadService(
         return getTruncatedDateTimeHelper(datetime, chronoUnit)
     }
 
-    private fun getDateTimeValuesFromDeviceData(data: List<SetMultimap<UUID, Any>>): Set<OffsetDateTime> {
-        val dateTimes: MutableSet<OffsetDateTime> = Sets.newHashSet()
-        data.forEach(
-                Consumer { entity: SetMultimap<UUID, Any> ->
-                    // most date properties in the entity are of length 1
-                    for (date in entity[LegacyEdmResolver.getPropertyTypeId(DATE_LOGGED_FQN)]) {
-                        val parsedDateTime = OffsetDateTime
-                                .parse(date.toString())
-
-                        // filter out problematic entities with dates in the sixties
-                        if (parsedDateTime.isAfter(OutputConstants.MINIMUM_DATE)) {
-                            dateTimes.add(parsedDateTime)
-                        }
-                    }
-                }
-        )
-        return dateTimes
-    }
-
-    private fun getFirstValueOrNull(entity: SetMultimap<UUID, Any>, fqn: FullQualifiedName): String? {
-        val fqnId = LegacyEdmResolver.getPropertyTypeId(fqn)
-        val value = Iterables.getFirst(entity[fqnId], null)
-        return value?.toString()
-    }
-
-    private fun hasUserAppPackageName(organizationId: UUID?, packageName: String?): Boolean {
-        return if (organizationId != null) {
-            scheduledTasksManager.userAppsFullNamesByOrg.getOrDefault(packageName, ImmutableSet.of())
-                    .contains(organizationId)
-        } else scheduledTasksManager.userAppsFullNameValues.contains(packageName)
-    }
-
-
     /**
      * This routine implements once and only once append of client data.
      *
