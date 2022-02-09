@@ -73,6 +73,7 @@ class CandidateService(
                 principal = Principals.getCurrentUser(),
                 objectType = SecurableObjectType.Candidate
             )
+            return candidate.id
         }
         else if (exists(connection, candidate.id)) {
             return candidate.id
