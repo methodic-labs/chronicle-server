@@ -63,6 +63,8 @@ import com.openlattice.chronicle.services.settings.OrganizationSettingsService
 import com.openlattice.chronicle.services.studies.StudyService
 import com.openlattice.chronicle.services.surveys.SurveysManager
 import com.openlattice.chronicle.services.surveys.SurveysService
+import com.openlattice.chronicle.services.timeusediary.TimeUseDiaryManager
+import com.openlattice.chronicle.services.timeusediary.TimeUseDiaryService
 import com.openlattice.chronicle.services.upload.AppDataUploadManager
 import com.openlattice.chronicle.services.upload.AppDataUploadService
 import com.openlattice.chronicle.services.upload.SensorDataUploadService
@@ -87,6 +89,7 @@ import java.io.IOException
 import java.util.concurrent.ExecutionException
 import javax.annotation.PostConstruct
 import javax.inject.Inject
+
 
 @Configuration
 @Import(Auth0Pod::class)
@@ -277,6 +280,14 @@ class ChronicleServerServicesPod {
             enrollmentManager(),
             auditingManager(),
             hazelcast
+        )
+    }
+
+    @Bean
+    fun timeUseDiaryManager(): TimeUseDiaryManager {
+        return TimeUseDiaryService(
+            storageResolver,
+            authorizationService()
         )
     }
 
