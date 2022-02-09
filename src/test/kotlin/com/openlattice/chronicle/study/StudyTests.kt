@@ -1,5 +1,6 @@
 package com.openlattice.chronicle.study
 
+import com.google.common.collect.Iterables
 import com.openlattice.chronicle.ChronicleServerTests
 import com.openlattice.chronicle.client.ChronicleClient
 import com.openlattice.chronicle.organizations.Organization
@@ -94,27 +95,30 @@ class StudyTests : ChronicleServerTests() {
         val study2Id = chronicleClient.studyApi.createStudy(expectedStudy2)
         val study3Id = chronicleClient2.studyApi.createStudy(expectedStudy3)
 
-        val actualOrg1Studies = chronicleClient.studyApi.getOrgStudies(client1OrgId1)
+        val actualOrg1Studies = chronicleClient.studyApi.getOrgStudies(client1OrgId1).mapIndexed { index, study -> index to study  }.toMap()
         // API returns list in descending creation times (recent first)
         // expect [study 2, study 1] from org 1
         Assert.assertEquals(2, actualOrg1Studies.size)
-        Assert.assertEquals(listOf(study2Id, study1Id), actualOrg1Studies.map { study -> study.id })
-        Assert.assertEquals(listOf(study2Title, study1Title), actualOrg1Studies.map { study -> study.title })
-        Assert.assertEquals(study2OrgIds, actualOrg1Studies[0].organizationIds)
-        Assert.assertEquals(study1OrgIds, actualOrg1Studies[1].organizationIds)
+        Assert.assertEquals(listOf(study2Id, study1Id), actualOrg1Studies.map { (_, study) -> study.id })
+        Assert.assertEquals(listOf(study2Title, study1Title), actualOrg1Studies.map { (_, study) -> study.title })
+        Assert.assertEquals(study2OrgIds, actualOrg1Studies.getValue(0).organizationIds)
+        Assert.assertEquals(study1OrgIds, actualOrg1Studies.getValue(1).organizationIds)
+
+
 
         // expect [study 2] from org 2
-        val actualOrg2Studies = chronicleClient.studyApi.getOrgStudies(client1OrgId2)
+        val actualOrg2Studies = chronicleClient.studyApi.getOrgStudies(client1OrgId2).mapIndexed { index, study -> index to study }.toMap()
         Assert.assertEquals(1, actualOrg2Studies.size)
-        Assert.assertEquals(listOf(study2Id), actualOrg2Studies.map { study -> study.id }, )
-        Assert.assertEquals(listOf(study2Title), actualOrg2Studies.map { study -> study.title })
-        Assert.assertEquals(study2OrgIds, actualOrg2Studies[0].organizationIds)
+        Assert.assertEquals(listOf(study2Id), actualOrg2Studies.map { (_, study) -> study.id }, )
+        Assert.assertEquals(listOf(study2Title), actualOrg2Studies.map { (_, study) -> study.title })
+        Assert.assertEquals(study2OrgIds, actualOrg2Studies.getValue(0).organizationIds)
 
         // expect [study 3] from org 3
-        val actualOrg3Studies = chronicleClient2.studyApi.getOrgStudies(client2OrgId3)
+        val actualOrg3Studies = chronicleClient2.studyApi.getOrgStudies(client2OrgId3).mapIndexed { index, study -> index to study }.toMap()
         Assert.assertEquals(1, actualOrg3Studies.size)
-        Assert.assertEquals(listOf(study3Id), actualOrg3Studies.map { study -> study.id })
-        Assert.assertEquals(listOf(study3Title),actualOrg3Studies.map { study -> study.title })
-        Assert.assertEquals(study3OrgIds, actualOrg3Studies[0].organizationIds)
+        Assert.assertEquals(listOf(study3Id), actualOrg3Studies.map { (_, study) -> study.id })
+        Assert.assertEquals(listOf(study3Title),actualOrg3Studies.map { (_, study) -> study.title })
+        Assert.assertEquals(study3OrgIds, actualOrg3Studies.getValue(0).organizationIds)
+
     }
 }
