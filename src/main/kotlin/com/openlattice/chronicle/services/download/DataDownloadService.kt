@@ -6,6 +6,7 @@ import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
 import com.openlattice.chronicle.constants.OutputConstants
 import com.openlattice.chronicle.constants.ParticipantDataType
 import com.openlattice.chronicle.converters.PostgresDownloadWrapper
+import com.openlattice.chronicle.sensorkit.SensorType
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APPLICATION_LABEL
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_PACKAGE_NAME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.INTERACTION_TYPE
@@ -94,6 +95,14 @@ class DataDownloadService(private val storageResolver: StorageResolver) : DataDo
             participantId,
             dataType
         )
+    }
+
+    override fun getParticipantSensorData(
+        studyId: UUID,
+        participantId: String,
+        sensors: Set<SensorType>
+    ): Iterable<Map<String, Any>> {
+        TODO("Not yet implemented")
     }
 
 

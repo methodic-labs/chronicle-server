@@ -3,6 +3,7 @@ package com.openlattice.chronicle.services.studies
 import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.services.enrollment.EnrollmentService
 import com.openlattice.chronicle.study.Study
+import com.openlattice.chronicle.study.StudySettings
 import com.openlattice.chronicle.study.StudyUpdate
 import java.sql.Connection
 import java.util.UUID
@@ -21,4 +22,5 @@ interface StudyManager {
 
     fun getOrganizationIdForLegacyStudy(studyId: UUID): UUID
     fun refreshStudyCache(studyIds: Set<UUID>)
+    fun getStudySettings(studyId: UUID): Map<String, Any>
 }
