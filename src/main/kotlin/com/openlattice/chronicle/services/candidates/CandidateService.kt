@@ -9,6 +9,7 @@ import com.openlattice.chronicle.authorization.SecurableObjectType
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.candidates.Candidate
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
+import com.openlattice.chronicle.ids.IdConstants
 import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.CANDIDATES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CANDIDATE_ID
@@ -54,7 +55,9 @@ class CandidateService(
     }
 
     override fun registerCandidate(connection: Connection, candidate: Candidate) : UUID {
-        candidate.id = idGenerationService.getNextId()
+        if (candidate.id == IdConstants.UNINITIALIZED.id) {
+            candidate.id = idGenerationService.getNextId()
+        }
         insertCandidate(connection, candidate)
         authorizationService.createSecurableObject(
             connection = connection,
