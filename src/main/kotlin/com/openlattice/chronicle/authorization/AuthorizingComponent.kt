@@ -19,13 +19,16 @@
  */
 package com.openlattice.chronicle.authorization
 
-import com.openlattice.chronicle.authorization.principals.Principals
 import com.geekbeast.controllers.exceptions.ForbiddenException
 import com.openlattice.chronicle.auditing.AuditEventType
 import com.openlattice.chronicle.auditing.AuditableEvent
 import com.openlattice.chronicle.auditing.AuditingComponent
+import com.openlattice.chronicle.authorization.principals.Principals
+import com.openlattice.chronicle.ids.IdConstants
 import org.slf4j.LoggerFactory
-import java.util.*
+import java.util.EnumMap
+import java.util.EnumSet
+import java.util.UUID
 import java.util.function.Function
 import java.util.function.Predicate
 import java.util.stream.Collectors
@@ -208,5 +211,9 @@ interface AuthorizingComponent : AuditingComponent {
                 "Object " + objectId.toString() + " cannot be deleted because this id is reserved."
             )
         }
+    }
+
+    fun ensureUninitializedId(id: UUID, message: () -> String) {
+        check(id == IdConstants.UNINITIALIZED.id, message)
     }
 }

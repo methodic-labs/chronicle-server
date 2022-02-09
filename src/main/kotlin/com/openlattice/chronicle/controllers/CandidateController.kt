@@ -78,6 +78,7 @@ class CandidateController @Inject constructor(
     )
     override fun registerCandidate(@RequestBody candidate: Candidate): UUID {
         ensureAuthenticated()
+        ensureUninitializedId(candidate.id) { "cannot register candidate with the given id" }
         val hds = storageResolver.getPlatformStorage()
         return AuditedOperationBuilder<UUID>(hds.connection, auditingManager)
             .operation { connection -> candidateService.registerCandidate(connection, candidate) }
