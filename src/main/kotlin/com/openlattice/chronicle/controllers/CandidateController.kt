@@ -55,7 +55,7 @@ class CandidateController @Inject constructor(
             candidateService.getCandidate(candidateId)
         }
         catch (e: NoSuchElementException) {
-            throw CandidateNotFoundException("candidate not found - $candidateId")
+            throw CandidateNotFoundException(candidateId)
         }
     }
 

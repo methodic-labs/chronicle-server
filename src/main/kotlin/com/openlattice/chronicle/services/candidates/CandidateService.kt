@@ -18,6 +18,7 @@ import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.util.ensureVanilla
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import java.security.InvalidParameterException
 import java.sql.Connection
 import java.util.UUID
 
@@ -35,6 +36,10 @@ class CandidateService(
             .columns
             .subtract(setOf(EXPIRATION_DATE))
 
+        private val COUNT_CANDIDATES_SQL = """
+            SELECT count(*) FROM ${CANDIDATES.name} WHERE ${CANDIDATE_ID.name} = ?
+        """.trimIndent()
+
         private val SELECT_CANDIDATES_SQL = """
             SELECT * FROM ${CANDIDATES.name} WHERE ${CANDIDATE_ID.name} = ANY(?)
         """.trimIndent()
@@ -44,6 +49,10 @@ class CandidateService(
             VALUES (${CANDIDATES_COLUMNS.map { "?" }.joinToString()})
         """.trimIndent()
 
+    }
+
+    override fun exists(connection: Connection, candidateId: UUID): Boolean {
+        return countCandidates(connection, candidateId) > 0
     }
 
     override fun getCandidate(candidateId: UUID): Candidate {
@@ -57,15 +66,18 @@ class CandidateService(
     override fun registerCandidate(connection: Connection, candidate: Candidate) : UUID {
         if (candidate.id == IdConstants.UNINITIALIZED.id) {
             candidate.id = idGenerationService.getNextId()
+            insertCandidate(connection, candidate)
+            authorizationService.createSecurableObject(
+                connection = connection,
+                aclKey = AclKey(candidate.id),
+                principal = Principals.getCurrentUser(),
+                objectType = SecurableObjectType.Candidate
+            )
         }
-        insertCandidate(connection, candidate)
-        authorizationService.createSecurableObject(
-            connection = connection,
-            aclKey = AclKey(candidate.id),
-            principal = Principals.getCurrentUser(),
-            objectType = SecurableObjectType.Candidate
-        )
-        return candidate.id
+        else if (exists(connection, candidate.id)) {
+            return candidate.id
+        }
+        throw InvalidParameterException("cannot register candidate with an invalid id - ${candidate.id}")
     }
 
     //
@@ -73,6 +85,15 @@ class CandidateService(
     // private
     //
     //
+
+    private fun countCandidates(connection: Connection, candidateId: UUID): Long {
+        return connection.prepareStatement(COUNT_CANDIDATES_SQL).use { ps ->
+            ps.setObject(1, candidateId)
+            ps.executeQuery().use { rs ->
+                if (rs.next()) ResultSetAdapters.count(rs) else 0
+            }
+        }
+    }
 
     private fun insertCandidate(connection: Connection, candidate: Candidate) {
         connection.prepareStatement(INSERT_CANDIDATE_SQL).use { ps ->
