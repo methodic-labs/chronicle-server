@@ -14,6 +14,7 @@ import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.ids.IdConstants
 import com.openlattice.chronicle.participants.Participant
+import com.openlattice.chronicle.sensorkit.SensorDataSample
 import com.openlattice.chronicle.services.enrollment.EnrollmentService
 import com.openlattice.chronicle.services.studies.StudyService
 import com.openlattice.chronicle.sources.SourceDevice
@@ -269,6 +270,10 @@ class StudyController @Inject constructor(
                 )
             }
             .buildAndRun()
+    }
+
+    override fun uploadSensorData(studyId: UUID, participantId: String, datasourceId: String, data: List<SensorDataSample>): Int {
+        TODO("Not yet implemented")
     }
 
     /**
