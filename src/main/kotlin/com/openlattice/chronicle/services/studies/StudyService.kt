@@ -1,5 +1,6 @@
 package com.openlattice.chronicle.services.studies
 
+import com.fasterxml.jackson.module.kotlin.readValue
 import com.geekbeast.mappers.mappers.ObjectMappers
 import com.openlattice.chronicle.storage.StorageResolver
 import com.geekbeast.postgres.PostgresArrays
@@ -370,7 +371,8 @@ class StudyService(
             connection.prepareStatement(GET_STUDY_SETTINGS_SQL).use { ps ->
                 ps.setObject(1, studyId)
                 ps.executeQuery().use { rs ->
-                    ResultSetAdapters.studySettings(rs)
+                    if (rs.next()) mapper.readValue(rs.getString(SETTINGS.name))
+                    else mapOf()
                 }
             }
         }

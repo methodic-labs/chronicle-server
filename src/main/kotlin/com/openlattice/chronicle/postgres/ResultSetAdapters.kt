@@ -326,10 +326,5 @@ class ResultSetAdapters {
         fun storage(rs: ResultSet): String {
             return rs.getString(STORAGE.name)
         }
-
-        @Throws(SQLException::class)
-        fun studySettings(rs: ResultSet): Map<String, Any> {
-            return mapper.readValue(rs.getString(SETTINGS.name))
-        }
     }
 }
