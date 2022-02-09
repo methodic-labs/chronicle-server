@@ -263,10 +263,6 @@ class StudyController @Inject constructor(
         ensureValidStudy(studyId)
         ensureWriteAccess(AclKey(studyId))
         val hds = storageResolver.getPlatformStorage()
-        if (participant.candidate.id == IdConstants.UNINITIALIZED.id) {
-            participant.candidate.id = idGenerationService.getNextId()
-        }
-
         return AuditedOperationBuilder<UUID>(hds.connection, auditingManager)
             .operation { connection -> studyService.registerParticipant(connection, studyId, participant) }
             .audit { candidateId ->
