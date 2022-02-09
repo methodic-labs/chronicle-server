@@ -75,6 +75,68 @@ class RedshiftColumns {
         val DESCRIPTION = PostgresColumnDefinition("description", PostgresDatatype.TEXT_256).notNull()
         val DATA = PostgresColumnDefinition("data", PostgresDatatype.VARCHAR_MAX).notNull()
 
+        // SENSOR_DATA
+        // these columns apply to all sensor types
+        val SAMPLE_ID = PostgresColumnDefinition("sample_id", PostgresDatatype.TEXT_UUID).notNull()
+        val SENSOR_TYPE = PostgresColumnDefinition("sensor_type", PostgresDatatype.TEXT).notNull()
+        val SAMPLE_DURATION = PostgresColumnDefinition("sample_duration", PostgresDatatype.DOUBLE).notNull() // seconds
+        val DEVICE_VERSION = PostgresColumnDefinition("device_version", PostgresDatatype.TEXT).notNull()
+        val DEVICE_NAME = PostgresColumnDefinition("device_name", PostgresDatatype.TEXT).notNull()
+        val DEVICE_MODEL = PostgresColumnDefinition("device_model", PostgresDatatype.TEXT).notNull()
+        val DEVICE_SYSTEM_NAME = PostgresColumnDefinition("device_system_name", PostgresDatatype.TEXT).notNull()
+
+        // columns specific to deviceUsage sensor
+        val TOTAL_SCREEN_WAKES = PostgresColumnDefinition("total_screen_wakes", PostgresDatatype.INTEGER)
+        val TOTAL_UNLOCK_DURATION = PostgresColumnDefinition("total_unlock_duration", PostgresDatatype.DOUBLE) // seconds
+        val TOTAL_UNLOCKS = PostgresColumnDefinition("total_unlocks", PostgresDatatype.INTEGER)
+        val APP_CATEGORY = PostgresColumnDefinition("app_category", PostgresDatatype.TEXT)
+        val APP_USAGE_TIME = PostgresColumnDefinition("app_usage_time", PostgresDatatype.DOUBLE)
+        val TEXT_INPUT_SOURCE = PostgresColumnDefinition("text_input_source", PostgresDatatype.TEXT)
+        val TEXT_INPUT_DURATION = PostgresColumnDefinition("text_input_duration", PostgresDatatype.DOUBLE)
+        val BUNDLE_IDENTIFIER = PostgresColumnDefinition("bundle_identifier", PostgresDatatype.TEXT)
+        val APP_CATEGORY_WEB_DURATION = PostgresColumnDefinition("app_category_web_duration", PostgresDatatype.DOUBLE)
+
+        // columns specific to phoneUsage sensor
+        val TOTAL_INCOMING_CALLS = PostgresColumnDefinition("total_incoming_calls", PostgresDatatype.INTEGER)
+        val TOTAL_OUTGOING_CALLS = PostgresColumnDefinition("total_outgoing_calls", PostgresDatatype.INTEGER)
+        val TOTAL_CALL_DURATION = PostgresColumnDefinition("total_call_duration", PostgresDatatype.DOUBLE)
+        val TOTAL_UNIQUE_CONTACTS = PostgresColumnDefinition("total_unique_contacts", PostgresDatatype.INTEGER)
+
+        // messagesUsage sensor columns
+        val TOTAL_INCOMING_MESSAGES = PostgresColumnDefinition("total_incoming_messages", PostgresDatatype.INTEGER)
+        val TOTAL_OUTGOING_MESSAGES = PostgresColumnDefinition("total_outgoing_messages", PostgresDatatype.INTEGER)
+
+        // keyboard metrics sensor columns
+        val KEYBOARD_VERSION = PostgresColumnDefinition("keyboard_version", PostgresDatatype.TEXT)
+        val KEYBOARD_IDENTIFIER = PostgresColumnDefinition("keyboard_identifier", PostgresDatatype.TEXT)
+        val TOTAL_WORDS = PostgresColumnDefinition("total_words", PostgresDatatype.INTEGER)
+        val TOTAL_ALTERED_WORDS = PostgresColumnDefinition("total_altered_words", PostgresDatatype.INTEGER)
+        val TOTAL_TAPS = PostgresColumnDefinition("total_taps", PostgresDatatype.INTEGER)
+        val TOTAL_DRAGS = PostgresColumnDefinition("total_drags", PostgresDatatype.INTEGER)
+        val TOTAL_DELETES = PostgresColumnDefinition("total_deletes", PostgresDatatype.INTEGER)
+        val TOTAL_EMOJIS = PostgresColumnDefinition("total_emojis", PostgresDatatype.INTEGER)
+        val TOTAL_PATHS = PostgresColumnDefinition("total_paths", PostgresDatatype.INTEGER)
+        val TOTAL_PATH_TIME = PostgresColumnDefinition("total_path_time", PostgresDatatype.DOUBLE)
+        val TOTAL_PATH_LENGTH = PostgresColumnDefinition("total_path_length", PostgresDatatype.DOUBLE)
+        val TOTAL_AUTO_CORRECTIONS = PostgresColumnDefinition("total_autocorrections", PostgresDatatype.INTEGER)
+        val TOTAL_SPACE_CORRECTIONS = PostgresColumnDefinition("total_space_corrections", PostgresDatatype.INTEGER)
+        val TOTAL_TRANSPOSITION_CORRECTIONS = PostgresColumnDefinition("total_transposition_corrections", PostgresDatatype.INTEGER)
+        val TOTAL_INSERT_KEY_CORRECTIONS = PostgresColumnDefinition("insert_key_corrections", PostgresDatatype.INTEGER)
+        val TOTAL_RETRO_CORRECTIONS = PostgresColumnDefinition("total_retro_corrections", PostgresDatatype.INTEGER)
+        val TOTAL_SKIP_TOUCH_CORRECTIONS = PostgresColumnDefinition("total_skip_touch_corrections", PostgresDatatype.INTEGER)
+        val TOTAL_NEAR_KEY_CORRECTIONS = PostgresColumnDefinition("total_near_key_corrections", PostgresDatatype.INTEGER)
+        val TOTAL_SUBSTITUTION_CORRECTIONS = PostgresColumnDefinition("total_substitution_corrections", PostgresDatatype.INTEGER)
+        val TOTAL_TEST_HIT_CORRECTIONS = PostgresColumnDefinition("total_test_hit_corrections", PostgresDatatype.INTEGER)
+        val TOTAL_TYPING_DURATION = PostgresColumnDefinition("total_typing_duration", PostgresDatatype.DOUBLE) // seconds
+        val TOTAL_PATH_PAUSES = PostgresColumnDefinition("total_path_pauses", PostgresDatatype.INTEGER)
+        val TOTAL_PAUSES = PostgresColumnDefinition("total_pauses", PostgresDatatype.INTEGER)
+        val TOTAL_TYPING_EPISODES = PostgresColumnDefinition("total_typing_episodes", PostgresDatatype.INTEGER)
+        val SENTIMENT = PostgresColumnDefinition("sentiment", PostgresDatatype.TEXT)
+        val SENTIMENT_WORD_COUNT = PostgresColumnDefinition("sentiment_word_count", PostgresDatatype.INTEGER)
+        val SENTIMENT_EMOJI_COUNT = PostgresColumnDefinition("sentiment_emoji_count", PostgresDatatype.INTEGER)
+        val TYPING_SPEED = PostgresColumnDefinition("typing_speed", PostgresDatatype.DOUBLE)
+        val PATH_TYPING_SPEED = PostgresColumnDefinition("path_typing_speed", PostgresDatatype.DOUBLE)
+
         val columnTypes : Map<String, PostgresDatatype> = redshiftColumns().associate { it.name to it.datatype }
 
         @JvmStatic
@@ -90,5 +152,77 @@ class RedshiftColumns {
                     }
                 }
         }
+
+        // applies to all sensor types
+        val SHARED_SENSOR_COLS = linkedSetOf(
+                STUDY_ID,
+                PARTICIPANT_ID,
+                SAMPLE_ID, // uniquely identifies a sample
+                SENSOR_TYPE,
+                SAMPLE_DURATION,
+                RECORDED_DATE_TIME, //when sample was recorded by framework
+                START_DATE_TIME, // lower date bound for sample record
+                END_DATE_TIME, // upper date bound for sample record
+                TIMEZONE,
+                DEVICE_VERSION,
+                DEVICE_NAME,
+                DEVICE_MODEL,
+                DEVICE_SYSTEM_NAME
+        )
+
+        val DEVICE_USAGE_SENSOR_COLS = linkedSetOf(
+                TOTAL_SCREEN_WAKES,
+                TOTAL_UNLOCK_DURATION,
+                TOTAL_UNLOCKS,
+                APP_CATEGORY,
+                APP_USAGE_TIME,
+                TEXT_INPUT_SOURCE,
+                TEXT_INPUT_DURATION,
+                BUNDLE_IDENTIFIER,
+                APP_CATEGORY_WEB_DURATION
+        )
+
+        val PHONE_USAGE_SENSOR_COLS = linkedSetOf(
+                TOTAL_INCOMING_CALLS,
+                TOTAL_OUTGOING_CALLS,
+                TOTAL_CALL_DURATION,
+                TOTAL_UNIQUE_CONTACTS
+        )
+
+        val MESSAGES_USAGE_SENSOR_COLS = linkedSetOf(
+                TOTAL_INCOMING_MESSAGES,
+                TOTAL_OUTGOING_MESSAGES,
+                TOTAL_UNIQUE_CONTACTS
+        )
+
+        val KEYBOARD_METRICS_SENSOR_COLS = linkedSetOf(
+                TOTAL_WORDS,
+                TOTAL_ALTERED_WORDS,
+                TOTAL_TAPS,
+                TOTAL_DRAGS,
+                TOTAL_DELETES,
+                TOTAL_EMOJIS,
+                TOTAL_PATHS,
+                TOTAL_PATH_TIME, //time to complete paths in seconds
+                TOTAL_PATH_LENGTH, //length of completed paths in cm
+                TOTAL_AUTO_CORRECTIONS,
+                TOTAL_SPACE_CORRECTIONS,
+                TOTAL_TRANSPOSITION_CORRECTIONS,
+                TOTAL_INSERT_KEY_CORRECTIONS,
+                TOTAL_RETRO_CORRECTIONS,
+                TOTAL_SKIP_TOUCH_CORRECTIONS,
+                TOTAL_NEAR_KEY_CORRECTIONS,
+                TOTAL_SUBSTITUTION_CORRECTIONS,
+                TOTAL_TEST_HIT_CORRECTIONS,
+                TOTAL_TYPING_DURATION, // seconds
+                TOTAL_PATH_PAUSES, //number of pauses while drawing path for a word
+                TOTAL_PAUSES,
+                TOTAL_TYPING_EPISODES, //number of continuous typing episodes
+                SENTIMENT,
+                SENTIMENT_WORD_COUNT,
+                SENTIMENT_EMOJI_COUNT,
+                TYPING_SPEED, // characters per second
+                PATH_TYPING_SPEED //QuickType words per minute
+        )
     }
 }
