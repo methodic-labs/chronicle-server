@@ -8,6 +8,7 @@ import com.openlattice.chronicle.authorization.AuthorizationManager
 import com.openlattice.chronicle.authorization.SecurableObjectType
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.candidates.Candidate
+import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.CANDIDATES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CANDIDATE_ID
@@ -23,6 +24,7 @@ import java.util.UUID
 class CandidateService(
     private val storageResolver: StorageResolver,
     private val authorizationService: AuthorizationManager,
+    private val idGenerationService: HazelcastIdGenerationService,
 ) : CandidateManager {
 
     companion object {
@@ -52,6 +54,7 @@ class CandidateService(
     }
 
     override fun registerCandidate(connection: Connection, candidate: Candidate) : UUID {
+        candidate.id = idGenerationService.getNextId()
         insertCandidate(connection, candidate)
         authorizationService.createSecurableObject(
             connection = connection,

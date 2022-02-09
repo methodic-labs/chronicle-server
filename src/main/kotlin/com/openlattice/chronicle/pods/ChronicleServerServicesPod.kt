@@ -338,7 +338,7 @@ class ChronicleServerServicesPod {
 
     @Bean
     fun candidateService(): CandidateService {
-        return CandidateService(storageResolver, authorizationService())
+        return CandidateService(storageResolver, authorizationService(), idGenerationService())
     }
 
     @Bean
