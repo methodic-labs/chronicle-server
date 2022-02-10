@@ -8,6 +8,7 @@ import com.openlattice.chronicle.constants.OutputConstants
 import com.openlattice.chronicle.constants.ParticipantDataType
 import com.openlattice.chronicle.converters.PostgresDownloadWrapper
 import com.openlattice.chronicle.sensorkit.SensorType
+import com.openlattice.chronicle.storage.RedshiftColumns
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APPLICATION_LABEL
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_PACKAGE_NAME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DEVICE_USAGE_SENSOR_COLS
@@ -17,6 +18,7 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.MESSAGES_USAG
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.ORGANIZATION_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PHONE_USAGE_SENSOR_COLS
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.SENSOR_TYPE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.SHARED_SENSOR_COLS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMESTAMP
@@ -25,6 +27,7 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.USERNAME
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.CHRONICLE_USAGE_EVENTS
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.IOS_SENSOR_DATA
 import com.openlattice.chronicle.storage.StorageResolver
+import com.openlattice.chronicle.util.ChronicleServerUtil
 import org.slf4j.LoggerFactory
 import java.sql.ResultSet
 import java.time.OffsetDateTime
@@ -52,13 +55,16 @@ class DataDownloadService(private val storageResolver: StorageResolver) : DataDo
             timestampColumn: PostgresColumnDefinition
         ): Pair<String, OffsetDateTime> {
             val zoneId = ZoneId.of( rs.getString( timezoneColumn.name ) ?: OutputConstants.DEFAULT_TIMEZONE )
-            val odt = rs.getObject( timezoneColumn.name , OffsetDateTime::class.java )
+            val odt = rs.getObject( timestampColumn.name , OffsetDateTime::class.java )
             return timestampColumn.name to odt.toInstant().atZone(zoneId).toOffsetDateTime()
         }
 
         fun associateObject(rs: ResultSet, pcd: PostgresColumnDefinition, clazz: Class<*>) =
             pcd.name to rs.getObject(pcd.name, clazz)
 
+        private fun getSensorTypeFilterClause(sensors: Set<SensorType>): String {
+            return sensors.joinToString(" OR ") { "${SENSOR_TYPE.name} = ?" }
+        }
         fun getSensorDataColsAndSql(sensors: Set<SensorType>): Pair<Set<PostgresColumnDefinition>, String> {
             val mapping = mapOf(
                 SensorType.phoneUsage to PHONE_USAGE_SENSOR_COLS,
@@ -67,12 +73,12 @@ class DataDownloadService(private val storageResolver: StorageResolver) : DataDo
                 SensorType.messagesUsage to MESSAGES_USAGE_SENSOR_COLS
             )
 
-            val cols = (sensors.flatMap { mapping.getValue(it) }.toSet() + SHARED_SENSOR_COLS)
+            val cols = SHARED_SENSOR_COLS - PARTICIPANT_ID - STUDY_ID + sensors.flatMap { mapping.getValue(it) }.toSet()
             val values = cols.joinToString(",") { it.name }
 
             val sql =  """
                 SELECT $values FROM ${IOS_SENSOR_DATA.name}
-                WHERE ${STUDY_ID.name} = ? AND ${PARTICIPANT_ID.name} = ?
+                WHERE ${STUDY_ID.name} = ? AND ${PARTICIPANT_ID.name} = ? AND (${getSensorTypeFilterClause(sensors)})
             """.trimIndent()
 
             return Pair(cols, sql)
@@ -120,19 +126,23 @@ class DataDownloadService(private val storageResolver: StorageResolver) : DataDo
         val cols = colsAndSql.first
         val sql = colsAndSql.second
 
-        val iterable = BasePostgresIterable<Map<String, Any>>(
+        val iterable =  BasePostgresIterable<Map<String, Any>>(
             PreparedStatementHolderSupplier(
                 hds,
                 sql,
                 32768
             ) { ps ->
-                ps.setString(1, studyId.toString())
-                ps.setString(2, participantId)
+                var index = 0
+                ps.setString(++index, studyId.toString())
+                ps.setString(++index, participantId)
+                sensors.forEach {
+                    ps.setString(++index, it.name)
+                }
             }
         ) { rs ->
             cols.associate { col ->
                 when (col.datatype) {
-                    PostgresDatatype.TIMESTAMPTZ -> associateOffsetDatetimeWithTimezone(rs, col, TIMESTAMP)
+                    PostgresDatatype.TIMESTAMPTZ -> associateOffsetDatetimeWithTimezone(rs, TIMEZONE, col)
                     else -> associateString(rs, col)
                 }
             }
