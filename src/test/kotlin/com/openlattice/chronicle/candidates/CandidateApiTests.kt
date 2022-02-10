@@ -12,8 +12,8 @@ import java.util.UUID
 
 class CandidateApiTests : ChronicleServerTests() {
 
-    var c1: Candidate? = null
-    var c2: Candidate? = null
+    private var c1: Candidate? = null
+    private var c2: Candidate? = null
 
     @Before
     fun beforeEachTest() {
