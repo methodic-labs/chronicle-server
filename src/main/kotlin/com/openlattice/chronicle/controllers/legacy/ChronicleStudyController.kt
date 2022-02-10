@@ -7,6 +7,7 @@ import com.openlattice.chronicle.data.ChronicleAppsUsageDetails
 import com.openlattice.chronicle.data.ChronicleQuestionnaire
 import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
+import com.openlattice.chronicle.services.studies.StudyManager
 import com.openlattice.chronicle.services.surveys.SurveysManager
 import com.openlattice.chronicle.sources.SourceDevice
 import org.apache.olingo.commons.api.edm.FullQualifiedName
@@ -28,6 +29,9 @@ class ChronicleStudyController : ChronicleStudyApi {
     @Inject
     private lateinit var enrollmentManager: EnrollmentManager
 
+    @Inject
+    private lateinit var studyManager: StudyManager
+
     @Timed
     @RequestMapping(
         path = [ChronicleStudyApi.STUDY_ID_PATH + ChronicleStudyApi.PARTICIPANT_ID_PATH + ChronicleStudyApi.DATASOURCE_ID_PATH],
@@ -39,7 +43,6 @@ class ChronicleStudyController : ChronicleStudyApi {
         @PathVariable(ChronicleStudyApi.DATASOURCE_ID) datasourceId: String,
         @RequestBody datasource: Optional<SourceDevice>
     ): UUID {
-        val organizationId = enrollmentManager.getOrganizationIdForLegacyStudy(studyId)
         return enrollmentManager.registerDatasource(studyId, participantId, datasourceId, datasource.get())
     }
 
@@ -53,7 +56,6 @@ class ChronicleStudyController : ChronicleStudyApi {
         @PathVariable(ChronicleStudyApi.PARTICIPANT_ID) participantId: String,
         @PathVariable(ChronicleStudyApi.DATASOURCE_ID) datasourceId: String
     ): Boolean {
-        val organizationId = enrollmentManager.getOrganizationIdForLegacyStudy(studyId)
         //  validate that this device belongs to this participant in this study
         //  look up in association entitySet between device and participant, and device and study to see if it exists
         //  DataApi.getEntity(entitySetId :UUID, entityKeyId :UUID)
@@ -70,9 +72,8 @@ class ChronicleStudyController : ChronicleStudyApi {
         @PathVariable(ChronicleStudyApi.PARTICIPANT_ID) participantId: String,
         @RequestParam(value = ChronicleStudyApi.DATE) date: String
     ): List<ChronicleAppsUsageDetails> {
-//        val organizationId = enrollmentManager.getOrganizationIdForLegacyStudy( studyId )
-//        return surveysManager.getParticipantAppsUsageData(organizationId, studyId, participantId, date)
-        TODO("This shouldn't have to exist. Will remove")
+        val organizationId = studyManager.getOrganizationIdForLegacyStudy(studyId)
+        return surveysManager.getParticipantAppsUsageData(organizationId, studyId, participantId, date)
     }
 
     @Timed
@@ -82,8 +83,7 @@ class ChronicleStudyController : ChronicleStudyApi {
     override fun isNotificationsEnabled(
         @PathVariable(ChronicleStudyApi.STUDY_ID) studyId: UUID
     ): Boolean {
-        val organizationId = enrollmentManager.getOrganizationIdForLegacyStudy(studyId)
-        return enrollmentManager.isNotificationsEnabled(studyId)
+        return studyManager.isNotificationsEnabled(studyId)
     }
 
     @Timed
@@ -95,7 +95,6 @@ class ChronicleStudyController : ChronicleStudyApi {
         @PathVariable(ChronicleStudyApi.STUDY_ID) studyId: UUID,
         @PathVariable(ChronicleStudyApi.PARTICIPANT_ID) participantId: String
     ): ParticipationStatus {
-        val organizationId = enrollmentManager.getOrganizationIdForLegacyStudy(studyId)
         return enrollmentManager.getParticipationStatus(studyId, participantId)
     }
 
@@ -108,9 +107,8 @@ class ChronicleStudyController : ChronicleStudyApi {
         @PathVariable(ChronicleStudyApi.PARTICIPANT_ID) participantId: String,
         @RequestBody associationDetails: Map<UUID, Map<FullQualifiedName, Set<Any>>>
     ) {
-        // val organizationId = enrollmentManager.getOrganizationIdForLegacyStudy(studyId)
-        //surveysManager.submitAppUsageSurvey(organizationId, studyId, participantId, associationDetails)
-        TODO("Not needed. To remove")
+        val organizationId = studyManager.getOrganizationIdForLegacyStudy(studyId)
+        surveysManager.submitAppUsageSurvey(organizationId, studyId, participantId, associationDetails)
     }
 
     @Timed
@@ -122,7 +120,7 @@ class ChronicleStudyController : ChronicleStudyApi {
         @PathVariable(ChronicleStudyApi.STUDY_ID) studyId: UUID,
         @PathVariable(ChronicleStudyApi.ENTITY_KEY_ID) questionnaireEKID: UUID
     ): ChronicleQuestionnaire {
-        val organizationId = enrollmentManager.getOrganizationIdForLegacyStudy(studyId)
+        val organizationId = studyManager.getOrganizationIdForLegacyStudy(studyId)
         return surveysManager.getQuestionnaire(organizationId, studyId, questionnaireEKID)
     }
 
@@ -136,7 +134,7 @@ class ChronicleStudyController : ChronicleStudyApi {
         @PathVariable(ChronicleStudyApi.PARTICIPANT_ID) participantId: String,
         @RequestBody questionnaireResponses: Map<UUID, Map<FullQualifiedName, Set<Any>>>
     ) {
-        val organizationId = enrollmentManager.getOrganizationIdForLegacyStudy(studyId)
+        val organizationId = studyManager.getOrganizationIdForLegacyStudy(studyId)
         surveysManager.submitQuestionnaire(organizationId, studyId, participantId, questionnaireResponses)
     }
 
@@ -148,7 +146,7 @@ class ChronicleStudyController : ChronicleStudyApi {
     override fun getStudyQuestionnaires(
         @PathVariable(ChronicleStudyApi.STUDY_ID) studyId: UUID
     ): Map<UUID, Map<FullQualifiedName, Set<Any>>> {
-        val organizationId = enrollmentManager.getOrganizationIdForLegacyStudy(studyId)
+        val organizationId = studyManager.getOrganizationIdForLegacyStudy(studyId)
         return surveysManager.getStudyQuestionnaires(organizationId, studyId)
     }
 
@@ -161,8 +159,7 @@ class ChronicleStudyController : ChronicleStudyApi {
         @PathVariable(ChronicleStudyApi.PARTICIPANT_ID) participantId: String,
         @RequestBody surveyData: List<Map<FullQualifiedName, Set<Any>>>
     ) {
-//        val organizationId = enrollmentManager.getOrganizationIdForLegacyStudy(studyId)
-//        surveysManager.submitTimeUseDiarySurvey(organizationId, studyId, participantId, surveyData)
-        TODO("Not needed. To remove")
+        val organizationId = studyManager.getOrganizationIdForLegacyStudy(studyId)
+        surveysManager.submitTimeUseDiarySurvey(organizationId, studyId, participantId, surveyData)
     }
 }

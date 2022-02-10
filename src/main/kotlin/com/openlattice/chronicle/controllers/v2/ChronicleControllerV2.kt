@@ -4,7 +4,6 @@ import com.codahale.metrics.annotation.Timed
 import com.google.common.base.Optional
 import com.google.common.collect.SetMultimap
 import com.openlattice.chronicle.api.ChronicleApi
-import com.openlattice.chronicle.settings.AppComponent
 import com.openlattice.chronicle.data.ChronicleAppsUsageDetails
 import com.openlattice.chronicle.data.ChronicleQuestionnaire
 import com.openlattice.chronicle.data.ParticipationStatus
@@ -12,9 +11,10 @@ import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import com.openlattice.chronicle.services.legacy.LegacyEdmResolver
 import com.openlattice.chronicle.services.legacy.LegacyUtil
 import com.openlattice.chronicle.services.settings.OrganizationSettingsManager
+import com.openlattice.chronicle.services.studies.StudyManager
 import com.openlattice.chronicle.services.surveys.SurveysManager
 import com.openlattice.chronicle.services.upload.AppDataUploadManager
-import com.openlattice.chronicle.survey.AppUsage
+import com.openlattice.chronicle.settings.AppComponent
 import com.openlattice.chronicle.sources.SourceDevice
 import org.apache.olingo.commons.api.edm.FullQualifiedName
 import org.springframework.http.MediaType
@@ -42,6 +42,9 @@ class ChronicleControllerV2 : ChronicleApi {
     @Inject
     private lateinit var organizationSettingsManager: OrganizationSettingsManager
 
+    @Inject
+    private lateinit var studyManager: StudyManager
+
     @Timed
     @RequestMapping(
             path = [ChronicleApi.ORGANIZATION_ID_PATH + ChronicleApi.STUDY_ID_PATH + ChronicleApi.PARTICIPANT_ID_PATH + ChronicleApi.DATASOURCE_ID_PATH + ChronicleApi.ENROLL_PATH],
@@ -54,12 +57,12 @@ class ChronicleControllerV2 : ChronicleApi {
             @PathVariable(ChronicleApi.DATASOURCE_ID) datasourceId: String,
             @RequestBody datasource: Optional<SourceDevice>
     ): UUID {
-        if( datasource.isPresent ) {
+        if (datasource.isPresent) {
             return enrollmentManager.registerDatasource(
-                studyId,
-                participantId,
-                datasourceId,
-                datasource.get()
+                    studyId,
+                    participantId,
+                    datasourceId,
+                    datasource.get()
             )
         } else {
             throw InvalidParameterException("Datasource must be specified when enrolling.")
@@ -75,7 +78,7 @@ class ChronicleControllerV2 : ChronicleApi {
             @PathVariable(ChronicleApi.ORGANIZATION_ID) organizationId: UUID,
             @PathVariable(ChronicleApi.STUDY_ID) studyId: UUID
     ): Boolean {
-        return enrollmentManager.isNotificationsEnabled(studyId)
+        return studyManager.isNotificationsEnabled(studyId)
     }
 
     @Timed

@@ -2,8 +2,12 @@ package com.openlattice.chronicle.storage
 
 import com.geekbeast.postgres.PostgresColumnDefinition
 import com.geekbeast.postgres.PostgresDatatype
-import com.openlattice.chronicle.constants.EdmConstants
-import org.apache.olingo.commons.api.edm.FullQualifiedName
+import com.geekbeast.postgres.PostgresTableDefinition
+import com.geekbeast.postgres.PostgresTables
+import java.lang.reflect.Field
+import java.lang.reflect.Modifier
+import java.util.*
+import java.util.stream.Stream
 
 /**
  *
@@ -11,71 +15,72 @@ import org.apache.olingo.commons.api.edm.FullQualifiedName
  */
 class PostgresColumns {
     companion object {
-        val ACL_KEY = PostgresColumnDefinition("acl_key", PostgresDatatype.UUID_ARRAY)
-        val BASE = PostgresColumnDefinition("base", PostgresDatatype.BIGINT).notNull()
-        val CANDIDATE_ID = PostgresColumnDefinition("candidate_id", PostgresDatatype.UUID).notNull()
-        val CATEGORY = PostgresColumnDefinition("category", PostgresDatatype.TEXT).notNull()
-        val CONTACT = PostgresColumnDefinition("contact", PostgresDatatype.TEXT)
-        val CREATED_AT = PostgresColumnDefinition("created_at", PostgresDatatype.TIMESTAMPTZ).notNull().withDefault("now()")
-        val DATE_OF_BIRTH = PostgresColumnDefinition("dob", PostgresDatatype.DATE)
-        val DESCRIPTION = PostgresColumnDefinition("description", PostgresDatatype.TEXT)
-        val DEVICE_ID = PostgresColumnDefinition("device_id", PostgresDatatype.UUID).notNull()
-        val EMAIL = PostgresColumnDefinition("email", PostgresDatatype.TEXT).unique()
-        val ENDED_AT = PostgresColumnDefinition("ended_at", PostgresDatatype.TIMESTAMPTZ).notNull().withDefault("'infinity'")
-        val EXPIRATION = PostgresColumnDefinition("expiration", PostgresDatatype.BIGINT)
-        val EXPIRATION_DATE = PostgresColumnDefinition("expiration_date", PostgresDatatype.TIMESTAMPTZ).withDefault("'infinity'").notNull()
-        val FIRST_NAME = PostgresColumnDefinition("first_name", PostgresDatatype.TEXT)
-        val LAST_NAME = PostgresColumnDefinition("last_name", PostgresDatatype.TEXT)
-        val LAT = PostgresColumnDefinition("lat", PostgresDatatype.DOUBLE)
-        val LON = PostgresColumnDefinition("lon", PostgresDatatype.DOUBLE)
-        val LSB = PostgresColumnDefinition("lsb", PostgresDatatype.BIGINT).notNull()
-        val MSB = PostgresColumnDefinition("msb", PostgresDatatype.BIGINT).notNull()
-        val NAME = PostgresColumnDefinition("name", PostgresDatatype.TEXT)
-        val ORGANIZATION_ID = PostgresColumnDefinition("organization_id", PostgresDatatype.UUID).notNull()
-        val ORGANIZATION_IDS = PostgresColumnDefinition("organization_ids", PostgresDatatype.UUID_ARRAY).notNull()
-        val PARTICIPANT_ID = PostgresColumnDefinition("participant_id", PostgresDatatype.TEXT).notNull()
-        val PARTICIPATION_STATUS = PostgresColumnDefinition("participation_status", PostgresDatatype.TEXT).notNull()
-        val PARTITION_INDEX = PostgresColumnDefinition("partition_index", PostgresDatatype.BIGINT).notNull()
-        val PERMISSION = PostgresColumnDefinition("permission", PostgresDatatype.TEXT)
-        val PERMISSIONS = PostgresColumnDefinition("permissions", PostgresDatatype.TEXT_ARRAY)
-        val PHONE_NUMBER = PostgresColumnDefinition("phone_number", PostgresDatatype.TEXT).unique()
-        val PRINCIPAL_ID = PostgresColumnDefinition("principal_id", PostgresDatatype.TEXT)
-        val PRINCIPAL_OF_ACL_KEY = PostgresColumnDefinition("principal_of_acl_key", PostgresDatatype.UUID_ARRAY)
-        val PRINCIPAL_TYPE = PostgresColumnDefinition("principal_type", PostgresDatatype.TEXT)
-        val SCOPE = PostgresColumnDefinition("scope", PostgresDatatype.TEXT).notNull()
-        val SECURABLE_OBJECT_ID = PostgresColumnDefinition("id", PostgresDatatype.UUID).unique().notNull()
-        val SECURABLE_OBJECT_NAME = PostgresColumnDefinition("name", PostgresDatatype.TEXT).notNull().unique()
-        val SECURABLE_OBJECT_TYPE = PostgresColumnDefinition("securable_object_type", PostgresDatatype.TEXT).notNull()
-        val SETTINGS = PostgresColumnDefinition("settings", PostgresDatatype.JSONB).withDefault("'{}'::jsonb")
-        val SOURCE_DEVICE = PostgresColumnDefinition("source_device", PostgresDatatype.JSONB).notNull()
-        val SOURCE_DEVICE_ID = PostgresColumnDefinition("source_device_id", PostgresDatatype.TEXT).notNull()
-        val STARTED_AT = PostgresColumnDefinition("started_at", PostgresDatatype.TIMESTAMPTZ).notNull().withDefault("now()")
-        val STUDY_GROUP = PostgresColumnDefinition("study_group", PostgresDatatype.TEXT)
-        val STUDY_ID = PostgresColumnDefinition("study_id", PostgresDatatype.UUID).notNull()
-        val STUDY_VERSION = PostgresColumnDefinition("study_version", PostgresDatatype.TEXT)
-        val TITLE = PostgresColumnDefinition("title", PostgresDatatype.TEXT)
-        val UPDATED_AT = PostgresColumnDefinition("updated_at", PostgresDatatype.TIMESTAMPTZ).notNull().withDefault("now()")
-        val URL = PostgresColumnDefinition("url", PostgresDatatype.TEXT)
-        val USER_DATA = PostgresColumnDefinition("user_data", PostgresDatatype.JSONB)
-        val USER_ID = PostgresColumnDefinition("user_id", PostgresDatatype.TEXT).notNull()
+        @JvmField val ACL_KEY = PostgresColumnDefinition("acl_key", PostgresDatatype.UUID_ARRAY)
+        @JvmField val BASE = PostgresColumnDefinition("base", PostgresDatatype.BIGINT).notNull()
+        @JvmField val CANDIDATE_ID = PostgresColumnDefinition("candidate_id", PostgresDatatype.UUID).notNull()
+        @JvmField val CATEGORY = PostgresColumnDefinition("category", PostgresDatatype.TEXT).notNull()
+        @JvmField val CONTACT = PostgresColumnDefinition("contact", PostgresDatatype.TEXT)
+        @JvmField val CREATED_AT = PostgresColumnDefinition("created_at", PostgresDatatype.TIMESTAMPTZ).notNull().withDefault("now()")
+        @JvmField val DATE_OF_BIRTH = PostgresColumnDefinition("dob", PostgresDatatype.DATE)
+        @JvmField val DESCRIPTION = PostgresColumnDefinition("description", PostgresDatatype.TEXT)
+        @JvmField val DEVICE_ID = PostgresColumnDefinition("device_id", PostgresDatatype.UUID).notNull()
+        @JvmField val EMAIL = PostgresColumnDefinition("email", PostgresDatatype.TEXT).unique()
+        @JvmField val ENDED_AT = PostgresColumnDefinition("ended_at", PostgresDatatype.TIMESTAMPTZ).notNull().withDefault("'infinity'")
+        @JvmField val EXPIRATION = PostgresColumnDefinition("expiration", PostgresDatatype.BIGINT)
+        @JvmField val EXPIRATION_DATE = PostgresColumnDefinition("expiration_date", PostgresDatatype.TIMESTAMPTZ).withDefault("'infinity'").notNull()
+        @JvmField val FIRST_NAME = PostgresColumnDefinition("first_name", PostgresDatatype.TEXT)
+        @JvmField val LAST_NAME = PostgresColumnDefinition("last_name", PostgresDatatype.TEXT)
+        @JvmField val LAT = PostgresColumnDefinition("lat", PostgresDatatype.DOUBLE)
+        @JvmField val LON = PostgresColumnDefinition("lon", PostgresDatatype.DOUBLE)
+        @JvmField val LSB = PostgresColumnDefinition("lsb", PostgresDatatype.BIGINT).notNull()
+        @JvmField val MSB = PostgresColumnDefinition("msb", PostgresDatatype.BIGINT).notNull()
+        @JvmField val NAME = PostgresColumnDefinition("name", PostgresDatatype.TEXT)
+        @JvmField val NOTIFICATIONS_ENABLED = PostgresColumnDefinition("notifications_enabled", PostgresDatatype.BOOLEAN)
+        @JvmField val ORGANIZATION_ID = PostgresColumnDefinition("organization_id", PostgresDatatype.UUID).notNull()
+        @JvmField val ORGANIZATION_IDS = PostgresColumnDefinition("organization_ids", PostgresDatatype.UUID_ARRAY).notNull()
+        @JvmField val PARTICIPANT_ID = PostgresColumnDefinition("participant_id", PostgresDatatype.TEXT).notNull()
+        @JvmField val PARTICIPATION_STATUS = PostgresColumnDefinition("participation_status", PostgresDatatype.TEXT).notNull()
+        @JvmField val PARTITION_INDEX = PostgresColumnDefinition("partition_index", PostgresDatatype.BIGINT).notNull()
+        @JvmField val PERMISSION = PostgresColumnDefinition("permission", PostgresDatatype.TEXT)
+        @JvmField val PERMISSIONS = PostgresColumnDefinition("permissions", PostgresDatatype.TEXT_ARRAY)
+        @JvmField val PHONE_NUMBER = PostgresColumnDefinition("phone_number", PostgresDatatype.TEXT).unique()
+        @JvmField val PRINCIPAL_ID = PostgresColumnDefinition("principal_id", PostgresDatatype.TEXT)
+        @JvmField val PRINCIPAL_OF_ACL_KEY = PostgresColumnDefinition("principal_of_acl_key", PostgresDatatype.UUID_ARRAY)
+        @JvmField val PRINCIPAL_TYPE = PostgresColumnDefinition("principal_type", PostgresDatatype.TEXT)
+        @JvmField val SCOPE = PostgresColumnDefinition("scope", PostgresDatatype.TEXT).notNull()
+        @JvmField val SECURABLE_OBJECT_ID = PostgresColumnDefinition("id", PostgresDatatype.UUID).unique().notNull()
+        @JvmField val SECURABLE_OBJECT_NAME = PostgresColumnDefinition("name", PostgresDatatype.TEXT).notNull().unique()
+        @JvmField val SECURABLE_OBJECT_TYPE = PostgresColumnDefinition("securable_object_type", PostgresDatatype.TEXT).notNull()
+        @JvmField val SETTINGS = PostgresColumnDefinition("settings", PostgresDatatype.JSONB).withDefault("'{}'::jsonb")
+        @JvmField val SOURCE_DEVICE = PostgresColumnDefinition("source_device", PostgresDatatype.JSONB).notNull()
+        @JvmField val SOURCE_DEVICE_ID = PostgresColumnDefinition("source_device_id", PostgresDatatype.TEXT).notNull()
+        @JvmField val STARTED_AT = PostgresColumnDefinition("started_at", PostgresDatatype.TIMESTAMPTZ).notNull().withDefault("now()")
+        @JvmField val STORAGE = PostgresColumnDefinition("storage", PostgresDatatype.TEXT).notNull().withDefault("'default'")
+        @JvmField val STUDY_GROUP = PostgresColumnDefinition("study_group", PostgresDatatype.TEXT)
+        @JvmField val STUDY_ID = PostgresColumnDefinition("study_id", PostgresDatatype.UUID).notNull()
+        @JvmField val STUDY_VERSION = PostgresColumnDefinition("study_version", PostgresDatatype.TEXT)
+        @JvmField val SUBMISSION = PostgresColumnDefinition("submission", PostgresDatatype.JSONB)
+        @JvmField val SUBMISSION_DATE = PostgresColumnDefinition("submission_date", PostgresDatatype.TIMESTAMPTZ).notNull().withDefault("NOW()")
+        @JvmField val SUBMISSION_ID = PostgresColumnDefinition("submission_id", PostgresDatatype.UUID).notNull()
+        @JvmField val TITLE = PostgresColumnDefinition("title", PostgresDatatype.TEXT)
+        @JvmField val UPDATED_AT = PostgresColumnDefinition("updated_at", PostgresDatatype.TIMESTAMPTZ).notNull().withDefault("now()")
+        @JvmField val URL = PostgresColumnDefinition("url", PostgresDatatype.TEXT)
+        @JvmField val USER_DATA = PostgresColumnDefinition("user_data", PostgresDatatype.JSONB)
+        @JvmField val USER_ID = PostgresColumnDefinition("user_id", PostgresDatatype.TEXT).notNull()
 
-        // app usage survey specific columns
-        val APP_LABEL = PostgresColumnDefinition("app_label", PostgresDatatype.TEXT)
-        val APP_PACKAGE_NAME = PostgresColumnDefinition("app_package_name", PostgresDatatype.TEXT).notNull()
-        val APP_USAGE_ID = PostgresColumnDefinition("id", PostgresDatatype.UUID).notNull()
-        val APP_USAGE_USERS = PostgresColumnDefinition("app_users", PostgresDatatype.TEXT_ARRAY)
-        val APP_USAGE_TIMESTAMP = PostgresColumnDefinition("timestamp", PostgresDatatype.TIMESTAMPTZ).notNull()
-        val APP_USAGE_DATE = PostgresColumnDefinition("date", PostgresDatatype.DATE).notNull()
-        val APP_USAGE_TIMEZONE = PostgresColumnDefinition("timezone", PostgresDatatype.TEXT).notNull()
+        val columnTypes : Map<String, PostgresDatatype> = postgresColumns().associate { it.name to it.datatype }
 
-        // fqn to column mapping
-        val FQNS_TO_APP_USAGE_COLUMNS: Map<FullQualifiedName, PostgresColumnDefinition> = mapOf(
-                EdmConstants.STRING_ID_FQN to APP_USAGE_ID,
-                EdmConstants.FULL_NAME_FQN to APP_PACKAGE_NAME,
-                EdmConstants.TITLE_FQN to APP_LABEL,
-                EdmConstants.USER_FQN to APP_USAGE_USERS,
-                EdmConstants.DATE_LOGGED_FQN to APP_USAGE_TIMESTAMP,
-                EdmConstants.TIMEZONE_FQN to APP_USAGE_TIMEZONE
-        )
+        fun postgresColumns(): List<PostgresColumnDefinition> {
+            return (PostgresColumns::class.java.fields.asList() + PostgresColumns::class.java.declaredFields)
+                .filter { field: Field -> (Modifier.isStatic(field.modifiers) && Modifier.isFinal(field.modifiers)) }
+                .filter { field: Field -> PostgresColumnDefinition::class.java.isAssignableFrom(field.type) }
+                .mapNotNull { field: Field ->
+                    try {
+                        return@mapNotNull field[null] as PostgresColumnDefinition
+                    } catch (e: IllegalAccessException) {
+                        return@mapNotNull null
+                    }
+                }
+        }
     }
 }

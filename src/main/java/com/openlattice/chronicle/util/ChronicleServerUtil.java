@@ -27,6 +27,8 @@ public class ChronicleServerUtil {
 
     public static String ORG_STUDY_PARTICIPANT            = " - orgId = {}, studyId = {}, participantId = {}";
     public static String ORG_STUDY_PARTICIPANT_DATASOURCE = " - orgId = {}, studyId = {}, participantId = {}, dataSourceId = {}";
+    public static String STUDY_PARTICIPANT_DATASOURCE = " - studyId = {}, participantId = {}, dataSourceId = {}";
+    public static String STUDY_PARTICIPANT = " - studyId = {}, participantId = {}";
 
     public static String getFirstValueOrNull( Map<FullQualifiedName, Set<Object>> entity, FullQualifiedName fqn ) {
         if ( entity.getOrDefault( fqn, Set.of() ).isEmpty() ) {
@@ -54,6 +56,17 @@ public class ChronicleServerUtil {
     }
 
     /* --------------------------------DATA DOWNLOAD UTILS ------------------------------------ */
+
+    public static String getSensorDataFileName(
+            String participantId
+    ) {
+        StringBuilder builder = new StringBuilder()
+                .append("SensorData_")
+                .append(LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE))
+                .append("_")
+                .append(participantId);
+        return builder.toString();
+    }
 
     public static String getParticipantDataFileName(
             EnrollmentManager enrollmentManager,

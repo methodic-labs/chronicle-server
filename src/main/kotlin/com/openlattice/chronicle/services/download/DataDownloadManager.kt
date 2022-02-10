@@ -1,6 +1,7 @@
 package com.openlattice.chronicle.services.download
 
 import com.openlattice.chronicle.constants.ParticipantDataType
+import com.openlattice.chronicle.sensorkit.SensorType
 import java.util.*
 
 /**
@@ -10,9 +11,15 @@ import java.util.*
 interface DataDownloadManager {
 
     fun getParticipantData(
-            organizationId: UUID?,
-            studyId: UUID,
-            participantId: String,
-            dataType: ParticipantDataType,
-            token: String?): Iterable<Map<String, Set<Any>>>
+        studyId: UUID,
+        participantId: String,
+        dataType: ParticipantDataType,
+        token: String
+    ): Iterable<Map<String, Any>>
+
+    fun getParticipantSensorData(
+        studyId: UUID,
+        participantId: String,
+        sensors: Set<SensorType>
+    ): Iterable<Map<String, Any>>
 }

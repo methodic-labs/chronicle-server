@@ -1,13 +1,16 @@
 package com.openlattice.chronicle.configuration
 
 import com.geekbeast.jdbc.DataSourceManager
+import com.openlattice.chronicle.storage.ChronicleStorage
+
 
 /**
  *
  * @author Matthew Tamayo-Rios &lt;matthew@openlattice.com&gt;
  */
 data class ChronicleStorageConfiguration(
-    val defaultStorage: String = DataSourceManager.DEFAULT_DATASOURCE,
-    val platformStorage: String = DataSourceManager.DEFAULT_DATASOURCE,
-    val auditStorage: String = "chronicle",
+    val defaultStorage: String = ChronicleStorage.PLATFORM.id,
+    val platformStorage: String = ChronicleStorage.PLATFORM.id,
+    val defaultEventStorage: String = ChronicleStorage.CHRONICLE.id,
+    val auditStorage: String = ChronicleStorage.CHRONICLE.id,
 )

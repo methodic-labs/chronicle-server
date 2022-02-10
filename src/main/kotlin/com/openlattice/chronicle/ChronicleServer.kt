@@ -19,6 +19,10 @@ import com.geekbeast.jdbc.JdbcPod
 import com.geekbeast.postgres.PostgresPod
 import com.geekbeast.pods.TaskSchedulerPod
 import com.openlattice.chronicle.hazelcast.pods.HazelcastQueuePod
+import com.openlattice.chronicle.pods.servlet.ChronicleServerSecurityPod
+import com.openlattice.chronicle.pods.tables.PostgresDataTablesPod
+import com.openlattice.chronicle.pods.tables.PostgresTablesPod
+import com.openlattice.chronicle.pods.tables.RedshiftTablesPod
 
 /**
  *
@@ -35,8 +39,8 @@ class ChronicleServer(vararg pods: Class<*>) : BaseRhizomeServer(
 ) {
     companion object {
         val webPods = arrayOf(
-                ChronicleServerServletsPod::class.java,
-                ChronicleServerSecurityPod::class.java
+            ChronicleServerServletsPod::class.java,
+            ChronicleServerSecurityPod::class.java
         )
         val rhizomePods = arrayOf(
             MapstoresPod::class.java,
@@ -44,7 +48,7 @@ class ChronicleServer(vararg pods: Class<*>) : BaseRhizomeServer(
             Auth0Pod::class.java
         )
         val chronicleServerPods = arrayOf(
-            ChronicleStoragePod::class.java,
+            ChronicleConfigurationPod::class.java,
             AwsS3Pod::class.java,
             JdbcPod::class.java,
             ChronicleServerServicesPod::class.java,

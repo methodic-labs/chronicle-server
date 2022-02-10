@@ -15,10 +15,8 @@ import com.openlattice.chronicle.candidates.CandidateApi.Companion.BULK_PATH
 import com.openlattice.chronicle.candidates.CandidateApi.Companion.CANDIDATE_ID_PARAM
 import com.openlattice.chronicle.candidates.CandidateApi.Companion.CANDIDATE_ID_PATH
 import com.openlattice.chronicle.candidates.CandidateApi.Companion.CONTROLLER
-import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.services.candidates.CandidateService
 import com.openlattice.chronicle.storage.StorageResolver
-import com.openlattice.chronicle.util.ensureVanilla
 import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.GetMapping
@@ -33,7 +31,6 @@ import javax.inject.Inject
 @RestController
 @RequestMapping(CONTROLLER)
 class CandidateController @Inject constructor(
-    val idGenerationService: HazelcastIdGenerationService,
     val storageResolver: StorageResolver,
     override val auditingManager: AuditingManager,
     override val authorizationManager: AuthorizationManager
@@ -58,7 +55,7 @@ class CandidateController @Inject constructor(
             candidateService.getCandidate(candidateId)
         }
         catch (e: NoSuchElementException) {
-            throw CandidateNotFoundException("candidate not found - $candidateId")
+            throw CandidateNotFoundException(candidateId)
         }
     }
 
@@ -81,20 +78,20 @@ class CandidateController @Inject constructor(
     )
     override fun registerCandidate(@RequestBody candidate: Candidate): UUID {
         ensureAuthenticated()
+        ensureUninitializedId(candidate.id) { "cannot register candidate with the given id" }
         val hds = storageResolver.getPlatformStorage()
-        candidate.id = idGenerationService.getNextId()
-        AuditedOperationBuilder<Unit>(hds.connection, auditingManager)
+        return AuditedOperationBuilder<UUID>(hds.connection, auditingManager)
             .operation { connection -> candidateService.registerCandidate(connection, candidate) }
-            .audit { listOf(
-                AuditableEvent(
-                    AclKey(candidate.id),
-                    Principals.getCurrentSecurablePrincipal().id,
-                    Principals.getCurrentUser().id,
-                    AuditEventType.REGISTER_CANDIDATE,
-                    ""
+            .audit { candidateId ->
+                listOf(
+                    AuditableEvent(
+                        AclKey(candidateId),
+                        Principals.getCurrentSecurablePrincipal().id,
+                        Principals.getCurrentUser().id,
+                        AuditEventType.REGISTER_CANDIDATE,
+                    )
                 )
-            ) }
+            }
             .buildAndRun()
-        return candidate.id
     }
 }

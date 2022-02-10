@@ -8,13 +8,19 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_PACKAGE_N
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.AUDIT_EVENT_TYPE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DATA
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DESCRIPTION
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DEVICE_USAGE_SENSOR_COLS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DURATION
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.END_TIME
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.INTERACTION_TYPE
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.KEYBOARD_METRICS_SENSOR_COLS
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.MESSAGES_USAGE_SENSOR_COLS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.ORGANIZATION_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PARTICIPANT_ID
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PHONE_USAGE_SENSOR_COLS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PRINCIPAL_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.SECURABLE_PRINCIPAL_ID
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.SHARED_SENSOR_COLS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.START_TIME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMESTAMP
@@ -67,8 +73,8 @@ class RedshiftDataTables {
 
         @JvmField
         val AUDIT = RedshiftTableDefinition("audit")
-            .sortKey(ACL_KEY)
-            .addColumns(
+                .sortKey(ACL_KEY)
+                .addColumns(
                         ACL_KEY,
                         SECURABLE_PRINCIPAL_ID,
                         PRINCIPAL_ID,
@@ -77,8 +83,24 @@ class RedshiftDataTables {
                         ORGANIZATION_ID,
                         DESCRIPTION,
                         DATA,
-                        TIMESTAMP)
-            .addDataSourceNames(REDSHIFT_DATASOURCE_NAME)
+                        TIMESTAMP
+                )
+                .addDataSourceNames(REDSHIFT_DATASOURCE_NAME)
+
+        @JvmField
+        val IOS_SENSOR_DATA = RedshiftTableDefinition("sensor_data")
+                .sortKey(STUDY_ID)
+                .addColumns(
+                        *(SHARED_SENSOR_COLS + DEVICE_USAGE_SENSOR_COLS + PHONE_USAGE_SENSOR_COLS + MESSAGES_USAGE_SENSOR_COLS + KEYBOARD_METRICS_SENSOR_COLS).toTypedArray()
+                )
+                .addDataSourceNames(REDSHIFT_DATASOURCE_NAME)
+
+        private val INSERT_SENSOR_DATA_COL_INDICES = IOS_SENSOR_DATA.columns.mapIndexed { index, col -> col.name to index + 1 }.toMap()
+
+        fun getInsertSensorDataColumnIndex(col: PostgresColumnDefinition): Int {
+            return INSERT_SENSOR_DATA_COL_INDICES.getValue(col.name)
+        }
+
         private val USAGE_EVENT_COLS = CHRONICLE_USAGE_EVENTS.columns.joinToString(",") { it.name }
         private val USAGE_EVENT_PARAMS = CHRONICLE_USAGE_EVENTS.columns.joinToString(",") { "?" }
 
@@ -107,9 +129,17 @@ class RedshiftDataTables {
          * 8. user (text)
          * 9. application_label (text)
          */
-        fun getInsertIntoMergeUsageEventsTableSql(srcMergeTableName: String) = """
-        INSERT INTO $srcMergeTableName (${USAGE_EVENT_COLS}) VALUES (${USAGE_EVENT_PARAMS}) ON CONFLICT DO NOTHING
-        """.trimIndent()
+        fun getInsertIntoMergeUsageEventsTableSql(srcMergeTableName: String, includeOnConflict: Boolean = false): String {
+            return if (includeOnConflict) {
+                """
+                    INSERT INTO $srcMergeTableName (${USAGE_EVENT_COLS}) VALUES (${USAGE_EVENT_PARAMS}) ON CONFLICT DO NOTHING
+                    """.trimIndent()
+            } else {
+                """
+                    INSERT INTO $srcMergeTableName (${USAGE_EVENT_COLS}) VALUES (${USAGE_EVENT_PARAMS}) 
+                    """.trimIndent()
+            }
+        }
 
         fun getDeleteTempTableEntriesSql(srcMergeTableName: String): String {
             return """
@@ -138,8 +168,11 @@ class RedshiftDataTables {
         INSERT INTO $CHRONICLE_USAGE_EVENTS (${USAGE_EVENT_COLS}) VALUES (USAGE_EVENT_PARAMS) 
         """.trimIndent()
 
-        val INSERT_USAGE_EVENT_COLUMN_INDICES: Map<String, Int> = CHRONICLE_USAGE_EVENTS.columns.mapIndexed { index, pcd -> pcd.name to index }.toMap()
-        val INSERT_USAGE_STATS_COLUMN_INDICES: Map<String, Int> = CHRONICLE_USAGE_STATS.columns.mapIndexed { index, pcd -> pcd.name to index }.toMap()
+        val INSERT_USAGE_EVENT_COLUMN_INDICES: Map<String, Int> =
+                CHRONICLE_USAGE_EVENTS.columns.mapIndexed { index, pcd -> pcd.name to (index + 1) }.toMap() //remeber postgres is 1 based index
+        val INSERT_USAGE_STATS_COLUMN_INDICES: Map<String, Int> =
+                CHRONICLE_USAGE_STATS.columns.mapIndexed { index, pcd -> pcd.name to (index + 1) }.toMap()
+
         fun getInsertUsageEventColumnIndex(
                 column: PostgresColumnDefinition
         ): Int = INSERT_USAGE_EVENT_COLUMN_INDICES.getValue(column.name)

@@ -29,6 +29,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.LON
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LSB
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.MSB
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.NAME
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.NOTIFICATIONS_ENABLED
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPATION_STATUS
@@ -45,14 +46,17 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.SETTINGS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SOURCE_DEVICE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SOURCE_DEVICE_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STARTED_AT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.STORAGE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_GROUP
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_VERSION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TITLE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPDATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_DATA
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_ID
-
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION_DATE
 
 /**
  *
@@ -87,9 +91,17 @@ class ChroniclePostgresTables {
                 STUDY_GROUP,
                 STUDY_VERSION,
                 CONTACT,
+                NOTIFICATIONS_ENABLED,
+                STORAGE,
                 SETTINGS,
             )
             .primaryKey(STUDY_ID)
+            .overwriteOnConflict()
+
+        @JvmField
+        val LEGACY_STUDY_SETTINGS = PostgresTableDefinition("legacy_study_settings")
+            .addColumns(ORGANIZATION_ID, SETTINGS)
+            .primaryKey(ORGANIZATION_ID)
 
         @JvmField
         val ORGANIZATION_STUDIES = PostgresTableDefinition("organization_studies")
@@ -136,6 +148,18 @@ class ChroniclePostgresTables {
                 SOURCE_DEVICE
             )
             .primaryKey(STUDY_ID, DEVICE_ID) //Just in case device is used across multiple studies
+
+        @JvmField
+        val TIME_USE_DIARY_SUBMISSIONS = PostgresTableDefinition("time_use_diary_submissions")
+            .addColumns(
+                SUBMISSION_ID,
+                ORGANIZATION_ID,
+                STUDY_ID,
+                PARTICIPANT_ID,
+                SUBMISSION_DATE,
+                SUBMISSION
+            )
+            .primaryKey(SUBMISSION_ID)
 
         @JvmField
         val BASE_LONG_IDS: PostgresTableDefinition = PostgresTableDefinition("base_long_ids")

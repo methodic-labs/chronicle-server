@@ -63,8 +63,11 @@ import com.openlattice.chronicle.services.settings.OrganizationSettingsService
 import com.openlattice.chronicle.services.studies.StudyService
 import com.openlattice.chronicle.services.surveys.SurveysManager
 import com.openlattice.chronicle.services.surveys.SurveysService
+import com.openlattice.chronicle.services.timeusediary.TimeUseDiaryManager
+import com.openlattice.chronicle.services.timeusediary.TimeUseDiaryService
 import com.openlattice.chronicle.services.upload.AppDataUploadManager
 import com.openlattice.chronicle.services.upload.AppDataUploadService
+import com.openlattice.chronicle.services.upload.SensorDataUploadService
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.tasks.PostConstructInitializerTaskDependencies
 import com.openlattice.chronicle.users.Auth0SyncInitializationTask
@@ -86,6 +89,7 @@ import java.io.IOException
 import java.util.concurrent.ExecutionException
 import javax.annotation.PostConstruct
 import javax.inject.Inject
+
 
 @Configuration
 @Import(Auth0Pod::class)
@@ -109,10 +113,10 @@ class ChronicleServerServicesPod {
     private lateinit var eventBus: EventBus
 
     @Inject
-    private lateinit var storageResolver: StorageResolver
+    private lateinit var chronicleConfiguration: ChronicleConfiguration
 
     @Inject
-    private lateinit var chronicleConfiguration: ChronicleConfiguration
+    private lateinit var storageResolver: StorageResolver
 
     @Bean
     fun defaultObjectMapper(): ObjectMapper {
@@ -179,7 +183,7 @@ class ChronicleServerServicesPod {
     @Bean
     @Throws(IOException::class, ExecutionException::class)
     fun dataDownloadManager(): DataDownloadManager {
-        return DataDownloadService()
+        return DataDownloadService(storageResolver)
     }
 
     @Bean
@@ -191,7 +195,7 @@ class ChronicleServerServicesPod {
 
     @Bean
     fun organizationSettingsManager(): OrganizationSettingsManager {
-        return OrganizationSettingsService()
+        return OrganizationSettingsService(storageResolver)
     }
 
     @Bean
@@ -275,12 +279,19 @@ class ChronicleServerServicesPod {
     fun studyService(): StudyService {
         return StudyService(
             storageResolver,
-            aclKeyReservationService(),
-            idGenerationService(),
             authorizationService(),
             candidateService(),
             enrollmentManager(),
-            auditingManager()
+            auditingManager(),
+            hazelcast
+        )
+    }
+
+    @Bean
+    fun timeUseDiaryManager(): TimeUseDiaryManager {
+        return TimeUseDiaryService(
+            storageResolver,
+            authorizationService()
         )
     }
 
@@ -331,7 +342,12 @@ class ChronicleServerServicesPod {
 
     @Bean
     fun candidateService(): CandidateService {
-        return CandidateService(storageResolver, authorizationService())
+        return CandidateService(storageResolver, authorizationService(), idGenerationService())
+    }
+
+    @Bean
+    fun sensorDataUploadService(): SensorDataUploadService {
+        return SensorDataUploadService(storageResolver, enrollmentManager())
     }
 
     companion object {
@@ -341,5 +357,6 @@ class ChronicleServerServicesPod {
     @PostConstruct
     fun init() {
         Principals.init(principalsManager(), hazelcast)
+        storageResolver.setStudyStorage(hazelcast)
     }
 }

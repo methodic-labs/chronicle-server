@@ -26,12 +26,10 @@ interface EnrollmentManager {
 
     fun getParticipant(studyId: UUID, participantId: String): Participant
     fun getParticipationStatus(studyId: UUID, participantId: String): ParticipationStatus
-    fun isNotificationsEnabled(studyId: UUID): Boolean
     fun getStudyParticipantIds(studyId: UUID): Set<String>
     fun getStudyParticipants(studyId: UUID): Set<Participant>
     fun studyExists(studyId: UUID): Boolean
     fun getOrganizationIdForStudy(studyId: UUID): UUID
-    fun getOrganizationIdForLegacyStudy(studyId: UUID): UUID
     fun getDeviceId(studyId: UUID, participantId: String, sourceDeviceId: String): UUID
     fun registerParticipant(
         connection: Connection,

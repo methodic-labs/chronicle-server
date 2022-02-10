@@ -49,6 +49,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.CREATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DATE_OF_BIRTH
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DESCRIPTION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DEVICE_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.EMAIL
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ENDED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.EXPIRATION_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.FIRST_NAME
@@ -58,11 +59,13 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.LON
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LSB
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.MSB
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.NAME
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.NOTIFICATIONS_ENABLED
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_IDS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPATION_STATUS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTITION_INDEX
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PERMISSIONS
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.PHONE_NUMBER
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_OF_ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_TYPE
@@ -71,6 +74,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJ
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_TYPE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SETTINGS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STARTED_AT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.STORAGE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_GROUP
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_VERSION
@@ -268,22 +272,27 @@ class ResultSetAdapters {
         }
 
         @Throws(SQLException::class)
+        fun studyId(rs: ResultSet): UUID = rs.getObject(STUDY_ID.name, UUID::class.java)
+
+        @Throws(SQLException::class)
         fun study(rs: ResultSet): Study {
             return Study(
-                    rs.getObject(STUDY_ID.name, UUID::class.java),
-                    rs.getString(TITLE.name),
-                    rs.getString(DESCRIPTION.name),
-                    rs.getObject(CREATED_AT.name, OffsetDateTime::class.java),
-                    rs.getObject(UPDATED_AT.name, OffsetDateTime::class.java),
-                    rs.getObject(STARTED_AT.name, OffsetDateTime::class.java),
-                    rs.getObject(ENDED_AT.name, OffsetDateTime::class.java),
-                    rs.getDouble(LAT.name),
-                    rs.getDouble(LON.name),
-                    rs.getString(STUDY_GROUP.name),
-                    rs.getString(STUDY_VERSION.name),
-                    rs.getString(CONTACT.name),
-                    PostgresArrays.getUuidArray(rs, ORGANIZATION_IDS.name)?.toSet() ?: setOf(),
-                    mapper.readValue(rs.getString(SETTINGS.name))
+                rs.getObject(STUDY_ID.name, UUID::class.java),
+                rs.getString(TITLE.name),
+                rs.getString(DESCRIPTION.name),
+                rs.getObject(CREATED_AT.name, OffsetDateTime::class.java),
+                rs.getObject(UPDATED_AT.name, OffsetDateTime::class.java),
+                rs.getObject(STARTED_AT.name, OffsetDateTime::class.java),
+                rs.getObject(ENDED_AT.name, OffsetDateTime::class.java),
+                rs.getDouble(LAT.name),
+                rs.getDouble(LON.name),
+                rs.getString(STUDY_GROUP.name),
+                rs.getString(STUDY_VERSION.name),
+                rs.getString(CONTACT.name),
+                PostgresArrays.getUuidArray(rs, ORGANIZATION_IDS.name)?.toSet() ?: setOf(),
+                rs.getBoolean(NOTIFICATIONS_ENABLED.name),
+                rs.getString(STORAGE.name),
+                settings = mapper.readValue(rs.getString(SETTINGS.name))
             )
         }
 
@@ -301,11 +310,13 @@ class ResultSetAdapters {
         @Throws(SQLException::class)
         fun candidate(rs: ResultSet): Candidate {
             return Candidate(
-                    rs.getObject(CANDIDATE_ID.name, UUID::class.java),
-                    rs.getString(FIRST_NAME.name),
-                    rs.getString(LAST_NAME.name),
-                    rs.getString(NAME.name),
-                    rs.getObject(DATE_OF_BIRTH.name, LocalDate::class.java),
+                rs.getObject(CANDIDATE_ID.name, UUID::class.java),
+                rs.getString(FIRST_NAME.name),
+                rs.getString(LAST_NAME.name),
+                rs.getString(NAME.name),
+                rs.getObject(DATE_OF_BIRTH.name, LocalDate::class.java),
+                rs.getString(EMAIL.name),
+                rs.getString(PHONE_NUMBER.name)
             )
         }
 
@@ -340,6 +351,11 @@ class ResultSetAdapters {
         @Throws(SQLException::class)
         fun candidateId(rs: ResultSet) : UUID {
             return rs.getObject(CANDIDATE_ID.name, UUID::class.java)
+        }
+
+        @Throws(SQLException::class)
+        fun storage(rs: ResultSet): String {
+            return rs.getString(STORAGE.name)
         }
     }
 }

@@ -13,6 +13,12 @@ interface StudyManager {
     fun createStudy(connection: Connection, study: Study)
     fun getStudy(studyId: UUID): Study
     fun getStudies(studyIds: Collection<UUID>): Iterable<Study>
+    fun getOrgStudies(organizationId: UUID): List<Study>
     fun updateStudy(connection: Connection, studyId: UUID, study: StudyUpdate)
     fun registerParticipant(connection: Connection, studyId: UUID, participant: Participant): UUID
+    fun isNotificationsEnabled(studyId: UUID): Boolean
+
+    fun getOrganizationIdForLegacyStudy(studyId: UUID): UUID
+    fun refreshStudyCache(studyIds: Set<UUID>)
+    fun getStudySettings(studyId: UUID): Map<String, Any>
 }
