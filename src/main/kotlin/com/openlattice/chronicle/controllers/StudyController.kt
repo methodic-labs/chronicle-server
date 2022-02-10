@@ -270,7 +270,7 @@ class StudyController @Inject constructor(
                     AuditableEvent(
                         AclKey(candidateId),
                         eventType = AuditEventType.REGISTER_CANDIDATE,
-                        description = "Registering participant with $candidateId for study."
+                        description = "Registering participant with $candidateId for study $studyId."
                     )
                 )
             }
