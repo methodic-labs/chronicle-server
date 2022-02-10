@@ -11,6 +11,7 @@ import com.openlattice.chronicle.authorization.AuthorizationManager
 import com.openlattice.chronicle.authorization.AuthorizingComponent
 import com.openlattice.chronicle.authorization.Permission
 import com.openlattice.chronicle.authorization.principals.Principals
+import com.openlattice.chronicle.data.FileType
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.ids.IdConstants
 import com.openlattice.chronicle.participants.Participant
@@ -41,11 +42,14 @@ import com.openlattice.chronicle.study.StudyApi.Companion.STUDY_ID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.UPLOAD_PATH
 import com.openlattice.chronicle.study.StudySettings
 import com.openlattice.chronicle.study.StudyUpdate
+import com.openlattice.chronicle.util.ChronicleServerUtil
 import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.*
+import java.net.http.HttpResponse
 import java.util.*
 import javax.inject.Inject
+import javax.servlet.http.HttpServletResponse
 
 
 /**
@@ -292,26 +296,42 @@ class StudyController @Inject constructor(
             @PathVariable(STUDY_ID) studyId: UUID,
             @PathVariable(PARTICIPANT_ID) participantId: String,
             @PathVariable(DATA_SOURCE_ID) datasourceId: String,
-            @RequestBody data: List<SensorDataSample>
+            @RequestBody data: List<SensorDataSample>,
     ): Int {
         return sensorDataUploadService.upload(studyId, participantId, datasourceId, data)
     }
-
 
     @Timed
     @GetMapping(
         path = [STUDY_ID_PATH + PARTICIPANT_ID_PATH + DATA_PATH + SENSOR_PATH],
         produces = [MediaType.APPLICATION_JSON_VALUE]
     )
-    override fun downloadSensorData(
+    fun downloadSensorData(
         @PathVariable(STUDY_ID) studyId: UUID,
-        @PathVariable(PARTICIPANT_ID) participantId: String
+        @PathVariable(PARTICIPANT_ID) participantId: String,
+        response: HttpServletResponse
     ): Iterable<Map<String, Any>> {
-        ensureReadAccess(AclKey(studyId))
+         ensureReadAccess(AclKey(studyId))
+
         val settings = studyService.getStudySettings(studyId)
         val sensors = StudySettings(settings).getConfiguredSensors()
 
-        return downloadService.getParticipantSensorData(studyId, participantId, sensors)
+        if (sensors.isEmpty()) {
+            logger.warn(
+                "study does not have any configured sensors, exiting download" + ChronicleServerUtil.STUDY_PARTICIPANT,
+                studyId,
+                participantId
+            )
+            return listOf()
+        }
+
+        val data = downloadService.getParticipantSensorData(studyId, participantId, sensors)
+        val fileName = ChronicleServerUtil.getSensorDataFileName(participantId)
+
+        ChronicleServerUtil.setContentDisposition(response, fileName, FileType.csv)
+        ChronicleServerUtil.setDownloadContentType(response, FileType.csv)
+
+        return data
     }
 
     /**
