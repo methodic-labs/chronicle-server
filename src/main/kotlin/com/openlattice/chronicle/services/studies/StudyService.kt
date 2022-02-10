@@ -12,7 +12,6 @@ import com.openlattice.chronicle.auditing.AuditingManager
 import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.authorization.Permission.READ
 import com.openlattice.chronicle.authorization.AuthorizationManager
-import com.openlattice.chronicle.authorization.Permission
 import com.openlattice.chronicle.authorization.SecurableObjectType
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.hazelcast.HazelcastMap
@@ -105,9 +104,9 @@ class StudyService(
         )
 
         private val UPDATE_STUDY_COLUMNS = UPDATE_STUDY_COLUMNS_LIST.joinToString(",") { it.name }
-        private val COALESCED_STUDY_COLUMNS = UPDATE_STUDY_COLUMNS_LIST
+        private val COALESCED_STUDY_COLUMNS_BIND = UPDATE_STUDY_COLUMNS_LIST
             .joinToString(",") {
-                "coalesce(?${if (it.equals(SETTINGS)) "::jsonb" else ""}, ${it.name})"
+                "coalesce(?${if (it.datatype == PostgresDatatype.JSONB) "::jsonb" else ""}, ${it.name})"
             }
 
         private val ORG_STUDIES_COLS = listOf(
@@ -179,7 +178,7 @@ class StudyService(
 
         private val UPDATE_STUDY_SQL = """
             UPDATE ${STUDIES.name}
-            SET (${UPDATE_STUDY_COLUMNS}) = (${COALESCED_STUDY_COLUMNS})
+            SET (${UPDATE_STUDY_COLUMNS}) = (${COALESCED_STUDY_COLUMNS_BIND})
             WHERE ${STUDY_ID.name} = ?
         """.trimIndent()
 
