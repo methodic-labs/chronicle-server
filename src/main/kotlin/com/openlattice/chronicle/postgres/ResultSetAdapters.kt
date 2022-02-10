@@ -24,6 +24,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.geekbeast.mappers.mappers.ObjectMappers
 import com.geekbeast.postgres.PostgresArrays
+import com.geekbeast.rhizome.jobs.JobStatus
 import com.openlattice.chronicle.authorization.AceKey
 import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.authorization.Permission
@@ -34,6 +35,8 @@ import com.openlattice.chronicle.authorization.SecurableObjectType
 import com.openlattice.chronicle.authorization.SecurablePrincipal
 import com.openlattice.chronicle.candidates.Candidate
 import com.openlattice.chronicle.data.ParticipationStatus
+import com.openlattice.chronicle.jobs.ChronicleJob
+import com.openlattice.chronicle.jobs.ChronicleJobData
 import com.openlattice.chronicle.mapstores.ids.Range
 import com.openlattice.chronicle.organizations.Organization
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
@@ -47,10 +50,13 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.DEVICE_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ENDED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.EXPIRATION_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.FIRST_NAME
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.JOB_DATA
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.JOB_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LAST_NAME
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LAT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LON
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LSB
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.MESSAGE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.MSB
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.NAME
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.NOTIFICATIONS_ENABLED
@@ -67,6 +73,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJ
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_TYPE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SETTINGS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STARTED_AT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.STATUS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STORAGE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_GROUP
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
@@ -325,6 +332,19 @@ class ResultSetAdapters {
         @Throws(SQLException::class)
         fun storage(rs: ResultSet): String {
             return rs.getString(STORAGE.name)
+        }
+
+        @Throws(SQLException::class)
+        fun chronicleJob(rs: ResultSet): ChronicleJob {
+            return ChronicleJob(
+                rs.getObject(JOB_ID.name, UUID::class.java),
+                rs.getObject(CREATED_AT.name, OffsetDateTime::class.java),
+                rs.getObject(UPDATED_AT.name, OffsetDateTime::class.java),
+                rs.getObject(STATUS.name, JobStatus::class.java),
+                rs.getString(CONTACT.name),
+                rs.getObject(JOB_DATA.name, ChronicleJobData::class.java),
+                rs.getString(MESSAGE.name)
+            )
         }
     }
 }
