@@ -355,7 +355,7 @@ class StudyController @Inject constructor(
     ): Iterable<Map<String, Any>> {
 
         val study = getStudy(studyId)
-        val sensors = study.getConfiguredSensors()
+        val sensors = study.retrieveConfiguredSensors()
 
         if (sensors.isEmpty()) {
             logger.warn(
