@@ -46,7 +46,6 @@ import com.openlattice.chronicle.study.StudyApi.Companion.STUDY_ID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.UPLOAD_PATH
 import com.openlattice.chronicle.study.StudyUpdate
 import com.openlattice.chronicle.util.ChronicleServerUtil
-import com.openlattice.users.getUser
 import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.GetMapping
@@ -75,11 +74,11 @@ class StudyController @Inject constructor(
     val enrollmentService: EnrollmentService,
     val studyService: StudyService,
     val sensorDataUploadService: SensorDataUploadService,
-    val chronicleJobService: JobService,
-    private val managementApi: ManagementAPI,
     val downloadService: DataDownloadService,
     override val authorizationManager: AuthorizationManager,
-    override val auditingManager: AuditingManager
+    override val auditingManager: AuditingManager,
+    val chronicleJobService: JobService,
+//    private val managementApi: ManagementAPI,
 ) : StudyApi, AuthorizingComponent {
 
 
@@ -273,10 +272,19 @@ class StudyController @Inject constructor(
     override fun destroyStudy(@PathVariable studyId: UUID) {
         accessCheck(AclKey(studyId), EnumSet.of(Permission.OWNER))
         logger.info("Deleting study with id $studyId")
+        // val currentUserEmail = getUser(managementApi, Principals.getCurrentUser().id).email
+        val deleteStudyDataJob = ChronicleJob(
+            id = idGenerationService.getNextId(),
+            contact = "test@openlattice.com",
+            jobData = DeleteStudyUsageData(studyId)
+        )
 
         val hds = storageResolver.getPlatformStorage()
         AuditedOperationBuilder<Unit>(hds.connection, auditingManager)
-            .operation { connection -> studyService.deleteStudies(connection, listOf(studyId)) }
+            .operation { connection ->
+                var jobId = chronicleJobService.createJob(connection, deleteStudyDataJob)
+                logger.info("Created job with id = $jobId")
+                studyService.deleteStudies(connection, listOf(studyId)) }
             .audit {
                 listOf(
                     AuditableEvent(
@@ -292,14 +300,6 @@ class StudyController @Inject constructor(
                 )
             }
             .buildAndRun()
-
-        val currentUserEmail = getUser(managementApi, Principals.getCurrentUser().id).email
-        val deleteStudyDataJob = ChronicleJob(
-            contact = currentUserEmail,
-            jobData = DeleteStudyUsageData(studyId)
-        )
-        chronicleJobService.createJob(hds.connection, deleteStudyDataJob)
-
     }
 
     @Timed
