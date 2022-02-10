@@ -38,10 +38,10 @@ import java.util.*
  */
 
 class AppDataUploadService(
-        private val storageResolver: StorageResolver,
-        private val scheduledTasksManager: ScheduledTasksManager,
-        private val enrollmentManager: EnrollmentManager,
-        private val organizationSettingsManager: OrganizationSettingsManager
+    private val storageResolver: StorageResolver,
+    private val scheduledTasksManager: ScheduledTasksManager,
+    private val enrollmentManager: EnrollmentManager,
+    private val organizationSettingsManager: OrganizationSettingsManager
 ) : AppDataUploadManager {
     private val logger = LoggerFactory.getLogger(AppDataUploadService::class.java)
 
@@ -49,8 +49,8 @@ class AppDataUploadService(
         return if (dateTime == null) {
             null
         } else OffsetDateTime.parse(dateTime)
-                .truncatedTo(chronoUnit)
-                .toString()
+            .truncatedTo(chronoUnit)
+            .toString()
     }
 
     private fun getTruncatedDateTime(datetime: String, organizationId: UUID): String? {
@@ -74,21 +74,21 @@ class AppDataUploadService(
      * id/timestamp is unlikely to happen in the lifetime of our universe.
      */
     override fun upload(
-            organizationId: UUID,
-            studyId: UUID,
-            participantId: String,
-            sourceDeviceId: String,
-            data: List<SetMultimap<UUID, Any>>
+        organizationId: UUID,
+        studyId: UUID,
+        participantId: String,
+        sourceDeviceId: String,
+        data: List<SetMultimap<UUID, Any>>
     ): Int {
         StopWatch(
-                log = "logging ${data.size} entries for ${ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE}",
-                level = Level.INFO,
-                logger = logger,
-                data.size,
-                organizationId,
-                studyId,
-                participantId,
-                sourceDeviceId
+            log = "logging ${data.size} entries for ${ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE}",
+            level = Level.INFO,
+            logger = logger,
+            data.size,
+            organizationId,
+            studyId,
+            participantId,
+            sourceDeviceId
         ).use {
             try {
                 val (flavor, hds) = storageResolver.resolveAndGetFlavor(studyId)
@@ -96,11 +96,11 @@ class AppDataUploadService(
                 val status = enrollmentManager.getParticipationStatus(studyId, participantId)
                 if (ParticipationStatus.NOT_ENROLLED == status) {
                     logger.warn(
-                            "participant is not enrolled, ignoring upload" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE,
-                            organizationId,
-                            studyId,
-                            participantId,
-                            sourceDeviceId
+                        "participant is not enrolled, ignoring upload" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE,
+                        organizationId,
+                        studyId,
+                        participantId,
+                        sourceDeviceId
                     )
                     return 0
                 }
@@ -108,29 +108,29 @@ class AppDataUploadService(
 
                 if (!deviceEnrolled) {
                     logger.error(
-                            "data source not found, ignoring upload" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE,
-                            organizationId,
-                            studyId,
-                            participantId,
-                            sourceDeviceId
+                        "data source not found, ignoring upload" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE,
+                        organizationId,
+                        studyId,
+                        participantId,
+                        sourceDeviceId
                     )
                     return 0
                 }
 
                 logger.info(
-                        "attempting to log data" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE,
-                        organizationId,
-                        studyId,
-                        participantId,
-                        sourceDeviceId
+                    "attempting to log data" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE,
+                    organizationId,
+                    studyId,
+                    participantId,
+                    sourceDeviceId
                 )
 
                 val mappedData = filter(organizationId, mapToStorageModel(data))
 
                 StopWatch(log = "Writing ${data.size} entites to DB ")
                 val written = when (flavor) {
-                    PostgresFlavor.VANILLA -> writeToPostgres(hds, organizationId, studyId, participantId, mappedUsageEventData, mappedAppUsageData)
-                    PostgresFlavor.REDSHIFT -> writeToRedshift(hds, organizationId, studyId, participantId, mappedUsageEventData, mappedAppUsageData)
+                    PostgresFlavor.VANILLA -> writeToPostgres(hds, organizationId, studyId, participantId, mappedData)
+                    PostgresFlavor.REDSHIFT -> writeToRedshift(hds, organizationId, studyId, participantId, mappedData)
                     else -> throw InvalidParameterException("Only regular postgres and redshift are supported.")
                 }
 
@@ -142,12 +142,12 @@ class AppDataUploadService(
                 return data.size
             } catch (exception: Exception) {
                 logger.error(
-                        "error logging data" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE,
-                        organizationId,
-                        studyId,
-                        participantId,
-                        sourceDeviceId,
-                        exception
+                    "error logging data" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT_DATASOURCE,
+                    organizationId,
+                    studyId,
+                    participantId,
+                    sourceDeviceId,
+                    exception
                 )
                 return 0
             }
@@ -155,34 +155,36 @@ class AppDataUploadService(
     }
 
     private fun filter(
-            organizationId: UUID,
-            mappedData: Sequence<Map<String, UsageEventColumn>>
+        organizationId: UUID,
+        mappedData: Sequence<Map<String, UsageEventColumn>>
     ): Sequence<Map<String, UsageEventColumn>> {
+        return mappedData.filter { mappedUsageEventCols ->
+            val appName = mappedUsageEventCols[FQNS_TO_COLUMNS.getValue(FULL_NAME_FQN).name]?.value as String
+            val eventDate = mappedUsageEventCols[FQNS_TO_COLUMNS.getValue(DATE_LOGGED_FQN).name]?.value as String
+            val dateLogged = getTruncatedDateTime(eventDate, organizationId)
+            !scheduledTasksManager.systemAppPackageNames.contains(appName) && dateLogged != null
+        }
+    }
+
+    private fun mapToStorageModel(data: List<SetMultimap<UUID, Any>>): Sequence<Map<String, UsageEventColumn>> {
         return data.asSequence().map { usageEvent ->
-            columns.associate { fqn ->
-                val col = mapper.getValue(fqn)
-                val colIndex = colIndexResolver(col)
+            USAGE_EVENT_COLUMNS.associate { fqn ->
+                val col = FQNS_TO_COLUMNS.getValue(fqn)
+                val colIndex = getInsertUsageEventColumnIndex(col)
                 val ptId = LegacyEdmResolver.getPropertyTypeId(fqn)
-                val value = usageEvent[ptId]?.iterator()?.let {
-                    if (it.hasNext()) {
-                        it.next()
-                    } else {
-                        null
-                    }
-                }
+                val value = usageEvent[ptId]?.iterator()?.next()
                 col.name to UsageEventColumn(col, colIndex, value)
             }
         }
     }
 
-
     private fun writeToRedshift(
-            hds: HikariDataSource,
-            organizationId: UUID,
-            studyId: UUID,
-            participantId: String,
-            data: Sequence<Map<String, UsageEventColumn>>,
-            tempMergeTable: PostgresTableDefinition = CHRONICLE_USAGE_EVENTS.createTempTable()
+        hds: HikariDataSource,
+        organizationId: UUID,
+        studyId: UUID,
+        participantId: String,
+        data: Sequence<Map<String, UsageEventColumn>>,
+        tempMergeTable: PostgresTableDefinition = CHRONICLE_USAGE_EVENTS.createTempTable()
     ): Int {
         return hds.connection.use { connection ->
             //Create the temporary merge table
@@ -192,44 +194,44 @@ class AppDataUploadService(
                 connection.createStatement().use { stmt -> stmt.execute(tempMergeTable.createTableQuery()) }
 
                 val wc = connection
-                        .prepareStatement(
-                                getInsertIntoMergeUsageEventsTableSql(
-                                        tempMergeTable.name,
-                                        tempMergeTable !is RedshiftTableDefinition
-                                )
+                    .prepareStatement(
+                        getInsertIntoMergeUsageEventsTableSql(
+                            tempMergeTable.name,
+                            tempMergeTable !is RedshiftTableDefinition
                         )
-                        .use { ps ->
-                            //Should only need to set these once for prepared statement.
-                            ps.setString(1, organizationId.toString())
-                            ps.setString(2, studyId.toString())
-                            ps.setString(3, participantId)
+                    )
+                    .use { ps ->
+                        //Should only need to set these once for prepared statement.
+                        ps.setString(1, organizationId.toString())
+                        ps.setString(2, studyId.toString())
+                        ps.setString(3, participantId)
 
-                            data.forEach { usageEventCols ->
-                                usageEventCols.values.forEach { usageEventCol ->
+                        data.forEach { usageEventCols ->
+                            usageEventCols.values.forEach { usageEventCol ->
 
-                                    val col = usageEventCol.col
-                                    val colIndex = usageEventCol.colIndex
-                                    val value = usageEventCol.value
+                                val col = usageEventCol.col
+                                val colIndex = usageEventCol.colIndex
+                                val value = usageEventCol.value
 
-                                    //Set insert value to null, if value was not provided.
-                                    if (value == null) {
-                                        ps.setObject(colIndex, null)
-                                    } else {
-                                        when (col.datatype) {
-                                            PostgresDatatype.TEXT -> ps.setString(colIndex, value as String)
-                                            PostgresDatatype.TIMESTAMPTZ -> ps.setObject(
-                                                    colIndex,
-                                                    OffsetDateTime.parse(value as String?)
-                                            )
-                                            PostgresDatatype.BIGINT -> ps.setLong(colIndex, value as Long)
-                                            else -> ps.setObject(colIndex, value)
-                                        }
+                                //Set insert value to null, if value was not provided.
+                                if (value == null) {
+                                    ps.setObject(colIndex, null)
+                                } else {
+                                    when (col.datatype) {
+                                        PostgresDatatype.TEXT -> ps.setString(colIndex, value as String)
+                                        PostgresDatatype.TIMESTAMPTZ -> ps.setObject(
+                                            colIndex,
+                                            OffsetDateTime.parse(value as String?)
+                                        )
+                                        PostgresDatatype.BIGINT -> ps.setLong(colIndex, value as Long)
+                                        else -> ps.setObject(colIndex, value)
                                     }
                                 }
-                                ps.addBatch()
                             }
-                            ps.executeBatch().sum()
+                            ps.addBatch()
                         }
+                        ps.executeBatch().sum()
+                    }
 
                 connection.createStatement().use { stmt ->
                     stmt.execute(getDeleteTempTableEntriesSql(tempMergeTable.name))
@@ -248,21 +250,21 @@ class AppDataUploadService(
     }
 
     private fun writeToPostgres(
-            hds: HikariDataSource,
-            organizationId: UUID,
-            studyId: UUID,
-            participantId: String,
-            data: Sequence<Map<String, UsageEventColumn>>
+        hds: HikariDataSource,
+        organizationId: UUID,
+        studyId: UUID,
+        participantId: String,
+        data: Sequence<Map<String, UsageEventColumn>>
     ): Int {
         return writeToRedshift(
-                hds,
-                organizationId,
-                studyId,
-                participantId,
-                data,
-                PostgresDataTables.CHRONICLE_USAGE_EVENTS.createTempTableWithSuffix(
-                        RandomStringUtils.randomAlphanumeric(10)
-                )
+            hds,
+            organizationId,
+            studyId,
+            participantId,
+            data,
+            PostgresDataTables.CHRONICLE_USAGE_EVENTS.createTempTableWithSuffix(
+                RandomStringUtils.randomAlphanumeric(10)
+            )
         )
     }
 
@@ -274,27 +276,27 @@ class AppDataUploadService(
 
 
 private data class UsageEventColumn(
-        val col: PostgresColumnDefinition,
-        val colIndex: Int,
-        val value: Any?
+    val col: PostgresColumnDefinition,
+    val colIndex: Int,
+    val value: Any?
 )
 
 private val USAGE_EVENT_COLUMNS = listOf(
-        FULL_NAME_FQN,
-        RECORD_TYPE_FQN,
-        DATE_LOGGED_FQN,
-        TIMEZONE_FQN,
-        USER_FQN,
-        TITLE_FQN
+    FULL_NAME_FQN,
+    RECORD_TYPE_FQN,
+    DATE_LOGGED_FQN,
+    TIMEZONE_FQN,
+    USER_FQN,
+    TITLE_FQN
 )
 
 private val USAGE_STAT_COLUMNS = listOf(
-        FULL_NAME_FQN,
-        RECORD_TYPE_FQN,
-        START_DATE_TIME_FQN,
-        END_DATE_TIME_FQN,
-        DURATION_FQN,
-        DATE_LOGGED_FQN,
-        TIMEZONE_FQN,
-        TITLE_FQN,
+    FULL_NAME_FQN,
+    RECORD_TYPE_FQN,
+    START_DATE_TIME_FQN,
+    END_DATE_TIME_FQN,
+    DURATION_FQN,
+    DATE_LOGGED_FQN,
+    TIMEZONE_FQN,
+    TITLE_FQN,
 )

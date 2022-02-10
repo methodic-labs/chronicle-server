@@ -72,8 +72,9 @@ class ChronicleStudyController : ChronicleStudyApi {
         @PathVariable(ChronicleStudyApi.PARTICIPANT_ID) participantId: String,
         @RequestParam(value = ChronicleStudyApi.DATE) date: String
     ): List<ChronicleAppsUsageDetails> {
-        val organizationId = studyManager.getOrganizationIdForLegacyStudy(studyId)
-        return surveysManager.getParticipantAppsUsageData(organizationId, studyId, participantId, date)
+//        val organizationId = studyManager.getOrganizationIdForLegacyStudy(studyId)
+//        return surveysManager.getParticipantAppsUsageData(organizationId, studyId, participantId, date)
+        TODO("Not needed for v3. To remove")
     }
 
     @Timed
@@ -107,8 +108,9 @@ class ChronicleStudyController : ChronicleStudyApi {
         @PathVariable(ChronicleStudyApi.PARTICIPANT_ID) participantId: String,
         @RequestBody associationDetails: Map<UUID, Map<FullQualifiedName, Set<Any>>>
     ) {
-        val organizationId = studyManager.getOrganizationIdForLegacyStudy(studyId)
-        surveysManager.submitAppUsageSurvey(organizationId, studyId, participantId, associationDetails)
+//        val organizationId = studyManager.getOrganizationIdForLegacyStudy(studyId)
+//        surveysManager.submitAppUsageSurvey(organizationId, studyId, participantId, associationDetails)
+        TODO("Not needed for v3. To remove")
     }
 
     @Timed
@@ -159,7 +161,8 @@ class ChronicleStudyController : ChronicleStudyApi {
         @PathVariable(ChronicleStudyApi.PARTICIPANT_ID) participantId: String,
         @RequestBody surveyData: List<Map<FullQualifiedName, Set<Any>>>
     ) {
-        val organizationId = studyManager.getOrganizationIdForLegacyStudy(studyId)
-        surveysManager.submitTimeUseDiarySurvey(organizationId, studyId, participantId, surveyData)
+//        val organizationId = studyManager.getOrganizationIdForLegacyStudy(studyId)
+//        surveysManager.submitTimeUseDiarySurvey(organizationId, studyId, participantId, surveyData)
+        TODO("Not needed for v3. Will remove")
     }
 }

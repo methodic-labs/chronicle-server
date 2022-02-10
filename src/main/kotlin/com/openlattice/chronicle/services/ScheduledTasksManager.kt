@@ -5,7 +5,7 @@ import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
 import com.google.common.collect.Maps
 import com.google.common.collect.Sets
 import com.openlattice.chronicle.postgres.ResultSetAdapters
-import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.SYSTEM_APPS
+//import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.SYSTEM_APPS
 import com.openlattice.chronicle.storage.StorageResolver
 import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.Scheduled
@@ -29,9 +29,9 @@ class ScheduledTasksManager(
     companion object {
         private val logger = LoggerFactory.getLogger(ScheduledTasksManager::class.java)
 
-        private val GET_SYSTEM_APPS_SQL = """
-            SELECT * FROM ${SYSTEM_APPS.name}
-        """.trimIndent()
+//        private val GET_SYSTEM_APPS_SQL = """
+//            SELECT * FROM ${SYSTEM_APPS.name}
+//        """.trimIndent()
     }
 
 
