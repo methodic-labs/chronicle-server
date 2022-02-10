@@ -1,18 +1,44 @@
 package com.openlattice.chronicle.study
 
+import com.geekbeast.retrofit.RhizomeRetrofitCallException
 import com.openlattice.chronicle.ChronicleServerTests
+import com.openlattice.chronicle.candidates.Candidate
 import com.openlattice.chronicle.client.ChronicleClient
+import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.organizations.Organization
+import com.openlattice.chronicle.participants.Participant
+import org.junit.After
 import org.junit.Assert
+import org.junit.Before
 import org.junit.Test
+import java.time.LocalDate
+import java.util.UUID
 
 /**
  *
  * @author Matthew Tamayo-Rios &lt;matthew@openlattice.com&gt;
  */
 class StudyTests : ChronicleServerTests() {
-    private val chronicleClient: ChronicleClient = clientUser1
+
     private val chronicleClient2: ChronicleClient = clientUser2
+    private val chronicleClient: ChronicleClient = clientUser1
+    private var c1: Candidate? = null
+    private var c2: Candidate? = null
+    private var s1: Study? = null
+
+    @Before
+    fun beforeEachTest() {
+        c1 = Candidate("iron", "man", "ironman", LocalDate.parse("2008-05-02"))
+        c2 = Candidate("black", "panther", "blackpanther", LocalDate.parse("2018-02-16"))
+        s1 = Study(title = "test study", contact = "test@openlattice.com")
+    }
+
+    @After
+    fun afterEachTest() {
+        c1 = null
+        c2 = null
+        s1 = null
+    }
 
     @Test
     fun createStudy() {
@@ -116,5 +142,41 @@ class StudyTests : ChronicleServerTests() {
         Assert.assertEquals(listOf(study3Id), actualOrg3Studies.map { study -> study.id })
         Assert.assertEquals(listOf(study3Title),actualOrg3Studies.map { study -> study.title })
         Assert.assertEquals(study3OrgIds, actualOrg3Studies[0].organizationIds)
+    }
+
+    @Test
+    fun registerParticipant() {
+        val p = Participant("p1", c1!!, ParticipationStatus.ENROLLED)
+        val studyId = clientUser1.studyApi.createStudy(s1!!)
+        val candidateId = clientUser1.studyApi.registerParticipant(studyId, p)
+        c1!!.id = candidateId
+        val actual = clientUser1.candidateApi.getCandidate(candidateId)
+        Assert.assertEquals(c1, actual)
+    }
+
+    @Test
+    fun registerParticipantWithExistingCandidate() {
+        val candidateId = clientUser1.candidateApi.registerCandidate(c1!!)
+        c1!!.id = candidateId
+        val p = Participant("p1", c1!!, ParticipationStatus.ENROLLED)
+        val studyId = clientUser1.studyApi.createStudy(s1!!)
+        clientUser1.studyApi.registerParticipant(studyId, p)
+    }
+
+    @Test
+    fun registerParticipantWithRandomCandidate() {
+        try {
+            c1!!.id = UUID.randomUUID()
+            val p = Participant("p1", c1!!, ParticipationStatus.ENROLLED)
+            val studyId = clientUser1.studyApi.createStudy(s1!!)
+            clientUser1.studyApi.registerParticipant(studyId, p)
+            Assert.fail()
+        }
+        catch (e: RhizomeRetrofitCallException) {
+            Assert.assertTrue(
+                "should fail with expected error message",
+                e.body.contains("cannot register candidate with an invalid id")
+            )
+        }
     }
 }
