@@ -40,13 +40,11 @@ import com.openlattice.chronicle.study.StudyApi.Companion.SENSOR_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.STUDY_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.STUDY_ID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.UPLOAD_PATH
-import com.openlattice.chronicle.study.StudySettings
 import com.openlattice.chronicle.study.StudyUpdate
 import com.openlattice.chronicle.util.ChronicleServerUtil
 import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.*
-import java.net.http.HttpResponse
 import java.util.*
 import javax.inject.Inject
 import javax.servlet.http.HttpServletResponse
@@ -311,10 +309,9 @@ class StudyController @Inject constructor(
         @PathVariable(PARTICIPANT_ID) participantId: String,
         response: HttpServletResponse
     ): Iterable<Map<String, Any>> {
-         ensureReadAccess(AclKey(studyId))
 
-        val settings = studyService.getStudySettings(studyId)
-        val sensors = StudySettings(settings).getConfiguredSensors()
+        val study = getStudy(studyId)
+        val sensors = study.getConfiguredSensors()
 
         if (sensors.isEmpty()) {
             logger.warn(
