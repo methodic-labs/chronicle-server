@@ -17,8 +17,8 @@ class CandidateApiTests : ChronicleServerTests() {
 
     @Before
     fun beforeEachTest() {
-        c1 = Candidate("iron", "man", "ironman", LocalDate.parse("2008-05-02"))
-        c2 = Candidate("black", "panther", "blackpanther", LocalDate.parse("2018-02-16"))
+        c1 = Candidate(firstName = "iron", lastName = "man", dateOfBirth = LocalDate.parse("2008-05-02"))
+        c2 = Candidate(firstName = "black", lastName = "panther", dateOfBirth = LocalDate.parse("2018-02-16"))
     }
 
     @After
