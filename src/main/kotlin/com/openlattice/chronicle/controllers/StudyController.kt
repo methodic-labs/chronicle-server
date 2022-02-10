@@ -265,10 +265,6 @@ class StudyController @Inject constructor(
         return if (retrieve) studyService.getStudy(studyId) else null
     }
 
-    override fun destroyStudy(studyId: UUID) {
-        TODO("Not yet implemented")
-    }
-
     @Timed
     @DeleteMapping(
         path = [STUDY_ID_PATH],
