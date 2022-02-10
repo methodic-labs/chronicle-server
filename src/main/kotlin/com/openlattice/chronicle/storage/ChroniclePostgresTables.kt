@@ -16,10 +16,13 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.ENDED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.EXPIRATION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.EXPIRATION_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.FIRST_NAME
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.JOB_DATA
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.JOB_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LAST_NAME
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LAT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LON
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LSB
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.MESSAGE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.MSB
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.NAME
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.NOTIFICATIONS_ENABLED
@@ -39,6 +42,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.SETTINGS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SOURCE_DEVICE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SOURCE_DEVICE_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STARTED_AT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.STATUS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STORAGE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_GROUP
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
