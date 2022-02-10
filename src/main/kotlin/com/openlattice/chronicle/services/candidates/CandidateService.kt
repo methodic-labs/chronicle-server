@@ -8,6 +8,8 @@ import com.openlattice.chronicle.authorization.AuthorizationManager
 import com.openlattice.chronicle.authorization.SecurableObjectType
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.candidates.Candidate
+import com.openlattice.chronicle.ids.HazelcastIdGenerationService
+import com.openlattice.chronicle.ids.IdConstants
 import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.CANDIDATES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CANDIDATE_ID
@@ -16,6 +18,7 @@ import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.util.ensureVanilla
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import java.security.InvalidParameterException
 import java.sql.Connection
 import java.util.UUID
 
@@ -23,6 +26,7 @@ import java.util.UUID
 class CandidateService(
     private val storageResolver: StorageResolver,
     private val authorizationService: AuthorizationManager,
+    private val idGenerationService: HazelcastIdGenerationService,
 ) : CandidateManager {
 
     companion object {
@@ -31,6 +35,10 @@ class CandidateService(
         private val CANDIDATES_COLUMNS = CANDIDATES
             .columns
             .subtract(setOf(EXPIRATION_DATE))
+
+        private val COUNT_CANDIDATES_SQL = """
+            SELECT count(*) FROM ${CANDIDATES.name} WHERE ${CANDIDATE_ID.name} = ?
+        """.trimIndent()
 
         private val SELECT_CANDIDATES_SQL = """
             SELECT * FROM ${CANDIDATES.name} WHERE ${CANDIDATE_ID.name} = ANY(?)
@@ -43,6 +51,10 @@ class CandidateService(
 
     }
 
+    override fun exists(connection: Connection, candidateId: UUID): Boolean {
+        return countCandidates(connection, candidateId) > 0
+    }
+
     override fun getCandidate(candidateId: UUID): Candidate {
         return selectCandidates(setOf(candidateId)).first()
     }
@@ -52,14 +64,21 @@ class CandidateService(
     }
 
     override fun registerCandidate(connection: Connection, candidate: Candidate) : UUID {
-        insertCandidate(connection, candidate)
-        authorizationService.createSecurableObject(
-            connection = connection,
-            aclKey = AclKey(candidate.id),
-            principal = Principals.getCurrentUser(),
-            objectType = SecurableObjectType.Candidate
-        )
-        return candidate.id
+        if (candidate.id == IdConstants.UNINITIALIZED.id) {
+            candidate.id = idGenerationService.getNextId()
+            insertCandidate(connection, candidate)
+            authorizationService.createSecurableObject(
+                connection = connection,
+                aclKey = AclKey(candidate.id),
+                principal = Principals.getCurrentUser(),
+                objectType = SecurableObjectType.Candidate
+            )
+            return candidate.id
+        }
+        else if (exists(connection, candidate.id)) {
+            return candidate.id
+        }
+        throw InvalidParameterException("cannot register candidate with an invalid id - ${candidate.id}")
     }
 
     //
@@ -67,6 +86,15 @@ class CandidateService(
     // private
     //
     //
+
+    private fun countCandidates(connection: Connection, candidateId: UUID): Long {
+        return connection.prepareStatement(COUNT_CANDIDATES_SQL).use { ps ->
+            ps.setObject(1, candidateId)
+            ps.executeQuery().use { rs ->
+                if (rs.next()) ResultSetAdapters.count(rs) else 0
+            }
+        }
+    }
 
     private fun insertCandidate(connection: Connection, candidate: Candidate) {
         connection.prepareStatement(INSERT_CANDIDATE_SQL).use { ps ->
