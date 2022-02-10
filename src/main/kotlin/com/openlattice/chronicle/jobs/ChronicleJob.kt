@@ -17,7 +17,7 @@ class ChronicleJob @JsonCreator constructor(
     val status: JobStatus = JobStatus.PENDING,
     val contact: String,
     val jobData: ChronicleJobData,
-    val message: String
+    val message: String = ""
 ) {
 
 
