@@ -1,5 +1,6 @@
 package com.openlattice.chronicle.controllers
 
+import com.auth0.client.mgmt.ManagementAPI
 import com.codahale.metrics.annotation.Timed
 import com.geekbeast.configuration.postgres.PostgresFlavor
 import com.openlattice.chronicle.auditing.AuditEventType
@@ -13,9 +14,12 @@ import com.openlattice.chronicle.authorization.Permission
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.ids.IdConstants
+import com.openlattice.chronicle.jobs.ChronicleJob
+import com.openlattice.chronicle.jobs.DeleteStudyUsageData
 import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.sensorkit.SensorDataSample
 import com.openlattice.chronicle.services.enrollment.EnrollmentService
+import com.openlattice.chronicle.services.jobs.JobService
 import com.openlattice.chronicle.services.studies.StudyService
 import com.openlattice.chronicle.services.upload.SensorDataUploadService
 import com.openlattice.chronicle.sources.SourceDevice
@@ -38,10 +42,12 @@ import com.openlattice.chronicle.study.StudyApi.Companion.STUDY_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.STUDY_ID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.UPLOAD_PATH
 import com.openlattice.chronicle.study.StudyUpdate
+import com.openlattice.users.getUser
 import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -64,6 +70,8 @@ class StudyController @Inject constructor(
     val enrollmentService: EnrollmentService,
     val studyService: StudyService,
     val sensorDataUploadService: SensorDataUploadService,
+    val chronicleJobService: JobService,
+    private val managementApi: ManagementAPI,
     override val authorizationManager: AuthorizationManager,
     override val auditingManager: AuditingManager
 ) : StudyApi, AuthorizingComponent {
@@ -278,6 +286,13 @@ class StudyController @Inject constructor(
                 )
             }
             .buildAndRun()
+
+        val currentUserEmail = getUser(managementApi, Principals.getCurrentUser().id).email
+        val deleteStudyDataJob = ChronicleJob(
+            contact = currentUserEmail,
+            jobData = DeleteStudyUsageData(studyId)
+        )
+        chronicleJobService.createJob(hds.connection, deleteStudyDataJob)
 
     }
 
