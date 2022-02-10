@@ -1,10 +1,12 @@
 package com.openlattice.chronicle.candidates
 
+import com.geekbeast.retrofit.RhizomeRetrofitCallException
 import com.openlattice.chronicle.ChronicleServerTests
 import com.openlattice.chronicle.ids.IdConstants
 import org.junit.Assert
 import org.junit.Test
 import java.time.LocalDate
+import java.util.UUID
 
 class CandidateApiTests : ChronicleServerTests() {
 
@@ -29,5 +31,37 @@ class CandidateApiTests : ChronicleServerTests() {
         expected.id = candidateId
         val actual = clientUser1.candidateApi.getCandidate(candidateId)
         Assert.assertEquals(expected, actual)
+    }
+
+    @Test
+    fun testRegisterCandidateWithExistingId() {
+        try {
+            val c1 = Candidate("iron", "man", "ironman", LocalDate.parse("2008-05-02"))
+            val id = clientUser1.candidateApi.registerCandidate(c1)
+            c1.id = id
+            clientUser1.candidateApi.registerCandidate(c1)
+            Assert.fail()
+        }
+        catch (e: RhizomeRetrofitCallException) {
+            Assert.assertTrue(
+                "should fail with expected error message",
+                e.body.contains("cannot register candidate with the given id")
+            )
+        }
+    }
+
+    @Test
+    fun testRegisterCandidateWithRandomId() {
+        try {
+            val c1 = Candidate(UUID.randomUUID(), "iron", "man", "ironman", LocalDate.parse("2008-05-02"))
+            clientUser1.candidateApi.registerCandidate(c1)
+            Assert.fail()
+        }
+        catch (e: RhizomeRetrofitCallException) {
+            Assert.assertTrue(
+                "should fail with expected error message",
+                e.body.contains("cannot register candidate with the given id")
+            )
+        }
     }
 }
