@@ -5,6 +5,7 @@ import com.geekbeast.postgres.PostgresTableDefinition
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.BASE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CANDIDATE_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.CATEGORY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CONTACT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CREATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DATE_OF_BIRTH
@@ -46,6 +47,10 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.TITLE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPDATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_DATA
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.JOB_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.STATUS
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.JOB_DATA
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.MESSAGE
 
 
 /**
@@ -189,6 +194,19 @@ class ChroniclePostgresTables {
             .addColumns(USER_ID, USER_DATA, EXPIRATION)
             .primaryKey(USER_ID)
             .overwriteOnConflict()
+
+        @JvmField
+        val JOBS = PostgresTableDefinition("jobs")
+            .addColumns(
+              JOB_ID,
+              CREATED_AT,
+              UPDATED_AT,
+              STATUS,
+              CONTACT,
+              JOB_DATA,
+              MESSAGE
+            )
+            .primaryKey(JOB_ID)
 
         init {
             ORGANIZATION_STUDIES

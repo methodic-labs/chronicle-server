@@ -64,6 +64,11 @@ class PostgresColumns {
         @JvmField val URL = PostgresColumnDefinition("url", PostgresDatatype.TEXT)
         @JvmField val USER_DATA = PostgresColumnDefinition("user_data", PostgresDatatype.JSONB)
         @JvmField val USER_ID = PostgresColumnDefinition("user_id", PostgresDatatype.TEXT).notNull()
+        @JvmField val JOB_ID = PostgresColumnDefinition("job_id", PostgresDatatype.UUID).notNull()
+        @JvmField val STATUS = PostgresColumnDefinition("status", PostgresDatatype.TEXT)
+        @JvmField val JOB_DATA = PostgresColumnDefinition("job_data", PostgresDatatype.JSONB).withDefault("'{}'::jsonb")
+        @JvmField val MESSAGE = PostgresColumnDefinition("message", PostgresDatatype.TEXT)
+
 
         val columnTypes : Map<String, PostgresDatatype> = postgresColumns().associate { it.name to it.datatype }
 
