@@ -43,15 +43,13 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.STORAGE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_GROUP
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_VERSION
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION_DATE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TITLE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPDATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_DATA
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_ID
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.JOB_ID
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.STATUS
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.JOB_DATA
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.MESSAGE
-
 
 /**
  *
@@ -143,6 +141,18 @@ class ChroniclePostgresTables {
                 SOURCE_DEVICE
             )
             .primaryKey(STUDY_ID, DEVICE_ID) //Just in case device is used across multiple studies
+
+        @JvmField
+        val TIME_USE_DIARY_SUBMISSIONS = PostgresTableDefinition("time_use_diary_submissions")
+            .addColumns(
+                SUBMISSION_ID,
+                ORGANIZATION_ID,
+                STUDY_ID,
+                PARTICIPANT_ID,
+                SUBMISSION_DATE,
+                SUBMISSION
+            )
+            .primaryKey(SUBMISSION_ID)
 
         @JvmField
         val BASE_LONG_IDS: PostgresTableDefinition = PostgresTableDefinition("base_long_ids")
