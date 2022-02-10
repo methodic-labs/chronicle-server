@@ -89,7 +89,6 @@ class CandidateController @Inject constructor(
                         Principals.getCurrentSecurablePrincipal().id,
                         Principals.getCurrentUser().id,
                         AuditEventType.REGISTER_CANDIDATE,
-                        ""
                     )
                 )
             }
