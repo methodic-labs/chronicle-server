@@ -3,7 +3,7 @@ package com.openlattice.chronicle.client
 import com.openlattice.chronicle.api.ChronicleApi
 import com.openlattice.chronicle.candidates.CandidateApi
 import com.openlattice.chronicle.organizations.OrganizationsApi
-import com.openlattice.chronicle.api.TimeUseDiaryApi
+import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi
 import com.openlattice.chronicle.study.StudyApi
 
 /**
