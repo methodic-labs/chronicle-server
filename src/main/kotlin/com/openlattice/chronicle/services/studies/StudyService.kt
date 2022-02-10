@@ -1,5 +1,6 @@
 package com.openlattice.chronicle.services.studies
 
+import com.fasterxml.jackson.module.kotlin.readValue
 import com.geekbeast.mappers.mappers.ObjectMappers
 import com.openlattice.chronicle.storage.StorageResolver
 import com.geekbeast.postgres.PostgresArrays
@@ -218,6 +219,17 @@ class StudyService(
             )
             ORDER BY ${CREATED_AT.name} DESC
         """.trimIndent()
+
+
+        /**
+         * PreparedStatement bind order:
+         * 1) StudyId
+         */
+        private val GET_STUDY_SETTINGS_SQL = """
+            SELECT ${SETTINGS.name}
+            FROM ${STUDIES.name}
+            WHERE ${STUDY_ID.name} = ?
+        """.trimIndent()
     }
 
     override fun createStudy(connection: Connection, study: Study) {
@@ -352,5 +364,17 @@ class StudyService(
 
     override fun refreshStudyCache(studyIds: Set<UUID>) {
         studies.loadAll(studyIds, true)
+    }
+
+    override fun getStudySettings(studyId: UUID): Map<String, Any>{
+        return storageResolver.getPlatformStorage().connection.use { connection ->
+            connection.prepareStatement(GET_STUDY_SETTINGS_SQL).use { ps ->
+                ps.setObject(1, studyId)
+                ps.executeQuery().use { rs ->
+                    if (rs.next()) mapper.readValue(rs.getString(SETTINGS.name))
+                    else mapOf()
+                }
+            }
+        }
     }
 }
