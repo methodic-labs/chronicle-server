@@ -47,6 +47,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.CREATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DATE_OF_BIRTH
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DESCRIPTION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DEVICE_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.EMAIL
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ENDED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.EXPIRATION_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.FIRST_NAME
@@ -65,6 +66,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPATION_STATUS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTITION_INDEX
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PERMISSIONS
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.PHONE_NUMBER
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_OF_ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_TYPE
@@ -316,6 +318,8 @@ class ResultSetAdapters {
                 rs.getString(LAST_NAME.name),
                 rs.getString(NAME.name),
                 rs.getObject(DATE_OF_BIRTH.name, LocalDate::class.java),
+                rs.getString(EMAIL.name),
+                rs.getString(PHONE_NUMBER.name)
             )
         }
 
