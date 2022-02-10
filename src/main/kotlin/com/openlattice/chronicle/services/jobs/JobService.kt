@@ -1,5 +1,6 @@
 package com.openlattice.chronicle.services.jobs
 
+import com.geekbeast.mappers.mappers.ObjectMappers
 import com.geekbeast.postgres.PostgresArrays
 import com.geekbeast.postgres.PostgresDatatype
 import com.geekbeast.postgres.streams.BasePostgresIterable
@@ -28,6 +29,7 @@ class JobService (
 ) : JobManager {
     companion object {
         private val logger = LoggerFactory.getLogger(JobService::class.java)
+        private val mapper = ObjectMappers.newJsonMapper()
 
         private val JOB_COLUMNS_LIST = listOf(
             JOB_ID,
@@ -50,14 +52,13 @@ class JobService (
 
 
     override fun createJob(connection: Connection, job: ChronicleJob): UUID {
-        job.id = idGenerationService.getNextId()
-        logger.info("Creating job with id = ", job.id)
         val ps = connection.prepareStatement(INSERT_JOB_SQL)
         var index = 1
         ps.setObject(index++, job.id)
-        ps.setObject(index++, job.status)
-        ps.setObject(index++, job.contact)
-        ps.setObject(index++, job.jobData)
+        ps.setString(index++, job.status.toString())
+        ps.setString(index++, job.contact)
+        ps.setString(index, mapper.writeValueAsString(job.jobData))
+        ps.executeUpdate()
         return job.id
     }
 
