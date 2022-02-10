@@ -58,6 +58,8 @@ import com.openlattice.chronicle.services.download.DataDownloadManager
 import com.openlattice.chronicle.services.download.DataDownloadService
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import com.openlattice.chronicle.services.enrollment.EnrollmentService
+import com.openlattice.chronicle.services.jobs.JobManager
+import com.openlattice.chronicle.services.jobs.JobService
 import com.openlattice.chronicle.services.settings.OrganizationSettingsManager
 import com.openlattice.chronicle.services.settings.OrganizationSettingsService
 import com.openlattice.chronicle.services.studies.StudyService
@@ -268,6 +270,14 @@ class ChronicleServerServicesPod {
         return Auth0UserListingService(
             ManagementAPI(auth0Configuration.domain, auth0Token),
             Auth0ApiExtension(auth0Configuration.domain, auth0Token)
+        )
+    }
+
+    @Bean
+    fun jobManager(): JobManager {
+        return JobService(
+            idGenerationService(),
+            storageResolver
         )
     }
 
