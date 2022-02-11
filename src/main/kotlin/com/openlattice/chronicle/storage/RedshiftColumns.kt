@@ -24,6 +24,7 @@ class RedshiftColumns {
         @JvmField val APPLICATION_LABEL = PostgresColumnDefinition("application_label", PostgresDatatype.TEXT)
         @JvmField val START_TIME = PostgresColumnDefinition("start_time", PostgresDatatype.TIMESTAMPTZ )
         @JvmField val END_TIME = PostgresColumnDefinition("end_time", PostgresDatatype.TIMESTAMPTZ )
+        @JvmField val RECORDED_DATE = PostgresColumnDefinition("date", PostgresDatatype.DATE) //important for app usage survey to query events by date
         //Convert all duration to milliseconds for redshift compatibility
         @JvmField val DURATION = PostgresColumnDefinition("duration", PostgresDatatype.BIGINT )
 
