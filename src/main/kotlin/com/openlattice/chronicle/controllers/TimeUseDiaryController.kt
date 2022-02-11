@@ -146,13 +146,9 @@ class TimeUseDiaryController(
         @RequestParam(DOWNLOAD_TYPE) downloadType: TimeUseDiaryDownloadDataType,
         @RequestBody submissionIds: Set<UUID>
     ): Iterable<Map<String,Any>> {
-        return timeUseDiaryManager.downloadTimeUseDiaryData(
-            organizationId,
-            studyId,
-            participantId,
-            downloadType,
-            submissionIds
-        )
+        throw TimeUseDiaryDownloadExcpetion(studyId,
+            "This implementation of the overloaded downloadTimeUseDiaryData method should not be used. " +
+                    "Instead use the implementation that includes an HttpServletResponse parameter.")
     }
 
     @Timed
