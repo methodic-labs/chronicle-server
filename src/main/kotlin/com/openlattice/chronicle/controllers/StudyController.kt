@@ -11,33 +11,43 @@ import com.openlattice.chronicle.authorization.AuthorizationManager
 import com.openlattice.chronicle.authorization.AuthorizingComponent
 import com.openlattice.chronicle.authorization.Permission
 import com.openlattice.chronicle.authorization.principals.Principals
+import com.openlattice.chronicle.data.FileType
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.ids.IdConstants
 import com.openlattice.chronicle.participants.Participant
+import com.openlattice.chronicle.sensorkit.SensorDataSample
+import com.openlattice.chronicle.services.download.DataDownloadService
 import com.openlattice.chronicle.services.enrollment.EnrollmentService
 import com.openlattice.chronicle.services.studies.StudyService
+import com.openlattice.chronicle.services.upload.SensorDataUploadService
 import com.openlattice.chronicle.sources.SourceDevice
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.study.Study
 import com.openlattice.chronicle.study.StudyApi
 import com.openlattice.chronicle.study.StudyApi.Companion.CONTROLLER
+import com.openlattice.chronicle.study.StudyApi.Companion.DATA_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.DATA_SOURCE_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.DATA_SOURCE_ID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.ENROLL_PATH
+import com.openlattice.chronicle.study.StudyApi.Companion.ORGANIZATION_ID
+import com.openlattice.chronicle.study.StudyApi.Companion.ORGANIZATION_ID_PATH
+import com.openlattice.chronicle.study.StudyApi.Companion.ORGANIZATION_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_ID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.RETRIEVE
+import com.openlattice.chronicle.study.StudyApi.Companion.SENSOR_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.STUDY_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.STUDY_ID_PATH
+import com.openlattice.chronicle.study.StudyApi.Companion.UPLOAD_PATH
 import com.openlattice.chronicle.study.StudyUpdate
-import com.openlattice.chronicle.util.ensureVanilla
+import com.openlattice.chronicle.util.ChronicleServerUtil
 import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.*
-import java.util.EnumSet
-import java.util.UUID
+import java.util.*
 import javax.inject.Inject
+import javax.servlet.http.HttpServletResponse
 
 
 /**
@@ -51,6 +61,8 @@ class StudyController @Inject constructor(
     val idGenerationService: HazelcastIdGenerationService,
     val enrollmentService: EnrollmentService,
     val studyService: StudyService,
+    val sensorDataUploadService: SensorDataUploadService,
+    val downloadService: DataDownloadService,
     override val authorizationManager: AuthorizationManager,
     override val auditingManager: AuditingManager
 ) : StudyApi, AuthorizingComponent {
@@ -103,6 +115,7 @@ class StudyController @Inject constructor(
     )
     override fun createStudy(@RequestBody study: Study): UUID {
         ensureAuthenticated()
+        study.organizationIds.forEach { organizationId -> ensureOwnerAccess(AclKey(organizationId)) }
         logger.info("Creating study associated with organizations ${study.organizationIds}")
         val (flavor, hds) = storageResolver.getDefaultPlatformStorage()
         check(flavor == PostgresFlavor.VANILLA) { "Only vanilla postgres supported for studies." }
@@ -168,6 +181,39 @@ class StudyController @Inject constructor(
     }
 
     @Timed
+    @GetMapping(
+        path = [ORGANIZATION_PATH + ORGANIZATION_ID_PATH],
+        produces = [MediaType.APPLICATION_JSON_VALUE],
+    )
+    override fun getOrgStudies(@PathVariable(ORGANIZATION_ID) organizationId: UUID): List<Study> {
+
+        ensureReadAccess(AclKey(organizationId))
+        val currentUserId = Principals.getCurrentUser().id;
+        logger.info("Retrieving studies with organization id $organizationId on behalf of $currentUserId")
+
+        return try {
+            val studies = studyService.getOrgStudies(organizationId)
+            studies.forEach { study ->
+                recordEvent(
+                    AuditableEvent(
+                        AclKey(study.id),
+                        Principals.getCurrentSecurablePrincipal().id,
+                        currentUserId,
+                        eventType = AuditEventType.GET_STUDY,
+                        study = study.id,
+                        organization = organizationId,
+                    )
+                )
+            }
+
+            studies
+        } catch (ex: NoSuchElementException) {
+            throw OrganizationNotFoundException(organizationId, "No organization with id $organizationId found.")
+        }
+
+    }
+
+    @Timed
     @PatchMapping(
         path = [STUDY_ID_PATH],
         consumes = [MediaType.APPLICATION_JSON_VALUE]
@@ -204,6 +250,10 @@ class StudyController @Inject constructor(
         return if (retrieve) studyService.getStudy(studyId) else null
     }
 
+    override fun destroyStudy(studyId: UUID) {
+        TODO("Not yet implemented")
+    }
+
     @Timed
     @PostMapping(
         path = [STUDY_ID_PATH + PARTICIPANT_PATH],
@@ -216,10 +266,6 @@ class StudyController @Inject constructor(
         ensureValidStudy(studyId)
         ensureWriteAccess(AclKey(studyId))
         val hds = storageResolver.getPlatformStorage()
-        if (participant.candidate.id == IdConstants.UNINITIALIZED.id) {
-            participant.candidate.id = idGenerationService.getNextId()
-        }
-
         return AuditedOperationBuilder<UUID>(hds.connection, auditingManager)
             .operation { connection -> studyService.registerParticipant(connection, studyId, participant) }
             .audit { candidateId ->
@@ -227,11 +273,58 @@ class StudyController @Inject constructor(
                     AuditableEvent(
                         AclKey(candidateId),
                         eventType = AuditEventType.REGISTER_CANDIDATE,
-                        description = "Registering participant with $candidateId for study."
+                        description = "Registering participant with $candidateId for study $studyId."
                     )
                 )
             }
             .buildAndRun()
+    }
+
+    @Timed
+    @PostMapping(
+            path = [STUDY_ID_PATH + PARTICIPANT_ID_PATH + DATA_SOURCE_ID_PATH + UPLOAD_PATH + SENSOR_PATH],
+            consumes = [MediaType.APPLICATION_JSON_VALUE],
+            produces = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    override fun uploadSensorData(
+            @PathVariable(STUDY_ID) studyId: UUID,
+            @PathVariable(PARTICIPANT_ID) participantId: String,
+            @PathVariable(DATA_SOURCE_ID) datasourceId: String,
+            @RequestBody data: List<SensorDataSample>,
+    ): Int {
+        return sensorDataUploadService.upload(studyId, participantId, datasourceId, data)
+    }
+
+    @Timed
+    @GetMapping(
+        path = [STUDY_ID_PATH + PARTICIPANT_ID_PATH + DATA_PATH + SENSOR_PATH],
+        produces = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    fun downloadSensorData(
+        @PathVariable(STUDY_ID) studyId: UUID,
+        @PathVariable(PARTICIPANT_ID) participantId: String,
+        response: HttpServletResponse
+    ): Iterable<Map<String, Any>> {
+
+        val study = getStudy(studyId)
+        val sensors = study.retrieveConfiguredSensors()
+
+        if (sensors.isEmpty()) {
+            logger.warn(
+                "study does not have any configured sensors, exiting download" + ChronicleServerUtil.STUDY_PARTICIPANT,
+                studyId,
+                participantId
+            )
+            return listOf()
+        }
+
+        val data = downloadService.getParticipantSensorData(studyId, participantId, sensors)
+        val fileName = ChronicleServerUtil.getSensorDataFileName(participantId)
+
+        ChronicleServerUtil.setContentDisposition(response, fileName, FileType.csv)
+        ChronicleServerUtil.setDownloadContentType(response, FileType.csv)
+
+        return data
     }
 
     /**

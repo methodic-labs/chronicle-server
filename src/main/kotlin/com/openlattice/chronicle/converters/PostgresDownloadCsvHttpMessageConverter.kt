@@ -62,7 +62,7 @@ class PostgresDownloadCsvHttpMessageConverter : AbstractGenericHttpMessageConver
             csvTypes[PostgresDatatype.DOUBLE] = CsvSchema.ColumnType.NUMBER
             csvTypes[PostgresDatatype.BOOLEAN] = CsvSchema.ColumnType.BOOLEAN
             csvTypes[PostgresDatatype.DATE] = CsvSchema.ColumnType.STRING
-
+            csvTypes[PostgresDatatype.INTEGER] = CsvSchema.ColumnType.NUMBER
         }
     }
 

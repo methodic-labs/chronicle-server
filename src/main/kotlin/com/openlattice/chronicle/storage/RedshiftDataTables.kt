@@ -8,13 +8,19 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_PACKAGE_N
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.AUDIT_EVENT_TYPE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DATA
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DESCRIPTION
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DEVICE_USAGE_SENSOR_COLS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DURATION
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.END_TIME
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.INTERACTION_TYPE
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.KEYBOARD_METRICS_SENSOR_COLS
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.MESSAGES_USAGE_SENSOR_COLS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.ORGANIZATION_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PARTICIPANT_ID
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PHONE_USAGE_SENSOR_COLS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PRINCIPAL_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.SECURABLE_PRINCIPAL_ID
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.SHARED_SENSOR_COLS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.START_TIME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMESTAMP
@@ -32,54 +38,69 @@ class RedshiftDataTables {
 
         @JvmField
         val CHRONICLE_USAGE_EVENTS = RedshiftTableDefinition("chronicle_usage_events")
-            .sortKey(STUDY_ID)
-            .addColumns(
-                ORGANIZATION_ID,
-                STUDY_ID,
-                PARTICIPANT_ID,
-                APP_PACKAGE_NAME,
-                INTERACTION_TYPE,
-                TIMESTAMP,
-                TIMEZONE,
-                USERNAME,
-                APPLICATION_LABEL
-            )
-            .addDataSourceNames(REDSHIFT_DATASOURCE_NAME)
+                .sortKey(STUDY_ID)
+                .addColumns(
+                        ORGANIZATION_ID,
+                        STUDY_ID,
+                        PARTICIPANT_ID,
+                        APP_PACKAGE_NAME,
+                        INTERACTION_TYPE,
+                        TIMESTAMP,
+                        TIMEZONE,
+                        USERNAME,
+                        APPLICATION_LABEL
+                )
+                .addDataSourceNames(REDSHIFT_DATASOURCE_NAME)
 
         @JvmField
         val CHRONICLE_USAGE_STATS = RedshiftTableDefinition("chronicle_usage_stats")
-            .sortKey(STUDY_ID)
-            .addColumns(
-                ORGANIZATION_ID,
-                STUDY_ID,
-                PARTICIPANT_ID,
-                APP_PACKAGE_NAME,
-                INTERACTION_TYPE,
-                START_TIME,
-                END_TIME,
-                DURATION,
-                TIMESTAMP,
-                TIMEZONE,
-                APPLICATION_LABEL
-            )
-            .addDataSourceNames(REDSHIFT_DATASOURCE_NAME)
+                .sortKey(STUDY_ID)
+                .addColumns(
+                        ORGANIZATION_ID,
+                        STUDY_ID,
+                        PARTICIPANT_ID,
+                        APP_PACKAGE_NAME,
+                        INTERACTION_TYPE,
+                        START_TIME,
+                        END_TIME,
+                        DURATION,
+                        TIMESTAMP,
+                        TIMEZONE,
+                        APPLICATION_LABEL
+                )
+                .addDataSourceNames(REDSHIFT_DATASOURCE_NAME)
 
 
         @JvmField
         val AUDIT = RedshiftTableDefinition("audit")
-            .sortKey(ACL_KEY)
-            .addColumns(
-                ACL_KEY,
-                SECURABLE_PRINCIPAL_ID,
-                PRINCIPAL_ID,
-                AUDIT_EVENT_TYPE,
-                STUDY_ID,
-                ORGANIZATION_ID,
-                DESCRIPTION,
-                DATA,
-                TIMESTAMP
-            )
-            .addDataSourceNames(REDSHIFT_DATASOURCE_NAME)
+                .sortKey(ACL_KEY)
+                .addColumns(
+                        ACL_KEY,
+                        SECURABLE_PRINCIPAL_ID,
+                        PRINCIPAL_ID,
+                        AUDIT_EVENT_TYPE,
+                        STUDY_ID,
+                        ORGANIZATION_ID,
+                        DESCRIPTION,
+                        DATA,
+                        TIMESTAMP
+                )
+                .addDataSourceNames(REDSHIFT_DATASOURCE_NAME)
+
+        @JvmField
+        val IOS_SENSOR_DATA = RedshiftTableDefinition("sensor_data")
+                .sortKey(STUDY_ID)
+                .addColumns(
+                        *(SHARED_SENSOR_COLS + DEVICE_USAGE_SENSOR_COLS + PHONE_USAGE_SENSOR_COLS + MESSAGES_USAGE_SENSOR_COLS + KEYBOARD_METRICS_SENSOR_COLS).toTypedArray()
+                )
+                .addDataSourceNames(REDSHIFT_DATASOURCE_NAME)
+
+        private val INSERT_SENSOR_DATA_COL_INDICES = IOS_SENSOR_DATA.columns.mapIndexed { index, col -> col.name to index + 1 }.toMap()
+
+        fun getInsertSensorDataColumnIndex(col: PostgresColumnDefinition): Int {
+            return INSERT_SENSOR_DATA_COL_INDICES.getValue(col.name)
+        }
+
         private val USAGE_EVENT_COLS = CHRONICLE_USAGE_EVENTS.columns.joinToString(",") { it.name }
         private val USAGE_EVENT_PARAMS = CHRONICLE_USAGE_EVENTS.columns.joinToString(",") { "?" }
 
@@ -88,7 +109,7 @@ class RedshiftDataTables {
          */
         private fun getMergeClause(srcMergeTableName: String): String {
             return CHRONICLE_USAGE_EVENTS.columns.joinToString(
-                " AND "
+                    " AND "
             ) { "${CHRONICLE_USAGE_EVENTS.name}.${it.name} = ${srcMergeTableName}.${it.name}" }
         }
 
@@ -148,16 +169,16 @@ class RedshiftDataTables {
         """.trimIndent()
 
         val INSERT_USAGE_EVENT_COLUMN_INDICES: Map<String, Int> =
-            CHRONICLE_USAGE_EVENTS.columns.mapIndexed { index, pcd -> pcd.name to (index + 1) }.toMap() //remeber postgres is 1 based index
+                CHRONICLE_USAGE_EVENTS.columns.mapIndexed { index, pcd -> pcd.name to (index + 1) }.toMap() //remeber postgres is 1 based index
         val INSERT_USAGE_STATS_COLUMN_INDICES: Map<String, Int> =
-            CHRONICLE_USAGE_STATS.columns.mapIndexed { index, pcd -> pcd.name to (index + 1) }.toMap()
+                CHRONICLE_USAGE_STATS.columns.mapIndexed { index, pcd -> pcd.name to (index + 1) }.toMap()
 
         fun getInsertUsageEventColumnIndex(
-            column: PostgresColumnDefinition
+                column: PostgresColumnDefinition
         ): Int = INSERT_USAGE_EVENT_COLUMN_INDICES.getValue(column.name)
 
         fun getInsertUsageStatColumnIndex(
-            column: PostgresColumnDefinition
+                column: PostgresColumnDefinition
         ): Int = INSERT_USAGE_STATS_COLUMN_INDICES.getValue(column.name)
     }
 }

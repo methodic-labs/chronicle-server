@@ -67,6 +67,7 @@ import com.openlattice.chronicle.services.timeusediary.TimeUseDiaryManager
 import com.openlattice.chronicle.services.timeusediary.TimeUseDiaryService
 import com.openlattice.chronicle.services.upload.AppDataUploadManager
 import com.openlattice.chronicle.services.upload.AppDataUploadService
+import com.openlattice.chronicle.services.upload.SensorDataUploadService
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.tasks.PostConstructInitializerTaskDependencies
 import com.openlattice.chronicle.users.Auth0SyncInitializationTask
@@ -337,7 +338,12 @@ class ChronicleServerServicesPod {
 
     @Bean
     fun candidateService(): CandidateService {
-        return CandidateService(storageResolver, authorizationService())
+        return CandidateService(storageResolver, authorizationService(), idGenerationService())
+    }
+
+    @Bean
+    fun sensorDataUploadService(): SensorDataUploadService {
+        return SensorDataUploadService(storageResolver, enrollmentManager())
     }
 
     companion object {
