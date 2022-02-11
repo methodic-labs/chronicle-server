@@ -3,10 +3,13 @@ package com.openlattice.chronicle.services.timeusediary
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.geekbeast.configuration.postgres.PostgresFlavor
+import com.geekbeast.postgres.streams.BasePostgresIterable
+import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
 import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.authorization.AuthorizationManager
 import com.openlattice.chronicle.authorization.SecurableObjectType
 import com.openlattice.chronicle.authorization.principals.Principals
+import com.openlattice.chronicle.converters.PostgresDownloadWrapper
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryDownloadDataType
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryResponse
@@ -14,8 +17,10 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION_DATE
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.TIME_USE_DIARY_SUBMISSIONS
+import org.postgresql.util.PGobject
 import org.slf4j.LoggerFactory
 import java.sql.Connection
 import java.sql.ResultSet
@@ -95,8 +100,8 @@ class TimeUseDiaryService(
                     submissionsByDate[currentDate]!!.add(currentUUID)
                 }
             }
-        } catch (e: SQLException) {
-            logger.error("hds error: $e")
+        } catch (ex: SQLException) {
+            logger.error("hds error: $ex")
         }
         return submissionsByDate
     }
@@ -105,10 +110,62 @@ class TimeUseDiaryService(
         organizationId: UUID,
         studyId: UUID,
         participantId: String,
+        downloadType: TimeUseDiaryDownloadDataType,
+        submissionIds: Set<UUID>
+    ): PostgresDownloadWrapper {
+        try {
+            val hds = storageResolver.getPlatformStorage(PostgresFlavor.VANILLA)
+            val postgresIterable = BasePostgresIterable<Map<String, Any>>(
+                PreparedStatementHolderSupplier(
+                    hds,
+                    downloadTimeUseDiaryDataSql,
+                    1024
+                ) { ps ->
+                    var index = 1
+                    ps.setObject(index++, organizationId)
+                    ps.setObject(index++, studyId)
+                    ps.setString(index++, participantId)
+                    ps.setArray(index, hds.connection.createArrayOf("UUID", submissionIds.toTypedArray()))
+                }) { rs ->
+                mapOf(
+                    SUBMISSION_ID.name to setOf(rs.getString(SUBMISSION_ID.name)),
+                    PARTICIPANT_ID.name to setOf(rs.getString(PARTICIPANT_ID.name)),
+                    SUBMISSION_DATE.name to rs.getObject(SUBMISSION_DATE.name, OffsetDateTime::class.java)
+                ) + convertTudJsonbToMap(rs, downloadType)
+            }
+            return PostgresDownloadWrapper(postgresIterable).withColumnAdvice(
+                listOf(
+                    SUBMISSION_ID.name,
+                    PARTICIPANT_ID.name,
+                    SUBMISSION_DATE.name
+                ) + downloadType.downloadColumnTitles
+            )
+        } catch (ex: Exception) {
+            throw error("Error: $ex")
+        }
+    }
+
+    /* -------- Download Utils -------- */
+
+    private fun convertTudJsonbToMap(
+        rs: ResultSet,
         type: TimeUseDiaryDownloadDataType,
-        submissionsIds: Set<UUID>
-    ) {
-        TODO("Not yet implemented")
+    ): Map<String, Set<String>> {
+        val responses = extractTudResponsesFromResult(rs)
+        return type.downloadColumnTitles.associateWith { kw ->
+            responses.firstOrNull { it.questionCode.first() == kw }?.response ?: setOf("")
+        }
+    }
+
+    private fun extractTudResponsesFromResult(resultSet: ResultSet): List<TimeUseDiaryResponse> {
+        val submissionJson = resultSet.getObject(SUBMISSION.name, PGobject::class.java)
+        return objectMapper.readValue(
+            submissionJson.value,
+            objectMapper.typeFactory.constructCollectionType(
+                List::class.java,
+                TimeUseDiaryResponse::class.java
+            )
+        )
     }
 
     /* -------- SQL helpers -------- */
@@ -149,6 +206,22 @@ class TimeUseDiaryService(
         return preparedStatement.executeQuery()
     }
 
+    private fun executeDownloadTimeUseDiaryData(
+        connection: Connection,
+        organizationId: UUID,
+        studyId: UUID,
+        participantId: String,
+        timeUseDiaryIds: Set<UUID>
+    ): ResultSet {
+        val preparedStatement = connection.prepareStatement(downloadTimeUseDiaryDataSql)
+        var index = 1
+        preparedStatement.setObject(index++, organizationId)
+        preparedStatement.setObject(index++, studyId)
+        preparedStatement.setString(index++, participantId)
+        preparedStatement.setArray(index, connection.createArrayOf("UUID", timeUseDiaryIds.toTypedArray()))
+        return preparedStatement.executeQuery()
+    }
+
     /**
      * SQL String to create a [java.sql.PreparedStatement] to submit a study response for a participant
      *
@@ -181,4 +254,22 @@ class TimeUseDiaryService(
                 AND ${SUBMISSION_DATE.name} BETWEEN ? AND ?
                 ORDER BY ${SUBMISSION_DATE.name} ASC
             """.trimIndent()
+
+    /**
+     * SQL String to create a [java.sql.PreparedStatement] to retrieve time use diary responses for download
+     *
+     * @param organizationId    Identifies the organization from which to retrieve submissions
+     * @param studyId           Identifies the study from which to retrieve submissions
+     * @param participantId     Identifies the participant for whom to retrieve submissions
+     * @param timeUseDiaryIds   Identifies the time use diaries from which to retrieve submissions
+     */
+    private val downloadTimeUseDiaryDataSql = """
+        SELECT ${SUBMISSION_ID.name}, ${PARTICIPANT_ID.name}, ${SUBMISSION_DATE.name}, ${SUBMISSION.name}
+        FROM ${TIME_USE_DIARY_SUBMISSIONS.name}
+        WHERE ${ORGANIZATION_ID.name} = ?
+        AND ${STUDY_ID.name} = ?
+        AND ${PARTICIPANT_ID.name} = ?
+        AND ${SUBMISSION_ID.name} = ANY (?)
+    """.trimIndent()
+
 }
