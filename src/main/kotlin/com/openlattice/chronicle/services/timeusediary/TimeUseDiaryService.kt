@@ -153,7 +153,7 @@ class TimeUseDiaryService(
     ): Map<String, Set<String>> {
         val responses = extractTudResponsesFromResult(rs)
         return type.downloadColumnTitles.associateWith { kw ->
-            responses.firstOrNull { it.questionCode.first() == kw }?.response ?: setOf("")
+            responses.firstOrNull { it.question == kw }?.response ?: setOf("")
         }
     }
 
