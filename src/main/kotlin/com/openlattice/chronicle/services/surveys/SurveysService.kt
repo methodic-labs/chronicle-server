@@ -5,25 +5,21 @@ import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
 import com.openlattice.chronicle.data.ChronicleQuestionnaire
 import com.openlattice.chronicle.postgres.ResultSetAdapters
-//import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.APPS_USAGE
-//import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_LABEL
-//import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_PACKAGE_NAME
-//import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_USAGE_DATE
-//import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_USAGE_ID
-//import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_USAGE_TIMESTAMP
-//import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_USAGE_TIMEZONE
-//import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_USAGE_USERS
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_ID
+import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.APP_USAGE_SURVEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APPLICATION_LABEL
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_PACKAGE_NAME
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.RECORDED_DATE
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMESTAMP
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMEZONE
+import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.CHRONICLE_USAGE_EVENTS
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.survey.AppUsage
-import com.openlattice.chronicle.util.ChronicleServerUtil.ORG_STUDY_PARTICIPANT
-import com.openlattice.chronicle.util.ensureVanilla
+import com.openlattice.chronicle.util.ChronicleServerUtil.STUDY_PARTICIPANT
 import org.apache.olingo.commons.api.edm.FullQualifiedName
 import org.slf4j.LoggerFactory
 import java.time.LocalDate
-import java.time.OffsetDateTime
 import java.util.*
 
 /**
@@ -40,39 +36,39 @@ class SurveysService(
     companion object {
         private val logger = LoggerFactory.getLogger(SurveysService::class.java)
 
-        /**
-         * PreparedStatement bind order
-         * 1) organizationId
-         * 2) studyId
-         * 3) participantId
-         * 4) date
-         */
-//        val GET_APP_USAGE_SQL = """
-//            SELECT ${APP_USAGE_ID.name}, ${APP_USAGE_TIMEZONE.name}, ${APP_PACKAGE_NAME.name}, ${APP_LABEL.name}, ${APP_USAGE_TIMESTAMP.name}
-//            FROM ${APPS_USAGE.name}
-//            WHERE ${ORGANIZATION_ID.name} = ?
-//                AND ${STUDY_ID.name} = ?
-//                AND ${PARTICIPANT_ID.name} = ?
-//                AND ${APP_USAGE_DATE.name} = ?
-//                AND (cardinality(${APP_USAGE_USERS.name}) = 0 OR ${APP_USAGE_USERS.name} IS NULL)
-//        """.trimIndent()
+        private val APP_USAGE_SURVEY_COLS = APP_USAGE_SURVEY.columns.joinToString(",") { it.name }
+        private val APP_USAGE_SURVEY_PARAMS = APP_USAGE_SURVEY.columns.joinToString(",") { "?" }
 
         /**
          * PreparedStatement bind order
-         * 1) appUsers
-         * 2) organizationId
-         * 3) studyId
-         * 4) participantId
-         * 5) appUsageId
+         * 1) studyId
+         * 2) participantId
+         * 3) date
          */
-//        val SUBMIT_APP_USAGE_SURVEY_SQL = """
-//            UPDATE ${APPS_USAGE.name}
-//            SET ${APP_USAGE_USERS.name} = ?
-//            WHERE ${ORGANIZATION_ID.name} = ?
-//                AND ${STUDY_ID.name} = ?
-//                AND ${PARTICIPANT_ID.name} = ?
-//                AND ${APP_USAGE_ID.name} = ?
-//        """.trimIndent()
+        // TODO: Later modify this query to only return certain event types (Move to Foreground, etc) that better represent apps that the user actually interacted with
+        val GET_APP_USAGE_SQL = """
+            SELECT ${APP_PACKAGE_NAME.name}, ${APPLICATION_LABEL.name}, ${TIMESTAMP.name}, ${TIMEZONE.name}
+            FROM ${CHRONICLE_USAGE_EVENTS.name}
+            WHERE ${STUDY_ID.name} = ?
+                AND ${PARTICIPANT_ID.name} = ?
+                AND ${RECORDED_DATE.name} = ?
+        """.trimIndent()
+
+        /**
+         * PreparedStatement bind order
+         * 1) studyId
+         * 2) participantId
+         * 3) submission_date
+         * 4) application_label
+         * 5) package_name
+         * 6) users
+         * 7) timestamp
+         * 8) timezone
+         */
+        val SUBMIT_APP_USAGE_SURVEY_SQL = """
+            INSERT INTO ${APP_USAGE_SURVEY.name}($APP_USAGE_SURVEY_COLS) VALUES ($APP_USAGE_SURVEY_PARAMS)
+            ON CONFLICT DO NOTHING
+        """.trimIndent()
     }
 
     override fun getQuestionnaire(
@@ -96,93 +92,93 @@ class SurveysService(
 
 
     override fun submitAppUsageSurvey(
-            organizationId: UUID,
             studyId: UUID,
             participantId: String,
-            surveyResponses: Map<UUID, Set<String>>
+            surveyResponses: List<AppUsage>
     ) {
         logger.info(
-                "submitting app usage survey $ORG_STUDY_PARTICIPANT",
-                organizationId,
+                "submitting app usage survey $STUDY_PARTICIPANT",
                 studyId,
                 participantId
         )
 
-        val numWritten = updateAppUsage(organizationId, studyId, participantId, surveyResponses)
+        val numWritten = writeToAppUsageTable(studyId, participantId, surveyResponses)
 
         if (numWritten  != surveyResponses.size) {
-            logger.warn("updated {} entities but expected to update {} entities", numWritten, surveyResponses.size)
+            logger.warn("wrote {} entities but expected to write {} entities", numWritten, surveyResponses.size)
         }
     }
 
-    override fun getAppUsageData(organizationId: UUID, studyId: UUID, participantId: String, date: String): List<AppUsage> {
-//        try {
-//            val requestedDate = LocalDate.parse(date)
-//
-//            val (flavor, hds) = storageResolver.resolveAndGetFlavor(studyId)
-//            ensureVanilla(flavor)
-//
-//            val result = BasePostgresIterable(
-//                    PreparedStatementHolderSupplier(hds, GET_APP_USAGE_SQL) { ps ->
-//                        ps.setObject(1, organizationId)
-//                        ps.setObject(2, studyId)
-//                        ps.setObject(3, participantId)
-//                        ps.setObject(4, requestedDate)
-//                    }
-//            ) {
-//                ResultSetAdapters.appUsage(it)
-//
-//            }.toList()
-//
-//            logger.info(
-//                    "fetched {} app usage entries for date {} $ORG_STUDY_PARTICIPANT",
-//                    result.size,
-//                    requestedDate,
-//                    organizationId,
-//                    studyId,
-//                    participantId
-//            )
-//
-//            return result
-//
-//        } catch (ex: Exception) {
-//            logger.error("unable to parse date string")
-//            throw ex
-//        }
-        return listOf()
+    // Fetches data from UsageEvents table in redshift
+    override fun getAppUsageData(studyId: UUID, participantId: String, date: String): List<AppUsage> {
+        try {
+            val requestedDate = LocalDate.parse(date)
+            print(requestedDate.toString())
+
+            val (_, hds) = storageResolver.resolveAndGetFlavor(studyId)
+
+            val result = BasePostgresIterable(
+                    PreparedStatementHolderSupplier(hds, GET_APP_USAGE_SQL) { ps ->
+                        ps.setString(1, studyId.toString())
+                        ps.setString(2, participantId)
+                        ps.setObject(3, requestedDate)
+                    }
+            ) {
+                ResultSetAdapters.appUsage(it)
+
+            }.toList()
+
+            logger.info(
+                    "fetched {} app usage entries for date {} $STUDY_PARTICIPANT",
+                    result.size,
+                    requestedDate,
+                    studyId,
+                    participantId
+            )
+
+            return result
+
+        } catch (ex: Exception) {
+            logger.error("unable to fetch data for app usage survey")
+            throw ex
+        }
     }
 
-    private fun updateAppUsage( organizationId: UUID, studyId: UUID, participantId: String, data: Map<UUID, Set<String>>): Int {
-        val (flavor, hds) = storageResolver.resolveAndGetFlavor(studyId)
-        ensureVanilla(flavor)
+    // writes survey response to postgres table
+    private fun writeToAppUsageTable(studyId: UUID, participantId: String, data: List<AppUsage>): Int {
 
-//        return hds.connection.use { conn ->
-//            try {
-//                val wc = conn.prepareStatement(SUBMIT_APP_USAGE_SURVEY_SQL).use { ps ->
-//                    data.forEach { (appUsageId, appUsers) ->
-//                        ps.setArray(1, PostgresArrays.createTextArray(conn, appUsers))
-//                        ps.setObject(2, organizationId)
-//                        ps.setObject(3, studyId)
-//                        ps.setString(4, participantId)
-//                        ps.setObject(5, appUsageId)
-//                        ps.addBatch()
-//                    }
-//                    ps.executeBatch().sum()
-//                }
-//                return@use wc
-//
-//            } catch (ex: Exception) {
-//                logger.error(
-//                        "unable to submit app usage survey $ORG_STUDY_PARTICIPANT",
-//                        organizationId,
-//                        studyId,
-//                        participantId,
-//                        ex
-//                )
-//                conn.rollback()
-//                throw ex
-//            }
-//        }
-        return 0
+        val submissionDate = LocalDate.now()
+
+        val hds = storageResolver.getPlatformStorage()
+        return hds.connection.use { conn ->
+            try {
+                val wc = conn.prepareStatement(SUBMIT_APP_USAGE_SURVEY_SQL).use { ps ->
+                    data.forEach { response ->
+                        var index = 0
+                        ps.setObject(++index, studyId)
+                        ps.setString(++index, participantId)
+                        ps.setObject(++index, submissionDate)
+                        ps.setString(++index, response.appLabel)
+                        ps.setString(++index, response.appPackageName)
+                        ps.setObject(++index, response.timestamp)
+                        ps.setString(++index, response.timezone)
+                        ps.setArray(++index, PostgresArrays.createTextArray(conn, response.users))
+                        ps.addBatch()
+                    }
+                    ps.executeBatch().sum()
+                }
+                return@use wc
+
+            } catch (ex: Exception) {
+                logger.error(
+                        "unable to submit app usage survey $STUDY_PARTICIPANT",
+                        studyId,
+                        participantId,
+                        ex
+                )
+                conn.rollback()
+                throw ex
+            }
+        }
     }
 }

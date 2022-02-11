@@ -22,14 +22,12 @@ interface SurveysManager {
     )
 
     fun submitAppUsageSurvey(
-            organizationId: UUID,
             studyId: UUID,
             participantId: String,
-            surveyResponses: Map<UUID, Set<String>>
+            surveyResponses: List<AppUsage>
     )
 
     fun getAppUsageData(
-            organizationId: UUID,
             studyId: UUID,
             participantId: String,
             date: String
