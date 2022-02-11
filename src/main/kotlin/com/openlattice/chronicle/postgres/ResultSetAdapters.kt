@@ -37,11 +37,6 @@ import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.mapstores.ids.Range
 import com.openlattice.chronicle.organizations.Organization
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
-//import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_LABEL
-//import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_PACKAGE_NAME
-//import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_USAGE_ID
-//import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_USAGE_TIMESTAMP
-//import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_USAGE_TIMEZONE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CANDIDATE_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CATEGORY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CONTACT
@@ -81,7 +76,11 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_VERSION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TITLE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPDATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.URL
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APPLICATION_LABEL
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_PACKAGE_NAME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.ID
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMESTAMP
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMEZONE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.USERNAME
 import com.openlattice.chronicle.study.Study
 import com.openlattice.chronicle.survey.AppUsage
@@ -319,29 +318,21 @@ class ResultSetAdapters {
                 rs.getString(PHONE_NUMBER.name)
             )
         }
+        
+        @Throws(SQLException::class)
+        fun appUsage(rs: ResultSet): AppUsage {
+            val timezone = rs.getString(TIMEZONE.name)
+            val timestamp = rs.getObject(TIMESTAMP.name, OffsetDateTime::class.java)
+            val zoneId = ZoneId.of(timezone)
 
-//        @Throws(SQLException::class)
-//        fun systemApp(rs: ResultSet): String {
-//            return rs.getString(APP_PACKAGE_NAME.name)
-//        }
-//
-//        @Throws(SQLException::class)
-//        fun appUsage(rs: ResultSet): AppUsage {
-//            val timezone = rs.getString(APP_USAGE_TIMEZONE.name)
-//            val timestamp = rs.getObject(APP_USAGE_TIMESTAMP.name, OffsetDateTime::class.java)
-//            val zoneId = ZoneId.of(timezone)
-//            val appUsage = AppUsage(
-//                    rs.getObject(APP_USAGE_ID.name, UUID::class.java),
-//                    rs.getString(APP_PACKAGE_NAME.name),
-//                    rs.getString(APP_LABEL.name),
-//                    timestamp.toInstant().atZone(zoneId).toOffsetDateTime()
-//            )
-//            if (appUsage.appLabel.isBlank()) {
-//                appUsage.appLabel = appUsage.appPackageName
-//            }
-//
-//            return appUsage
-//        }
+            return AppUsage(
+                rs.getString(APP_PACKAGE_NAME.name),
+                rs.getString(APPLICATION_LABEL.name),
+                timestamp.toInstant().atZone(zoneId).toOffsetDateTime(),
+                users = listOf(),
+                timezone
+            )
+        }
 
         @Throws(SQLException::class)
         fun participantStatus(rs: ResultSet): ParticipationStatus {
