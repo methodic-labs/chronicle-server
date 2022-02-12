@@ -125,7 +125,8 @@ class OrganizationsController @Inject constructor(
     }
 
     override fun setChronicleDataCollectionSettings(
-        organizationId: UUID, dataCollectionSettings: ChronicleDataCollectionSettings
+        organizationId: UUID,
+        dataCollectionSettings: ChronicleDataCollectionSettings
     ) {
         TODO("Not yet implemented")
     }
