@@ -337,7 +337,7 @@ class StudyController @Inject constructor(
 
     @Timed
     @GetMapping(
-        path = [STUDY_ID_PATH + PARTICIPANT_ID_PATH + DATA_PATH + IOS_PATH],
+        path = [STUDY_ID_PATH + PARTICIPANT_PATH + PARTICIPANT_ID_PATH + DATA_PATH + IOS_PATH],
         produces = [MediaType.APPLICATION_JSON_VALUE]
     )
     fun downloadSensorData(
