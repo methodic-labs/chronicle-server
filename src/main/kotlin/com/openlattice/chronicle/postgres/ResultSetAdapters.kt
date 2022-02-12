@@ -318,7 +318,7 @@ class ResultSetAdapters {
                 rs.getString(PHONE_NUMBER.name)
             )
         }
-        
+
         @Throws(SQLException::class)
         fun appUsage(rs: ResultSet): AppUsage {
             val timezone = rs.getString(TIMEZONE.name)
