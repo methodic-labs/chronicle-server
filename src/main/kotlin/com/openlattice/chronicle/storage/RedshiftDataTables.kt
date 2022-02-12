@@ -52,7 +52,6 @@ class RedshiftDataTables {
                         TIMEZONE,
                         USERNAME,
                         APPLICATION_LABEL,
-                        RECORDED_DATE,
                     )
                 .addDataSourceNames(REDSHIFT_DATASOURCE_NAME)
 

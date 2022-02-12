@@ -6,8 +6,10 @@ import com.openlattice.chronicle.survey.AppUsage
 import com.openlattice.chronicle.survey.AppUsageSurveyApi
 import com.openlattice.chronicle.survey.AppUsageSurveyApi.Companion.CONTROLLER
 import com.openlattice.chronicle.survey.AppUsageSurveyApi.Companion.DATE
+import com.openlattice.chronicle.survey.AppUsageSurveyApi.Companion.END_DATE
 import com.openlattice.chronicle.survey.AppUsageSurveyApi.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.survey.AppUsageSurveyApi.Companion.PARTICIPANT_ID_PATH
+import com.openlattice.chronicle.survey.AppUsageSurveyApi.Companion.START_DATE
 import com.openlattice.chronicle.survey.AppUsageSurveyApi.Companion.STUDY_ID
 import com.openlattice.chronicle.survey.AppUsageSurveyApi.Companion.STUDY_ID_PATH
 import org.springframework.http.MediaType
@@ -18,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import java.time.OffsetDateTime
 import java.util.*
 import javax.inject.Inject
 
@@ -40,9 +43,10 @@ class AppUsageSurveyController : AppUsageSurveyApi {
     override fun getAppUsageSurveyData(
             @PathVariable(STUDY_ID) studyId: UUID,
             @PathVariable(PARTICIPANT_ID) participantId: String,
-            @RequestParam(value = DATE) date: String
+            @PathVariable(value = START_DATE) startDateTime: OffsetDateTime,
+            @PathVariable(value = END_DATE) endDateTime: OffsetDateTime
     ): List<AppUsage> {
-        return surveysService.getAppUsageData(studyId, participantId, date)
+        return surveysService.getAppUsageData(studyId, participantId, startDateTime, endDateTime)
     }
 
     @Timed

@@ -4,6 +4,7 @@ import com.openlattice.chronicle.data.ChronicleAppsUsageDetails
 import com.openlattice.chronicle.data.ChronicleQuestionnaire
 import com.openlattice.chronicle.survey.AppUsage
 import org.apache.olingo.commons.api.edm.FullQualifiedName
+import java.time.OffsetDateTime
 import java.util.*
 
 
@@ -30,7 +31,8 @@ interface SurveysManager {
     fun getAppUsageData(
             studyId: UUID,
             participantId: String,
-            date: String
+            startDateTime: OffsetDateTime,
+            endDateTime: OffsetDateTime
     ): List<AppUsage>
 
 }

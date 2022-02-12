@@ -10,7 +10,6 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_I
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APPLICATION_LABEL
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_PACKAGE_NAME
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.RECORDED_DATE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMESTAMP
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMEZONE
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.CHRONICLE_USAGE_EVENTS
@@ -20,6 +19,7 @@ import com.openlattice.chronicle.util.ChronicleServerUtil.STUDY_PARTICIPANT
 import org.apache.olingo.commons.api.edm.FullQualifiedName
 import org.slf4j.LoggerFactory
 import java.time.LocalDate
+import java.time.OffsetDateTime
 import java.util.*
 
 /**
@@ -51,7 +51,8 @@ class SurveysService(
             FROM ${CHRONICLE_USAGE_EVENTS.name}
             WHERE ${STUDY_ID.name} = ?
                 AND ${PARTICIPANT_ID.name} = ?
-                AND ${RECORDED_DATE.name} = ?
+                AND ${TIMESTAMP.name} >=  ?
+                AND ${TIMESTAMP.name} < ?
         """.trimIndent()
 
         /**
@@ -110,10 +111,13 @@ class SurveysService(
     }
 
     // Fetches data from UsageEvents table in redshift
-    override fun getAppUsageData(studyId: UUID, participantId: String, date: String): List<AppUsage> {
+    override fun getAppUsageData(
+        studyId: UUID,
+        participantId: String,
+        startDateTime: OffsetDateTime,
+        endDateTime: OffsetDateTime
+    ): List<AppUsage> {
         try {
-            val requestedDate = LocalDate.parse(date)
-            print(requestedDate.toString())
 
             val (_, hds) = storageResolver.resolveAndGetFlavor(studyId)
 
@@ -121,7 +125,8 @@ class SurveysService(
                     PreparedStatementHolderSupplier(hds, GET_APP_USAGE_SQL) { ps ->
                         ps.setString(1, studyId.toString())
                         ps.setString(2, participantId)
-                        ps.setObject(3, requestedDate)
+                        ps.setObject(3, startDateTime)
+                        ps.setObject(4, endDateTime)
                     }
             ) {
                 ResultSetAdapters.appUsage(it)
@@ -129,9 +134,10 @@ class SurveysService(
             }.toList()
 
             logger.info(
-                    "fetched {} app usage entries for date {} $STUDY_PARTICIPANT",
+                    "fetched {} app usage entities spanning {} to {} $STUDY_PARTICIPANT",
                     result.size,
-                    requestedDate,
+                    startDateTime,
+                    endDateTime,
                     studyId,
                     participantId
             )
