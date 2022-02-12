@@ -157,7 +157,11 @@ class StudyService(
         """.trimIndent()
 
         private val DELETE_STUDIES_SQL = """
-            DELETE FROM ${STUDIES.name} WHERE ${STUDY_ID.name} = ANY(?)
+            DELETE FROM ${STUDIES.name} WHERE ${STUDY_ID.name} IN (?)
+        """.trimIndent()
+
+        private val DELETE_STUDIES_FROM_ORGS_SQL = """
+            DELETE FROM ${ORGANIZATION_STUDIES.name} WHERE ${STUDY_ID.name} IN (?)
         """.trimIndent()
 
         /**
@@ -371,6 +375,13 @@ class StudyService(
 
     override fun deleteStudies(connection: Connection, studyIds: Collection<UUID>): Int {
         val ps = connection.prepareStatement(DELETE_STUDIES_SQL)
+        val pgStudyIds = PostgresArrays.createUuidArray(ps.connection, studyIds)
+        ps.setArray(1, pgStudyIds)
+        return ps.executeUpdate()
+    }
+
+    fun deleteStudiesFromOrganizations(connection: Connection, studyIds: Collection<UUID>): Int {
+        val ps = connection.prepareStatement(DELETE_STUDIES_FROM_ORGS_SQL)
         val pgStudyIds = PostgresArrays.createUuidArray(ps.connection, studyIds)
         ps.setArray(1, pgStudyIds)
         return ps.executeUpdate()
