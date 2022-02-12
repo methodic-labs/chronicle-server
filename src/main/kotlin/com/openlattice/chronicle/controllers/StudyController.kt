@@ -37,6 +37,7 @@ import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_ID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.RETRIEVE
 import com.openlattice.chronicle.study.StudyApi.Companion.SENSOR_PATH
+import com.openlattice.chronicle.study.StudyApi.Companion.SETTINGS_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.STUDY_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.STUDY_ID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.UPLOAD_PATH
@@ -293,6 +294,18 @@ class StudyController @Inject constructor(
             @RequestBody data: List<SensorDataSample>,
     ): Int {
         return sensorDataUploadService.upload(studyId, participantId, datasourceId, data)
+    }
+
+    @Timed
+    @GetMapping(
+        path = [STUDY_ID_PATH + SETTINGS_PATH],
+        produces = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    override fun getStudySettings(
+        @PathVariable(STUDY_ID) studyId: UUID
+    ): Map<String, Any> {
+        // No permissions check since this is assumed to be invoked by a non-authenticated user
+        return studyService.getStudySettings(studyId)
     }
 
     @Timed
