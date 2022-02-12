@@ -24,14 +24,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.geekbeast.mappers.mappers.ObjectMappers
 import com.geekbeast.postgres.PostgresArrays
-import com.openlattice.chronicle.authorization.AceKey
-import com.openlattice.chronicle.authorization.AclKey
-import com.openlattice.chronicle.authorization.Permission
-import com.openlattice.chronicle.authorization.Principal
-import com.openlattice.chronicle.authorization.PrincipalType
-import com.openlattice.chronicle.authorization.Role
-import com.openlattice.chronicle.authorization.SecurableObjectType
-import com.openlattice.chronicle.authorization.SecurablePrincipal
+import com.openlattice.chronicle.authorization.*
 import com.openlattice.chronicle.candidates.Candidate
 import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.mapstores.ids.Range
@@ -298,10 +291,10 @@ class ResultSetAdapters {
         @Throws(SQLException::class)
         fun organization(rs: ResultSet): Organization {
             return Organization(
-                    rs.getObject(ORGANIZATION_ID.name, UUID::class.java),
-                    rs.getString(TITLE.name),
-                    rs.getString(DESCRIPTION.name),
-                    mapper.readValue(rs.getString(SETTINGS.name))
+                rs.getObject(ORGANIZATION_ID.name, UUID::class.java),
+                rs.getString(TITLE.name),
+                rs.getString(DESCRIPTION.name),
+                mapper.readValue(rs.getString(SETTINGS.name))
 
             )
         }
@@ -340,7 +333,7 @@ class ResultSetAdapters {
         }
 
         @Throws(SQLException::class)
-        fun candidateId(rs: ResultSet) : UUID {
+        fun candidateId(rs: ResultSet): UUID {
             return rs.getObject(CANDIDATE_ID.name, UUID::class.java)
         }
 
