@@ -304,7 +304,7 @@ class StudyController @Inject constructor(
     override fun getStudySettings(
         @PathVariable(STUDY_ID) studyId: UUID
     ): Map<String, Any> {
-        // No permissions check since this is assumed to be invoked by a non-authenticated user
+        // No permissions check since this is assumed to be invoked from a non-authenticated context
         return studyService.getStudySettings(studyId)
     }
 
