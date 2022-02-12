@@ -11,6 +11,7 @@ import com.openlattice.chronicle.survey.AppUsageSurveyApi.Companion.PARTICIPANT_
 import com.openlattice.chronicle.survey.AppUsageSurveyApi.Companion.START_DATE
 import com.openlattice.chronicle.survey.AppUsageSurveyApi.Companion.STUDY_ID
 import com.openlattice.chronicle.survey.AppUsageSurveyApi.Companion.STUDY_ID_PATH
+import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -42,8 +43,8 @@ class AppUsageSurveyController : AppUsageSurveyApi {
     override fun getAppUsageSurveyData(
         @PathVariable(STUDY_ID) studyId: UUID,
         @PathVariable(PARTICIPANT_ID) participantId: String,
-        @RequestParam(value = START_DATE) startDateTime: OffsetDateTime,
-        @RequestParam(value = END_DATE) endDateTime: OffsetDateTime
+        @RequestParam(value = START_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) startDateTime: OffsetDateTime,
+        @RequestParam(value = END_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) endDateTime: OffsetDateTime
     ): List<AppUsage> {
         return surveysService.getAppUsageData(studyId, participantId, startDateTime, endDateTime)
     }
