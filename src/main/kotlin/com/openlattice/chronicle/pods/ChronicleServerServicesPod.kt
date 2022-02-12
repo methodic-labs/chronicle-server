@@ -46,6 +46,7 @@ import com.openlattice.chronicle.authorization.principals.SecurePrincipalsManage
 import com.openlattice.chronicle.authorization.reservations.AclKeyReservationService
 import com.openlattice.chronicle.configuration.ChronicleConfiguration
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
+import com.openlattice.chronicle.jobs.BackgroundChronicleDeletionService
 import com.openlattice.chronicle.organizations.ChronicleOrganizationService
 import com.openlattice.chronicle.organizations.initializers.OrganizationsInitializationDependencies
 import com.openlattice.chronicle.organizations.initializers.OrganizationsInitializationTask
@@ -58,7 +59,6 @@ import com.openlattice.chronicle.services.download.DataDownloadManager
 import com.openlattice.chronicle.services.download.DataDownloadService
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import com.openlattice.chronicle.services.enrollment.EnrollmentService
-import com.openlattice.chronicle.services.jobs.JobManager
 import com.openlattice.chronicle.services.jobs.JobService
 import com.openlattice.chronicle.services.settings.OrganizationSettingsManager
 import com.openlattice.chronicle.services.settings.OrganizationSettingsService
@@ -274,7 +274,7 @@ class ChronicleServerServicesPod {
     }
 
     @Bean
-    fun jobManager(): JobManager {
+    fun jobService(): JobService {
         return JobService(
             idGenerationService(),
             storageResolver
@@ -354,6 +354,15 @@ class ChronicleServerServicesPod {
     @Bean
     fun sensorDataUploadService(): SensorDataUploadService {
         return SensorDataUploadService(storageResolver, enrollmentManager())
+    }
+
+    @Bean
+    fun backgroundChronicleDeletionService(): BackgroundChronicleDeletionService {
+        return BackgroundChronicleDeletionService(
+            jobService(),
+            storageResolver,
+            auditingManager()
+        )
     }
 
     companion object {
