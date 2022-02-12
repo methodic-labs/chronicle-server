@@ -15,11 +15,10 @@ class ChronicleJob @JsonCreator constructor(
     val createdAt: OffsetDateTime = OffsetDateTime.now(),
     val updatedAt: OffsetDateTime = OffsetDateTime.now(),
     val status: JobStatus = JobStatus.PENDING,
-    val contact: String,
-    val jobData: ChronicleJobData,
+    val contact: String = "",
+    val jobData: ChronicleJobData = EmptyJobData(),
     val message: String = ""
 ) {
-
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
