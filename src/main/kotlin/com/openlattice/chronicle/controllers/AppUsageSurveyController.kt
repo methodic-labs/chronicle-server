@@ -37,7 +37,7 @@ class AppUsageSurveyController : AppUsageSurveyApi {
             path = [STUDY_ID_PATH + PARTICIPANT_ID_PATH],
             produces = [MediaType.APPLICATION_JSON_VALUE]
     )
-    override fun getAppUsageData(
+    override fun getAppUsageSurveyData(
             @PathVariable(STUDY_ID) studyId: UUID,
             @PathVariable(PARTICIPANT_ID) participantId: String,
             @RequestParam(value = DATE) date: String
