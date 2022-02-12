@@ -5,7 +5,6 @@ import com.openlattice.chronicle.services.surveys.SurveysService
 import com.openlattice.chronicle.survey.AppUsage
 import com.openlattice.chronicle.survey.AppUsageSurveyApi
 import com.openlattice.chronicle.survey.AppUsageSurveyApi.Companion.CONTROLLER
-import com.openlattice.chronicle.survey.AppUsageSurveyApi.Companion.DATE
 import com.openlattice.chronicle.survey.AppUsageSurveyApi.Companion.END_DATE
 import com.openlattice.chronicle.survey.AppUsageSurveyApi.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.survey.AppUsageSurveyApi.Companion.PARTICIPANT_ID_PATH
@@ -41,10 +40,10 @@ class AppUsageSurveyController : AppUsageSurveyApi {
             produces = [MediaType.APPLICATION_JSON_VALUE]
     )
     override fun getAppUsageSurveyData(
-            @PathVariable(STUDY_ID) studyId: UUID,
-            @PathVariable(PARTICIPANT_ID) participantId: String,
-            @PathVariable(value = START_DATE) startDateTime: OffsetDateTime,
-            @PathVariable(value = END_DATE) endDateTime: OffsetDateTime
+        @PathVariable(STUDY_ID) studyId: UUID,
+        @PathVariable(PARTICIPANT_ID) participantId: String,
+        @RequestParam(value = START_DATE) startDateTime: OffsetDateTime,
+        @RequestParam(value = END_DATE) endDateTime: OffsetDateTime
     ): List<AppUsage> {
         return surveysService.getAppUsageData(studyId, participantId, startDateTime, endDateTime)
     }

@@ -16,7 +16,6 @@ import com.openlattice.chronicle.services.settings.OrganizationSettingsManager
 import com.openlattice.chronicle.settings.AppUsageFrequency
 import com.openlattice.chronicle.storage.PostgresDataTables
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.FQNS_TO_COLUMNS
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.RECORDED_DATE
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.CHRONICLE_USAGE_EVENTS
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.getAppendTembTableSql
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.getDeleteTempTableEntriesSql
@@ -169,15 +168,13 @@ class AppDataUploadService(
 
     private fun mapToStorageModel(data: List<SetMultimap<UUID, Any>>): Sequence<Map<String, UsageEventColumn>> {
         return data.asSequence().map { usageEvent ->
-            val mapped = USAGE_EVENT_COLUMNS.associate { fqn ->
+            USAGE_EVENT_COLUMNS.associate { fqn ->
                 val col = FQNS_TO_COLUMNS.getValue(fqn)
                 val colIndex = getInsertUsageEventColumnIndex(col)
                 val ptId = LegacyEdmResolver.getPropertyTypeId(fqn)
                 val value = usageEvent[ptId]?.iterator()?.next()
                 col.name to UsageEventColumn(col, colIndex, value)
             }
-            val timeStamp = mapped[FQNS_TO_COLUMNS.getValue(DATE_LOGGED_FQN).name]?.value as? String
-            mapped + mapOf(RECORDED_DATE.name to UsageEventColumn(RECORDED_DATE, getInsertUsageEventColumnIndex(RECORDED_DATE), timeStamp))
         }
     }
 
@@ -225,10 +222,6 @@ class AppDataUploadService(
                                         PostgresDatatype.TIMESTAMPTZ -> ps.setObject(
                                             colIndex,
                                             OffsetDateTime.parse(value as String?)
-                                        )
-                                        PostgresDatatype.DATE -> ps.setObject(
-                                            colIndex,
-                                            OffsetDateTime.parse(value as String).toLocalDate()
                                         )
                                         PostgresDatatype.BIGINT -> ps.setLong(colIndex, value as Long)
                                         else -> ps.setObject(colIndex, value)
