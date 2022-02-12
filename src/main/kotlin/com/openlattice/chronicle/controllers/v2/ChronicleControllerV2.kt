@@ -118,7 +118,7 @@ class ChronicleControllerV2 : ChronicleApi {
             @PathVariable(ChronicleApi.PARTICIPANT_ID) participantId: String,
             @RequestBody associationDetails: Map<UUID, Map<FullQualifiedName, Set<Any>>>
     ) {
-        surveysManager.submitAppUsageSurvey(organizationId, studyId, participantId, associationDetails)
+       TODO("to be removed")
     }
 
     @Timed
@@ -146,7 +146,8 @@ class ChronicleControllerV2 : ChronicleApi {
             @PathVariable(ChronicleApi.PARTICIPANT_ID) participantId: String,
             @RequestParam(value = ChronicleApi.DATE) date: String
     ): List<ChronicleAppsUsageDetails> {
-        return surveysManager.getParticipantAppsUsageData(organizationId, studyId, participantId, date)
+//        return surveysManager!!.getParticipantAppsUsageData(organizationId, studyId, participantId, date)
+        TODO("won't be needed any more. to remove")
     }
 
     @Timed
@@ -171,7 +172,8 @@ class ChronicleControllerV2 : ChronicleApi {
             @PathVariable(ChronicleApi.PARTICIPANT_ID) participantId: String,
             @RequestBody surveyData: List<Map<FullQualifiedName, Set<Any>>>
     ) {
-        surveysManager.submitTimeUseDiarySurvey(organizationId, studyId, participantId, surveyData)
+        // surveysManager.submitTimeUseDiarySurvey(organizationId, studyId, participantId, surveyData)
+        TODO("Not needed here. To remove")
     }
 
     @Timed

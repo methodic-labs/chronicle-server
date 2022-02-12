@@ -133,7 +133,9 @@ class ChronicleServerServicesPod {
     @Bean
     @Throws(IOException::class, ExecutionException::class)
     fun scheduledTasksManager(): ScheduledTasksManager {
-        return ScheduledTasksManager()
+        return ScheduledTasksManager(
+                storageResolver
+        )
     }
 
     @Bean(name = ["auth0SyncTask"])
@@ -210,7 +212,9 @@ class ChronicleServerServicesPod {
     @Bean
     @Throws(IOException::class, ExecutionException::class)
     fun surveysManager(): SurveysManager {
-        return SurveysService(enrollmentManager())
+        return SurveysService(
+                storageResolver,
+        )
     }
 
     @Bean
