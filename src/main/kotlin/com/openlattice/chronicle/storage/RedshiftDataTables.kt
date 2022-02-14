@@ -43,7 +43,6 @@ class RedshiftDataTables {
         val CHRONICLE_USAGE_EVENTS = RedshiftTableDefinition("chronicle_usage_events")
                 .sortKey(STUDY_ID)
                 .addColumns(
-                        ORGANIZATION_ID,
                         STUDY_ID,
                         PARTICIPANT_ID,
                         APP_PACKAGE_NAME,
@@ -59,7 +58,6 @@ class RedshiftDataTables {
         val CHRONICLE_USAGE_STATS = RedshiftTableDefinition("chronicle_usage_stats")
                 .sortKey(STUDY_ID)
                 .addColumns(
-                        ORGANIZATION_ID,
                         STUDY_ID,
                         PARTICIPANT_ID,
                         APP_PACKAGE_NAME,

@@ -263,7 +263,7 @@ class EnrollmentService(
         participantId: String
     ): ParticipationStatus {
         logger.info(
-            "getting participation status" + ChronicleServerUtil.ORG_STUDY_PARTICIPANT, studyId,
+            "getting participation status" + ChronicleServerUtil.STUDY_PARTICIPANT, studyId,
             participantId
         )
 
