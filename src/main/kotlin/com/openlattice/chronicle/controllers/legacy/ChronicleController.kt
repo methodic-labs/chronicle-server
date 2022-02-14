@@ -40,7 +40,7 @@ class ChronicleController : ChronicleApi {
             @RequestBody data: List<SetMultimap<UUID, Any>>
     ): Int {
         val organizationId = studyManager.getOrganizationIdForLegacyStudy( studyId )
-        return dataUploadManager.upload(organizationId, studyId, participantId, datasourceId, data)
+        return dataUploadManager.upload(studyId, participantId, datasourceId, data)
     }
 
     @Timed

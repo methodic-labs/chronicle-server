@@ -2,6 +2,7 @@ package com.openlattice.chronicle.controllers
 
 import com.codahale.metrics.annotation.Timed
 import com.geekbeast.configuration.postgres.PostgresFlavor
+import com.google.common.collect.SetMultimap
 import com.openlattice.chronicle.auditing.AuditEventType
 import com.openlattice.chronicle.auditing.AuditableEvent
 import com.openlattice.chronicle.auditing.AuditedOperationBuilder
@@ -19,15 +20,18 @@ import com.openlattice.chronicle.sensorkit.SensorDataSample
 import com.openlattice.chronicle.services.download.DataDownloadService
 import com.openlattice.chronicle.services.enrollment.EnrollmentService
 import com.openlattice.chronicle.services.studies.StudyService
+import com.openlattice.chronicle.services.upload.AppDataUploadService
 import com.openlattice.chronicle.services.upload.SensorDataUploadService
 import com.openlattice.chronicle.sources.SourceDevice
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.study.Study
 import com.openlattice.chronicle.study.StudyApi
+import com.openlattice.chronicle.study.StudyApi.Companion.ANDROID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.CONTROLLER
 import com.openlattice.chronicle.study.StudyApi.Companion.DATA_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.DATA_SOURCE_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.DATA_SOURCE_ID_PATH
+import com.openlattice.chronicle.study.StudyApi.Companion.DATA_SOURCE_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.ENROLL_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.ORGANIZATION_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.ORGANIZATION_ID_PATH
@@ -63,6 +67,7 @@ class StudyController @Inject constructor(
     val enrollmentService: EnrollmentService,
     val studyService: StudyService,
     val sensorDataUploadService: SensorDataUploadService,
+    val appDataUploadService: AppDataUploadService,
     val downloadService: DataDownloadService,
     override val authorizationManager: AuthorizationManager,
     override val auditingManager: AuditingManager
@@ -294,6 +299,19 @@ class StudyController @Inject constructor(
             @RequestBody data: List<SensorDataSample>,
     ): Int {
         return sensorDataUploadService.upload(studyId, participantId, datasourceId, data)
+    }
+
+    @Timed
+    @PostMapping(
+        path = [STUDY_ID_PATH + PARTICIPANT_PATH + PARTICIPANT_ID_PATH + DATA_SOURCE_PATH + DATA_SOURCE_ID_PATH + UPLOAD_PATH + ANDROID_PATH]
+    )
+    override fun uploadAndroidUsageEventData(
+        @PathVariable(STUDY_ID) studyId: UUID,
+        @PathVariable(PARTICIPANT_ID) participantId: String,
+        @PathVariable(DATA_SOURCE_ID) datasourceId: String,
+        @RequestBody data: List<SetMultimap<UUID, Any>>)
+    : Int {
+        return appDataUploadService.upload(studyId, participantId, datasourceId, data)
     }
 
     @Timed

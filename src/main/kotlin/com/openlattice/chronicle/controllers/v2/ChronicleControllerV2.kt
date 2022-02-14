@@ -188,7 +188,7 @@ class ChronicleControllerV2 : ChronicleApi {
             @PathVariable(ChronicleApi.DATASOURCE_ID) datasourceId: String,
             @RequestBody data: List<SetMultimap<UUID, Any>>
     ): Int {
-        return dataUploadManager.upload(organizationId, studyId, participantId, datasourceId, data)
+        return dataUploadManager.upload(studyId, participantId, datasourceId, data)
     }
 
     @Timed
