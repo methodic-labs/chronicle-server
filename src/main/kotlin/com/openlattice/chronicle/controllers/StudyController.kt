@@ -12,13 +12,16 @@ import com.openlattice.chronicle.authorization.AuthorizationManager
 import com.openlattice.chronicle.authorization.AuthorizingComponent
 import com.openlattice.chronicle.authorization.Permission
 import com.openlattice.chronicle.authorization.principals.Principals
+import com.openlattice.chronicle.base.OK
 import com.openlattice.chronicle.data.FileType
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.ids.IdConstants
+import com.openlattice.chronicle.organizations.ChronicleDataCollectionSettings
 import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.sensorkit.SensorDataSample
 import com.openlattice.chronicle.services.download.DataDownloadService
 import com.openlattice.chronicle.services.enrollment.EnrollmentService
+import com.openlattice.chronicle.services.legacy.LegacyUtil
 import com.openlattice.chronicle.services.studies.StudyService
 import com.openlattice.chronicle.services.upload.AppDataUploadService
 import com.openlattice.chronicle.services.upload.SensorDataUploadService
@@ -28,11 +31,11 @@ import com.openlattice.chronicle.study.Study
 import com.openlattice.chronicle.study.StudyApi
 import com.openlattice.chronicle.study.StudyApi.Companion.ANDROID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.CONTROLLER
+import com.openlattice.chronicle.study.StudyApi.Companion.DATA_COLLECTION
 import com.openlattice.chronicle.study.StudyApi.Companion.DATA_PATH
-import com.openlattice.chronicle.study.StudyApi.Companion.DATA_SOURCE_ID
-import com.openlattice.chronicle.study.StudyApi.Companion.DATA_SOURCE_ID_PATH
-import com.openlattice.chronicle.study.StudyApi.Companion.DATA_SOURCE_PATH
+import com.openlattice.chronicle.study.StudyApi.Companion.SOURCE_DEVICE_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.ENROLL_PATH
+import com.openlattice.chronicle.study.StudyApi.Companion.IOS_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.ORGANIZATION_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.ORGANIZATION_ID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.ORGANIZATION_PATH
@@ -40,11 +43,10 @@ import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_ID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.RETRIEVE
-import com.openlattice.chronicle.study.StudyApi.Companion.SENSOR_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.SETTINGS_PATH
+import com.openlattice.chronicle.study.StudyApi.Companion.SOURCE_DEVICE_ID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.STUDY_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.STUDY_ID_PATH
-import com.openlattice.chronicle.study.StudyApi.Companion.UPLOAD_PATH
 import com.openlattice.chronicle.study.StudyUpdate
 import com.openlattice.chronicle.util.ChronicleServerUtil
 import org.slf4j.LoggerFactory
@@ -80,14 +82,14 @@ class StudyController @Inject constructor(
 
     @Timed
     @PostMapping(
-        path = [STUDY_ID_PATH + PARTICIPANT_PATH + PARTICIPANT_ID_PATH + DATA_SOURCE_ID_PATH + ENROLL_PATH],
+        path = [STUDY_ID_PATH + PARTICIPANT_PATH + PARTICIPANT_ID_PATH + SOURCE_DEVICE_ID_PATH + ENROLL_PATH],
         consumes = [MediaType.APPLICATION_JSON_VALUE],
         produces = [MediaType.APPLICATION_JSON_VALUE],
     )
     override fun enroll(
         @PathVariable(STUDY_ID) studyId: UUID,
         @PathVariable(PARTICIPANT_ID) participantId: String,
-        @PathVariable(DATA_SOURCE_ID) datasourceId: String,
+        @PathVariable(SOURCE_DEVICE_ID) datasourceId: String,
         @RequestBody sourceDevice: SourceDevice
     ): UUID {
 //        check( enrollmentService.isKnownParticipant(studyId, participantId)) { "Cannot enroll device for an unknown participant." }
@@ -288,29 +290,65 @@ class StudyController @Inject constructor(
 
     @Timed
     @PostMapping(
-            path = [STUDY_ID_PATH + PARTICIPANT_ID_PATH + DATA_SOURCE_ID_PATH + UPLOAD_PATH + SENSOR_PATH],
-            consumes = [MediaType.APPLICATION_JSON_VALUE],
-            produces = [MediaType.APPLICATION_JSON_VALUE]
+        path = [STUDY_ID_PATH + PARTICIPANT_PATH + PARTICIPANT_ID_PATH + IOS_PATH + SOURCE_DEVICE_ID_PATH],
+        consumes = [MediaType.APPLICATION_JSON_VALUE],
+        produces = [MediaType.APPLICATION_JSON_VALUE]
     )
     override fun uploadSensorData(
-            @PathVariable(STUDY_ID) studyId: UUID,
-            @PathVariable(PARTICIPANT_ID) participantId: String,
-            @PathVariable(DATA_SOURCE_ID) datasourceId: String,
-            @RequestBody data: List<SensorDataSample>,
+        @PathVariable(STUDY_ID) studyId: UUID,
+        @PathVariable(PARTICIPANT_ID) participantId: String,
+        @PathVariable(SOURCE_DEVICE_ID) datasourceId: String,
+        @RequestBody data: List<SensorDataSample>,
     ): Int {
         return sensorDataUploadService.upload(studyId, participantId, datasourceId, data)
     }
 
     @Timed
+    @PutMapping(
+        path = [STUDY_ID_PATH + DATA_COLLECTION],
+        consumes = [MediaType.APPLICATION_JSON_VALUE],
+        produces = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    override fun setChronicleDataCollectionSettings(
+        @PathVariable(STUDY_ID) studyId: UUID,
+        @RequestBody dataCollectionSettings: ChronicleDataCollectionSettings
+    ): OK {
+        ensureValidStudy(studyId)
+        ensureWriteAccess(AclKey(studyId))
+
+        val study = studyService.getStudy(studyId)
+        study.settings.toMutableMap()[LegacyUtil.DATA_COLLECTION] = dataCollectionSettings
+        AuditedOperationBuilder<Unit>(storageResolver.getPlatformStorage().connection, auditingManager)
+            .operation { connection ->
+                studyService.updateStudy(
+                    connection,
+                    studyId,
+                    StudyUpdate(settings = study.settings)
+                )
+            }
+            .audit {
+                listOf(
+                    AuditableEvent(
+                        aclKey = AclKey(studyId),
+                        eventType = AuditEventType.UPDATE_STUDY_SETTINGS
+                    )
+                )
+            }
+            .buildAndRun()
+
+        return OK()
+    }
+
     @PostMapping(
-        path = [STUDY_ID_PATH + PARTICIPANT_PATH + PARTICIPANT_ID_PATH + DATA_SOURCE_PATH + DATA_SOURCE_ID_PATH + UPLOAD_PATH + ANDROID_PATH]
+        path = [STUDY_ID_PATH + PARTICIPANT_PATH + PARTICIPANT_ID_PATH + ANDROID_PATH + SOURCE_DEVICE_ID_PATH]
     )
     override fun uploadAndroidUsageEventData(
         @PathVariable(STUDY_ID) studyId: UUID,
         @PathVariable(PARTICIPANT_ID) participantId: String,
-        @PathVariable(DATA_SOURCE_ID) datasourceId: String,
-        @RequestBody data: List<SetMultimap<UUID, Any>>)
-    : Int {
+        @PathVariable(SOURCE_DEVICE_ID) datasourceId: String,
+        @RequestBody data: List<SetMultimap<UUID, Any>>
+    )
+            : Int {
         return appDataUploadService.upload(studyId, participantId, datasourceId, data)
     }
 
@@ -328,7 +366,7 @@ class StudyController @Inject constructor(
 
     @Timed
     @GetMapping(
-        path = [STUDY_ID_PATH + PARTICIPANT_ID_PATH + DATA_PATH + SENSOR_PATH],
+        path = [STUDY_ID_PATH + PARTICIPANT_PATH + PARTICIPANT_ID_PATH + DATA_PATH + IOS_PATH],
         produces = [MediaType.APPLICATION_JSON_VALUE]
     )
     fun downloadSensorData(
