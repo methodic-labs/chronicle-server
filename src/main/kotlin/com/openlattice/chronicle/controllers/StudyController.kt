@@ -33,6 +33,7 @@ import com.openlattice.chronicle.study.StudyApi.Companion.DATA_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.DATA_SOURCE_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.DATA_SOURCE_ID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.ENROLL_PATH
+import com.openlattice.chronicle.study.StudyApi.Companion.IOS_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.ORGANIZATION_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.ORGANIZATION_ID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.ORGANIZATION_PATH
@@ -40,7 +41,7 @@ import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_ID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.RETRIEVE
-import com.openlattice.chronicle.study.StudyApi.Companion.IOS_PATH
+import com.openlattice.chronicle.study.StudyApi.Companion.SETTINGS_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.STUDY_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.STUDY_ID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.UPLOAD_PATH
@@ -333,6 +334,18 @@ class StudyController @Inject constructor(
             .buildAndRun()
 
         return OK()
+    }
+
+    @Timed
+    @GetMapping(
+        path = [STUDY_ID_PATH + SETTINGS_PATH],
+        produces = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    override fun getStudySettings(
+        @PathVariable(STUDY_ID) studyId: UUID
+    ): Map<String, Any> {
+        // No permissions check since this is assumed to be invoked from a non-authenticated context
+        return studyService.getStudySettings(studyId)
     }
 
     @Timed

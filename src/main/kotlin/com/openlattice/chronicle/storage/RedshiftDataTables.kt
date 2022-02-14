@@ -1,6 +1,8 @@
 package com.openlattice.chronicle.storage
 
 import com.geekbeast.postgres.PostgresColumnDefinition
+import com.geekbeast.postgres.PostgresDatatype
+import com.geekbeast.postgres.PostgresTableDefinition
 import com.geekbeast.postgres.RedshiftTableDefinition
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.ACL_KEY
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APPLICATION_LABEL
@@ -19,6 +21,7 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.ORGANIZATION_
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PHONE_USAGE_SENSOR_COLS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PRINCIPAL_ID
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.RECORDED_DATE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.SECURABLE_PRINCIPAL_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.SHARED_SENSOR_COLS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.START_TIME
@@ -48,8 +51,8 @@ class RedshiftDataTables {
                         TIMESTAMP,
                         TIMEZONE,
                         USERNAME,
-                        APPLICATION_LABEL
-                )
+                        APPLICATION_LABEL,
+                    )
                 .addDataSourceNames(REDSHIFT_DATASOURCE_NAME)
 
         @JvmField
