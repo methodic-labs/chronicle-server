@@ -115,7 +115,7 @@ class AppDataUploadService(
 
                 StopWatch(log = "Writing ${data.size} entites to DB ")
                 val written = when (flavor) {
-                    PostgresFlavor.VANILLA -> writeToRedshift(hds, studyId, participantId, mappedData)
+                    PostgresFlavor.VANILLA -> writeToPostgres(hds, studyId, participantId, mappedData)
                     PostgresFlavor.REDSHIFT -> writeToRedshift(hds, studyId, participantId, mappedData)
                     else -> throw InvalidParameterException("Only regular postgres and redshift are supported.")
                 }
