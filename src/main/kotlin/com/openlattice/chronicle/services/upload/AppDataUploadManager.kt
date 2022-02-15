@@ -8,7 +8,6 @@ import java.util.*
  */
 interface AppDataUploadManager {
     fun upload(
-            organizationId: UUID,
             studyId: UUID,
             participantId: String,
             sourceDeviceId: String,

@@ -9,6 +9,8 @@ import com.openlattice.chronicle.organizations.OrganizationSettings
  */
 class LegacyUtil {
     companion object {
+        const val DATA_COLLECTION = "dataCollection"
+
         @JvmStatic
         fun mapToLegacySettings(organizationSettings: OrganizationSettings): Map<String, Any> {
             TODO("Implement legacy settings mapping")

@@ -3,6 +3,7 @@ package com.openlattice.chronicle.storage
 import com.geekbeast.postgres.PostgresColumnsIndexDefinition
 import com.geekbeast.postgres.PostgresTableDefinition
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_USERS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.BASE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CANDIDATE_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CATEGORY
@@ -163,6 +164,20 @@ class ChroniclePostgresTables {
         val BASE_LONG_IDS: PostgresTableDefinition = PostgresTableDefinition("base_long_ids")
             .addColumns(SCOPE, BASE)
             .primaryKey(SCOPE)
+
+        @JvmField
+        val APP_USAGE_SURVEY: PostgresTableDefinition = PostgresTableDefinition("app_usage_survey")
+            .addColumns(
+                STUDY_ID,
+                PARTICIPANT_ID,
+                SUBMISSION_DATE, // date when survey was submitted
+                RedshiftColumns.APPLICATION_LABEL,
+                RedshiftColumns.APP_PACKAGE_NAME,
+                RedshiftColumns.TIMESTAMP, // usage event
+                RedshiftColumns.TIMEZONE, // usage event timezone
+                APP_USERS
+            )
+            .primaryKey(RedshiftColumns.APP_PACKAGE_NAME, RedshiftColumns.APP_PACKAGE_NAME, RedshiftColumns.TIMESTAMP)
 
         /**
          * Authorization tables

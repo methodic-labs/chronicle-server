@@ -1,5 +1,6 @@
 package com.openlattice.chronicle.services.timeusediary
 
+import com.openlattice.chronicle.converters.PostgresDownloadWrapper
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryDownloadDataType
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryResponse
 import java.sql.Connection
@@ -32,7 +33,7 @@ interface TimeUseDiaryManager {
         organizationId: UUID,
         studyId: UUID,
         participantId: String,
-        type: TimeUseDiaryDownloadDataType,
-        submissionsIds: Set<UUID>
-    )
+        downloadType: TimeUseDiaryDownloadDataType,
+        submissionIds: Set<UUID>
+    ): PostgresDownloadWrapper
 }

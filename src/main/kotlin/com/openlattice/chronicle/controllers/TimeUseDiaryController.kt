@@ -24,6 +24,7 @@ import com.openlattice.chronicle.authorization.AuthorizationManager
 import com.openlattice.chronicle.authorization.AuthorizingComponent
 import com.openlattice.chronicle.authorization.Permission
 import com.openlattice.chronicle.authorization.principals.Principals
+import com.openlattice.chronicle.constants.CustomMediaType
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.services.timeusediary.TimeUseDiaryManager
 import com.openlattice.chronicle.storage.StorageResolver
@@ -35,8 +36,10 @@ import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.*
 import java.time.LocalDate
 import java.time.OffsetDateTime
+import java.time.format.DateTimeFormatter
 import java.util.*
 import javax.inject.Inject
+import javax.servlet.http.HttpServletResponse
 
 /**
  * @author Andrew Carter andrew@openlattice.com
@@ -135,19 +138,60 @@ class TimeUseDiaryController(
         return submissionsIdsByDate
     }
 
-    @Timed
-    @GetMapping(
-        path = [ORGANIZATION_ID_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH],
-        consumes = [MediaType.APPLICATION_JSON_VALUE]
-    )
+    @Override
     override fun downloadTimeUseDiaryData(
         @PathVariable(ORGANIZATION_ID) organizationId: UUID,
         @PathVariable(STUDY_ID) studyId: UUID,
         @PathVariable(PARTICIPANT_ID) participantId: String,
         @RequestParam(DOWNLOAD_TYPE) downloadType: TimeUseDiaryDownloadDataType,
         @RequestBody submissionIds: Set<UUID>
-    ): Iterable<Map<String, Set<Any>>> {
-        TODO("Not yet implemented")
+    ): Iterable<Map<String,Any>> {
+        throw TimeUseDiaryDownloadExcpetion(studyId,
+            "This implementation of the overloaded downloadTimeUseDiaryData method should not be used. " +
+                    "Instead use the implementation that includes an HttpServletResponse parameter.")
+    }
+
+    @Timed
+    @GetMapping(
+        path = [ORGANIZATION_ID_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH],
+        consumes = [MediaType.APPLICATION_JSON_VALUE],
+        produces = [MediaType.APPLICATION_JSON_VALUE, CustomMediaType.TEXT_CSV_VALUE]
+    )
+    fun downloadTimeUseDiaryData(
+        @PathVariable(ORGANIZATION_ID) organizationId: UUID,
+        @PathVariable(STUDY_ID) studyId: UUID,
+        @PathVariable(PARTICIPANT_ID) participantId: String,
+        @RequestParam(DOWNLOAD_TYPE) downloadType: TimeUseDiaryDownloadDataType,
+        @RequestBody submissionIds: Set<UUID>,
+        response: HttpServletResponse
+    ): Iterable<Map<String,Any>> {
+        accessCheck(AclKey(studyId), EnumSet.of(Permission.READ))
+        val data = timeUseDiaryManager.downloadTimeUseDiaryData(
+            organizationId,
+            studyId,
+            participantId,
+            downloadType,
+            submissionIds
+        )
+
+        val filename = "$participantId-$downloadType-${LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE)}.csv"
+        response.contentType = CustomMediaType.TEXT_CSV_VALUE
+        response.setHeader("Content-Disposition","attachment; filename=$filename")
+
+        recordEvent(
+            AuditableEvent(
+                AclKey(studyId),
+                Principals.getCurrentSecurablePrincipal().id,
+                Principals.getCurrentUser().id,
+                AuditEventType.DOWNLOAD_TIME_USE_DIARY_SUBMISSIONS,
+                downloadType.toString(),
+                studyId,
+                organizationId,
+                mapOf()
+            )
+        )
+
+        return data
     }
 
     @Timed
