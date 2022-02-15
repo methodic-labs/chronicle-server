@@ -1,6 +1,5 @@
 package com.openlattice.chronicle.controllers
 
-import com.auth0.client.mgmt.ManagementAPI
 import com.codahale.metrics.annotation.Timed
 import com.geekbeast.configuration.postgres.PostgresFlavor
 import com.openlattice.chronicle.auditing.AuditEventType
@@ -269,7 +268,7 @@ class StudyController @Inject constructor(
         path = [STUDY_ID_PATH],
         produces = [MediaType.APPLICATION_JSON_VALUE],
     )
-    override fun destroyStudy(@PathVariable studyId: UUID) {
+    override fun destroyStudy(@PathVariable studyId: UUID): UUID {
         accessCheck(AclKey(studyId), EnumSet.of(Permission.OWNER))
         logger.info("Deleting study with id $studyId")
         // val currentUserEmail = getUser(managementApi, Principals.getCurrentUser().id).email
@@ -280,14 +279,15 @@ class StudyController @Inject constructor(
         )
 
         val hds = storageResolver.getPlatformStorage()
-        AuditedOperationBuilder<Unit>(hds.connection, auditingManager)
+        return AuditedOperationBuilder<UUID>(hds.connection, auditingManager)
             .operation { connection ->
                 var jobId = chronicleJobService.createJob(connection, deleteStudyDataJob)
                 logger.info("Created job with id = $jobId")
                 studyService.deleteStudies(connection, listOf(studyId))
                 studyService.deleteStudiesFromOrganizations(connection, listOf(studyId))
+                return@operation jobId
             }
-            .audit {
+            .audit { jobId ->
                 listOf(
                     AuditableEvent(
                         AclKey(studyId),
@@ -298,7 +298,15 @@ class StudyController @Inject constructor(
                         studyId,
                         UUID(0, 0),
                         mapOf()
-                    )
+                    ),
+                    AuditableEvent(
+                        AclKey(jobId),
+                        Principals.getCurrentSecurablePrincipal().id,
+                        Principals.getCurrentUser().id,
+                        AuditEventType.CREATE_JOB,
+                        "",
+                        studyId
+                    ),
                 )
             }
             .buildAndRun()
