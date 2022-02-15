@@ -12,6 +12,7 @@ import com.openlattice.chronicle.jobs.ChronicleJob
 import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.JOBS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CONTACT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.DELETED_ROWS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.JOB_DATA
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.JOB_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.MESSAGE
@@ -37,7 +38,8 @@ class JobService (
             STATUS,
             CONTACT,
             JOB_DATA,
-            MESSAGE
+            MESSAGE,
+            DELETED_ROWS,
         )
         private val JOB_COLUMNS = JOB_COLUMNS_LIST.joinToString(",") { it.name }
         private val JOB_COLUMNS_BIND = JOB_COLUMNS_LIST.joinToString(",") {
@@ -60,7 +62,8 @@ class JobService (
         ps.setString(index++, job.status.toString())
         ps.setString(index++, job.contact)
         ps.setString(index++, mapper.writeValueAsString(job.jobData))
-        ps.setString(index, job.message)
+        ps.setString(index++, job.message)
+        ps.setLong(index++, job.deletedRows)
         ps.executeUpdate()
         return job.id
     }

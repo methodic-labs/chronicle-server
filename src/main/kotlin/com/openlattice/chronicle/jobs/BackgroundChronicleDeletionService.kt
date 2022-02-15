@@ -42,7 +42,7 @@ class BackgroundChronicleDeletionService(
 
     }
 
-    @Scheduled(fixedRate = 15_000L)
+    @Scheduled(fixedRate = 30_000L)
     fun tryAndAcquireTaskForExecutor() {
         try {
             if (!available.tryAcquire()) {

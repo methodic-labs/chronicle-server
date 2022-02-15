@@ -9,6 +9,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.CATEGORY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CONTACT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CREATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DATE_OF_BIRTH
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.DELETED_ROWS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DESCRIPTION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DEVICE_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.EMAIL
@@ -212,13 +213,14 @@ class ChroniclePostgresTables {
         @JvmField
         val JOBS = PostgresTableDefinition("jobs")
             .addColumns(
-              JOB_ID,
-              CREATED_AT,
-              UPDATED_AT,
-              STATUS,
-              CONTACT,
-              JOB_DATA,
-              MESSAGE
+                JOB_ID,
+                CREATED_AT,
+                UPDATED_AT,
+                STATUS,
+                CONTACT,
+                JOB_DATA,
+                MESSAGE,
+                DELETED_ROWS,
             )
             .primaryKey(JOB_ID)
 

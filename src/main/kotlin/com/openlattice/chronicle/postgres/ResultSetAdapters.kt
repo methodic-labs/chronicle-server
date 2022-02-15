@@ -46,6 +46,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.CATEGORY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CONTACT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CREATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DATE_OF_BIRTH
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.DELETED_ROWS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DESCRIPTION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DEVICE_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.EMAIL
@@ -88,6 +89,7 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.USERNAME
 import com.openlattice.chronicle.study.Study
 import org.slf4j.LoggerFactory
+import java.math.BigInteger
 import java.sql.ResultSet
 import java.sql.SQLException
 import java.time.LocalDate
@@ -348,10 +350,9 @@ class ResultSetAdapters {
                 JobStatus.valueOf(rs.getString(STATUS.name)),
                 rs.getString(CONTACT.name),
                 jobData = mapper.readValue(rs.getString(JOB_DATA.name)),
-                rs.getString(MESSAGE.name)
+                rs.getString(MESSAGE.name),
+                rs.getLong(DELETED_ROWS.name)
             )
         }
-
-
     }
 }
