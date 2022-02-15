@@ -340,19 +340,6 @@ class ResultSetAdapters {
         }
 
         @Throws(SQLException::class)
-        fun deleteStudyUsageJob(rs: ResultSet): ChronicleJob {
-            return ChronicleJob(
-                rs.getObject(JOB_ID.name, UUID::class.java),
-                rs.getObject(CREATED_AT.name, OffsetDateTime::class.java),
-                rs.getObject(UPDATED_AT.name, OffsetDateTime::class.java),
-                JobStatus.valueOf(rs.getString(STATUS.name)),
-                rs.getString(CONTACT.name),
-                jobData = mapper.readValue(rs.getString(JOB_DATA.name)),
-                rs.getString(MESSAGE.name)
-            )
-        }
-
-        @Throws(SQLException::class)
         fun chronicleJob(rs: ResultSet): ChronicleJob {
             return ChronicleJob(
                 rs.getObject(JOB_ID.name, UUID::class.java),
