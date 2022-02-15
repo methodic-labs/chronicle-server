@@ -131,11 +131,10 @@ class DeleteChronicleUsageDataTask(
     }
 
     private fun deleteChronicleStudyUsageData(jobData: DeleteStudyUsageData): Long {
-//        val (flavor, hds) = storageResolver.getDefaultEventStorage()
+        val (flavor, hds) = storageResolver.getDefaultEventStorage()
         logger.info("Deleting studies with id = {}", jobData.studyId)
-//        val ps = hds.connection.prepareStatement(DELETE_CHRONICLE_STUDY_USAGE_DATA_SQL)
-//        ps.setObject(1, jobData.studyId)
-//        return ps.executeUpdate()
-        return 1L
+        val ps = hds.connection.prepareStatement(DELETE_CHRONICLE_STUDY_USAGE_DATA_SQL)
+        ps.setObject(1, jobData.studyId)
+        return ps.executeUpdate().toLong()
     }
 }
