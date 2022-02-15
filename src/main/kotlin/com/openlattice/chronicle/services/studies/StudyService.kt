@@ -157,11 +157,11 @@ class StudyService(
         """.trimIndent()
 
         private val DELETE_STUDIES_SQL = """
-            DELETE FROM ${STUDIES.name} WHERE ${STUDY_ID.name} IN (?)
+            DELETE FROM ${STUDIES.name} WHERE ${STUDY_ID.name} = ANY(?)
         """.trimIndent()
 
         private val DELETE_STUDIES_FROM_ORGS_SQL = """
-            DELETE FROM ${ORGANIZATION_STUDIES.name} WHERE ${STUDY_ID.name} IN (?)
+            DELETE FROM ${ORGANIZATION_STUDIES.name} WHERE ${STUDY_ID.name} = ANY(?)
         """.trimIndent()
 
         /**
