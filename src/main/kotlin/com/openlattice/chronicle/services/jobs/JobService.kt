@@ -14,6 +14,7 @@ import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.JOBS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CONTACT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.JOB_DATA
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.JOB_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.MESSAGE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STATUS
 import org.slf4j.LoggerFactory
 import java.sql.Connection
@@ -36,6 +37,7 @@ class JobService (
             STATUS,
             CONTACT,
             JOB_DATA,
+            MESSAGE
         )
         private val JOB_COLUMNS = JOB_COLUMNS_LIST.joinToString(",") { it.name }
         private val JOB_COLUMNS_BIND = JOB_COLUMNS_LIST.joinToString(",") {
@@ -57,7 +59,8 @@ class JobService (
         ps.setObject(index++, job.id)
         ps.setString(index++, job.status.toString())
         ps.setString(index++, job.contact)
-        ps.setString(index, mapper.writeValueAsString(job.jobData))
+        ps.setString(index++, mapper.writeValueAsString(job.jobData))
+        ps.setString(index, job.message)
         ps.executeUpdate()
         return job.id
     }
@@ -68,7 +71,7 @@ class JobService (
 
     override fun getJobs(jobIds: Collection<UUID>): List<ChronicleJob> {
         return BasePostgresIterable(
-            PreparedStatementHolderSupplier(storageResolver.getPlatformStorage(), GET_JOBS_SQL, 256) { ps ->
+            PreparedStatementHolderSupplier(storageResolver.getPlatformStorage(), GET_JOBS_SQL) { ps ->
                 val pgJobIds = PostgresArrays.createUuidArray(ps.connection, jobIds)
                 ps.setObject(1, pgJobIds)
                 ps.executeQuery()
