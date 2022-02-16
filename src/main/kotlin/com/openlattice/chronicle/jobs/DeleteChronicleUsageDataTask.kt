@@ -24,12 +24,12 @@ import com.openlattice.chronicle.storage.StorageResolver
 import org.slf4j.LoggerFactory
 import java.util.UUID
 import java.util.concurrent.Semaphore
+import java.util.concurrent.TimeoutException
 
 /**
  * @author Solomon Tang <solomon@openlattice.com>
  */
 class DeleteChronicleUsageDataTask(
-    private val jobService: JobService,
     private val storageResolver: StorageResolver,
     private val auditingManager: AuditingManager,
     private val available: Semaphore
@@ -79,37 +79,45 @@ class DeleteChronicleUsageDataTask(
     }
 
     override fun run() {
-        val hds = storageResolver.getPlatformStorage()
-        AuditedOperationBuilder<ChronicleJob>(hds.connection, auditingManager)
-            .operation { connection ->
-                // pull job from queue with skip locked
-                // deserialize the jobData
-                val job = getNextAvailableJob(connection)
-                if (job.jobData is DeleteStudyUsageData) {
-                    // delete usage data from redshift with separate connection
-                    val (flavor, eventHds) = storageResolver.getDefaultEventStorage()
-                    val deletedRows = deleteChronicleStudyUsageData(eventHds.connection, job.jobData)
-                    eventHds.connection.close()
-                    // update jobData to include deletedRows
-                    updateFinishedDeleteJob(connection, job.id, deletedRows)
+        try {
+            logger.info("Beginning task.")
+            val hds = storageResolver.getPlatformStorage()
+            AuditedOperationBuilder<ChronicleJob>(hds.connection, auditingManager)
+                .operation { connection ->
+                    // pull job from queue with skip locked
+                    // deserialize the jobData
+                    val job = getNextAvailableJob(connection)
+                    if (job.jobData is DeleteStudyUsageData) {
+                        // delete usage data from redshift with separate connection
+                        val (flavor, eventHds) = storageResolver.getDefaultEventStorage()
+                        val deletedRows = deleteChronicleStudyUsageData(eventHds.connection, job.jobData)
+                        eventHds.connection.close()
+                        // update jobData to include deletedRows
+                        updateFinishedDeleteJob(connection, job.id, deletedRows)
+                    }
+                    else {
+                        logger.info("No pending DeleteStudyUsageData jobs available")
+                    }
+                    return@operation job
                 }
-                else {
-                    logger.info("No pending DeleteStudyUsageData jobs available")
-                }
-                return@operation job
-            }
-            .audit { job -> listOf(
-                AuditableEvent(
-                    AclKey(job.id),
-                    IdConstants.SYSTEM.id,
-                    DeleteChronicleUsageDataTask::class.java.name,
-                    eventType = AuditEventType.BACKGROUND_USAGE_DATA_DELETION,
-                    study = job.jobData.studyId
-                )
-            ) }
-            .buildAndRun()
-        logger.info("Task completed. Releasing permit.")
-        available.release()
+                .audit { job -> listOf(
+                    AuditableEvent(
+                        AclKey(job.id),
+                        IdConstants.SYSTEM.id,
+                        DeleteChronicleUsageDataTask::class.java.name,
+                        eventType = AuditEventType.BACKGROUND_USAGE_DATA_DELETION,
+                        study = job.jobData.studyId
+                    )
+                ) }
+                .buildAndRun()
+        }
+        catch (error: TimeoutException) {
+            logger.error("Error completing task - $error")
+        }
+        finally {
+            logger.info("Task finalized. Releasing permit.")
+            available.release()
+        }
     }
 
     // get next available PENDING job and return as FINISHED
