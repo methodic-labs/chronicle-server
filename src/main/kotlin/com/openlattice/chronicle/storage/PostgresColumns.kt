@@ -24,6 +24,7 @@ class PostgresColumns {
         @JvmField val CREATED_AT = PostgresColumnDefinition("created_at", PostgresDatatype.TIMESTAMPTZ).notNull().withDefault("now()")
         @JvmField val DATE_OF_BIRTH = PostgresColumnDefinition("dob", PostgresDatatype.DATE)
         @JvmField val DESCRIPTION = PostgresColumnDefinition("description", PostgresDatatype.TEXT)
+        @JvmField val DELETED_ROWS = PostgresColumnDefinition("deleted_rows", PostgresDatatype.BIGINT).notNull()
         @JvmField val DEVICE_ID = PostgresColumnDefinition("device_id", PostgresDatatype.UUID).notNull()
         @JvmField val EMAIL = PostgresColumnDefinition("email", PostgresDatatype.TEXT).unique()
         @JvmField val ENDED_AT = PostgresColumnDefinition("ended_at", PostgresDatatype.TIMESTAMPTZ).notNull().withDefault("'infinity'")

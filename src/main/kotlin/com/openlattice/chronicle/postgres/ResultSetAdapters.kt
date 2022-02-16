@@ -29,7 +29,6 @@ import com.openlattice.chronicle.authorization.*
 import com.openlattice.chronicle.candidates.Candidate
 import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.jobs.ChronicleJob
-import com.openlattice.chronicle.jobs.ChronicleJobData
 import com.openlattice.chronicle.mapstores.ids.Range
 import com.openlattice.chronicle.organizations.Organization
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
@@ -38,6 +37,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.CATEGORY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CONTACT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CREATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DATE_OF_BIRTH
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.DELETED_ROWS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DESCRIPTION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DEVICE_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.EMAIL
@@ -355,10 +355,11 @@ class ResultSetAdapters {
                 rs.getObject(JOB_ID.name, UUID::class.java),
                 rs.getObject(CREATED_AT.name, OffsetDateTime::class.java),
                 rs.getObject(UPDATED_AT.name, OffsetDateTime::class.java),
-                rs.getObject(STATUS.name, JobStatus::class.java),
+                JobStatus.valueOf(rs.getString(STATUS.name)),
                 rs.getString(CONTACT.name),
-                rs.getObject(JOB_DATA.name, ChronicleJobData::class.java),
-                rs.getString(MESSAGE.name)
+                jobData = mapper.readValue(rs.getString(JOB_DATA.name)),
+                rs.getString(MESSAGE.name),
+                rs.getLong(DELETED_ROWS.name)
             )
         }
     }

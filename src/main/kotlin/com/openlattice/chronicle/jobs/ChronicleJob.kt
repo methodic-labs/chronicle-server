@@ -5,7 +5,7 @@ import com.geekbeast.rhizome.jobs.AbstractDistributedJob
 import com.geekbeast.rhizome.jobs.JobStatus
 import com.openlattice.chronicle.ids.IdConstants
 import java.time.OffsetDateTime
-import java.util.*
+import java.util.UUID
 
 /**
  * @author Solomon Tang <solomon@openlattice.com>
@@ -17,7 +17,8 @@ class ChronicleJob @JsonCreator constructor(
     val status: JobStatus = JobStatus.PENDING,
     val contact: String = "",
     val jobData: ChronicleJobData = EmptyJobData(),
-    val message: String = ""
+    val message: String = "",
+    val deletedRows: Long = 0L
 ) {
 
     override fun equals(other: Any?): Boolean {
@@ -33,6 +34,7 @@ class ChronicleJob @JsonCreator constructor(
         if (contact != other.contact) return false
         if (jobData != other.jobData) return false
         if (message != other.message) return false
+        if (deletedRows != other.deletedRows) return false
 
         return true
     }

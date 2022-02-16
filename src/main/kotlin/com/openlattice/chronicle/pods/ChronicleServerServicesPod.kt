@@ -362,7 +362,6 @@ class ChronicleServerServicesPod {
     @Bean
     fun backgroundChronicleDeletionService(): BackgroundChronicleDeletionService {
         return BackgroundChronicleDeletionService(
-            jobService(),
             storageResolver,
             auditingManager()
         )
