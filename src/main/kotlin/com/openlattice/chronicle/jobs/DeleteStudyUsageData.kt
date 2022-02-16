@@ -7,7 +7,7 @@ import java.util.*
  * @author Solomon Tang <solomon@openlattice.com>
  */
 class DeleteStudyUsageData(
-    override var studyId: UUID
-): ChronicleJobData {
+    override val studyId: UUID
+) : ChronicleStudyJobDefinition {
     var table: String = CHRONICLE_USAGE_EVENTS.name
 }

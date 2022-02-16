@@ -44,7 +44,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.EMAIL
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ENDED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.EXPIRATION_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.FIRST_NAME
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.JOB_DATA
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.JOB_DEFINITION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.JOB_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LAST_NAME
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LAT
@@ -66,6 +66,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_TYP
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_NAME
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_TYPE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_PRINCIPAL_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SETTINGS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STARTED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STATUS
@@ -353,11 +354,13 @@ class ResultSetAdapters {
         fun chronicleJob(rs: ResultSet): ChronicleJob {
             return ChronicleJob(
                 rs.getObject(JOB_ID.name, UUID::class.java),
+                rs.getObject(SECURABLE_PRINCIPAL_ID.name, UUID::class.java),
+                Principal(PrincipalType.valueOf(rs.getString(PRINCIPAL_TYPE.name)), rs.getString(PRINCIPAL_ID.name)),
                 rs.getObject(CREATED_AT.name, OffsetDateTime::class.java),
                 rs.getObject(UPDATED_AT.name, OffsetDateTime::class.java),
                 JobStatus.valueOf(rs.getString(STATUS.name)),
                 rs.getString(CONTACT.name),
-                jobData = mapper.readValue(rs.getString(JOB_DATA.name)),
+                definition = mapper.readValue(rs.getString(JOB_DEFINITION.name)),
                 rs.getString(MESSAGE.name),
                 rs.getLong(DELETED_ROWS.name)
             )

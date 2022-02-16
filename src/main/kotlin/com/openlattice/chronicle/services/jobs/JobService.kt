@@ -11,33 +11,42 @@ import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.jobs.ChronicleJob
 import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.JOBS
+import com.openlattice.chronicle.storage.PostgresColumns
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CONTACT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DELETED_ROWS
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.JOB_DATA
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.JOB_DEFINITION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.JOB_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.MESSAGE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_TYPE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_PRINCIPAL_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STATUS
 import org.slf4j.LoggerFactory
 import java.sql.Connection
 import java.util.*
+import java.util.concurrent.ConcurrentSkipListMap
 
 /**
  * @author Solomon Tang <solomon@openlattice.com>
  */
 @Service
-class JobService (
+class JobService(
     private val idGenerationService: HazelcastIdGenerationService,
     private val storageResolver: StorageResolver,
 ) : JobManager {
     companion object {
         private val logger = LoggerFactory.getLogger(JobService::class.java)
         private val mapper = ObjectMappers.newJsonMapper()
+        private val running = ConcurrentSkipListMap<UUID, ChronicleJob>()
 
         private val JOB_COLUMNS_LIST = listOf(
             JOB_ID,
+            SECURABLE_PRINCIPAL_ID,
+            PRINCIPAL_TYPE,
+            PRINCIPAL_ID,
             STATUS,
             CONTACT,
-            JOB_DATA,
+            JOB_DEFINITION,
             MESSAGE,
             DELETED_ROWS,
         )
@@ -52,6 +61,18 @@ class JobService (
         private val GET_JOBS_SQL = """
             SELECT * FROM ${JOBS.name} WHERE ${JOB_ID.name} = ANY(?)
         """.trimIndent()
+
+        private val GET_NEXT_JOB_SQL = """
+            DELETE FROM ${JOBS.name}
+            WHERE ${JOB_ID.name} = (
+                SELECT ${JOB_ID.name}
+                FROM ${JOBS.name}
+                ORDER BY ${PostgresColumns.CREATED_AT.name} ASC
+                FOR UPDATE SKIP LOCKED
+                LIMIT 1
+            )
+            RETURNING *
+        """.trimIndent()
     }
 
 
@@ -59,26 +80,48 @@ class JobService (
         val ps = connection.prepareStatement(INSERT_JOB_SQL)
         var index = 1
         ps.setObject(index++, job.id)
+        ps.setObject(index++, job.securablePrincipalId)
+        ps.setString(index++, job.principal.type.name)
+        ps.setString(index++, job.principal.id)
         ps.setString(index++, job.status.toString())
         ps.setString(index++, job.contact)
-        ps.setString(index++, mapper.writeValueAsString(job.jobData))
+        ps.setString(index++, mapper.writeValueAsString(job.definition))
         ps.setString(index++, job.message)
-        ps.setLong(index++, job.deletedRows)
+        ps.setLong(index, job.deletedRows)
         ps.executeUpdate()
         return job.id
     }
 
-    override fun getJob(jobId: UUID): ChronicleJob {
-        return getJobs(listOf(jobId)).first()
+    override fun lockAndGetNextJob(connection: Connection): ChronicleJob? {
+        return connection.prepareStatement(GET_NEXT_JOB_SQL).use { ps ->
+            ps.executeQuery().use { rs ->
+                if (rs.next()) {
+                    val job = ResultSetAdapters.chronicleJob(rs)
+                    running[job.id] = job
+                    job
+                } else null
+            }
+        }
     }
 
-    override fun getJobs(jobIds: Collection<UUID>): List<ChronicleJob> {
+    override fun unlockJob(jobId: UUID) {
+        running.remove(jobId)
+    }
+
+    override fun getJob(jobId: UUID): ChronicleJob {
+        return getJobs(listOf(jobId)).values.first()
+    }
+
+    override fun getJobs(jobIds: Collection<UUID>): Map<UUID, ChronicleJob> {
         return BasePostgresIterable(
             PreparedStatementHolderSupplier(storageResolver.getPlatformStorage(), GET_JOBS_SQL) { ps ->
                 val pgJobIds = PostgresArrays.createUuidArray(ps.connection, jobIds)
                 ps.setObject(1, pgJobIds)
                 ps.executeQuery()
             }
-        ) { ResultSetAdapters.chronicleJob(it) }.toList()
+        ) {
+            val job = ResultSetAdapters.chronicleJob(it)
+            job.id to (running[job.id] ?: job)
+        }.toMap()
     }
 }

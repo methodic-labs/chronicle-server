@@ -177,13 +177,11 @@ class StudyController @Inject constructor(
             recordEvent(
                 AuditableEvent(
                     AclKey(studyId),
-                    Principals.getCurrentSecurablePrincipal().id,
-                    Principals.getCurrentUser().id,
-                    AuditEventType.GET_STUDY,
-                    "",
-                    studyId,
-                    IdConstants.UNINITIALIZED.id,
-                    mapOf()
+                    eventType = AuditEventType.GET_STUDY,
+                    description = "",
+                    study = studyId,
+                    organization = IdConstants.UNINITIALIZED.id,
+                    data = mapOf()
                 )
             )
             study
@@ -201,8 +199,8 @@ class StudyController @Inject constructor(
     override fun getOrgStudies(@PathVariable(ORGANIZATION_ID) organizationId: UUID): List<Study> {
 
         ensureReadAccess(AclKey(organizationId))
-        val currentUserId = Principals.getCurrentUser().id;
-        logger.info("Retrieving studies with organization id $organizationId on behalf of $currentUserId")
+        val currentUser = Principals.getCurrentSecurablePrincipal()
+        logger.info("Retrieving studies with organization id $organizationId on behalf of ${currentUser.principal.id}")
 
         return try {
             val studies = studyService.getOrgStudies(organizationId)
@@ -210,8 +208,8 @@ class StudyController @Inject constructor(
                 recordEvent(
                     AuditableEvent(
                         AclKey(study.id),
-                        Principals.getCurrentSecurablePrincipal().id,
-                        currentUserId,
+                        currentUser.id,
+                        currentUser.principal,
                         eventType = AuditEventType.GET_STUDY,
                         study = study.id,
                         organization = organizationId,
@@ -238,27 +236,25 @@ class StudyController @Inject constructor(
     ): Study? {
         val studyAclKey = AclKey(studyId);
         ensureOwnerAccess(studyAclKey)
-        val currentUserId = Principals.getCurrentUser().id;
-        logger.info("Updating study with id $studyId on behalf of $currentUserId")
+        val currentUser = Principals.getCurrentSecurablePrincipal()
+        logger.info("Updating study with id $studyId on behalf of ${currentUser.principal.id}")
 
-        val hds = storageResolver.getPlatformStorage()
-        hds.connection.use { connection ->
-            AuditedOperationBuilder<Unit>(connection, auditingManager)
-                .operation { connection -> studyService.updateStudy(connection, studyId, study) }
-                .audit {
-                    listOf(
-                        AuditableEvent(
-                            studyAclKey,
-                            Principals.getCurrentSecurablePrincipal().id,
-                            currentUserId,
-                            AuditEventType.UPDATE_STUDY,
-                            study = studyId,
-                            data = mapOf()
-                        )
+        AuditedOperationBuilder<Unit>(storageResolver.getPlatformStorage().connection, auditingManager)
+            .operation { connection -> studyService.updateStudy(connection, studyId, study) }
+            .audit {
+                listOf(
+                    AuditableEvent(
+                        studyAclKey,
+                        currentUser.id,
+                        currentUser.principal,
+                        AuditEventType.UPDATE_STUDY,
+                        study = studyId,
+                        data = mapOf()
                     )
-                }
-                .buildAndRun()
-        }
+                )
+            }
+            .buildAndRun()
+
         studyService.refreshStudyCache(setOf(studyId))
         return if (retrieve) studyService.getStudy(studyId) else null
     }
@@ -270,16 +266,16 @@ class StudyController @Inject constructor(
     )
     override fun destroyStudy(@PathVariable studyId: UUID): UUID {
         accessCheck(AclKey(studyId), EnumSet.of(Permission.OWNER))
+        val currentUser = Principals.getCurrentSecurablePrincipal()
         logger.info("Deleting study with id $studyId")
         // val currentUserEmail = getUser(managementApi, Principals.getCurrentUser().id).email
         val deleteStudyDataJob = ChronicleJob(
             id = idGenerationService.getNextId(),
             contact = "test@openlattice.com",
-            jobData = DeleteStudyUsageData(studyId)
+            definition = DeleteStudyUsageData(studyId)
         )
 
-        val hds = storageResolver.getPlatformStorage()
-        return AuditedOperationBuilder<UUID>(hds.connection, auditingManager)
+        return AuditedOperationBuilder<UUID>(storageResolver.getPlatformStorage().connection, auditingManager)
             .operation { connection ->
                 var jobId = chronicleJobService.createJob(connection, deleteStudyDataJob)
                 logger.info("Created job with id = $jobId")
@@ -291,8 +287,8 @@ class StudyController @Inject constructor(
                 listOf(
                     AuditableEvent(
                         AclKey(studyId),
-                        Principals.getCurrentSecurablePrincipal().id,
-                        Principals.getCurrentUser().id,
+                        currentUser.id,
+                        currentUser.principal,
                         AuditEventType.DELETE_STUDY,
                         "",
                         studyId,
@@ -301,8 +297,8 @@ class StudyController @Inject constructor(
                     ),
                     AuditableEvent(
                         AclKey(jobId),
-                        Principals.getCurrentSecurablePrincipal().id,
-                        Principals.getCurrentUser().id,
+                        currentUser.id,
+                        currentUser.principal,
                         AuditEventType.CREATE_JOB,
                         "",
                         studyId
