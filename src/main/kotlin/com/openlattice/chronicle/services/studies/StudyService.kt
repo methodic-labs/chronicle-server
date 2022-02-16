@@ -251,35 +251,37 @@ class StudyService(
     }
 
     private fun insertStudy(connection: Connection, study: Study): Int {
-        val ps = connection.prepareStatement(INSERT_STUDY_SQL)
-        ps.setObject(1, study.id)
-        ps.setObject(2, study.title)
-        ps.setObject(3, study.description)
-        ps.setObject(4, study.lat)
-        ps.setObject(5, study.lon)
-        ps.setObject(6, study.group)
-        ps.setObject(7, study.version)
-        ps.setObject(8, study.contact)
-        ps.setObject(9, study.notificationsEnabled)
-        ps.setObject(10, study.storage)
-        ps.setString(11, mapper.writeValueAsString(study.settings))
-        return ps.executeUpdate()
+        return connection.prepareStatement(INSERT_STUDY_SQL).use { ps ->
+            ps.setObject(1, study.id)
+            ps.setObject(2, study.title)
+            ps.setObject(3, study.description)
+            ps.setObject(4, study.lat)
+            ps.setObject(5, study.lon)
+            ps.setObject(6, study.group)
+            ps.setObject(7, study.version)
+            ps.setObject(8, study.contact)
+            ps.setObject(9, study.notificationsEnabled)
+            ps.setObject(10, study.storage)
+            ps.setString(11, mapper.writeValueAsString(study.settings))
+            return ps.executeUpdate()
+        }
     }
 
     private fun insertOrgStudy(connection: Connection, study: Study): Int {
-        val ps = connection.prepareStatement(INSERT_ORG_STUDIES_SQL)
-        study.organizationIds.forEach { organizationId ->
-            var params = 1
-            ps.setObject(params++, organizationId)
-            ps.setObject(params++, study.id)
-            ps.setObject(params++, Principals.getCurrentUser().id)
-            ps.setString(
-                params,
-                mapper.writeValueAsString(mapOf<String, Any>())
-            ) //Per org settings for studies aren't really defined yet.
-            ps.addBatch()
+        return connection.prepareStatement(INSERT_ORG_STUDIES_SQL).use { ps ->
+            study.organizationIds.forEach { organizationId ->
+                var params = 1
+                ps.setObject(params++, organizationId)
+                ps.setObject(params++, study.id)
+                ps.setObject(params++, Principals.getCurrentUser().id)
+                ps.setString(
+                    params,
+                    mapper.writeValueAsString(mapOf<String, Any>())
+                ) //Per org settings for studies aren't really defined yet.
+                ps.addBatch()
+            }
+            return ps.executeBatch().sum()
         }
-        return ps.executeBatch().sum()
     }
 
     override fun getStudy(studyId: UUID): Study {
@@ -374,17 +376,19 @@ class StudyService(
     }
 
     override fun deleteStudies(connection: Connection, studyIds: Collection<UUID>): Int {
-        val ps = connection.prepareStatement(DELETE_STUDIES_SQL)
-        val pgStudyIds = PostgresArrays.createUuidArray(ps.connection, studyIds)
-        ps.setArray(1, pgStudyIds)
-        return ps.executeUpdate()
+        return connection.prepareStatement(DELETE_STUDIES_SQL).use { ps ->
+            val pgStudyIds = PostgresArrays.createUuidArray(ps.connection, studyIds)
+            ps.setArray(1, pgStudyIds)
+            return ps.executeUpdate()
+        }
     }
 
     fun deleteStudiesFromOrganizations(connection: Connection, studyIds: Collection<UUID>): Int {
-        val ps = connection.prepareStatement(DELETE_STUDIES_FROM_ORGS_SQL)
-        val pgStudyIds = PostgresArrays.createUuidArray(ps.connection, studyIds)
-        ps.setArray(1, pgStudyIds)
-        return ps.executeUpdate()
+        return connection.prepareStatement(DELETE_STUDIES_FROM_ORGS_SQL).use { ps ->
+            val pgStudyIds = PostgresArrays.createUuidArray(ps.connection, studyIds)
+            ps.setArray(1, pgStudyIds)
+            return ps.executeUpdate()
+        }
     }
 
     override fun getStudySettings(studyId: UUID): Map<String, Any>{
