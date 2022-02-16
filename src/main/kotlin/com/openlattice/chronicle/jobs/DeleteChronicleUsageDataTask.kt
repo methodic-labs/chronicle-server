@@ -23,6 +23,7 @@ import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.CHRONICLE_
 import com.openlattice.chronicle.storage.StorageResolver
 import org.slf4j.LoggerFactory
 import java.util.UUID
+import java.util.concurrent.Semaphore
 
 /**
  * @author Solomon Tang <solomon@openlattice.com>
@@ -31,6 +32,7 @@ class DeleteChronicleUsageDataTask(
     private val jobService: JobService,
     private val storageResolver: StorageResolver,
     private val auditingManager: AuditingManager,
+    private val available: Semaphore
 ): Runnable {
     companion object {
         private val logger = LoggerFactory.getLogger(DeleteChronicleUsageDataTask::class.java)!!
@@ -66,22 +68,17 @@ class DeleteChronicleUsageDataTask(
 
         private  val UPDATE_FINISHED_JOB_COLUMNS = listOf(
             UPDATED_AT,
-            STATUS,
             DELETED_ROWS
         ).joinToString(",") { it.name }
 
         private val UPDATE_FINISHED_DELETE_JOB_SQL = """
             UPDATE ${JOBS.name}
-            SET (${UPDATE_FINISHED_JOB_COLUMNS}) = (?, ?, ?)
+            SET (${UPDATE_FINISHED_JOB_COLUMNS}) = (?, ?)
             WHERE ${JOB_ID.name} = ?
         """.trimIndent()
     }
 
     override fun run() {
-        deleteChronicleUsageData()
-    }
-
-    private fun deleteChronicleUsageData() {
         val hds = storageResolver.getPlatformStorage()
         AuditedOperationBuilder<ChronicleJob>(hds.connection, auditingManager)
             .operation { connection ->
@@ -89,7 +86,10 @@ class DeleteChronicleUsageDataTask(
                 // deserialize the jobData
                 val job = getNextAvailableJob(connection)
                 if (job.jobData is DeleteStudyUsageData) {
-                    val deletedRows = deleteChronicleStudyUsageData(job.jobData)
+                    // delete usage data from redshift with separate connection
+                    val (flavor, eventHds) = storageResolver.getDefaultEventStorage()
+                    val deletedRows = deleteChronicleStudyUsageData(eventHds.connection, job.jobData)
+                    eventHds.connection.close()
                     // update jobData to include deletedRows
                     updateFinishedDeleteJob(connection, job.id, deletedRows)
                 }
@@ -108,33 +108,40 @@ class DeleteChronicleUsageDataTask(
                 )
             ) }
             .buildAndRun()
+        logger.info("Task completed. Releasing permit.")
+        available.release()
     }
 
+    // get next available PENDING job and return as FINISHED
+    // any errors will trigger rollback
     private fun getNextAvailableJob(connection: Connection): ChronicleJob {
-        val ps = connection.prepareStatement(GET_NEXT_JOB_SQL)
-        ps.setObject(1, OffsetDateTime.now())
-        ps.setString(2, JobStatus.FINISHED.name)
-        return ps.executeQuery().use { rs ->
-            if (rs.next()) ResultSetAdapters.chronicleJob(rs)
-            else ChronicleJob()
+        connection.prepareStatement(GET_NEXT_JOB_SQL).use { ps ->
+            ps.setObject(1, OffsetDateTime.now())
+            ps.setString(2, JobStatus.FINISHED.name)
+            return ps.executeQuery().use { rs ->
+                if (rs.next()) ResultSetAdapters.chronicleJob(rs)
+                else ChronicleJob()
+            }
         }
     }
 
-    private fun updateFinishedDeleteJob(connection: Connection, jobId: UUID, deletedRows: Long) {
-        val ps = connection.prepareStatement(UPDATE_FINISHED_DELETE_JOB_SQL)
-        var index = 1
-        ps.setObject(index++, OffsetDateTime.now())
-        ps.setString(index++, JobStatus.FINISHED.name)
-        ps.setLong(index++, deletedRows)
-        ps.setObject(index, jobId)
-        ps.executeUpdate()
+    // Delete chronicle study usage data from event storage and return count of deleted rows
+    private fun deleteChronicleStudyUsageData(connection: Connection, jobData: DeleteStudyUsageData): Long {
+        logger.info("Deleting studies with id = {}", jobData.studyId)
+        connection.prepareStatement(DELETE_CHRONICLE_STUDY_USAGE_DATA_SQL).use { ps ->
+            ps.setObject(1, jobData.studyId)
+            return ps.executeUpdate().toLong()
+        }
     }
 
-    private fun deleteChronicleStudyUsageData(jobData: DeleteStudyUsageData): Long {
-        val (flavor, hds) = storageResolver.getDefaultEventStorage()
-        logger.info("Deleting studies with id = {}", jobData.studyId)
-        val ps = hds.connection.prepareStatement(DELETE_CHRONICLE_STUDY_USAGE_DATA_SQL)
-        ps.setObject(1, jobData.studyId)
-        return ps.executeUpdate().toLong()
+    // update job with number of deleted usage data rows
+    private fun updateFinishedDeleteJob(connection: Connection, jobId: UUID, deletedRows: Long) {
+        connection.prepareStatement(UPDATE_FINISHED_DELETE_JOB_SQL).use { ps ->
+            var index = 1
+            ps.setObject(index++, OffsetDateTime.now())
+            ps.setLong(index++, deletedRows)
+            ps.setObject(index, jobId)
+            ps.executeUpdate()
+        }
     }
 }

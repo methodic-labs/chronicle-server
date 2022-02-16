@@ -51,19 +51,8 @@ class BackgroundChronicleDeletionService(
             }
 
             logger.info("Permit acquired to execute DeleteChronicleUsageDataTask")
-            executor.execute {
-                try {
-                    DeleteChronicleUsageDataTask(jobService, storageResolver, auditingManager).run()
-                }
-                catch (error: InterruptedException) {
-                    logger.info("Could not acquire permit.")
-                    logger.info(error.message)
-                }
-                finally {
-                    available.release();
-                    logger.info("Releasing permit for chronicle usage data deletion.")
-                }
-            }
+            var task = DeleteChronicleUsageDataTask(jobService, storageResolver, auditingManager, available)
+            executor.execute(task)
         }
         catch (error: InterruptedException) {
             logger.info("Error acquiring permit: $error")
