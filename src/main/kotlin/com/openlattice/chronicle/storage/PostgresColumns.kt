@@ -15,7 +15,7 @@ import java.util.stream.Stream
  */
 class PostgresColumns {
     companion object {
-        @JvmField val ACL_KEY = PostgresColumnDefinition("acl_key", PostgresDatatype.UUID_ARRAY)=
+        @JvmField val ACL_KEY = PostgresColumnDefinition("acl_key", PostgresDatatype.UUID_ARRAY)
         @JvmField val APP_USERS = PostgresColumnDefinition("users", PostgresDatatype.TEXT_ARRAY)
         @JvmField val BASE = PostgresColumnDefinition("base", PostgresDatatype.BIGINT).notNull()
         @JvmField val CANDIDATE_ID = PostgresColumnDefinition("candidate_id", PostgresDatatype.UUID).notNull()
