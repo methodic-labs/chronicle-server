@@ -22,6 +22,7 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.CHRONICLE_USAGE_EVENTS
 import com.openlattice.chronicle.storage.StorageResolver
 import org.slf4j.LoggerFactory
+import java.sql.PreparedStatement
 import java.util.UUID
 import java.util.concurrent.Semaphore
 import java.util.concurrent.TimeoutException
@@ -80,9 +81,9 @@ class DeleteChronicleUsageDataTask(
 
     override fun run() {
         try {
-            logger.info("Beginning task.")
+            logger.info("Beginning task. available = $available")
             val hds = storageResolver.getPlatformStorage()
-            AuditedOperationBuilder<ChronicleJob>(hds.connection, auditingManager)
+            AuditedOperationBuilder<Unit>(hds.connection, auditingManager)
                 .operation { connection ->
                     // pull job from queue with skip locked
                     // deserialize the jobData
@@ -98,20 +99,18 @@ class DeleteChronicleUsageDataTask(
                     else {
                         logger.info("No pending DeleteStudyUsageData jobs available")
                     }
-                    return@operation job
                 }
-                .audit { job -> listOf(
+                .audit { listOf(
                     AuditableEvent(
-                        AclKey(job.id),
+                        AclKey(IdConstants.SYSTEM.id),
                         IdConstants.SYSTEM.id,
                         DeleteChronicleUsageDataTask::class.java.name,
                         eventType = AuditEventType.BACKGROUND_USAGE_DATA_DELETION,
-                        study = job.jobData.studyId
                     )
                 ) }
                 .buildAndRun()
         }
-        catch (error: TimeoutException) {
+        catch (error: Exception) {
             logger.error("Error completing task - $error")
         }
         finally {
@@ -123,7 +122,7 @@ class DeleteChronicleUsageDataTask(
     // get next available PENDING job and return as FINISHED
     // any errors will trigger rollback
     private fun getNextAvailableJob(connection: Connection): ChronicleJob {
-        connection.prepareStatement(GET_NEXT_JOB_SQL).use { ps ->
+        return connection.prepareStatement(GET_NEXT_JOB_SQL).use { ps ->
             ps.setObject(1, OffsetDateTime.now())
             ps.setString(2, JobStatus.FINISHED.name)
             return ps.executeQuery().use { rs ->
@@ -136,7 +135,7 @@ class DeleteChronicleUsageDataTask(
     // Delete chronicle study usage data from event storage and return count of deleted rows
     private fun deleteChronicleStudyUsageData(connection: Connection, jobData: DeleteStudyUsageData): Long {
         logger.info("Deleting studies with id = {}", jobData.studyId)
-        connection.prepareStatement(DELETE_CHRONICLE_STUDY_USAGE_DATA_SQL).use { ps ->
+        return connection.prepareStatement(DELETE_CHRONICLE_STUDY_USAGE_DATA_SQL).use { ps ->
             ps.setObject(1, jobData.studyId)
             return ps.executeUpdate().toLong()
         }
@@ -144,7 +143,7 @@ class DeleteChronicleUsageDataTask(
 
     // update job with number of deleted usage data rows
     private fun updateFinishedDeleteJob(connection: Connection, jobId: UUID, deletedRows: Long) {
-        connection.prepareStatement(UPDATE_FINISHED_DELETE_JOB_SQL).use { ps ->
+        return connection.prepareStatement(UPDATE_FINISHED_DELETE_JOB_SQL).use { ps ->
             var index = 1
             ps.setObject(index++, OffsetDateTime.now())
             ps.setLong(index++, deletedRows)
