@@ -29,6 +29,7 @@ import com.openlattice.chronicle.candidates.Candidate
 import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.mapstores.ids.Range
 import com.openlattice.chronicle.organizations.Organization
+import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CANDIDATE_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CATEGORY
@@ -50,6 +51,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.NAME
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.NOTIFICATIONS_ENABLED
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_IDS
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPATION_STATUS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTITION_INDEX
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PERMISSIONS
@@ -340,6 +342,15 @@ class ResultSetAdapters {
         @Throws(SQLException::class)
         fun storage(rs: ResultSet): String {
             return rs.getString(STORAGE.name)
+        }
+
+        @Throws(SQLException::class)
+        fun participant(rs: ResultSet): Participant {
+            return Participant(
+                rs.getString(PARTICIPANT_ID.name),
+                Candidate(id = rs.getObject(CANDIDATE_ID.name, UUID::class.java)),
+                participantStatus(rs)
+            )
         }
     }
 }
