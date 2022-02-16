@@ -38,29 +38,8 @@ class DeleteChronicleUsageDataTask(
     companion object {
         private val logger = LoggerFactory.getLogger(DeleteChronicleUsageDataTask::class.java)!!
 
-        /*
-          1. status
-          2. updated_at
-         */
-        private val GET_NEXT_JOB_COLUMNS = listOf(
-            UPDATED_AT,
-            STATUS
-        ).joinToString(",") { it.name }
 
-        private val GET_NEXT_JOB_SQL = """
-            UPDATE ${JOBS.name}
-            SET (${GET_NEXT_JOB_COLUMNS}) = (?, ?)
-            WHERE ${JOB_ID.name} = (
-                SELECT ${JOB_ID.name}
-                FROM ${JOBS.name}
-                WHERE ${JOB_DATA.name} ->> '@type' = '${DeleteStudyUsageData::class.java.name}'
-                AND ${STATUS.name} = '${JobStatus.PENDING.name}'
-                ORDER BY ${CREATED_AT.name} ASC
-                FOR UPDATE SKIP LOCKED
-                LIMIT 1
-            )
-            RETURNING *
-        """.trimIndent()
+
 
         private val DELETE_CHRONICLE_STUDY_USAGE_DATA_SQL = """
             DELETE FROM ${CHRONICLE_USAGE_EVENTS.name}
@@ -119,18 +98,7 @@ class DeleteChronicleUsageDataTask(
         }
     }
 
-    // get next available PENDING job and return as FINISHED
-    // any errors will trigger rollback
-    private fun getNextAvailableJob(connection: Connection): ChronicleJob {
-        return connection.prepareStatement(GET_NEXT_JOB_SQL).use { ps ->
-            ps.setObject(1, OffsetDateTime.now())
-            ps.setString(2, JobStatus.FINISHED.name)
-            return ps.executeQuery().use { rs ->
-                if (rs.next()) ResultSetAdapters.chronicleJob(rs)
-                else ChronicleJob()
-            }
-        }
-    }
+
 
     // Delete chronicle study usage data from event storage and return count of deleted rows
     private fun deleteChronicleStudyUsageData(connection: Connection, jobData: DeleteStudyUsageData): Long {
