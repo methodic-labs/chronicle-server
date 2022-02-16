@@ -16,9 +16,9 @@ class BackgroundChronicleDeletionService(
 ) {
 
     companion object {
-        private var MAX_AVAILABLE = 2;
+        private var MAX_AVAILABLE = 4;
         private var available = Semaphore(MAX_AVAILABLE)
-        private var executor = newFixedThreadPool(2)
+        private var executor = newFixedThreadPool(4)
         private val logger = LoggerFactory.getLogger(BackgroundChronicleDeletionService::class.java)!!
 
     }
@@ -26,13 +26,14 @@ class BackgroundChronicleDeletionService(
     @Scheduled(fixedRate = 10_000L)
     fun tryAndAcquireTaskForExecutor() {
         try {
-            if (!available.tryAcquire()) {
-                logger.info("No permit acquired. Skipping DeleteChronicleUsageDataTask")
-                return
+            if (available.tryAcquire()) {
+                logger.info("Permit acquired to execute DeleteChronicleUsageDataTask")
+                var task = DeleteChronicleUsageDataTask(storageResolver, auditingManager, available)
+                executor.submit(task)
             }
-            logger.info("Permit acquired to execute DeleteChronicleUsageDataTask")
-            var task = DeleteChronicleUsageDataTask(storageResolver, auditingManager, available)
-            executor.execute(task)
+            else {
+                logger.info("No permit acquired. Skipping DeleteChronicleUsageDataTask")
+            }
         }
         catch (error: InterruptedException) {
             logger.info("Error acquiring permit: $error")
