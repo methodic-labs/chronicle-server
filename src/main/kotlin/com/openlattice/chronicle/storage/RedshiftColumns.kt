@@ -24,21 +24,22 @@ class RedshiftColumns {
         @JvmField val APPLICATION_LABEL = PostgresColumnDefinition("application_label", PostgresDatatype.TEXT)
         @JvmField val START_TIME = PostgresColumnDefinition("start_time", PostgresDatatype.TIMESTAMPTZ )
         @JvmField val END_TIME = PostgresColumnDefinition("end_time", PostgresDatatype.TIMESTAMPTZ )
+        @JvmField val RECORDED_DATE = PostgresColumnDefinition("date", PostgresDatatype.DATE) //important for app usage survey to query events by date
         //Convert all duration to milliseconds for redshift compatibility
         @JvmField val DURATION = PostgresColumnDefinition("duration", PostgresDatatype.BIGINT )
 
         val FQNS_TO_COLUMNS: Map<FullQualifiedName, PostgresColumnDefinition> = mapOf(
 //                EdmConstants.OL_ID_FQN to ID,
-                EdmConstants.STRING_ID_FQN to ID,
-                EdmConstants.FULL_NAME_FQN to APP_PACKAGE_NAME,
-                EdmConstants.RECORD_TYPE_FQN to INTERACTION_TYPE,
-                EdmConstants.DATE_LOGGED_FQN to TIMESTAMP,
-                EdmConstants.TIMEZONE_FQN to TIMEZONE,
-                EdmConstants.USER_FQN to USERNAME,
-                EdmConstants.TITLE_FQN to APPLICATION_LABEL,
-                EdmConstants.START_DATE_TIME_FQN to START_TIME,
-                EdmConstants.END_DATE_TIME_FQN to END_TIME,
-                EdmConstants.DURATION_FQN to DURATION,
+            EdmConstants.STRING_ID_FQN to ID,
+            EdmConstants.FULL_NAME_FQN to APP_PACKAGE_NAME,
+            EdmConstants.RECORD_TYPE_FQN to INTERACTION_TYPE,
+            EdmConstants.DATE_LOGGED_FQN to TIMESTAMP,
+            EdmConstants.TIMEZONE_FQN to TIMEZONE,
+            EdmConstants.USER_FQN to USERNAME,
+            EdmConstants.TITLE_FQN to APPLICATION_LABEL,
+            EdmConstants.START_DATE_TIME_FQN to START_TIME,
+            EdmConstants.END_DATE_TIME_FQN to END_TIME,
+            EdmConstants.DURATION_FQN to DURATION,
         )
 
         @JvmField val ORGANIZATION_ID = PostgresColumnDefinition("organization_id", PostgresDatatype.TEXT_UUID).notNull()
@@ -155,74 +156,74 @@ class RedshiftColumns {
 
         // applies to all sensor types
         val SHARED_SENSOR_COLS = linkedSetOf(
-                STUDY_ID,
-                PARTICIPANT_ID,
-                SAMPLE_ID, // uniquely identifies a sample
-                SENSOR_TYPE,
-                SAMPLE_DURATION,
-                RECORDED_DATE_TIME, //when sample was recorded by framework
-                START_DATE_TIME, // lower date bound for sample record
-                END_DATE_TIME, // upper date bound for sample record
-                TIMEZONE,
-                DEVICE_VERSION,
-                DEVICE_NAME,
-                DEVICE_MODEL,
-                DEVICE_SYSTEM_NAME
+            STUDY_ID,
+            PARTICIPANT_ID,
+            SAMPLE_ID, // uniquely identifies a sample
+            SENSOR_TYPE,
+            SAMPLE_DURATION,
+            RECORDED_DATE_TIME, //when sample was recorded by framework
+            START_DATE_TIME, // lower date bound for sample record
+            END_DATE_TIME, // upper date bound for sample record
+            TIMEZONE,
+            DEVICE_VERSION,
+            DEVICE_NAME,
+            DEVICE_MODEL,
+            DEVICE_SYSTEM_NAME
         )
 
         val DEVICE_USAGE_SENSOR_COLS = linkedSetOf(
-                TOTAL_SCREEN_WAKES,
-                TOTAL_UNLOCK_DURATION,
-                TOTAL_UNLOCKS,
-                APP_CATEGORY,
-                APP_USAGE_TIME,
-                TEXT_INPUT_SOURCE,
-                TEXT_INPUT_DURATION,
-                BUNDLE_IDENTIFIER,
-                APP_CATEGORY_WEB_DURATION
+            TOTAL_SCREEN_WAKES,
+            TOTAL_UNLOCK_DURATION,
+            TOTAL_UNLOCKS,
+            APP_CATEGORY,
+            APP_USAGE_TIME,
+            TEXT_INPUT_SOURCE,
+            TEXT_INPUT_DURATION,
+            BUNDLE_IDENTIFIER,
+            APP_CATEGORY_WEB_DURATION
         )
 
         val PHONE_USAGE_SENSOR_COLS = linkedSetOf(
-                TOTAL_INCOMING_CALLS,
-                TOTAL_OUTGOING_CALLS,
-                TOTAL_CALL_DURATION,
-                TOTAL_UNIQUE_CONTACTS
+            TOTAL_INCOMING_CALLS,
+            TOTAL_OUTGOING_CALLS,
+            TOTAL_CALL_DURATION,
+            TOTAL_UNIQUE_CONTACTS
         )
 
         val MESSAGES_USAGE_SENSOR_COLS = linkedSetOf(
-                TOTAL_INCOMING_MESSAGES,
-                TOTAL_OUTGOING_MESSAGES,
-                TOTAL_UNIQUE_CONTACTS
+            TOTAL_INCOMING_MESSAGES,
+            TOTAL_OUTGOING_MESSAGES,
+            TOTAL_UNIQUE_CONTACTS
         )
 
         val KEYBOARD_METRICS_SENSOR_COLS = linkedSetOf(
-                TOTAL_WORDS,
-                TOTAL_ALTERED_WORDS,
-                TOTAL_TAPS,
-                TOTAL_DRAGS,
-                TOTAL_DELETES,
-                TOTAL_EMOJIS,
-                TOTAL_PATHS,
-                TOTAL_PATH_TIME, //time to complete paths in seconds
-                TOTAL_PATH_LENGTH, //length of completed paths in cm
-                TOTAL_AUTO_CORRECTIONS,
-                TOTAL_SPACE_CORRECTIONS,
-                TOTAL_TRANSPOSITION_CORRECTIONS,
-                TOTAL_INSERT_KEY_CORRECTIONS,
-                TOTAL_RETRO_CORRECTIONS,
-                TOTAL_SKIP_TOUCH_CORRECTIONS,
-                TOTAL_NEAR_KEY_CORRECTIONS,
-                TOTAL_SUBSTITUTION_CORRECTIONS,
-                TOTAL_TEST_HIT_CORRECTIONS,
-                TOTAL_TYPING_DURATION, // seconds
-                TOTAL_PATH_PAUSES, //number of pauses while drawing path for a word
-                TOTAL_PAUSES,
-                TOTAL_TYPING_EPISODES, //number of continuous typing episodes
-                SENTIMENT,
-                SENTIMENT_WORD_COUNT,
-                SENTIMENT_EMOJI_COUNT,
-                TYPING_SPEED, // characters per second
-                PATH_TYPING_SPEED //QuickType words per minute
+            TOTAL_WORDS,
+            TOTAL_ALTERED_WORDS,
+            TOTAL_TAPS,
+            TOTAL_DRAGS,
+            TOTAL_DELETES,
+            TOTAL_EMOJIS,
+            TOTAL_PATHS,
+            TOTAL_PATH_TIME, //time to complete paths in seconds
+            TOTAL_PATH_LENGTH, //length of completed paths in cm
+            TOTAL_AUTO_CORRECTIONS,
+            TOTAL_SPACE_CORRECTIONS,
+            TOTAL_TRANSPOSITION_CORRECTIONS,
+            TOTAL_INSERT_KEY_CORRECTIONS,
+            TOTAL_RETRO_CORRECTIONS,
+            TOTAL_SKIP_TOUCH_CORRECTIONS,
+            TOTAL_NEAR_KEY_CORRECTIONS,
+            TOTAL_SUBSTITUTION_CORRECTIONS,
+            TOTAL_TEST_HIT_CORRECTIONS,
+            TOTAL_TYPING_DURATION, // seconds
+            TOTAL_PATH_PAUSES, //number of pauses while drawing path for a word
+            TOTAL_PAUSES,
+            TOTAL_TYPING_EPISODES, //number of continuous typing episodes
+            SENTIMENT,
+            SENTIMENT_WORD_COUNT,
+            SENTIMENT_EMOJI_COUNT,
+            TYPING_SPEED, // characters per second
+            PATH_TYPING_SPEED //QuickType words per minute
         )
     }
 }

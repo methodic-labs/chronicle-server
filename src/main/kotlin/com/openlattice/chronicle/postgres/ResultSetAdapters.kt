@@ -25,14 +25,7 @@ import com.fasterxml.jackson.module.kotlin.readValue
 import com.geekbeast.mappers.mappers.ObjectMappers
 import com.geekbeast.postgres.PostgresArrays
 import com.geekbeast.rhizome.jobs.JobStatus
-import com.openlattice.chronicle.authorization.AceKey
-import com.openlattice.chronicle.authorization.AclKey
-import com.openlattice.chronicle.authorization.Permission
-import com.openlattice.chronicle.authorization.Principal
-import com.openlattice.chronicle.authorization.PrincipalType
-import com.openlattice.chronicle.authorization.Role
-import com.openlattice.chronicle.authorization.SecurableObjectType
-import com.openlattice.chronicle.authorization.SecurablePrincipal
+import com.openlattice.chronicle.authorization.*
 import com.openlattice.chronicle.candidates.Candidate
 import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.jobs.ChronicleJob
@@ -83,18 +76,21 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_VERSION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TITLE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPDATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.URL
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APPLICATION_LABEL
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_PACKAGE_NAME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.ID
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMESTAMP
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMEZONE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.USERNAME
 import com.openlattice.chronicle.study.Study
+import com.openlattice.chronicle.survey.AppUsage
 import org.slf4j.LoggerFactory
 import java.sql.ResultSet
 import java.sql.SQLException
 import java.time.LocalDate
 import java.time.OffsetDateTime
-import java.util.Base64
-import java.util.EnumSet
-import java.util.Optional
-import java.util.UUID
+import java.time.ZoneId
+import java.util.*
 
 /**
  * Use for reading count field when performing an aggregation.
@@ -324,12 +320,27 @@ class ResultSetAdapters {
         }
 
         @Throws(SQLException::class)
+        fun appUsage(rs: ResultSet): AppUsage {
+            val timezone = rs.getString(TIMEZONE.name)
+            val timestamp = rs.getObject(TIMESTAMP.name, OffsetDateTime::class.java)
+            val zoneId = ZoneId.of(timezone)
+
+            return AppUsage(
+                rs.getString(APP_PACKAGE_NAME.name),
+                rs.getString(APPLICATION_LABEL.name),
+                timestamp.toInstant().atZone(zoneId).toOffsetDateTime(),
+                users = listOf(),
+                timezone
+            )
+        }
+
+        @Throws(SQLException::class)
         fun participantStatus(rs: ResultSet): ParticipationStatus {
             return ParticipationStatus.valueOf(rs.getString(PARTICIPATION_STATUS.name))
         }
 
         @Throws(SQLException::class)
-        fun candidateId(rs: ResultSet) : UUID {
+        fun candidateId(rs: ResultSet): UUID {
             return rs.getObject(CANDIDATE_ID.name, UUID::class.java)
         }
 
