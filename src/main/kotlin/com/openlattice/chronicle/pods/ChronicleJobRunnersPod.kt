@@ -8,7 +8,7 @@ import com.google.common.eventbus.EventBus
 import com.google.common.util.concurrent.ListeningExecutorService
 import com.hazelcast.core.HazelcastInstance
 import com.openlattice.chronicle.configuration.ChronicleConfiguration
-import com.openlattice.chronicle.deletion.DeleteChronicleUsageDataRunner
+import com.openlattice.chronicle.deletion.DeleteStudyUsageDataRunner
 import com.openlattice.chronicle.storage.StorageResolver
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -47,7 +47,7 @@ class ChronicleJobRunnersPod {
         private lateinit var storageResolver: StorageResolver
 
         @Bean
-        fun deleteChronicleUsageDataRunner() : DeleteChronicleUsageDataRunner {
-            return DeleteChronicleUsageDataRunner(storageResolver)
+        fun deleteChronicleUsageDataRunner() : DeleteStudyUsageDataRunner {
+            return DeleteStudyUsageDataRunner(storageResolver)
         }
 }

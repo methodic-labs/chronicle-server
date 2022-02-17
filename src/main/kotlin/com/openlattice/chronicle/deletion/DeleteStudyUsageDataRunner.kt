@@ -1,6 +1,5 @@
 package com.openlattice.chronicle.deletion
 
-import com.geekbeast.mappers.mappers.ObjectMappers
 import com.geekbeast.rhizome.jobs.JobStatus
 import com.openlattice.chronicle.auditing.AuditEventType
 import com.openlattice.chronicle.auditing.AuditableEvent
@@ -22,12 +21,12 @@ import org.slf4j.LoggerFactory
 /**
  * @author Solomon Tang <solomon@openlattice.com>
  */
-class DeleteChronicleUsageDataRunner(
+class DeleteStudyUsageDataRunner(
     private val storageResolver: StorageResolver
 ) : AbstractChronicleJobRunner<DeleteStudyUsageData>() {
 
     companion object {
-        private val logger = LoggerFactory.getLogger(DeleteChronicleUsageDataRunner::class.java)!!
+        private val logger = LoggerFactory.getLogger(DeleteStudyUsageDataRunner::class.java)!!
 
         private val DELETE_CHRONICLE_STUDY_USAGE_DATA_SQL = """
             DELETE FROM ${CHRONICLE_USAGE_EVENTS.name}
