@@ -171,7 +171,7 @@ interface AuthorizingComponent : AuditingComponent {
                 AuditableEvent(
                     aclKey,
                     currentUser.id,
-                    currentUser.principal.id,
+                    currentUser.principal,
                     AuditEventType.ACCESS_DENIED,
                     "Access check failed for user ${currentUser.title} with required permissiosn $requiredPermissions ",
                     data = mapOf("principals" to currentPrincipals)

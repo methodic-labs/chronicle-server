@@ -87,7 +87,7 @@ class CandidateController @Inject constructor(
                     AuditableEvent(
                         AclKey(candidateId),
                         Principals.getCurrentSecurablePrincipal().id,
-                        Principals.getCurrentUser().id,
+                        Principals.getCurrentUser(),
                         AuditEventType.REGISTER_CANDIDATE,
                     )
                 )

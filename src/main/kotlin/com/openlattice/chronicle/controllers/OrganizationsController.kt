@@ -76,7 +76,7 @@ class OrganizationsController @Inject constructor(
                         AuditableEvent(
                             AclKey(organization.id),
                             Principals.getCurrentSecurablePrincipal().id,
-                            Principals.getCurrentUser().id,
+                            Principals.getCurrentUser(),
                             AuditEventType.CREATE_ORGANIZATION,
                             "",
                             organization.id,
