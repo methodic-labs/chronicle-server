@@ -13,11 +13,11 @@ import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.organizations.ChronicleDataCollectionSettings
 import com.openlattice.chronicle.organizations.ChronicleOrganizationService
 import com.openlattice.chronicle.organizations.Organization
+import com.openlattice.chronicle.organizations.OrganizationApi
+import com.openlattice.chronicle.organizations.OrganizationApi.Companion.CONTROLLER
+import com.openlattice.chronicle.organizations.OrganizationApi.Companion.ORGANIZATION_ID
+import com.openlattice.chronicle.organizations.OrganizationApi.Companion.ORGANIZATION_ID_PATH
 import com.openlattice.chronicle.organizations.OrganizationSettings
-import com.openlattice.chronicle.organizations.OrganizationsApi
-import com.openlattice.chronicle.organizations.OrganizationsApi.Companion.CONTROLLER
-import com.openlattice.chronicle.organizations.OrganizationsApi.Companion.ORGANIZATION_ID
-import com.openlattice.chronicle.organizations.OrganizationsApi.Companion.ORGANIZATION_ID_PATH
 import com.openlattice.chronicle.settings.AppComponent
 import com.openlattice.chronicle.storage.StorageResolver
 import org.slf4j.LoggerFactory
@@ -37,15 +37,15 @@ import javax.inject.Inject
  */
 @RestController
 @RequestMapping(CONTROLLER)
-class OrganizationsController @Inject constructor(
+class OrganizationController @Inject constructor(
     private val storageResolver: StorageResolver,
     private val idGenerationService: HazelcastIdGenerationService,
     override val authorizationManager: AuthorizationManager,
     override val auditingManager: AuditingManager
-) : AuthorizingComponent, OrganizationsApi {
+) : AuthorizingComponent, OrganizationApi {
 
     companion object {
-        private val logger = LoggerFactory.getLogger(OrganizationsController::class.java)!!
+        private val logger = LoggerFactory.getLogger(OrganizationController::class.java)!!
     }
 
     @Inject
