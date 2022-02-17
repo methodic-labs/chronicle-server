@@ -41,7 +41,7 @@ class BackgroundChronicleJobService(
         private val DELETE_FINISHED_JOBS_AFTER_TTL = """
             DELETE FROM ${JOBS.name} 
                 WHERE ${STATUS.name}='${JobStatus.FINISHED.name}'
-                    AND ${COMPLETED_AT.name} >= now() - INTERVAL $FINISHED_JOB_TTL
+                    AND ${COMPLETED_AT.name} <= now() - INTERVAL $FINISHED_JOB_TTL
         """.trimIndent()
     }
 
