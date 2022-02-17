@@ -51,7 +51,7 @@ class BackgroundChronicleJobService(
 
         try {
             if (available.tryAcquire()) {
-                logger.info("Permit acquired to execute DeleteChronicleUsageDataTask")
+                logger.info("Permit acquired to execute next chronicle job")
                 executor.execute {
                     try {
                         storageResolver.getPlatformStorage().connection.use { conn ->
@@ -73,12 +73,15 @@ class BackgroundChronicleJobService(
                                 .buildAndRun()
                             jobService.unlockJob(jobId)
                         }
-                    } finally {
+                    } catch (ex: Exception) {
+                        logger.error("Task could not be completed - $ex")
+                    }
+                    finally {
                         available.release()
                     }
                 }
             } else {
-                logger.info("No permit acquired. Skipping DeleteChronicleUsageDataTask")
+                logger.info("No permit acquired. Skipping chronicle job")
             }
         } catch (error: InterruptedException) {
             logger.info("Error acquiring permit.", error)
