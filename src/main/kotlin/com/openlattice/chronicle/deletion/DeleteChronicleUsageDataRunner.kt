@@ -63,13 +63,16 @@ class DeleteChronicleUsageDataRunner(
 
         updateFinishedDeleteJob(connection, job)
 
+        var studyId = (job.definition as DeleteStudyUsageData).studyId
+
         return listOf(
             AuditableEvent(
-                AclKey((job.definition as DeleteStudyUsageData).studyId),
+                AclKey(studyId),
                 job.securablePrincipalId,
                 job.principal,
                 eventType = AuditEventType.BACKGROUND_USAGE_DATA_DELETION,
-                data = mapOf( "definition" to job.definition)
+                data = mapOf( "definition" to job.definition),
+                study = studyId
             )
         )
     }
