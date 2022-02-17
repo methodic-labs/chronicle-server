@@ -40,8 +40,8 @@ class BackgroundChronicleJobService(
         private val NO_JOB_FOUND = (IdConstants.UNINITIALIZED.id to listOf<AuditableEvent>())
         private val DELETE_FINISHED_JOBS_AFTER_TTL = """
             DELETE FROM ${JOBS.name} 
-                WHERE ${STATUS.name}='${JobStatus.FINISHED.name}'
-                    AND ${COMPLETED_AT.name} >= now() - INTERVAL $FINISHED_JOB_TTL
+            WHERE ${STATUS.name}='${JobStatus.FINISHED.name}'
+            AND ${COMPLETED_AT.name} <= now() - INTERVAL $FINISHED_JOB_TTL
         """.trimIndent()
     }
 
@@ -51,7 +51,7 @@ class BackgroundChronicleJobService(
 
         try {
             if (available.tryAcquire()) {
-                logger.info("Permit acquired to execute DeleteChronicleUsageDataTask")
+                logger.info("Permit acquired to submit next chronicle job")
                 executor.execute {
                     try {
                         storageResolver.getPlatformStorage().connection.use { conn ->
@@ -73,12 +73,14 @@ class BackgroundChronicleJobService(
                                 .buildAndRun()
                             jobService.unlockJob(jobId)
                         }
+                    } catch (ex: Exception) {
+                        logger.error("Task could not be completed - $ex")
                     } finally {
                         available.release()
                     }
                 }
             } else {
-                logger.info("No permit acquired. Skipping DeleteChronicleUsageDataTask")
+                logger.info("No permits available. Skipping chronicle job submission.")
             }
         } catch (error: InterruptedException) {
             logger.info("Error acquiring permit.", error)

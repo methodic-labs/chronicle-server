@@ -279,8 +279,10 @@ class StudyController @Inject constructor(
                 .operation { connection ->
                     var jobId = chronicleJobService.createJob(connection, deleteStudyDataJob)
                     logger.info("Created job with id = $jobId")
-                    studyService.deleteStudies(connection, listOf(studyId))
-                    studyService.deleteStudiesFromOrganizations(connection, listOf(studyId))
+                    val studyIdList = listOf(studyId)
+                    studyService.deleteStudies(connection, studyIdList)
+                    studyService.removeStudiesFromOrganizations(connection, studyIdList)
+                    studyService.removeAllParticipantsFromStudies(connection, studyIdList)
                     return@operation jobId
                 }
                 .audit { jobId ->

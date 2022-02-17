@@ -69,6 +69,7 @@ class JobService(
             WHERE ${JOB_ID.name} = (
                 SELECT ${JOB_ID.name}
                 FROM ${JOBS.name}
+                WHERE ${STATUS.name} = '${JobStatus.PENDING.name}'
                 ORDER BY ${PostgresColumns.CREATED_AT.name} ASC
                 FOR UPDATE SKIP LOCKED
                 LIMIT 1
@@ -79,6 +80,7 @@ class JobService(
 
 
     override fun createJob(connection: Connection, job: ChronicleJob): UUID {
+        logger.info("Creating job with id = ${job.id}")
         val ps = connection.prepareStatement(INSERT_JOB_SQL)
         var index = 1
         ps.setObject(index++, job.id)

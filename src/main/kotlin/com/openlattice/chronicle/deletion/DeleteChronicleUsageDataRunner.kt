@@ -63,13 +63,16 @@ class DeleteChronicleUsageDataRunner(
 
         updateFinishedDeleteJob(connection, job)
 
+        val studyId = (job.definition as DeleteStudyUsageData).studyId
+
         return listOf(
             AuditableEvent(
-                AclKey((job.definition as DeleteStudyUsageData).studyId),
+                AclKey(studyId),
                 job.securablePrincipalId,
                 job.principal,
                 eventType = AuditEventType.BACKGROUND_USAGE_DATA_DELETION,
-                data = mapOf( "definition" to job.definition)
+                data = mapOf( "definition" to job.definition),
+                study = studyId
             )
         )
     }
@@ -77,7 +80,7 @@ class DeleteChronicleUsageDataRunner(
 
     // Delete chronicle study usage data from event storage and return count of deleted rows
     private fun deleteChronicleStudyUsageData(connection: Connection, jobData: DeleteStudyUsageData): Long {
-        logger.info("Deleting studies with id = {}", jobData.studyId)
+        logger.info("Deleting usage data with studyId = {}", jobData.studyId)
         return connection.prepareStatement(DELETE_CHRONICLE_STUDY_USAGE_DATA_SQL).use { ps ->
             ps.setObject(1, jobData.studyId)
             ps.executeUpdate().toLong()
