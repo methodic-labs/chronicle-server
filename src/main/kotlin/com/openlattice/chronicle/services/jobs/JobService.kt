@@ -69,6 +69,7 @@ class JobService(
             WHERE ${JOB_ID.name} = (
                 SELECT ${JOB_ID.name}
                 FROM ${JOBS.name}
+                WHERE ${STATUS.name} = '${JobStatus.PENDING.name}'
                 ORDER BY ${PostgresColumns.CREATED_AT.name} ASC
                 FOR UPDATE SKIP LOCKED
                 LIMIT 1
