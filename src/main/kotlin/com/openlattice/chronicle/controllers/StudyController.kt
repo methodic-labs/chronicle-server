@@ -10,14 +10,13 @@ import com.openlattice.chronicle.auditing.AuditingManager
 import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.authorization.AuthorizationManager
 import com.openlattice.chronicle.authorization.AuthorizingComponent
-import com.openlattice.chronicle.authorization.Permission
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.base.OK
 import com.openlattice.chronicle.data.FileType
+import com.openlattice.chronicle.deletion.DeleteStudyUsageData
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.ids.IdConstants
 import com.openlattice.chronicle.jobs.ChronicleJob
-import com.openlattice.chronicle.deletion.DeleteStudyUsageData
 import com.openlattice.chronicle.organizations.ChronicleDataCollectionSettings
 import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.sensorkit.SensorDataSample
@@ -42,6 +41,7 @@ import com.openlattice.chronicle.study.StudyApi.Companion.IOS_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.ORGANIZATION_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.ORGANIZATION_ID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.ORGANIZATION_PATH
+import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANTS_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_ID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_PATH
@@ -56,8 +56,17 @@ import com.openlattice.chronicle.study.StudyUpdate
 import com.openlattice.chronicle.util.ChronicleServerUtil
 import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
-import org.springframework.web.bind.annotation.*
-import java.util.*
+import org.springframework.web.bind.annotation.DeleteMapping
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PatchMapping
+import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.PutMapping
+import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.bind.annotation.RestController
+import java.util.UUID
 import javax.inject.Inject
 import javax.servlet.http.HttpServletResponse
 
@@ -171,7 +180,7 @@ class StudyController @Inject constructor(
         produces = [MediaType.APPLICATION_JSON_VALUE],
     )
     override fun getStudy(@PathVariable(STUDY_ID) studyId: UUID): Study {
-        accessCheck(AclKey(studyId), EnumSet.of(Permission.READ))
+        ensureReadAccess(AclKey(studyId))
         logger.info("Retrieving study with id $studyId")
 
         return try {
@@ -267,7 +276,7 @@ class StudyController @Inject constructor(
         produces = [MediaType.APPLICATION_JSON_VALUE],
     )
     override fun destroyStudy(@PathVariable studyId: UUID): UUID {
-        accessCheck(AclKey(studyId), EnumSet.of(Permission.OWNER))
+        ensureOwnerAccess(AclKey(studyId))
         val currentUser = Principals.getCurrentSecurablePrincipal()
         logger.info("Deleting study with id $studyId")
         // val currentUserEmail = getUser(managementApi, Principals.getCurrentUser().id).email
@@ -402,8 +411,7 @@ class StudyController @Inject constructor(
         @PathVariable(PARTICIPANT_ID) participantId: String,
         @PathVariable(SOURCE_DEVICE_ID) datasourceId: String,
         @RequestBody data: List<SetMultimap<UUID, Any>>
-    )
-            : Int {
+    ): Int {
         return appDataUploadService.upload(studyId, participantId, datasourceId, data)
     }
 
@@ -458,6 +466,17 @@ class StudyController @Inject constructor(
         ChronicleServerUtil.setDownloadContentType(response, FileType.csv)
 
         return data
+    }
+
+    @Timed
+    @GetMapping(
+        path = [STUDY_ID_PATH + PARTICIPANTS_PATH],
+        produces = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    override fun getStudyParticipants(@PathVariable(STUDY_ID) studyId: UUID): Iterable<Participant> {
+        ensureAuthenticated()
+        ensureReadAccess(AclKey(studyId))
+        return studyService.getStudyParticipants(studyId)
     }
 
     /**
