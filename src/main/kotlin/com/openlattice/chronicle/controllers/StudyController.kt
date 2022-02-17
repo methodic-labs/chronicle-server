@@ -238,23 +238,23 @@ class StudyController @Inject constructor(
         ensureOwnerAccess(studyAclKey)
         val currentUser = Principals.getCurrentSecurablePrincipal()
         logger.info("Updating study with id $studyId on behalf of ${currentUser.principal.id}")
-
-        AuditedOperationBuilder<Unit>(storageResolver.getPlatformStorage().connection, auditingManager)
-            .operation { connection -> studyService.updateStudy(connection, studyId, study) }
-            .audit {
-                listOf(
-                    AuditableEvent(
-                        studyAclKey,
-                        currentUser.id,
-                        currentUser.principal,
-                        AuditEventType.UPDATE_STUDY,
-                        study = studyId,
-                        data = mapOf()
+        storageResolver.getPlatformStorage().connection.use { conn ->
+            AuditedOperationBuilder<Unit>(conn, auditingManager)
+                .operation { connection -> studyService.updateStudy(connection, studyId, study) }
+                .audit {
+                    listOf(
+                        AuditableEvent(
+                            studyAclKey,
+                            currentUser.id,
+                            currentUser.principal,
+                            AuditEventType.UPDATE_STUDY,
+                            study = studyId,
+                            data = mapOf()
+                        )
                     )
-                )
-            }
-            .buildAndRun()
-
+                }
+                .buildAndRun()
+        }
         studyService.refreshStudyCache(setOf(studyId))
         return if (retrieve) studyService.getStudy(studyId) else null
     }
@@ -274,38 +274,39 @@ class StudyController @Inject constructor(
             contact = "test@openlattice.com",
             definition = DeleteStudyUsageData(studyId)
         )
-
-        return AuditedOperationBuilder<UUID>(storageResolver.getPlatformStorage().connection, auditingManager)
-            .operation { connection ->
-                var jobId = chronicleJobService.createJob(connection, deleteStudyDataJob)
-                logger.info("Created job with id = $jobId")
-                studyService.deleteStudies(connection, listOf(studyId))
-                studyService.deleteStudiesFromOrganizations(connection, listOf(studyId))
-                return@operation jobId
-            }
-            .audit { jobId ->
-                listOf(
-                    AuditableEvent(
-                        AclKey(studyId),
-                        currentUser.id,
-                        currentUser.principal,
-                        AuditEventType.DELETE_STUDY,
-                        "",
-                        studyId,
-                        UUID(0, 0),
-                        mapOf()
-                    ),
-                    AuditableEvent(
-                        AclKey(jobId),
-                        currentUser.id,
-                        currentUser.principal,
-                        AuditEventType.CREATE_JOB,
-                        "",
-                        studyId
-                    ),
-                )
-            }
-            .buildAndRun()
+        return storageResolver.getPlatformStorage().connection.use { conn ->
+            AuditedOperationBuilder<UUID>(conn, auditingManager)
+                .operation { connection ->
+                    var jobId = chronicleJobService.createJob(connection, deleteStudyDataJob)
+                    logger.info("Created job with id = $jobId")
+                    studyService.deleteStudies(connection, listOf(studyId))
+                    studyService.deleteStudiesFromOrganizations(connection, listOf(studyId))
+                    return@operation jobId
+                }
+                .audit { jobId ->
+                    listOf(
+                        AuditableEvent(
+                            AclKey(studyId),
+                            currentUser.id,
+                            currentUser.principal,
+                            AuditEventType.DELETE_STUDY,
+                            "",
+                            studyId,
+                            UUID(0, 0),
+                            mapOf()
+                        ),
+                        AuditableEvent(
+                            AclKey(jobId),
+                            currentUser.id,
+                            currentUser.principal,
+                            AuditEventType.CREATE_JOB,
+                            "",
+                            studyId
+                        ),
+                    )
+                }
+                .buildAndRun()
+        }
     }
 
     @Timed
@@ -319,19 +320,21 @@ class StudyController @Inject constructor(
     ): UUID {
         ensureValidStudy(studyId)
         ensureWriteAccess(AclKey(studyId))
-        val hds = storageResolver.getPlatformStorage()
-        return AuditedOperationBuilder<UUID>(hds.connection, auditingManager)
-            .operation { connection -> studyService.registerParticipant(connection, studyId, participant) }
-            .audit { candidateId ->
-                listOf(
-                    AuditableEvent(
-                        AclKey(candidateId),
-                        eventType = AuditEventType.REGISTER_CANDIDATE,
-                        description = "Registering participant with $candidateId for study $studyId."
+
+        return storageResolver.getPlatformStorage().connection.use { conn ->
+            AuditedOperationBuilder<UUID>(conn, auditingManager)
+                .operation { connection -> studyService.registerParticipant(connection, studyId, participant) }
+                .audit { candidateId ->
+                    listOf(
+                        AuditableEvent(
+                            AclKey(candidateId),
+                            eventType = AuditEventType.REGISTER_CANDIDATE,
+                            description = "Registering participant with $candidateId for study $studyId."
+                        )
                     )
-                )
-            }
-            .buildAndRun()
+                }
+                .buildAndRun()
+        }
     }
 
     @Timed
@@ -364,23 +367,25 @@ class StudyController @Inject constructor(
 
         val study = studyService.getStudy(studyId)
         study.settings.toMutableMap()[LegacyUtil.DATA_COLLECTION] = dataCollectionSettings
-        AuditedOperationBuilder<Unit>(storageResolver.getPlatformStorage().connection, auditingManager)
-            .operation { connection ->
-                studyService.updateStudy(
-                    connection,
-                    studyId,
-                    StudyUpdate(settings = study.settings)
-                )
-            }
-            .audit {
-                listOf(
-                    AuditableEvent(
-                        aclKey = AclKey(studyId),
-                        eventType = AuditEventType.UPDATE_STUDY_SETTINGS
+        storageResolver.getPlatformStorage().connection.use { conn ->
+            AuditedOperationBuilder<Unit>(conn, auditingManager)
+                .operation { connection ->
+                    studyService.updateStudy(
+                        connection,
+                        studyId,
+                        StudyUpdate(settings = study.settings)
                     )
-                )
-            }
-            .buildAndRun()
+                }
+                .audit {
+                    listOf(
+                        AuditableEvent(
+                            aclKey = AclKey(studyId),
+                            eventType = AuditEventType.UPDATE_STUDY_SETTINGS
+                        )
+                    )
+                }
+                .buildAndRun()
+        }
 
         return OK()
     }

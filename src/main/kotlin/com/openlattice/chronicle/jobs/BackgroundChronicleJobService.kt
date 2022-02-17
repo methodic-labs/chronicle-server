@@ -49,30 +49,31 @@ class BackgroundChronicleJobService(
     fun tryAndAcquireTaskForExecutor() {
         logger.info("Attempting to acquire permit for executing background task.")
 
-
         try {
             if (available.tryAcquire()) {
-                logger.info("Permit acquired to execute DeleteChronicleUsageDataTask")
-                executor.submit {
-                    try {
-                        val (jobId, _) = AuditedOperationBuilder<Pair<UUID, List<AuditableEvent>>>(
-                            storageResolver.getPlatformStorage().connection,
-                            auditingManager
-                        )
-                            .operation { connection ->
-                                val job = jobService.lockAndGetNextJob(connection) ?: return@operation NO_JOB_FOUND
-                                val runner = runner.getOrDefault(
-                                    job.definition.javaClass,
-                                    DefaultJobRunner.getDefaultJobRunner(job.definition)
-                                )
-                                logger.info("found a job with type = {}", job.definition.javaClass.name)
-                                job.id to runner.run(connection, job)
-                            }
-                            .audit { it.second }
-                            .buildAndRun()
-                        jobService.unlockJob(jobId)
-                    } finally {
-                        available.release()
+                storageResolver.getPlatformStorage().connection.use { conn ->
+                    logger.info("Permit acquired to execute DeleteChronicleUsageDataTask")
+                    executor.submit {
+                        try {
+                            val (jobId, _) = AuditedOperationBuilder<Pair<UUID, List<AuditableEvent>>>(
+                                conn,
+                                auditingManager
+                            )
+                                .operation { connection ->
+                                    val job = jobService.lockAndGetNextJob(connection) ?: return@operation NO_JOB_FOUND
+                                    val runner = runner.getOrDefault(
+                                        job.definition.javaClass,
+                                        DefaultJobRunner.getDefaultJobRunner(job.definition)
+                                    )
+                                    logger.info("found a job with type = {}", job.definition.javaClass.name)
+                                    job.id to runner.run(connection, job)
+                                }
+                                .audit { it.second }
+                                .buildAndRun()
+                            jobService.unlockJob(jobId)
+                        } finally {
+                            available.release()
+                        }
                     }
                 }
             } else {
@@ -83,10 +84,9 @@ class BackgroundChronicleJobService(
         }
     }
 
-    @Scheduled(fixedRate = 60*60*1000L)
+    @Scheduled(fixedRate = 60 * 60 * 1000L)
     fun clearFinishedJobs() {
-
-        storageResolver.getPlatformStorage().connection.use {connection ->
+        storageResolver.getPlatformStorage().connection.use { connection ->
             val deleteCount = connection.prepareStatement(DELETE_FINISHED_JOBS_AFTER_TTL).executeUpdate()
             logger.info("Expired $deleteCount jobs.")
         }
