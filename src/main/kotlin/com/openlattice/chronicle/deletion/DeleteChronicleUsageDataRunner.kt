@@ -63,7 +63,7 @@ class DeleteChronicleUsageDataRunner(
 
         updateFinishedDeleteJob(connection, job)
 
-        var studyId = (job.definition as DeleteStudyUsageData).studyId
+        val studyId = (job.definition as DeleteStudyUsageData).studyId
 
         return listOf(
             AuditableEvent(
