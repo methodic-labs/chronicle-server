@@ -56,7 +56,7 @@ class ChronicleServerExceptionHandler @Inject constructor(override val auditingM
                 AuditableEvent(
                     AclKey(e.studyId),
                     principal.id,
-                    principal.principal.id,
+                    principal.principal,
                     AuditEventType.STUDY_NOT_FOUND,
                     "Unable to find study ${e.studyId}",
                     e.studyId,
@@ -67,7 +67,7 @@ class ChronicleServerExceptionHandler @Inject constructor(override val auditingM
                 AuditableEvent(
                     AclKey(IdConstants.SYSTEM.id),
                     principal.id,
-                    principal.principal.id,
+                    principal.principal,
                     AuditEventType.STUDY_NOT_FOUND,
                     e.message ?: "Exception did not include message",
                     IdConstants.UNINITIALIZED.id,

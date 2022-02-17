@@ -1,5 +1,6 @@
 package com.openlattice.chronicle.jobs
 
+import com.geekbeast.mappers.mappers.ObjectMappers
 import com.geekbeast.rhizome.jobs.JobStatus
 import com.openlattice.chronicle.auditing.AuditEventType
 import com.openlattice.chronicle.auditing.AuditableEvent
@@ -8,6 +9,7 @@ import java.sql.Connection
 import java.time.OffsetDateTime
 import com.openlattice.chronicle.ids.IdConstants
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.JOBS
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.COMPLETED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DELETED_ROWS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.JOB_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPDATED_AT
@@ -23,6 +25,8 @@ import java.util.UUID
 class DeleteChronicleUsageDataTask(
     private val storageResolver: StorageResolver
 ) : AbstractChronicleJobRunner<DeleteStudyUsageData>() {
+    private val mapper = ObjectMappers.newJsonMapper()
+
     companion object {
         private val logger = LoggerFactory.getLogger(DeleteChronicleUsageDataTask::class.java)!!
 
@@ -33,12 +37,13 @@ class DeleteChronicleUsageDataTask(
 
         private val UPDATE_FINISHED_JOB_COLUMNS = listOf(
             UPDATED_AT,
+            COMPLETED_AT,
             DELETED_ROWS
         ).joinToString(",") { it.name }
 
         private val UPDATE_FINISHED_DELETE_JOB_SQL = """
             UPDATE ${JOBS.name}
-            SET (${UPDATE_FINISHED_JOB_COLUMNS}) = (?, ?)
+            SET (${UPDATE_FINISHED_JOB_COLUMNS}) = (?, ?, ?)
             WHERE ${JOB_ID.name} = ?
         """.trimIndent()
     }
@@ -52,19 +57,22 @@ class DeleteChronicleUsageDataTask(
         }
 
         // update jobData to include deletedRows
-        updateFinishedDeleteJob(connection, job.id, deletedRows)
         job.deletedRows = deletedRows
+        job.updatedAt = OffsetDateTime.now()
+        job.completedAt = job.updatedAt
         job.status = JobStatus.FINISHED
+
+        updateFinishedDeleteJob(connection, job)
 
         return listOf(
             AuditableEvent(
-                AclKey(IdConstants.SYSTEM.id),
+                AclKey((job.definition as DeleteStudyUsageData).studyId),
                 job.securablePrincipalId,
                 job.principal,
                 eventType = AuditEventType.BACKGROUND_USAGE_DATA_DELETION,
+                data = mapOf( "definition" to job.definition)
             )
         )
-
     }
 
 
@@ -78,12 +86,13 @@ class DeleteChronicleUsageDataTask(
     }
 
     // update job with number of deleted usage data rows
-    private fun updateFinishedDeleteJob(connection: Connection, jobId: UUID, deletedRows: Long) {
+    private fun updateFinishedDeleteJob(connection: Connection, job: ChronicleJob) {
         return connection.prepareStatement(UPDATE_FINISHED_DELETE_JOB_SQL).use { ps ->
             var index = 1
-            ps.setObject(index++, OffsetDateTime.now())
-            ps.setLong(index++, deletedRows)
-            ps.setObject(index, jobId)
+            ps.setObject(index++, job.updatedAt)
+            ps.setObject(index++, job.completedAt)
+            ps.setLong(index++, job.deletedRows)
+            ps.setObject(index, job.id)
             ps.executeUpdate()
         }
     }

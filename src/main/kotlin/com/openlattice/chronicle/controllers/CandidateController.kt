@@ -86,9 +86,7 @@ class CandidateController @Inject constructor(
                 listOf(
                     AuditableEvent(
                         AclKey(candidateId),
-                        Principals.getCurrentSecurablePrincipal().id,
-                        Principals.getCurrentUser().id,
-                        AuditEventType.REGISTER_CANDIDATE,
+                        eventType = AuditEventType.REGISTER_CANDIDATE,
                     )
                 )
             }

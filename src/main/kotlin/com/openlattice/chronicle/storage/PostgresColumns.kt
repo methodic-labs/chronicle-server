@@ -21,6 +21,7 @@ class PostgresColumns {
         @JvmField val CANDIDATE_ID = PostgresColumnDefinition("candidate_id", PostgresDatatype.UUID).notNull()
         @JvmField val CATEGORY = PostgresColumnDefinition("category", PostgresDatatype.TEXT).notNull()
         @JvmField val CONTACT = PostgresColumnDefinition("contact", PostgresDatatype.TEXT)
+        @JvmField val COMPLETED_AT = PostgresColumnDefinition("created_at", PostgresDatatype.TIMESTAMPTZ).notNull().withDefault("'infinity'")
         @JvmField val CREATED_AT = PostgresColumnDefinition("created_at", PostgresDatatype.TIMESTAMPTZ).notNull().withDefault("now()")
         @JvmField val DATE_OF_BIRTH = PostgresColumnDefinition("dob", PostgresDatatype.DATE)
         @JvmField val DESCRIPTION = PostgresColumnDefinition("description", PostgresDatatype.TEXT)

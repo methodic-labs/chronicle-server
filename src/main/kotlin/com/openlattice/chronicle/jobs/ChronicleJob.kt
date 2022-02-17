@@ -17,6 +17,7 @@ data class ChronicleJob @JsonCreator constructor(
     val principal: Principal = Principals.getCurrentUser(),
     val createdAt: OffsetDateTime = OffsetDateTime.now(),
     var updatedAt: OffsetDateTime = OffsetDateTime.now(),
+    var completedAt: OffsetDateTime = OffsetDateTime.MAX,
     var status: JobStatus = JobStatus.PENDING,
     val contact: String = "",
     val definition: ChronicleJobDefinition = EmptyJobDefinition(),
