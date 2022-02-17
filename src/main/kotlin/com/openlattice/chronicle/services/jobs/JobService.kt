@@ -65,7 +65,7 @@ class JobService(
 
         private val GET_NEXT_JOB_SQL = """
             UPDATE ${JOBS.name}
-            SET ${STATUS.name} = ${JobStatus.FINISHED.name}
+            SET ${STATUS.name} = `${JobStatus.FINISHED.name}`
             WHERE ${JOB_ID.name} = (
                 SELECT ${JOB_ID.name}
                 FROM ${JOBS.name}
