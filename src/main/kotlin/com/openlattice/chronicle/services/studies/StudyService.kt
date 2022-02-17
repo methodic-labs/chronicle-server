@@ -24,6 +24,7 @@ import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.ORGANIZATION_STUDIES
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.PERMISSIONS
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.STUDIES
+import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.STUDY_PARTICIPANTS
 import com.openlattice.chronicle.storage.PostgresColumns
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CONTACT
@@ -160,8 +161,12 @@ class StudyService(
             DELETE FROM ${STUDIES.name} WHERE ${STUDY_ID.name} = ANY(?)
         """.trimIndent()
 
-        private val DELETE_STUDIES_FROM_ORGS_SQL = """
+        private val REMOVE_STUDIES_FROM_ORGS_SQL = """
             DELETE FROM ${ORGANIZATION_STUDIES.name} WHERE ${STUDY_ID.name} = ANY(?)
+        """.trimIndent()
+
+        private val REMOVE_ALL_PARTICIPANTS_FROM_STUDIES_SQL = """
+            DELETE FROM ${STUDY_PARTICIPANTS.name} WHERE ${STUDY_ID.name} = ANY(?)
         """.trimIndent()
 
         /**
@@ -383,8 +388,16 @@ class StudyService(
         }
     }
 
-    fun deleteStudiesFromOrganizations(connection: Connection, studyIds: Collection<UUID>): Int {
-        return connection.prepareStatement(DELETE_STUDIES_FROM_ORGS_SQL).use { ps ->
+    fun removeStudiesFromOrganizations(connection: Connection, studyIds: Collection<UUID>): Int {
+        return connection.prepareStatement(REMOVE_STUDIES_FROM_ORGS_SQL).use { ps ->
+            val pgStudyIds = PostgresArrays.createUuidArray(ps.connection, studyIds)
+            ps.setArray(1, pgStudyIds)
+            return ps.executeUpdate()
+        }
+    }
+
+    fun removeAllParticipantsFromStudies(connection: Connection, studyIds: Collection<UUID>): Int {
+        return connection.prepareStatement(REMOVE_ALL_PARTICIPANTS_FROM_STUDIES_SQL).use { ps ->
             val pgStudyIds = PostgresArrays.createUuidArray(ps.connection, studyIds)
             ps.setArray(1, pgStudyIds)
             return ps.executeUpdate()
