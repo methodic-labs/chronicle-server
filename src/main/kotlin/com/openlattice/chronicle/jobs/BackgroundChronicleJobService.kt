@@ -53,7 +53,7 @@ class BackgroundChronicleJobService(
             if (available.tryAcquire()) {
                 storageResolver.getPlatformStorage().connection.use { conn ->
                     logger.info("Permit acquired to execute DeleteChronicleUsageDataTask")
-                    executor.submit {
+                    executor.execute {
                         try {
                             val (jobId, _) = AuditedOperationBuilder<Pair<UUID, List<AuditableEvent>>>(
                                 conn,
