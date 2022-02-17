@@ -34,6 +34,7 @@ import com.openlattice.chronicle.organizations.Organization
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CANDIDATE_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CATEGORY
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.COMPLETED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CONTACT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CREATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DATE_OF_BIRTH
@@ -358,6 +359,7 @@ class ResultSetAdapters {
                 Principal(PrincipalType.valueOf(rs.getString(PRINCIPAL_TYPE.name)), rs.getString(PRINCIPAL_ID.name)),
                 rs.getObject(CREATED_AT.name, OffsetDateTime::class.java),
                 rs.getObject(UPDATED_AT.name, OffsetDateTime::class.java),
+                rs.getObject(COMPLETED_AT.name, OffsetDateTime::class.java),
                 JobStatus.valueOf(rs.getString(STATUS.name)),
                 rs.getString(CONTACT.name),
                 definition = mapper.readValue(rs.getString(JOB_DEFINITION.name)),

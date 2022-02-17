@@ -61,32 +61,31 @@ class OrganizationsController @Inject constructor(
         ensureAuthenticated()
         logger.info("Creating organization with title ${organization.title}")
         organization.id = idGenerationService.getNextId()
-        val hds = storageResolver.getPlatformStorage()
-        hds.connection.use { connection ->
-            AuditedOperationBuilder<Unit>(connection, auditingManager)
-                .operation { connection ->
-                    chronicleOrganizationService.createOrganization(
-                        connection,
+
+        AuditedOperationBuilder<Unit>(storageResolver.getPlatformStorage().connection, auditingManager)
+            .operation { connection ->
+                chronicleOrganizationService.createOrganization(
+                    connection,
+                    Principals.getCurrentUser(),
+                    organization
+                )
+            }
+            .audit {
+                listOf(
+                    AuditableEvent(
+                        AclKey(organization.id),
+                        Principals.getCurrentSecurablePrincipal().id,
                         Principals.getCurrentUser(),
-                        organization
+                        AuditEventType.CREATE_ORGANIZATION,
+                        "",
+                        organization.id,
+                        UUID(0, 0),
+                        mapOf()
                     )
-                }
-                .audit {
-                    listOf(
-                        AuditableEvent(
-                            AclKey(organization.id),
-                            Principals.getCurrentSecurablePrincipal().id,
-                            Principals.getCurrentUser().id,
-                            AuditEventType.CREATE_ORGANIZATION,
-                            "",
-                            organization.id,
-                            UUID(0, 0),
-                            mapOf()
-                        )
-                    )
-                }
-                .buildAndRun()
-        }
+                )
+            }
+            .buildAndRun()
+
         return organization.id
     }
 
