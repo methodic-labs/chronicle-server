@@ -13,10 +13,10 @@ import com.openlattice.chronicle.authorization.AuthorizingComponent
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.base.OK
 import com.openlattice.chronicle.data.FileType
+import com.openlattice.chronicle.deletion.DeleteStudyUsageData
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.ids.IdConstants
 import com.openlattice.chronicle.jobs.ChronicleJob
-import com.openlattice.chronicle.deletion.DeleteStudyUsageData
 import com.openlattice.chronicle.organizations.ChronicleDataCollectionSettings
 import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.sensorkit.SensorDataSample
@@ -56,6 +56,7 @@ import com.openlattice.chronicle.study.StudyUpdate
 import com.openlattice.chronicle.util.ChronicleServerUtil
 import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -275,7 +276,7 @@ class StudyController @Inject constructor(
         produces = [MediaType.APPLICATION_JSON_VALUE],
     )
     override fun destroyStudy(@PathVariable studyId: UUID): UUID {
-        accessCheck(AclKey(studyId), EnumSet.of(Permission.OWNER))
+        ensureOwnerAccess(AclKey(studyId))
         val currentUser = Principals.getCurrentSecurablePrincipal()
         logger.info("Deleting study with id $studyId")
         // val currentUserEmail = getUser(managementApi, Principals.getCurrentUser().id).email
