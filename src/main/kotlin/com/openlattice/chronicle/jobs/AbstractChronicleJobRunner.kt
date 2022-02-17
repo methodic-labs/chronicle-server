@@ -18,7 +18,7 @@ abstract class AbstractChronicleJobRunner<T : ChronicleJobDefinition> : Chronicl
         job.status = JobStatus.RUNNING
         job.updatedAt = OffsetDateTime.now()
         return runJob(connection, job)
-        
+
     }
 
     protected abstract fun runJob(connection: Connection, job: ChronicleJob): List<AuditableEvent>

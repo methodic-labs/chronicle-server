@@ -1,12 +1,9 @@
 package com.openlattice.chronicle.deletion
 
-import com.geekbeast.mappers.mappers.ObjectMappers
 import com.geekbeast.rhizome.jobs.JobStatus
 import com.openlattice.chronicle.auditing.AuditEventType
 import com.openlattice.chronicle.auditing.AuditableEvent
 import com.openlattice.chronicle.authorization.AclKey
-import java.sql.Connection
-import java.time.OffsetDateTime
 import com.openlattice.chronicle.jobs.AbstractChronicleJobRunner
 import com.openlattice.chronicle.jobs.ChronicleJob
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.JOBS
@@ -18,6 +15,8 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.CHRONICLE_USAGE_EVENTS
 import com.openlattice.chronicle.storage.StorageResolver
 import org.slf4j.LoggerFactory
+import java.sql.Connection
+import java.time.OffsetDateTime
 
 /**
  * @author Solomon Tang <solomon@openlattice.com>
