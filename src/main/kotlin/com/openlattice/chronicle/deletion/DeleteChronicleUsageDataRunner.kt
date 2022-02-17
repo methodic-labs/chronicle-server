@@ -77,7 +77,7 @@ class DeleteChronicleUsageDataRunner(
 
     // Delete chronicle study usage data from event storage and return count of deleted rows
     private fun deleteChronicleStudyUsageData(connection: Connection, jobData: DeleteStudyUsageData): Long {
-        logger.info("Deleting studies with id = {}", jobData.studyId)
+        logger.info("Deleting usage data with studyId = {}", jobData.studyId)
         return connection.prepareStatement(DELETE_CHRONICLE_STUDY_USAGE_DATA_SQL).use { ps ->
             ps.setObject(1, jobData.studyId)
             ps.executeUpdate().toLong()
