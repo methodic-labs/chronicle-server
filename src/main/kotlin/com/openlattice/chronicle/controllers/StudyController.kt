@@ -21,6 +21,7 @@ import com.openlattice.chronicle.deletion.DeleteStudyUsageData
 import com.openlattice.chronicle.organizations.ChronicleDataCollectionSettings
 import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.sensorkit.SensorDataSample
+import com.openlattice.chronicle.sensorkit.SensorType
 import com.openlattice.chronicle.services.download.DataDownloadService
 import com.openlattice.chronicle.services.enrollment.EnrollmentService
 import com.openlattice.chronicle.services.jobs.JobService
@@ -45,6 +46,7 @@ import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_ID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.RETRIEVE
+import com.openlattice.chronicle.study.StudyApi.Companion.SENSORS_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.SETTINGS_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.SOURCE_DEVICE_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.SOURCE_DEVICE_ID_PATH
@@ -415,6 +417,15 @@ class StudyController @Inject constructor(
     ): Map<String, Any> {
         // No permissions check since this is assumed to be invoked from a non-authenticated context
         return studyService.getStudySettings(studyId)
+    }
+
+    @Timed
+    @GetMapping(
+        path = [STUDY_ID_PATH + SETTINGS_PATH + SENSORS_PATH],
+        produces = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    override fun getStudySensors(@PathVariable(STUDY_ID) studyId: UUID): Set<SensorType> {
+        return studyService.getStudySensors(studyId)
     }
 
     @Timed

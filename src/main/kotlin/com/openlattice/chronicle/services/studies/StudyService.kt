@@ -19,6 +19,7 @@ import com.openlattice.chronicle.hazelcast.HazelcastMap
 import com.openlattice.chronicle.ids.IdConstants
 import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.postgres.ResultSetAdapters
+import com.openlattice.chronicle.sensorkit.SensorType
 import com.openlattice.chronicle.services.candidates.CandidateManager
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.ORGANIZATION_STUDIES
@@ -414,5 +415,14 @@ class StudyService(
                 }
             }
         }
+    }
+
+    override fun getStudySensors(studyId: UUID): Set<SensorType> {
+        val settings = getStudySettings(studyId)
+        val sensors = settings[Study.SENSORS]
+        sensors?.let {
+            return (it as List<String>).map { sensor -> SensorType.valueOf(sensor) }.toSet()
+        }
+        return setOf()
     }
 }
