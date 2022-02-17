@@ -346,10 +346,10 @@ class StudyController @Inject constructor(
     override fun uploadSensorData(
         @PathVariable(STUDY_ID) studyId: UUID,
         @PathVariable(PARTICIPANT_ID) participantId: String,
-        @PathVariable(SOURCE_DEVICE_ID) datasourceId: String,
+        @PathVariable(SOURCE_DEVICE_ID) sourceDeviceId: String,
         @RequestBody data: List<SensorDataSample>,
     ): Int {
-        return sensorDataUploadService.upload(studyId, participantId, datasourceId, data)
+        return sensorDataUploadService.upload(studyId, participantId, sourceDeviceId, data)
     }
 
     @Timed
