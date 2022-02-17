@@ -18,6 +18,7 @@ import com.openlattice.chronicle.hazelcast.HazelcastMap
 import com.openlattice.chronicle.ids.IdConstants
 import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.postgres.ResultSetAdapters
+import com.openlattice.chronicle.sensorkit.SensorType
 import com.openlattice.chronicle.services.candidates.CandidateManager
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.ORGANIZATION_STUDIES
@@ -107,9 +108,9 @@ class StudyService(
         )
 
         private val UPDATE_STUDY_COLUMNS = UPDATE_STUDY_COLUMNS_LIST.joinToString(",") { it.name }
-        private val COALESCED_STUDY_COLUMNS = UPDATE_STUDY_COLUMNS_LIST
+        private val COALESCED_STUDY_COLUMNS_BIND = UPDATE_STUDY_COLUMNS_LIST
             .joinToString(",") {
-                "coalesce(?${if (it.equals(SETTINGS)) "::jsonb" else ""}, ${it.name})"
+                "coalesce(?${if (it.datatype == PostgresDatatype.JSONB) "::jsonb" else ""}, ${it.name})"
             }
 
         private val ORG_STUDIES_COLS = listOf(
@@ -158,6 +159,18 @@ class StudyService(
             WHERE ${STUDY_ID.name} = ANY(?)
         """.trimIndent()
 
+        private val DELETE_STUDIES_SQL = """
+            DELETE FROM ${STUDIES.name} WHERE ${STUDY_ID.name} = ANY(?)
+        """.trimIndent()
+
+        private val REMOVE_STUDIES_FROM_ORGS_SQL = """
+            DELETE FROM ${ORGANIZATION_STUDIES.name} WHERE ${STUDY_ID.name} = ANY(?)
+        """.trimIndent()
+
+        private val REMOVE_ALL_PARTICIPANTS_FROM_STUDIES_SQL = """
+            DELETE FROM ${STUDY_PARTICIPANTS.name} WHERE ${STUDY_ID.name} = ANY(?)
+        """.trimIndent()
+
         /**
          * 1. title,
          * 2. description,
@@ -177,7 +190,7 @@ class StudyService(
 
         private val UPDATE_STUDY_SQL = """
             UPDATE ${STUDIES.name}
-            SET (${UPDATE_STUDY_COLUMNS}) = (${COALESCED_STUDY_COLUMNS})
+            SET (${UPDATE_STUDY_COLUMNS}) = (${COALESCED_STUDY_COLUMNS_BIND})
             WHERE ${STUDY_ID.name} = ?
         """.trimIndent()
 
@@ -249,35 +262,37 @@ class StudyService(
     }
 
     private fun insertStudy(connection: Connection, study: Study): Int {
-        val ps = connection.prepareStatement(INSERT_STUDY_SQL)
-        ps.setObject(1, study.id)
-        ps.setObject(2, study.title)
-        ps.setObject(3, study.description)
-        ps.setObject(4, study.lat)
-        ps.setObject(5, study.lon)
-        ps.setObject(6, study.group)
-        ps.setObject(7, study.version)
-        ps.setObject(8, study.contact)
-        ps.setObject(9, study.notificationsEnabled)
-        ps.setObject(10, study.storage)
-        ps.setString(11, mapper.writeValueAsString(study.settings))
-        return ps.executeUpdate()
+        return connection.prepareStatement(INSERT_STUDY_SQL).use { ps ->
+            ps.setObject(1, study.id)
+            ps.setObject(2, study.title)
+            ps.setObject(3, study.description)
+            ps.setObject(4, study.lat)
+            ps.setObject(5, study.lon)
+            ps.setObject(6, study.group)
+            ps.setObject(7, study.version)
+            ps.setObject(8, study.contact)
+            ps.setObject(9, study.notificationsEnabled)
+            ps.setObject(10, study.storage)
+            ps.setString(11, mapper.writeValueAsString(study.settings))
+            return ps.executeUpdate()
+        }
     }
 
     private fun insertOrgStudy(connection: Connection, study: Study): Int {
-        val ps = connection.prepareStatement(INSERT_ORG_STUDIES_SQL)
-        study.organizationIds.forEach { organizationId ->
-            var params = 1
-            ps.setObject(params++, organizationId)
-            ps.setObject(params++, study.id)
-            ps.setObject(params++, Principals.getCurrentUser().id)
-            ps.setString(
-                params,
-                mapper.writeValueAsString(mapOf<String, Any>())
-            ) //Per org settings for studies aren't really defined yet.
-            ps.addBatch()
+        return connection.prepareStatement(INSERT_ORG_STUDIES_SQL).use { ps ->
+            study.organizationIds.forEach { organizationId ->
+                var params = 1
+                ps.setObject(params++, organizationId)
+                ps.setObject(params++, study.id)
+                ps.setObject(params++, Principals.getCurrentUser().id)
+                ps.setString(
+                    params,
+                    mapper.writeValueAsString(mapOf<String, Any>())
+                ) //Per org settings for studies aren't really defined yet.
+                ps.addBatch()
+            }
+            return ps.executeBatch().sum()
         }
-        return ps.executeBatch().sum()
     }
 
     override fun getStudy(studyId: UUID): Study {
@@ -371,6 +386,30 @@ class StudyService(
         studies.loadAll(studyIds, true)
     }
 
+    override fun deleteStudies(connection: Connection, studyIds: Collection<UUID>): Int {
+        return connection.prepareStatement(DELETE_STUDIES_SQL).use { ps ->
+            val pgStudyIds = PostgresArrays.createUuidArray(ps.connection, studyIds)
+            ps.setArray(1, pgStudyIds)
+            return ps.executeUpdate()
+        }
+    }
+
+    fun removeStudiesFromOrganizations(connection: Connection, studyIds: Collection<UUID>): Int {
+        return connection.prepareStatement(REMOVE_STUDIES_FROM_ORGS_SQL).use { ps ->
+            val pgStudyIds = PostgresArrays.createUuidArray(ps.connection, studyIds)
+            ps.setArray(1, pgStudyIds)
+            return ps.executeUpdate()
+        }
+    }
+
+    fun removeAllParticipantsFromStudies(connection: Connection, studyIds: Collection<UUID>): Int {
+        return connection.prepareStatement(REMOVE_ALL_PARTICIPANTS_FROM_STUDIES_SQL).use { ps ->
+            val pgStudyIds = PostgresArrays.createUuidArray(ps.connection, studyIds)
+            ps.setArray(1, pgStudyIds)
+            return ps.executeUpdate()
+        }
+    }
+
     override fun getStudySettings(studyId: UUID): Map<String, Any>{
         return storageResolver.getPlatformStorage().connection.use { connection ->
             connection.prepareStatement(GET_STUDY_SETTINGS_SQL).use { ps ->
@@ -381,6 +420,15 @@ class StudyService(
                 }
             }
         }
+    }
+
+    override fun getStudySensors(studyId: UUID): Set<SensorType> {
+        val settings = getStudySettings(studyId)
+        val sensors = settings[Study.SENSORS]
+        sensors?.let {
+            return (it as List<String>).map { sensor -> SensorType.valueOf(sensor) }.toSet()
+        }
+        return setOf()
     }
 
     override fun getStudyParticipants(studyId: UUID): Iterable<Participant> {

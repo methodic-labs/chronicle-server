@@ -23,6 +23,7 @@ package com.openlattice.chronicle.auditing
 
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.openlattice.chronicle.authorization.AclKey
+import com.openlattice.chronicle.authorization.Principal
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.ids.IdConstants
 import com.openlattice.chronicle.util.JsonFields.*
@@ -34,7 +35,7 @@ import java.util.*
  * front end.
  *
  * @param securablePrincipalId The id of the securable principal that took the action.
- * @param principalId (Optional) The text based principal of the principal that took the action. Useful for auth0 lookups
+ * @param principal (Optional) The principal that took the action. Useful for auth0 lookups
  * @param aclKey The acl key of the securable object involved in the event.
  * @param study (Optional) The study for this auditable event
  * @param organization (Optional) The organization for this auditable event
@@ -47,7 +48,7 @@ import java.util.*
 data class AuditableEvent(
     @JsonProperty(ACL_KEY) val aclKey: AclKey,
     @JsonProperty(SECURABLE_PRINCIPAL) val securablePrincipalId: UUID = Principals.getCurrentSecurablePrincipal().id,
-    @JsonProperty(PRINCIPAL) val principalId: String = Principals.getCurrentUser().id,
+    @JsonProperty(PRINCIPAL) val principal: Principal = Principals.getCurrentUser(),
     @JsonProperty(EVENT_TYPE) val eventType: AuditEventType,
     @JsonProperty(DESCRIPTION_FIELD) val description: String = "",
     @JsonProperty(STUDY_ID) val study: UUID = IdConstants.UNINITIALIZED.id,

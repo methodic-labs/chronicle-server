@@ -45,6 +45,6 @@ interface AuditingComponent {
 
     @Timed
     fun recordEvents(events: List<AuditableEvent>): Int {
-        return auditingManager.recordEvents(events)
+        return if (events.isEmpty()) 0 else auditingManager.recordEvents(events)
     }
 }

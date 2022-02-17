@@ -74,7 +74,6 @@ class AppDataUploadService(
             log = "logging ${data.size} entries for ${ChronicleServerUtil.STUDY_PARTICIPANT_DATASOURCE}",
             level = Level.INFO,
             logger = logger,
-            data.size,
             studyId,
             participantId,
             sourceDeviceId

@@ -15,11 +15,15 @@ import com.openlattice.chronicle.base.OK
 import com.openlattice.chronicle.data.FileType
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.ids.IdConstants
+import com.openlattice.chronicle.jobs.ChronicleJob
+import com.openlattice.chronicle.deletion.DeleteStudyUsageData
 import com.openlattice.chronicle.organizations.ChronicleDataCollectionSettings
 import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.sensorkit.SensorDataSample
+import com.openlattice.chronicle.sensorkit.SensorType
 import com.openlattice.chronicle.services.download.DataDownloadService
 import com.openlattice.chronicle.services.enrollment.EnrollmentService
+import com.openlattice.chronicle.services.jobs.JobService
 import com.openlattice.chronicle.services.legacy.LegacyUtil
 import com.openlattice.chronicle.services.studies.StudyService
 import com.openlattice.chronicle.services.upload.AppDataUploadService
@@ -42,6 +46,7 @@ import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_ID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.RETRIEVE
+import com.openlattice.chronicle.study.StudyApi.Companion.SENSORS_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.SETTINGS_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.SOURCE_DEVICE_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.SOURCE_DEVICE_ID_PATH
@@ -80,7 +85,9 @@ class StudyController @Inject constructor(
     val appDataUploadService: AppDataUploadService,
     val downloadService: DataDownloadService,
     override val authorizationManager: AuthorizationManager,
-    override val auditingManager: AuditingManager
+    override val auditingManager: AuditingManager,
+    val chronicleJobService: JobService,
+//    private val managementApi: ManagementAPI,
 ) : StudyApi, AuthorizingComponent {
 
 
@@ -180,13 +187,11 @@ class StudyController @Inject constructor(
             recordEvent(
                 AuditableEvent(
                     AclKey(studyId),
-                    Principals.getCurrentSecurablePrincipal().id,
-                    Principals.getCurrentUser().id,
-                    AuditEventType.GET_STUDY,
-                    "",
-                    studyId,
-                    IdConstants.UNINITIALIZED.id,
-                    mapOf()
+                    eventType = AuditEventType.GET_STUDY,
+                    description = "",
+                    study = studyId,
+                    organization = IdConstants.UNINITIALIZED.id,
+                    data = mapOf()
                 )
             )
             study
@@ -204,8 +209,8 @@ class StudyController @Inject constructor(
     override fun getOrgStudies(@PathVariable(ORGANIZATION_ID) organizationId: UUID): List<Study> {
 
         ensureReadAccess(AclKey(organizationId))
-        val currentUserId = Principals.getCurrentUser().id;
-        logger.info("Retrieving studies with organization id $organizationId on behalf of $currentUserId")
+        val currentUser = Principals.getCurrentSecurablePrincipal()
+        logger.info("Retrieving studies with organization id $organizationId on behalf of ${currentUser.principal.id}")
 
         return try {
             val studies = studyService.getOrgStudies(organizationId)
@@ -213,8 +218,8 @@ class StudyController @Inject constructor(
                 recordEvent(
                     AuditableEvent(
                         AclKey(study.id),
-                        Principals.getCurrentSecurablePrincipal().id,
-                        currentUserId,
+                        currentUser.id,
+                        currentUser.principal,
                         eventType = AuditEventType.GET_STUDY,
                         study = study.id,
                         organization = organizationId,
@@ -241,19 +246,17 @@ class StudyController @Inject constructor(
     ): Study? {
         val studyAclKey = AclKey(studyId);
         ensureOwnerAccess(studyAclKey)
-        val currentUserId = Principals.getCurrentUser().id;
-        logger.info("Updating study with id $studyId on behalf of $currentUserId")
-
-        val hds = storageResolver.getPlatformStorage()
-        hds.connection.use { connection ->
-            AuditedOperationBuilder<Unit>(connection, auditingManager)
+        val currentUser = Principals.getCurrentSecurablePrincipal()
+        logger.info("Updating study with id $studyId on behalf of ${currentUser.principal.id}")
+        storageResolver.getPlatformStorage().connection.use { conn ->
+            AuditedOperationBuilder<Unit>(conn, auditingManager)
                 .operation { connection -> studyService.updateStudy(connection, studyId, study) }
                 .audit {
                     listOf(
                         AuditableEvent(
                             studyAclKey,
-                            Principals.getCurrentSecurablePrincipal().id,
-                            currentUserId,
+                            currentUser.id,
+                            currentUser.principal,
                             AuditEventType.UPDATE_STUDY,
                             study = studyId,
                             data = mapOf()
@@ -266,8 +269,56 @@ class StudyController @Inject constructor(
         return if (retrieve) studyService.getStudy(studyId) else null
     }
 
-    override fun destroyStudy(studyId: UUID) {
-        TODO("Not yet implemented")
+    @Timed
+    @DeleteMapping(
+        path = [STUDY_ID_PATH],
+        produces = [MediaType.APPLICATION_JSON_VALUE],
+    )
+    override fun destroyStudy(@PathVariable studyId: UUID): UUID {
+        accessCheck(AclKey(studyId), EnumSet.of(Permission.OWNER))
+        val currentUser = Principals.getCurrentSecurablePrincipal()
+        logger.info("Deleting study with id $studyId")
+        // val currentUserEmail = getUser(managementApi, Principals.getCurrentUser().id).email
+        val deleteStudyDataJob = ChronicleJob(
+            id = idGenerationService.getNextId(),
+            contact = "test@openlattice.com",
+            definition = DeleteStudyUsageData(studyId)
+        )
+        return storageResolver.getPlatformStorage().connection.use { conn ->
+            AuditedOperationBuilder<UUID>(conn, auditingManager)
+                .operation { connection ->
+                    var jobId = chronicleJobService.createJob(connection, deleteStudyDataJob)
+                    logger.info("Created job with id = $jobId")
+                    val studyIdList = listOf(studyId)
+                    studyService.deleteStudies(connection, studyIdList)
+                    studyService.removeStudiesFromOrganizations(connection, studyIdList)
+                    studyService.removeAllParticipantsFromStudies(connection, studyIdList)
+                    return@operation jobId
+                }
+                .audit { jobId ->
+                    listOf(
+                        AuditableEvent(
+                            AclKey(studyId),
+                            currentUser.id,
+                            currentUser.principal,
+                            AuditEventType.DELETE_STUDY,
+                            "",
+                            studyId,
+                            UUID(0, 0),
+                            mapOf()
+                        ),
+                        AuditableEvent(
+                            AclKey(jobId),
+                            currentUser.id,
+                            currentUser.principal,
+                            AuditEventType.CREATE_JOB,
+                            "",
+                            studyId
+                        ),
+                    )
+                }
+                .buildAndRun()
+        }
     }
 
     @Timed
@@ -281,19 +332,21 @@ class StudyController @Inject constructor(
     ): UUID {
         ensureValidStudy(studyId)
         ensureWriteAccess(AclKey(studyId))
-        val hds = storageResolver.getPlatformStorage()
-        return AuditedOperationBuilder<UUID>(hds.connection, auditingManager)
-            .operation { connection -> studyService.registerParticipant(connection, studyId, participant) }
-            .audit { candidateId ->
-                listOf(
-                    AuditableEvent(
-                        AclKey(candidateId),
-                        eventType = AuditEventType.REGISTER_CANDIDATE,
-                        description = "Registering participant with $candidateId for study $studyId."
+
+        return storageResolver.getPlatformStorage().connection.use { conn ->
+            AuditedOperationBuilder<UUID>(conn, auditingManager)
+                .operation { connection -> studyService.registerParticipant(connection, studyId, participant) }
+                .audit { candidateId ->
+                    listOf(
+                        AuditableEvent(
+                            AclKey(candidateId),
+                            eventType = AuditEventType.REGISTER_CANDIDATE,
+                            description = "Registering participant with $candidateId for study $studyId."
+                        )
                     )
-                )
-            }
-            .buildAndRun()
+                }
+                .buildAndRun()
+        }
     }
 
     @Timed
@@ -305,10 +358,10 @@ class StudyController @Inject constructor(
     override fun uploadSensorData(
         @PathVariable(STUDY_ID) studyId: UUID,
         @PathVariable(PARTICIPANT_ID) participantId: String,
-        @PathVariable(SOURCE_DEVICE_ID) datasourceId: String,
+        @PathVariable(SOURCE_DEVICE_ID) sourceDeviceId: String,
         @RequestBody data: List<SensorDataSample>,
     ): Int {
-        return sensorDataUploadService.upload(studyId, participantId, datasourceId, data)
+        return sensorDataUploadService.upload(studyId, participantId, sourceDeviceId, data)
     }
 
     @Timed
@@ -326,23 +379,25 @@ class StudyController @Inject constructor(
 
         val study = studyService.getStudy(studyId)
         study.settings.toMutableMap()[LegacyUtil.DATA_COLLECTION] = dataCollectionSettings
-        AuditedOperationBuilder<Unit>(storageResolver.getPlatformStorage().connection, auditingManager)
-            .operation { connection ->
-                studyService.updateStudy(
-                    connection,
-                    studyId,
-                    StudyUpdate(settings = study.settings)
-                )
-            }
-            .audit {
-                listOf(
-                    AuditableEvent(
-                        aclKey = AclKey(studyId),
-                        eventType = AuditEventType.UPDATE_STUDY_SETTINGS
+        storageResolver.getPlatformStorage().connection.use { conn ->
+            AuditedOperationBuilder<Unit>(conn, auditingManager)
+                .operation { connection ->
+                    studyService.updateStudy(
+                        connection,
+                        studyId,
+                        StudyUpdate(settings = study.settings)
                     )
-                )
-            }
-            .buildAndRun()
+                }
+                .audit {
+                    listOf(
+                        AuditableEvent(
+                            aclKey = AclKey(studyId),
+                            eventType = AuditEventType.UPDATE_STUDY_SETTINGS
+                        )
+                    )
+                }
+                .buildAndRun()
+        }
 
         return OK()
     }
@@ -369,6 +424,15 @@ class StudyController @Inject constructor(
     ): Map<String, Any> {
         // No permissions check since this is assumed to be invoked from a non-authenticated context
         return studyService.getStudySettings(studyId)
+    }
+
+    @Timed
+    @GetMapping(
+        path = [STUDY_ID_PATH + SETTINGS_PATH + SENSORS_PATH],
+        produces = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    override fun getStudySensors(@PathVariable(STUDY_ID) studyId: UUID): Set<SensorType> {
+        return studyService.getStudySensors(studyId)
     }
 
     @Timed

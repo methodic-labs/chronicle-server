@@ -53,8 +53,7 @@ class CandidateController @Inject constructor(
         ensureReadAccess(AclKey(candidateId))
         return try {
             candidateService.getCandidate(candidateId)
-        }
-        catch (e: NoSuchElementException) {
+        } catch (e: NoSuchElementException) {
             throw CandidateNotFoundException(candidateId)
         }
     }
@@ -79,19 +78,18 @@ class CandidateController @Inject constructor(
     override fun registerCandidate(@RequestBody candidate: Candidate): UUID {
         ensureAuthenticated()
         ensureUninitializedId(candidate.id) { "cannot register candidate with the given id" }
-        val hds = storageResolver.getPlatformStorage()
-        return AuditedOperationBuilder<UUID>(hds.connection, auditingManager)
-            .operation { connection -> candidateService.registerCandidate(connection, candidate) }
-            .audit { candidateId ->
-                listOf(
-                    AuditableEvent(
-                        AclKey(candidateId),
-                        Principals.getCurrentSecurablePrincipal().id,
-                        Principals.getCurrentUser().id,
-                        AuditEventType.REGISTER_CANDIDATE,
+        return storageResolver.getPlatformStorage().connection.use { conn ->
+            AuditedOperationBuilder<UUID>(conn, auditingManager)
+                .operation { connection -> candidateService.registerCandidate(connection, candidate) }
+                .audit { candidateId ->
+                    listOf(
+                        AuditableEvent(
+                            AclKey(candidateId),
+                            eventType = AuditEventType.REGISTER_CANDIDATE,
+                        )
                     )
-                )
-            }
-            .buildAndRun()
+                }
+                .buildAndRun()
+        }
     }
 }

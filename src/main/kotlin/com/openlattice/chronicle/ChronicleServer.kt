@@ -61,6 +61,7 @@ class ChronicleServer(vararg pods: Class<*>) : BaseRhizomeServer(
             ByteBlobServicePod::class.java,
             LateInitProvidersPod::class.java,
             HazelcastQueuePod::class.java,
+            ChronicleJobRunnersPod::class.java,
         )
 
         @Throws(Exception::class)

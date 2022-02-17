@@ -24,28 +24,42 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.geekbeast.mappers.mappers.ObjectMappers
 import com.geekbeast.postgres.PostgresArrays
-import com.openlattice.chronicle.authorization.*
+import com.geekbeast.rhizome.jobs.JobStatus
+import com.openlattice.chronicle.authorization.AceKey
+import com.openlattice.chronicle.authorization.AclKey
+import com.openlattice.chronicle.authorization.Permission
+import com.openlattice.chronicle.authorization.Principal
+import com.openlattice.chronicle.authorization.PrincipalType
+import com.openlattice.chronicle.authorization.Role
+import com.openlattice.chronicle.authorization.SecurableObjectType
+import com.openlattice.chronicle.authorization.SecurablePrincipal
 import com.openlattice.chronicle.candidates.Candidate
 import com.openlattice.chronicle.data.ParticipationStatus
+import com.openlattice.chronicle.jobs.ChronicleJob
 import com.openlattice.chronicle.mapstores.ids.Range
 import com.openlattice.chronicle.organizations.Organization
 import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CANDIDATE_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CATEGORY
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.COMPLETED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CONTACT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CREATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DATE_OF_BIRTH
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.DELETED_ROWS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DESCRIPTION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DEVICE_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.EMAIL
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ENDED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.EXPIRATION_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.FIRST_NAME
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.JOB_DEFINITION
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.JOB_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LAST_NAME
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LAT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LON
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LSB
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.MESSAGE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.MSB
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.NAME
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.NOTIFICATIONS_ENABLED
@@ -62,8 +76,10 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_TYP
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_NAME
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_TYPE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_PRINCIPAL_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SETTINGS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STARTED_AT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.STATUS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STORAGE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_GROUP
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
@@ -85,7 +101,10 @@ import java.sql.SQLException
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.ZoneId
-import java.util.*
+import java.util.Base64
+import java.util.EnumSet
+import java.util.Optional
+import java.util.UUID
 
 /**
  * Use for reading count field when performing an aggregation.
@@ -342,6 +361,23 @@ class ResultSetAdapters {
         @Throws(SQLException::class)
         fun storage(rs: ResultSet): String {
             return rs.getString(STORAGE.name)
+        }
+
+        @Throws(SQLException::class)
+        fun chronicleJob(rs: ResultSet): ChronicleJob {
+            return ChronicleJob(
+                rs.getObject(JOB_ID.name, UUID::class.java),
+                rs.getObject(SECURABLE_PRINCIPAL_ID.name, UUID::class.java),
+                Principal(PrincipalType.valueOf(rs.getString(PRINCIPAL_TYPE.name)), rs.getString(PRINCIPAL_ID.name)),
+                rs.getObject(CREATED_AT.name, OffsetDateTime::class.java),
+                rs.getObject(UPDATED_AT.name, OffsetDateTime::class.java),
+                rs.getObject(COMPLETED_AT.name, OffsetDateTime::class.java),
+                JobStatus.valueOf(rs.getString(STATUS.name)),
+                rs.getString(CONTACT.name),
+                definition = mapper.readValue(rs.getString(JOB_DEFINITION.name)),
+                rs.getString(MESSAGE.name),
+                rs.getLong(DELETED_ROWS.name)
+            )
         }
 
         @Throws(SQLException::class)
