@@ -74,7 +74,7 @@ class BackgroundChronicleJobService(
                             jobService.unlockJob(jobId)
                         }
                     } catch (ex: Exception) {
-                        logger.error("Task could not be completed - $ex")
+                        logger.error("Task could not be completed", ex)
                     } finally {
                         available.release()
                     }
