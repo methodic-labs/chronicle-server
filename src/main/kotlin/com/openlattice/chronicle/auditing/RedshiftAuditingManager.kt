@@ -2,10 +2,10 @@ package com.openlattice.chronicle.auditing
 
 import com.geekbeast.mappers.mappers.ObjectMappers
 import com.openlattice.chronicle.storage.RedshiftColumns
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PRINCIPAL_TYPE
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.AUDIT
 import com.openlattice.chronicle.storage.StorageResolver
 import java.sql.PreparedStatement
-import java.sql.SQLException
 
 /**
  *
@@ -19,6 +19,7 @@ class RedshiftAuditingManager(storageResolver: StorageResolver) : AuditingManage
         private val AUDIT_COLS = listOf(
             RedshiftColumns.ACL_KEY,
             RedshiftColumns.SECURABLE_PRINCIPAL_ID,
+            PRINCIPAL_TYPE,
             RedshiftColumns.PRINCIPAL_ID,
             RedshiftColumns.AUDIT_EVENT_TYPE,
             RedshiftColumns.DESCRIPTION,
@@ -31,16 +32,17 @@ class RedshiftAuditingManager(storageResolver: StorageResolver) : AuditingManage
         /**
          * 1. acl key
          * 2. securable principal id
-         * 3. principal id
-         * 4. audit event type
-         * 5. description
-         * 6. study id
-         * 7. organization id
-         * 8. data
-         * 9. timestamp
+         * 3. principal type
+         * 4. principal id
+         * 5. audit event type
+         * 6. description
+         * 7. study id
+         * 8. organization id
+         * 9. data
+         * 10. timestamp
          */
         private val INSERT_AUDIT_SQL = """
-        INSERT INTO ${AUDIT.name} ($AUDIT_COLS) VALUES (?,?,?,?,?,?,?,?,?)   
+        INSERT INTO ${AUDIT.name} ($AUDIT_COLS) VALUES (?,?,?,?,?,?,?,?,?,?)   
         """.trimIndent()
     }
 
@@ -49,7 +51,7 @@ class RedshiftAuditingManager(storageResolver: StorageResolver) : AuditingManage
         return hds.connection.use { connection ->
             connection.prepareStatement(INSERT_AUDIT_SQL).use { ps ->
                 events.forEach { event ->
-                    bind( ps, event)
+                    bind(ps, event)
                     ps.addBatch()
                 }
                 ps.executeBatch().sum()
@@ -57,15 +59,16 @@ class RedshiftAuditingManager(storageResolver: StorageResolver) : AuditingManage
         }
     }
 
-    private fun bind(ps: PreparedStatement,event:AuditableEvent) {
-        ps.setString( 1, event.aclKey.index)
+    private fun bind(ps: PreparedStatement, event: AuditableEvent) {
+        ps.setString(1, event.aclKey.index)
         ps.setString(2, event.securablePrincipalId.toString())
-        ps.setString(3, event.principalId)
-        ps.setString(4, event.eventType.name)
-        ps.setString(5, event.description)
-        ps.setString(6, event.study.toString())
-        ps.setString(7, event.organization.toString())
-        ps.setString(8, mapper.writeValueAsString(event.data))
-        ps.setObject(9, event.timestamp)
+        ps.setString(3, event.principal.type.name)
+        ps.setString(4, event.principal.id)
+        ps.setString(5, event.eventType.name)
+        ps.setString(6, event.description)
+        ps.setString(7, event.study.toString())
+        ps.setString(8, event.organization.toString())
+        ps.setString(9, mapper.writeValueAsString(event.data))
+        ps.setObject(10, event.timestamp)
     }
 }

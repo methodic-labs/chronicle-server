@@ -17,7 +17,7 @@ import com.openlattice.chronicle.data.FileType
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.ids.IdConstants
 import com.openlattice.chronicle.jobs.ChronicleJob
-import com.openlattice.chronicle.jobs.DeleteStudyUsageData
+import com.openlattice.chronicle.deletion.DeleteStudyUsageData
 import com.openlattice.chronicle.organizations.ChronicleDataCollectionSettings
 import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.sensorkit.SensorDataSample
@@ -36,7 +36,6 @@ import com.openlattice.chronicle.study.StudyApi.Companion.ANDROID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.CONTROLLER
 import com.openlattice.chronicle.study.StudyApi.Companion.DATA_COLLECTION
 import com.openlattice.chronicle.study.StudyApi.Companion.DATA_PATH
-import com.openlattice.chronicle.study.StudyApi.Companion.SOURCE_DEVICE_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.ENROLL_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.IOS_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.ORGANIZATION_ID
@@ -47,6 +46,7 @@ import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_ID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.RETRIEVE
 import com.openlattice.chronicle.study.StudyApi.Companion.SETTINGS_PATH
+import com.openlattice.chronicle.study.StudyApi.Companion.SOURCE_DEVICE_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.SOURCE_DEVICE_ID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.STUDY_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.STUDY_ID_PATH
@@ -54,16 +54,7 @@ import com.openlattice.chronicle.study.StudyUpdate
 import com.openlattice.chronicle.util.ChronicleServerUtil
 import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PatchMapping
-import org.springframework.web.bind.annotation.DeleteMapping
-import org.springframework.web.bind.annotation.PathVariable
-import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.PutMapping
-import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RequestParam
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.*
 import java.util.*
 import javax.inject.Inject
 import javax.servlet.http.HttpServletResponse
@@ -186,13 +177,11 @@ class StudyController @Inject constructor(
             recordEvent(
                 AuditableEvent(
                     AclKey(studyId),
-                    Principals.getCurrentSecurablePrincipal().id,
-                    Principals.getCurrentUser().id,
-                    AuditEventType.GET_STUDY,
-                    "",
-                    studyId,
-                    IdConstants.UNINITIALIZED.id,
-                    mapOf()
+                    eventType = AuditEventType.GET_STUDY,
+                    description = "",
+                    study = studyId,
+                    organization = IdConstants.UNINITIALIZED.id,
+                    data = mapOf()
                 )
             )
             study
@@ -210,8 +199,8 @@ class StudyController @Inject constructor(
     override fun getOrgStudies(@PathVariable(ORGANIZATION_ID) organizationId: UUID): List<Study> {
 
         ensureReadAccess(AclKey(organizationId))
-        val currentUserId = Principals.getCurrentUser().id;
-        logger.info("Retrieving studies with organization id $organizationId on behalf of $currentUserId")
+        val currentUser = Principals.getCurrentSecurablePrincipal()
+        logger.info("Retrieving studies with organization id $organizationId on behalf of ${currentUser.principal.id}")
 
         return try {
             val studies = studyService.getOrgStudies(organizationId)
@@ -219,8 +208,8 @@ class StudyController @Inject constructor(
                 recordEvent(
                     AuditableEvent(
                         AclKey(study.id),
-                        Principals.getCurrentSecurablePrincipal().id,
-                        currentUserId,
+                        currentUser.id,
+                        currentUser.principal,
                         eventType = AuditEventType.GET_STUDY,
                         study = study.id,
                         organization = organizationId,
@@ -247,19 +236,17 @@ class StudyController @Inject constructor(
     ): Study? {
         val studyAclKey = AclKey(studyId);
         ensureOwnerAccess(studyAclKey)
-        val currentUserId = Principals.getCurrentUser().id;
-        logger.info("Updating study with id $studyId on behalf of $currentUserId")
-
-        val hds = storageResolver.getPlatformStorage()
-        hds.connection.use { connection ->
-            AuditedOperationBuilder<Unit>(connection, auditingManager)
+        val currentUser = Principals.getCurrentSecurablePrincipal()
+        logger.info("Updating study with id $studyId on behalf of ${currentUser.principal.id}")
+        storageResolver.getPlatformStorage().connection.use { conn ->
+            AuditedOperationBuilder<Unit>(conn, auditingManager)
                 .operation { connection -> studyService.updateStudy(connection, studyId, study) }
                 .audit {
                     listOf(
                         AuditableEvent(
                             studyAclKey,
-                            Principals.getCurrentSecurablePrincipal().id,
-                            currentUserId,
+                            currentUser.id,
+                            currentUser.principal,
                             AuditEventType.UPDATE_STUDY,
                             study = studyId,
                             data = mapOf()
@@ -279,46 +266,47 @@ class StudyController @Inject constructor(
     )
     override fun destroyStudy(@PathVariable studyId: UUID): UUID {
         accessCheck(AclKey(studyId), EnumSet.of(Permission.OWNER))
+        val currentUser = Principals.getCurrentSecurablePrincipal()
         logger.info("Deleting study with id $studyId")
         // val currentUserEmail = getUser(managementApi, Principals.getCurrentUser().id).email
         val deleteStudyDataJob = ChronicleJob(
             id = idGenerationService.getNextId(),
             contact = "test@openlattice.com",
-            jobData = DeleteStudyUsageData(studyId)
+            definition = DeleteStudyUsageData(studyId)
         )
-
-        val hds = storageResolver.getPlatformStorage()
-        return AuditedOperationBuilder<UUID>(hds.connection, auditingManager)
-            .operation { connection ->
-                var jobId = chronicleJobService.createJob(connection, deleteStudyDataJob)
-                logger.info("Created job with id = $jobId")
-                studyService.deleteStudies(connection, listOf(studyId))
-                studyService.deleteStudiesFromOrganizations(connection, listOf(studyId))
-                return@operation jobId
-            }
-            .audit { jobId ->
-                listOf(
-                    AuditableEvent(
-                        AclKey(studyId),
-                        Principals.getCurrentSecurablePrincipal().id,
-                        Principals.getCurrentUser().id,
-                        AuditEventType.DELETE_STUDY,
-                        "",
-                        studyId,
-                        UUID(0, 0),
-                        mapOf()
-                    ),
-                    AuditableEvent(
-                        AclKey(jobId),
-                        Principals.getCurrentSecurablePrincipal().id,
-                        Principals.getCurrentUser().id,
-                        AuditEventType.CREATE_JOB,
-                        "",
-                        studyId
-                    ),
-                )
-            }
-            .buildAndRun()
+        return storageResolver.getPlatformStorage().connection.use { conn ->
+            AuditedOperationBuilder<UUID>(conn, auditingManager)
+                .operation { connection ->
+                    var jobId = chronicleJobService.createJob(connection, deleteStudyDataJob)
+                    logger.info("Created job with id = $jobId")
+                    studyService.deleteStudies(connection, listOf(studyId))
+                    studyService.deleteStudiesFromOrganizations(connection, listOf(studyId))
+                    return@operation jobId
+                }
+                .audit { jobId ->
+                    listOf(
+                        AuditableEvent(
+                            AclKey(studyId),
+                            currentUser.id,
+                            currentUser.principal,
+                            AuditEventType.DELETE_STUDY,
+                            "",
+                            studyId,
+                            UUID(0, 0),
+                            mapOf()
+                        ),
+                        AuditableEvent(
+                            AclKey(jobId),
+                            currentUser.id,
+                            currentUser.principal,
+                            AuditEventType.CREATE_JOB,
+                            "",
+                            studyId
+                        ),
+                    )
+                }
+                .buildAndRun()
+        }
     }
 
     @Timed
@@ -332,19 +320,21 @@ class StudyController @Inject constructor(
     ): UUID {
         ensureValidStudy(studyId)
         ensureWriteAccess(AclKey(studyId))
-        val hds = storageResolver.getPlatformStorage()
-        return AuditedOperationBuilder<UUID>(hds.connection, auditingManager)
-            .operation { connection -> studyService.registerParticipant(connection, studyId, participant) }
-            .audit { candidateId ->
-                listOf(
-                    AuditableEvent(
-                        AclKey(candidateId),
-                        eventType = AuditEventType.REGISTER_CANDIDATE,
-                        description = "Registering participant with $candidateId for study $studyId."
+
+        return storageResolver.getPlatformStorage().connection.use { conn ->
+            AuditedOperationBuilder<UUID>(conn, auditingManager)
+                .operation { connection -> studyService.registerParticipant(connection, studyId, participant) }
+                .audit { candidateId ->
+                    listOf(
+                        AuditableEvent(
+                            AclKey(candidateId),
+                            eventType = AuditEventType.REGISTER_CANDIDATE,
+                            description = "Registering participant with $candidateId for study $studyId."
+                        )
                     )
-                )
-            }
-            .buildAndRun()
+                }
+                .buildAndRun()
+        }
     }
 
     @Timed
@@ -377,23 +367,25 @@ class StudyController @Inject constructor(
 
         val study = studyService.getStudy(studyId)
         study.settings.toMutableMap()[LegacyUtil.DATA_COLLECTION] = dataCollectionSettings
-        AuditedOperationBuilder<Unit>(storageResolver.getPlatformStorage().connection, auditingManager)
-            .operation { connection ->
-                studyService.updateStudy(
-                    connection,
-                    studyId,
-                    StudyUpdate(settings = study.settings)
-                )
-            }
-            .audit {
-                listOf(
-                    AuditableEvent(
-                        aclKey = AclKey(studyId),
-                        eventType = AuditEventType.UPDATE_STUDY_SETTINGS
+        storageResolver.getPlatformStorage().connection.use { conn ->
+            AuditedOperationBuilder<Unit>(conn, auditingManager)
+                .operation { connection ->
+                    studyService.updateStudy(
+                        connection,
+                        studyId,
+                        StudyUpdate(settings = study.settings)
                     )
-                )
-            }
-            .buildAndRun()
+                }
+                .audit {
+                    listOf(
+                        AuditableEvent(
+                            aclKey = AclKey(studyId),
+                            eventType = AuditEventType.UPDATE_STUDY_SETTINGS
+                        )
+                    )
+                }
+                .buildAndRun()
+        }
 
         return OK()
     }

@@ -10,5 +10,7 @@ import java.util.*
 interface JobManager {
     fun createJob(connection: Connection, job: ChronicleJob): UUID
     fun getJob(jobId: UUID): ChronicleJob
-    fun getJobs(jobIds: Collection<UUID>): List<ChronicleJob>
+    fun getJobs(jobIds: Collection<UUID>): Map<UUID, ChronicleJob>
+    fun lockAndGetNextJob(connection: Connection): ChronicleJob?
+    fun unlockJob( jobId: UUID)
 }

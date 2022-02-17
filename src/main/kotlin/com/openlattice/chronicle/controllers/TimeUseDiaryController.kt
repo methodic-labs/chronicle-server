@@ -90,7 +90,7 @@ class TimeUseDiaryController(
                 AuditableEvent(
                     AclKey(timeUseDiaryId),
                     Principals.getCurrentSecurablePrincipal().id,
-                    Principals.getCurrentUser().id,
+                    Principals.getCurrentUser(),
                     AuditEventType.SUBMIT_TIME_USE_DIARY,
                     ""
                 )
@@ -124,7 +124,7 @@ class TimeUseDiaryController(
             AuditableEvent(
                 AclKey(studyId),
                 Principals.getCurrentSecurablePrincipal().id,
-                Principals.getCurrentUser().id,
+                Principals.getCurrentUser(),
                 AuditEventType.GET_TIME_USE_DIARY_SUBMISSION,
                 "$startDateTime - $endDateTime",
                 studyId,
@@ -182,7 +182,7 @@ class TimeUseDiaryController(
             AuditableEvent(
                 AclKey(studyId),
                 Principals.getCurrentSecurablePrincipal().id,
-                Principals.getCurrentUser().id,
+                Principals.getCurrentUser(),
                 AuditEventType.DOWNLOAD_TIME_USE_DIARY_SUBMISSIONS,
                 downloadType.toString(),
                 studyId,

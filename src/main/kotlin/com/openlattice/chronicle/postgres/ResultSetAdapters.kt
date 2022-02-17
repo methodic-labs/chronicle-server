@@ -25,24 +25,16 @@ import com.fasterxml.jackson.module.kotlin.readValue
 import com.geekbeast.mappers.mappers.ObjectMappers
 import com.geekbeast.postgres.PostgresArrays
 import com.geekbeast.rhizome.jobs.JobStatus
-import com.openlattice.chronicle.authorization.AceKey
-import com.openlattice.chronicle.authorization.AclKey
-import com.openlattice.chronicle.authorization.Permission
-import com.openlattice.chronicle.authorization.Principal
-import com.openlattice.chronicle.authorization.PrincipalType
-import com.openlattice.chronicle.authorization.Role
-import com.openlattice.chronicle.authorization.SecurableObjectType
-import com.openlattice.chronicle.authorization.SecurablePrincipal
+import com.openlattice.chronicle.authorization.*
 import com.openlattice.chronicle.candidates.Candidate
 import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.jobs.ChronicleJob
-import com.openlattice.chronicle.jobs.ChronicleJobData
-import com.openlattice.chronicle.jobs.DeleteStudyUsageData
 import com.openlattice.chronicle.mapstores.ids.Range
 import com.openlattice.chronicle.organizations.Organization
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CANDIDATE_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CATEGORY
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.COMPLETED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CONTACT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CREATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DATE_OF_BIRTH
@@ -53,7 +45,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.EMAIL
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ENDED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.EXPIRATION_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.FIRST_NAME
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.JOB_DATA
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.JOB_DEFINITION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.JOB_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LAST_NAME
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LAT
@@ -75,6 +67,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_TYP
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_NAME
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_TYPE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_PRINCIPAL_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SETTINGS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STARTED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STATUS
@@ -94,7 +87,6 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.USERNAME
 import com.openlattice.chronicle.study.Study
 import com.openlattice.chronicle.survey.AppUsage
 import org.slf4j.LoggerFactory
-import java.math.BigInteger
 import java.sql.ResultSet
 import java.sql.SQLException
 import java.time.LocalDate
@@ -363,11 +355,14 @@ class ResultSetAdapters {
         fun chronicleJob(rs: ResultSet): ChronicleJob {
             return ChronicleJob(
                 rs.getObject(JOB_ID.name, UUID::class.java),
+                rs.getObject(SECURABLE_PRINCIPAL_ID.name, UUID::class.java),
+                Principal(PrincipalType.valueOf(rs.getString(PRINCIPAL_TYPE.name)), rs.getString(PRINCIPAL_ID.name)),
                 rs.getObject(CREATED_AT.name, OffsetDateTime::class.java),
                 rs.getObject(UPDATED_AT.name, OffsetDateTime::class.java),
+                rs.getObject(COMPLETED_AT.name, OffsetDateTime::class.java),
                 JobStatus.valueOf(rs.getString(STATUS.name)),
                 rs.getString(CONTACT.name),
-                jobData = mapper.readValue(rs.getString(JOB_DATA.name)),
+                definition = mapper.readValue(rs.getString(JOB_DEFINITION.name)),
                 rs.getString(MESSAGE.name),
                 rs.getLong(DELETED_ROWS.name)
             )

@@ -21,6 +21,7 @@ class PostgresColumns {
         @JvmField val CANDIDATE_ID = PostgresColumnDefinition("candidate_id", PostgresDatatype.UUID).notNull()
         @JvmField val CATEGORY = PostgresColumnDefinition("category", PostgresDatatype.TEXT).notNull()
         @JvmField val CONTACT = PostgresColumnDefinition("contact", PostgresDatatype.TEXT)
+        @JvmField val COMPLETED_AT = PostgresColumnDefinition("created_at", PostgresDatatype.TIMESTAMPTZ).notNull().withDefault("'infinity'")
         @JvmField val CREATED_AT = PostgresColumnDefinition("created_at", PostgresDatatype.TIMESTAMPTZ).notNull().withDefault("now()")
         @JvmField val DATE_OF_BIRTH = PostgresColumnDefinition("dob", PostgresDatatype.DATE)
         @JvmField val DESCRIPTION = PostgresColumnDefinition("description", PostgresDatatype.TEXT)
@@ -53,6 +54,7 @@ class PostgresColumns {
         @JvmField val SECURABLE_OBJECT_ID = PostgresColumnDefinition("id", PostgresDatatype.UUID).unique().notNull()
         @JvmField val SECURABLE_OBJECT_NAME = PostgresColumnDefinition("name", PostgresDatatype.TEXT).notNull().unique()
         @JvmField val SECURABLE_OBJECT_TYPE = PostgresColumnDefinition("securable_object_type", PostgresDatatype.TEXT).notNull()
+        @JvmField val SECURABLE_PRINCIPAL_ID = PostgresColumnDefinition("securable_principal_id", PostgresDatatype.UUID).notNull()
         @JvmField val SETTINGS = PostgresColumnDefinition("settings", PostgresDatatype.JSONB).withDefault("'{}'::jsonb")
         @JvmField val SOURCE_DEVICE = PostgresColumnDefinition("source_device", PostgresDatatype.JSONB).notNull()
         @JvmField val SOURCE_DEVICE_ID = PostgresColumnDefinition("source_device_id", PostgresDatatype.TEXT).notNull()
@@ -71,7 +73,7 @@ class PostgresColumns {
         @JvmField val USER_ID = PostgresColumnDefinition("user_id", PostgresDatatype.TEXT).notNull()
         @JvmField val JOB_ID = PostgresColumnDefinition("job_id", PostgresDatatype.UUID).notNull()
         @JvmField val STATUS = PostgresColumnDefinition("status", PostgresDatatype.TEXT)
-        @JvmField val JOB_DATA = PostgresColumnDefinition("job_data", PostgresDatatype.JSONB).withDefault("'{}'::jsonb")
+        @JvmField val JOB_DEFINITION = PostgresColumnDefinition("definition", PostgresDatatype.JSONB).withDefault("'{}'::jsonb")
         @JvmField val MESSAGE = PostgresColumnDefinition("message", PostgresDatatype.TEXT)
 
 
