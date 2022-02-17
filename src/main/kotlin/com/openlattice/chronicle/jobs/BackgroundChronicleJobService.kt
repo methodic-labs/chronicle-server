@@ -51,16 +51,17 @@ class BackgroundChronicleJobService(
 
         try {
             if (available.tryAcquire()) {
-                storageResolver.getPlatformStorage().connection.use { conn ->
-                    logger.info("Permit acquired to execute DeleteChronicleUsageDataTask")
-                    executor.execute {
-                        try {
+                logger.info("Permit acquired to execute DeleteChronicleUsageDataTask")
+                executor.execute {
+                    try {
+                        storageResolver.getPlatformStorage().connection.use { conn ->
                             val (jobId, _) = AuditedOperationBuilder<Pair<UUID, List<AuditableEvent>>>(
                                 conn,
                                 auditingManager
                             )
                                 .operation { connection ->
-                                    val job = jobService.lockAndGetNextJob(connection) ?: return@operation NO_JOB_FOUND
+                                    val job =
+                                        jobService.lockAndGetNextJob(connection) ?: return@operation NO_JOB_FOUND
                                     val runner = runner.getOrDefault(
                                         job.definition.javaClass,
                                         DefaultJobRunner.getDefaultJobRunner(job.definition)
@@ -71,9 +72,9 @@ class BackgroundChronicleJobService(
                                 .audit { it.second }
                                 .buildAndRun()
                             jobService.unlockJob(jobId)
-                        } finally {
-                            available.release()
                         }
+                    } finally {
+                        available.release()
                     }
                 }
             } else {
