@@ -74,7 +74,7 @@ class BackgroundChronicleJobService(
                             jobService.unlockJob(jobId)
                         }
                     } catch (ex: Exception) {
-                        logger.error("Task could not be completed - $ex")
+                        logger.error("Task could not be completed", ex)
                     }
                     finally {
                         available.release()
@@ -83,8 +83,8 @@ class BackgroundChronicleJobService(
             } else {
                 logger.info("No permit acquired. Skipping chronicle job")
             }
-        } catch (error: InterruptedException) {
-            logger.info("Error acquiring permit.", error)
+        } catch (ex: InterruptedException) {
+            logger.error("Error acquiring permit.", ex)
         }
     }
 
