@@ -61,9 +61,8 @@ class OrganizationsController @Inject constructor(
         ensureAuthenticated()
         logger.info("Creating organization with title ${organization.title}")
         organization.id = idGenerationService.getNextId()
-        val hds = storageResolver.getPlatformStorage()
-        hds.connection.use { connection ->
-            AuditedOperationBuilder<Unit>(connection, auditingManager)
+        storageResolver.getPlatformStorage().connection.use { conn ->
+            AuditedOperationBuilder<Unit>(conn, auditingManager)
                 .operation { connection ->
                     chronicleOrganizationService.createOrganization(
                         connection,

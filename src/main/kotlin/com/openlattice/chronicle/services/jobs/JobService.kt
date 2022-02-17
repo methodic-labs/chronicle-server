@@ -5,6 +5,7 @@ import com.geekbeast.postgres.PostgresArrays
 import com.geekbeast.postgres.PostgresDatatype
 import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
+import com.geekbeast.rhizome.jobs.JobStatus
 import com.openlattice.chronicle.storage.StorageResolver
 import org.springframework.stereotype.Service
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
@@ -63,7 +64,8 @@ class JobService(
         """.trimIndent()
 
         private val GET_NEXT_JOB_SQL = """
-            DELETE FROM ${JOBS.name}
+            UPDATE ${JOBS.name}
+            SET ${STATUS.name} = ${JobStatus.FINISHED.name}
             WHERE ${JOB_ID.name} = (
                 SELECT ${JOB_ID.name}
                 FROM ${JOBS.name}
@@ -97,6 +99,7 @@ class JobService(
             ps.executeQuery().use { rs ->
                 if (rs.next()) {
                     val job = ResultSetAdapters.chronicleJob(rs)
+                    job.status = JobStatus.RUNNING
                     running[job.id] = job
                     job
                 } else null
