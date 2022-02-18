@@ -280,6 +280,7 @@ class ChronicleServerServicesPod {
             authorizationService(),
             candidateService(),
             enrollmentManager(),
+            idGenerationService(),
             auditingManager(),
             hazelcast
         )

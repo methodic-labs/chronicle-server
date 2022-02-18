@@ -130,37 +130,7 @@ class StudyController @Inject constructor(
         ensureAuthenticated()
         study.organizationIds.forEach { organizationId -> ensureOwnerAccess(AclKey(organizationId)) }
         logger.info("Creating study associated with organizations ${study.organizationIds}")
-        val (flavor, hds) = storageResolver.getDefaultPlatformStorage()
-        check(flavor == PostgresFlavor.VANILLA) { "Only vanilla postgres supported for studies." }
-        study.id = idGenerationService.getNextId()
-
-        hds.connection.use { connection ->
-            AuditedOperationBuilder<Unit>(connection, auditingManager)
-                .operation { connection -> studyService.createStudy(connection, study) }
-                .audit {
-                    listOf(
-                        AuditableEvent(
-                            AclKey(study.id),
-                            eventType = AuditEventType.CREATE_STUDY,
-                            description = "",
-                            study = study.id,
-                            organization = IdConstants.UNINITIALIZED.id,
-                            data = mapOf()
-                        )
-                    ) + study.organizationIds.map { organizationId ->
-                        AuditableEvent(
-                            AclKey(study.id),
-                            eventType = AuditEventType.ASSOCIATE_STUDY,
-                            description = "",
-                            study = study.id,
-                            organization = organizationId,
-                            data = mapOf()
-                        )
-                    }
-                }
-                .buildAndRun()
-        }
-        return study.id
+        return studyService.createStudy(study)
     }
 
     @Timed
