@@ -11,5 +11,7 @@ class DeleteParticipantUsageData (
     override val studyId: UUID,
     override val participantId: UUID
 ) : ChronicleParticipantJobDefinition {
-    var table: String = CHRONICLE_USAGE_EVENTS.name
+    companion object {
+        val table: String = CHRONICLE_USAGE_EVENTS.name
+    }
 }

@@ -61,7 +61,7 @@ class ImportController(
         ensureAdminAccess()
         val hds = dataSourceManager.getDataSource(config.dataSourceName)
         val studiesByEkId = mutableMapOf<UUID, Study>()
-        val studiesByLegacyStudyId = mutableMapOf<UUID,Study> ()
+        val studiesByLegacyStudyId = mutableMapOf<UUID, Study>()
 
         val studies = BasePostgresIterable(
             PreparedStatementHolderSupplier(hds, getStudiesSql(config.candidatesTable)) {}
@@ -69,7 +69,7 @@ class ImportController(
             val study = study(it)
             val studyId = studyService.createStudy(study)
 
-            check(study.id == studyId) { "Safety check to make sure study id got set appropriately"}
+            check(study.id == studyId) { "Safety check to make sure study id got set appropriately" }
             studiesByEkId[it.getObject(LEGACY_STUDY_EK_ID, UUID::class.java)] = study
             studiesByLegacyStudyId[it.getObject(LEGACY_STUDY_ID, UUID::class.java)] = study
         }
@@ -79,7 +79,12 @@ class ImportController(
         ) {
             val participant = participant(it)
             val studyEkId = it.getObject(LEGACY_STUDY_EK_ID, UUID::class.java)
-            studyService.registerParticipant()
+
+            val study = studiesByEkId[studyEkId] ?: throw StudyNotFoundException(
+                studyEkId,
+                "Missing study with legacy id $studyEkId"
+            )
+            studyService.registerParticipant(study.id, participant)
         }
     }
 

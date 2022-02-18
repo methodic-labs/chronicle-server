@@ -28,7 +28,7 @@ class DeleteParticipantUsageDataRunner(
         private val logger = LoggerFactory.getLogger(DeleteStudyUsageDataRunner::class.java)!!
 
         private val DELETE_PARTICIPANT_USAGE_DATA_SQL = """
-            DELETE FROM ${DeleteParticipantUsageData::table}
+            DELETE FROM ${DeleteParticipantUsageData.table}
             WHERE ${STUDY_ID.name} = ?
             AND ${PARTICIPANT_ID.name} = ?
         """.trimIndent()
