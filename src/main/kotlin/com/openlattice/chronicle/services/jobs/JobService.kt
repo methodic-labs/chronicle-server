@@ -80,20 +80,29 @@ class JobService(
 
 
     override fun createJob(connection: Connection, job: ChronicleJob): UUID {
-        logger.info("Creating job with id = ${job.id}")
-        val ps = connection.prepareStatement(INSERT_JOB_SQL)
-        var index = 1
-        ps.setObject(index++, job.id)
-        ps.setObject(index++, job.securablePrincipalId)
-        ps.setString(index++, job.principal.type.name)
-        ps.setString(index++, job.principal.id)
-        ps.setString(index++, job.status.toString())
-        ps.setString(index++, job.contact)
-        ps.setString(index++, mapper.writeValueAsString(job.definition))
-        ps.setString(index++, job.message)
-        ps.setLong(index, job.deletedRows)
-        ps.executeUpdate()
-        return job.id
+        return createJobs(connection, listOf(job)).first()
+    }
+
+    override fun createJobs(connection: Connection, jobs: Iterable<ChronicleJob>): Iterable<UUID> {
+        var jobIds = mutableListOf<UUID>()
+        connection.prepareStatement(INSERT_JOB_SQL).use { ps ->
+            jobs.forEach { job ->
+                jobIds.add(job.id)
+                var index = 1
+                ps.setObject(index++, job.id)
+                ps.setObject(index++, job.securablePrincipalId)
+                ps.setString(index++, job.principal.type.name)
+                ps.setString(index++, job.principal.id)
+                ps.setString(index++, job.status.toString())
+                ps.setString(index++, job.contact)
+                ps.setString(index++, mapper.writeValueAsString(job.definition))
+                ps.setString(index++, job.message)
+                ps.setLong(index, job.deletedRows)
+                ps.addBatch()
+            }
+            ps.executeBatch()
+        }
+        return jobIds
     }
 
     override fun lockAndGetNextJob(connection: Connection): ChronicleJob? {
