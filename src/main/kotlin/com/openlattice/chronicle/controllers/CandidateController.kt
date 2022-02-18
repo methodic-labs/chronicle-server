@@ -8,7 +8,6 @@ import com.openlattice.chronicle.auditing.AuditingManager
 import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.authorization.AuthorizationManager
 import com.openlattice.chronicle.authorization.AuthorizingComponent
-import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.candidates.Candidate
 import com.openlattice.chronicle.candidates.CandidateApi
 import com.openlattice.chronicle.candidates.CandidateApi.Companion.BULK_PATH

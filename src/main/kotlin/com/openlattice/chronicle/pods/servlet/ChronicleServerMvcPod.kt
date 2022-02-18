@@ -29,6 +29,7 @@ import com.openlattice.chronicle.controllers.v2.ChronicleControllerV2
 import com.openlattice.chronicle.converters.LegacyPostgresDownloadCsvHttpMessageConverter
 import com.openlattice.chronicle.converters.PostgresDownloadCsvHttpMessageConverter
 import com.openlattice.chronicle.converters.YamlHttpMessageConverter
+import com.openlattice.chronicle.users.UserController
 import com.ryantenney.metrics.spring.config.annotation.EnableMetrics
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.ComponentScan
@@ -55,6 +56,7 @@ import javax.inject.Inject
         ChronicleControllerV2::class,
         StudyController::class,
         AdminController::class,
+        UserController::class,
     ],
     includeFilters = [ComponentScan.Filter(
         value = [Controller::class, RestControllerAdvice::class],

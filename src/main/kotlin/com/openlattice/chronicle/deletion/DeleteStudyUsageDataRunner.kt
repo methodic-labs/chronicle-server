@@ -5,8 +5,6 @@ import com.openlattice.chronicle.auditing.AuditEventType
 import com.openlattice.chronicle.auditing.AuditableEvent
 import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.jobs.AbstractChronicleDeleteJobRunner
-import java.sql.Connection
-import java.time.OffsetDateTime
 import com.openlattice.chronicle.jobs.ChronicleJob
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.CHRONICLE_USAGE_EVENTS

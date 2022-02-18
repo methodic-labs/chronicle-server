@@ -254,6 +254,12 @@ class ChronicleServerServicesPod {
     }
 
     @Bean
+    fun auth0ManagementApi(): ManagementAPI {
+        val auth0Token = auth0TokenProvider().token
+        return ManagementAPI(auth0Configuration.domain, auth0Token)
+    }
+
+    @Bean
     fun userListingService(): UserListingService {
         if (auth0Configuration!!.managementApiUrl.contains(Auth0Configuration.NO_SYNC_URL)) {
             return LocalUserListingService(auth0Configuration)
