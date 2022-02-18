@@ -77,11 +77,12 @@ class SurveyController(
     override fun createQuestionnaire(
         @PathVariable(STUDY_ID) studyId: UUID,
         @RequestBody questionnaire: Questionnaire
-    ): Questionnaire {
+    ): UUID {
         ensureWriteAccess(AclKey(studyId))
         val id = idGenerationService.getNextId()
+        surveysService.createQuestionnaire(studyId, id, questionnaire)
 
-        TODO("Not yet implemented")
+        return id
     }
 
     override fun deleteQuestionnaire(studyId: UUID, questionnaireId: UUID) {

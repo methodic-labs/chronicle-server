@@ -1,11 +1,14 @@
 package com.openlattice.chronicle.services.surveys
 
+import com.geekbeast.mappers.mappers.ObjectMappers
 import com.geekbeast.postgres.PostgresArrays
+import com.geekbeast.postgres.PostgresDatatype
 import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
 import com.openlattice.chronicle.data.ChronicleQuestionnaire
 import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.APP_USAGE_SURVEY
+import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.QUESTIONNAIRES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APPLICATION_LABEL
@@ -15,6 +18,7 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMEZONE
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.CHRONICLE_USAGE_EVENTS
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.survey.AppUsage
+import com.openlattice.chronicle.survey.Questionnaire
 import com.openlattice.chronicle.util.ChronicleServerUtil.STUDY_PARTICIPANT
 import org.apache.olingo.commons.api.edm.FullQualifiedName
 import org.slf4j.LoggerFactory
@@ -35,6 +39,7 @@ class SurveysService(
 ) : SurveysManager {
     companion object {
         private val logger = LoggerFactory.getLogger(SurveysService::class.java)
+        private val mapper = ObjectMappers.newJsonMapper()
 
         private val APP_USAGE_SURVEY_COLS = APP_USAGE_SURVEY.columns.joinToString(",") { it.name }
         private val APP_USAGE_SURVEY_PARAMS = APP_USAGE_SURVEY.columns.joinToString(",") { "?" }
@@ -69,6 +74,25 @@ class SurveysService(
         val SUBMIT_APP_USAGE_SURVEY_SQL = """
             INSERT INTO ${APP_USAGE_SURVEY.name}($APP_USAGE_SURVEY_COLS) VALUES ($APP_USAGE_SURVEY_PARAMS)
             ON CONFLICT DO NOTHING
+        """.trimIndent()
+
+        private val QUESTIONNAIRE_COLUMNS = QUESTIONNAIRES.columns.joinToString { it.name }
+        private val QUESTIONNAIRE_PARAMS = QUESTIONNAIRES.columns.joinToString {
+            if (it.datatype == PostgresDatatype.JSONB) "?::jsonb" else "?"
+        }
+
+        /**
+         * PreparedStatement bind order
+         * 1) studyId
+         * 2) questionnaireId
+         * 3) title
+         * 4) description
+         * 5) questions
+         * 6) active
+         * 7) date
+         */
+        private val CREATE_QUESTIONNAIRE_SQL = """
+            INSERT INTO ${QUESTIONNAIRES.name}(${QUESTIONNAIRE_COLUMNS}) VALUES ($QUESTIONNAIRE_PARAMS)
         """.trimIndent()
     }
 
@@ -146,6 +170,26 @@ class SurveysService(
 
         } catch (ex: Exception) {
             logger.error("unable to fetch data for app usage survey")
+            throw ex
+        }
+    }
+
+    override fun createQuestionnaire(studyId: UUID, questionnaireId: UUID, questionnaire: Questionnaire) {
+        val hds = storageResolver.getPlatformStorage()
+        try  {
+            hds.connection.prepareStatement(CREATE_QUESTIONNAIRE_SQL).use { ps ->
+                var index = 0
+                ps.setObject(++index, studyId)
+                ps.setObject(++index, questionnaireId)
+                ps.setString(++index, questionnaire.title)
+                ps.setString(++index, questionnaire.description)
+                ps.setString(++index, mapper.writeValueAsString(questionnaire.questions))
+                ps.setBoolean(++index, true)
+                ps.setObject(++index, OffsetDateTime.now())
+                ps.executeUpdate()
+            }
+        } catch (ex: Exception) {
+            logger.error("unable to save questionnaire", ex)
             throw ex
         }
     }

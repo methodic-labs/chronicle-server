@@ -3,6 +3,7 @@ package com.openlattice.chronicle.storage
 import com.geekbeast.postgres.PostgresColumnsIndexDefinition
 import com.geekbeast.postgres.PostgresTableDefinition
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACTIVE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_USERS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.BASE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CANDIDATE_ID
@@ -189,7 +190,9 @@ class ChroniclePostgresTables {
                 QUESTIONNAIRE_ID,
                 TITLE,
                 DESCRIPTION,
-                QUESTIONS
+                QUESTIONS,
+                ACTIVE,
+                CREATED_AT
             ).primaryKey(QUESTIONNAIRE_ID)
 
         @JvmField

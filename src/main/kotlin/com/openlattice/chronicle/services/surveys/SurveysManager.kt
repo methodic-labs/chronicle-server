@@ -3,6 +3,7 @@ package com.openlattice.chronicle.services.surveys
 import com.openlattice.chronicle.data.ChronicleAppsUsageDetails
 import com.openlattice.chronicle.data.ChronicleQuestionnaire
 import com.openlattice.chronicle.survey.AppUsage
+import com.openlattice.chronicle.survey.Questionnaire
 import org.apache.olingo.commons.api.edm.FullQualifiedName
 import java.time.OffsetDateTime
 import java.util.*
@@ -35,4 +36,9 @@ interface SurveysManager {
             endDateTime: OffsetDateTime
     ): List<AppUsage>
 
+    fun createQuestionnaire(
+        studyId: UUID,
+        questionnaireId: UUID,
+        questionnaire: Questionnaire
+    )
 }
