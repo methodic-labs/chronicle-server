@@ -9,8 +9,14 @@ import com.openlattice.chronicle.data.ChronicleQuestionnaire
 import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.APP_USAGE_SURVEY
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.QUESTIONNAIRES
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACTIVE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.CREATED_AT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.DESCRIPTION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.QUESTIONNAIRE_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.QUESTIONS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.TITLE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APPLICATION_LABEL
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_PACKAGE_NAME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMESTAMP
@@ -35,7 +41,7 @@ import java.util.*
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
  */
 class SurveysService(
-        private val storageResolver: StorageResolver,
+    private val storageResolver: StorageResolver,
 ) : SurveysManager {
     companion object {
         private val logger = LoggerFactory.getLogger(SurveysService::class.java)
@@ -94,42 +100,56 @@ class SurveysService(
         private val CREATE_QUESTIONNAIRE_SQL = """
             INSERT INTO ${QUESTIONNAIRES.name}(${QUESTIONNAIRE_COLUMNS}) VALUES ($QUESTIONNAIRE_PARAMS)
         """.trimIndent()
+
+        private val GET_QUESTIONNAIRE_COLS = setOf(QUESTIONNAIRE_ID, TITLE, DESCRIPTION, QUESTIONS, ACTIVE, CREATED_AT)
+            .joinToString { it.name }
+
+        /**
+         * PreparedStatement bind order
+         * 1) studyId
+         * 2) questionnaireId
+         */
+        private val GET_QUESTIONNAIRE_SQL = """
+            SELECT $GET_QUESTIONNAIRE_COLS
+            FROM ${QUESTIONNAIRES.name}
+            WHERE ${STUDY_ID.name} = ? AND ${QUESTIONNAIRE_ID.name} = ?
+        """.trimIndent()
     }
 
     override fun getQuestionnaire(
-            organizationId: UUID, studyId: UUID, questionnaireEKID: UUID
+        organizationId: UUID, studyId: UUID, questionnaireEKID: UUID
     ): ChronicleQuestionnaire {
         TODO("Not yet implemented")
     }
 
     override fun getStudyQuestionnaires(
-            organizationId: UUID, studyId: UUID
+        organizationId: UUID, studyId: UUID
     ): Map<UUID, Map<FullQualifiedName, Set<Any>>> {
         return mapOf()
     }
 
     override fun submitQuestionnaire(
-            organizationId: UUID, studyId: UUID, participantId: String,
-            questionnaireResponses: Map<UUID, Map<FullQualifiedName, Set<Any>>>
+        organizationId: UUID, studyId: UUID, participantId: String,
+        questionnaireResponses: Map<UUID, Map<FullQualifiedName, Set<Any>>>
     ) {
         TODO("Not yet implemented")
     }
 
 
     override fun submitAppUsageSurvey(
-            studyId: UUID,
-            participantId: String,
-            surveyResponses: List<AppUsage>
+        studyId: UUID,
+        participantId: String,
+        surveyResponses: List<AppUsage>
     ) {
         logger.info(
-                "submitting app usage survey $STUDY_PARTICIPANT",
-                studyId,
-                participantId
+            "submitting app usage survey $STUDY_PARTICIPANT",
+            studyId,
+            participantId
         )
 
         val numWritten = writeToAppUsageTable(studyId, participantId, surveyResponses)
 
-        if (numWritten  != surveyResponses.size) {
+        if (numWritten != surveyResponses.size) {
             logger.warn("wrote {} entities but expected to write {} entities", numWritten, surveyResponses.size)
         }
     }
@@ -146,24 +166,24 @@ class SurveysService(
             val (_, hds) = storageResolver.resolveAndGetFlavor(studyId)
 
             val result = BasePostgresIterable(
-                    PreparedStatementHolderSupplier(hds, GET_APP_USAGE_SQL) { ps ->
-                        ps.setString(1, studyId.toString())
-                        ps.setString(2, participantId)
-                        ps.setObject(3, startDateTime)
-                        ps.setObject(4, endDateTime)
-                    }
+                PreparedStatementHolderSupplier(hds, GET_APP_USAGE_SQL) { ps ->
+                    ps.setString(1, studyId.toString())
+                    ps.setString(2, participantId)
+                    ps.setObject(3, startDateTime)
+                    ps.setObject(4, endDateTime)
+                }
             ) {
                 ResultSetAdapters.appUsage(it)
 
             }.toList()
 
             logger.info(
-                    "fetched {} app usage entities spanning {} to {} $STUDY_PARTICIPANT",
-                    result.size,
-                    startDateTime,
-                    endDateTime,
-                    studyId,
-                    participantId
+                "fetched {} app usage entities spanning {} to {} $STUDY_PARTICIPANT",
+                result.size,
+                startDateTime,
+                endDateTime,
+                studyId,
+                participantId
             )
 
             return result
@@ -176,7 +196,7 @@ class SurveysService(
 
     override fun createQuestionnaire(studyId: UUID, questionnaireId: UUID, questionnaire: Questionnaire) {
         val hds = storageResolver.getPlatformStorage()
-        try  {
+        try {
             hds.connection.prepareStatement(CREATE_QUESTIONNAIRE_SQL).use { ps ->
                 var index = 0
                 ps.setObject(++index, studyId)
@@ -190,6 +210,24 @@ class SurveysService(
             }
         } catch (ex: Exception) {
             logger.error("unable to save questionnaire", ex)
+            throw ex
+        }
+    }
+
+    override fun getQuestionnaire(studyId: UUID, questionnaireId: UUID): Questionnaire {
+        try {
+            val hds = storageResolver.getPlatformStorage()
+            return BasePostgresIterable(
+                PreparedStatementHolderSupplier(hds, GET_QUESTIONNAIRE_SQL) { ps ->
+                    ps.setObject(1, studyId)
+                    ps.setObject(2, questionnaireId)
+                }
+            ) {
+                ResultSetAdapters.questionnaire(it)
+            }.toList().first()
+
+        } catch (ex: Exception) {
+            logger.error("unable to fetch questionnaire: id = $questionnaireId, studyId = $studyId")
             throw ex
         }
     }
@@ -221,10 +259,10 @@ class SurveysService(
 
             } catch (ex: Exception) {
                 logger.error(
-                        "unable to submit app usage survey $STUDY_PARTICIPANT",
-                        studyId,
-                        participantId,
-                        ex
+                    "unable to submit app usage survey $STUDY_PARTICIPANT",
+                    studyId,
+                    participantId,
+                    ex
                 )
                 conn.rollback()
                 throw ex

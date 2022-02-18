@@ -17,6 +17,8 @@ import com.openlattice.chronicle.survey.SurveyApi.Companion.END_DATE
 import com.openlattice.chronicle.survey.SurveyApi.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.survey.SurveyApi.Companion.PARTICIPANT_ID_PATH
 import com.openlattice.chronicle.survey.SurveyApi.Companion.PARTICIPANT_PATH
+import com.openlattice.chronicle.survey.SurveyApi.Companion.QUESTIONNAIRE_ID
+import com.openlattice.chronicle.survey.SurveyApi.Companion.QUESTIONNAIRE_ID_PATH
 import com.openlattice.chronicle.survey.SurveyApi.Companion.QUESTIONNAIRE_PATH
 import com.openlattice.chronicle.survey.SurveyApi.Companion.START_DATE
 import com.openlattice.chronicle.survey.SurveyApi.Companion.STUDY_ID
@@ -72,7 +74,8 @@ class SurveyController(
 
     @Timed
     @PostMapping(
-        path = [STUDY_ID_PATH + QUESTIONNAIRE_PATH]
+        path = [STUDY_ID_PATH + QUESTIONNAIRE_PATH],
+        consumes = [MediaType.APPLICATION_JSON_VALUE]
     )
     override fun createQuestionnaire(
         @PathVariable(STUDY_ID) studyId: UUID,
@@ -89,8 +92,15 @@ class SurveyController(
         TODO("Not yet implemented")
     }
 
-    override fun getQuestionnaire(studyId: UUID, questionnaireId: UUID): Questionnaire {
-        TODO("Not yet implemented")
+    @GetMapping(
+        path = [STUDY_ID_PATH + QUESTIONNAIRE_PATH + QUESTIONNAIRE_ID_PATH],
+        produces = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    override fun getQuestionnaire(
+        @PathVariable(STUDY_ID) studyId: UUID,
+        @PathVariable(QUESTIONNAIRE_ID) questionnaireId: UUID
+    ): Questionnaire {
+        return surveysService.getQuestionnaire(studyId, questionnaireId)
     }
 
     override fun toggleQuestionnaireStatus(studyId: UUID, questionnaireId: UUID): Questionnaire {

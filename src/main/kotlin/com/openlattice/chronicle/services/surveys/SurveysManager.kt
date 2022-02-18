@@ -41,4 +41,9 @@ interface SurveysManager {
         questionnaireId: UUID,
         questionnaire: Questionnaire
     )
+
+    fun getQuestionnaire(
+        studyId: UUID,
+        questionnaireId: UUID
+    ): Questionnaire
 }
