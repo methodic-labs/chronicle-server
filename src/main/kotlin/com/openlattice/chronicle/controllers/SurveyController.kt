@@ -80,7 +80,7 @@ class SurveyController(
     ): Questionnaire {
         ensureWriteAccess(AclKey(studyId))
         val id = idGenerationService.getNextId()
-        
+
         TODO("Not yet implemented")
     }
 
