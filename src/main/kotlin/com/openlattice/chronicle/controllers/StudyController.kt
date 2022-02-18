@@ -2,7 +2,6 @@ package com.openlattice.chronicle.controllers
 
 import com.codahale.metrics.annotation.Timed
 import com.geekbeast.configuration.postgres.PostgresFlavor
-import com.geekbeast.hazelcast.UUIDSet
 import com.google.common.collect.SetMultimap
 import com.openlattice.chronicle.auditing.AuditEventType
 import com.openlattice.chronicle.auditing.AuditableEvent
@@ -282,22 +281,20 @@ class StudyController @Inject constructor(
             contact = "test@openlattice.com",
             definition = DeleteStudyTUDSubmissionData(studyId)
         )
-        val deleteAppUsageSurveyJob = ChronicleJob(
+        val deleteStudyAppUsageSurveyJob = ChronicleJob(
             id = idGenerationService.getNextId(),
             contact = "test@openlattice.com",
             definition = DeleteStudyAppUsageSurveyData(studyId)
         )
+        val jobList = listOf(
+            deleteStudyDataJob,
+            deleteStudyTUDSubmissionJob,
+            deleteStudyAppUsageSurveyJob
+        )
         return storageResolver.getPlatformStorage().connection.use { conn ->
-            AuditedOperationBuilder<List<UUID>>(conn, auditingManager)
+            AuditedOperationBuilder<Iterable<UUID>>(conn, auditingManager)
                 .operation { connection ->
-                    val deleteStudyJobId = chronicleJobService.createJob(connection, deleteStudyDataJob)
-                    val deleteTUDSJobId = chronicleJobService.createJob(connection, deleteStudyTUDSubmissionJob)
-                    val deleteAppUsageSurveyJobId = chronicleJobService.createJob(connection, deleteAppUsageSurveyJob)
-                    val newJobIds = listOf(
-                        deleteStudyJobId,
-                        deleteTUDSJobId,
-                        deleteAppUsageSurveyJobId,
-                    )
+                    val newJobIds = chronicleJobService.createJobs(connection, jobList)
                     logger.info("Created jobs with ids = {}", newJobIds)
                     val studyIdList = listOf(studyId)
                     studyService.deleteStudies(connection, studyIdList)
