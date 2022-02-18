@@ -5,7 +5,6 @@ import com.geekbeast.postgres.PostgresArrays
 import com.geekbeast.postgres.PostgresDatatype
 import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
-import com.openlattice.chronicle.base.OK
 import com.openlattice.chronicle.data.ChronicleQuestionnaire
 import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.APP_USAGE_SURVEY
@@ -125,6 +124,16 @@ class SurveysService(
             UPDATE ${QUESTIONNAIRES.name}
               SET ${ACTIVE.name} = NOT ${ACTIVE.name}
             WHERE ${STUDY_ID.name} = ? AND ${QUESTIONNAIRE_ID.name} = ?
+        """.trimIndent()
+
+        /**
+         * PreparedStatement bind order
+         * 1) studyId
+         */
+        private val GET_STUDY_QUESTIONNAIRES_SQL = """
+            SELECT $GET_QUESTIONNAIRE_COLS
+            FROM ${QUESTIONNAIRES.name}
+            WHERE ${STUDY_ID.name} = ?
         """.trimIndent()
     }
 
@@ -249,12 +258,26 @@ class SurveysService(
                     ps.setObject(1, studyId)
                     ps.setObject(2, questionnaireId)
                 }
-            ) {
+            ){
                 ResultSetAdapters.questionnaire(it)
             }.toList().first()
 
         } catch (ex: Exception) {
             logger.error("unable to fetch questionnaire: id = $questionnaireId, studyId = $studyId")
+            throw ex
+        }
+    }
+
+    override fun getStudyQuestionnaires(studyId: UUID): List<Questionnaire> {
+        try {
+            val hds = storageResolver.getPlatformStorage()
+            return BasePostgresIterable(PreparedStatementHolderSupplier(hds, GET_STUDY_QUESTIONNAIRES_SQL) { ps ->
+                ps.setObject(1, studyId)
+            }) {
+                ResultSetAdapters.questionnaire(it)
+            }.toList()
+        } catch (ex: Exception) {
+            logger.error("unable fetching study $studyId questionnaires")
             throw ex
         }
     }

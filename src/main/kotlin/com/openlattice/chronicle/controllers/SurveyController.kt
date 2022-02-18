@@ -118,8 +118,12 @@ class SurveyController(
         return OK()
     }
 
-    override fun getStudyQuestionnaires(studyId: UUID): List<Questionnaire> {
-        TODO("Not yet implemented")
+    @GetMapping(
+        path = [STUDY_ID_PATH + QUESTIONNAIRE_PATH],
+        produces = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    override fun getStudyQuestionnaires(@PathVariable(STUDY_ID) studyId: UUID): List<Questionnaire> {
+        return surveysService.getStudyQuestionnaires(studyId)
     }
 
     override fun submitQuestionnaireResponses(studyId: UUID, participantId: String, questionnaireId: UUID, responses: List<QuestionnaireResponse>): Int {
