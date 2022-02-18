@@ -12,6 +12,8 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.CHRONICLE_USAGE_EVENTS
 import com.openlattice.chronicle.storage.StorageResolver
 import org.slf4j.LoggerFactory
+import java.sql.Connection
+import java.time.OffsetDateTime
 
 /**
  * @author Solomon Tang <solomon@openlattice.com>

@@ -75,8 +75,7 @@ class BackgroundChronicleJobService(
                         }
                     } catch (ex: Exception) {
                         logger.error("Task could not be completed", ex)
-                    }
-                    finally {
+                    } finally {
                         available.release()
                     }
                 }
