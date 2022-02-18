@@ -48,6 +48,8 @@ class DataDownloadService(private val storageResolver: StorageResolver) : DataDo
              ${STUDY_ID.name} = ? AND ${PARTICIPANT_ID.name} = ?
         """.trimIndent()
 
+//        private val QUESTIONNAIRE_SUBMISSIONS_COLS =
+
         fun associateString(rs: ResultSet, pcd: PostgresColumnDefinition) = pcd.name to rs.getString(pcd.name)
         fun associateOffsetDatetimeWithTimezone(
             rs: ResultSet,
@@ -170,5 +172,13 @@ class DataDownloadService(private val storageResolver: StorageResolver) : DataDo
         sensors: Set<SensorType>
     ): Iterable<Map<String, Any>> {
         return getSensorDataHelper(studyId, participantId, sensors)
+    }
+
+    override fun downloadQuestionnaireResponses(
+        studyId: UUID,
+        participantId: String,
+        questionnaireId: UUID
+    ): Iterable<Map<String, Any>> {
+        TODO("Not yet implemented")
     }
 }

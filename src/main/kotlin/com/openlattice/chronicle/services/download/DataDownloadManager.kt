@@ -22,4 +22,10 @@ interface DataDownloadManager {
         participantId: String,
         sensors: Set<SensorType>
     ): Iterable<Map<String, Any>>
+
+    fun downloadQuestionnaireResponses(
+        studyId: UUID,
+        participantId: String,
+        questionnaireId: UUID
+    ): Iterable<Map<String, Any>>
 }
