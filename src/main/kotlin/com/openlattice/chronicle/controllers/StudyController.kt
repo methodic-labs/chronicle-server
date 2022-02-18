@@ -245,7 +245,7 @@ class StudyController @Inject constructor(
         path = [STUDY_ID_PATH],
         produces = [MediaType.APPLICATION_JSON_VALUE],
     )
-    override fun destroyStudy(@PathVariable studyId: UUID): UUID {
+    override fun destroyStudy(@PathVariable studyId: UUID): Iterable<UUID> {
         ensureOwnerAccess(AclKey(studyId))
         val currentUser = Principals.getCurrentSecurablePrincipal()
         logger.info("Deleting study with id $studyId")
@@ -304,20 +304,7 @@ class StudyController @Inject constructor(
         ensureValidStudy(studyId)
         ensureWriteAccess(AclKey(studyId))
 
-        return storageResolver.getPlatformStorage().connection.use { conn ->
-            AuditedOperationBuilder<UUID>(conn, auditingManager)
-                .operation { connection -> studyService.registerParticipant(connection, studyId, participant) }
-                .audit { candidateId ->
-                    listOf(
-                        AuditableEvent(
-                            AclKey(candidateId),
-                            eventType = AuditEventType.REGISTER_CANDIDATE,
-                            description = "Registering participant with $candidateId for study $studyId."
-                        )
-                    )
-                }
-                .buildAndRun()
-        }
+        return studyService.registerParticipant(studyId, participant)
     }
 
     @Timed

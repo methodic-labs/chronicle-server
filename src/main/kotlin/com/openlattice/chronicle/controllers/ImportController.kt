@@ -31,6 +31,7 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import java.sql.ResultSet
 import java.time.LocalDate
+import java.util.*
 
 /**
  *
@@ -59,15 +60,27 @@ class ImportController(
     override fun importStudies(config: ImportStudiesConfiguration) {
         ensureAdminAccess()
         val hds = dataSourceManager.getDataSource(config.dataSourceName)
-
-        val participants = BasePostgresIterable(
-            PreparedStatementHolderSupplier(hds, getCandidatesSql(config.candidatesTable)) {}
-        ) { participant(it) }
+        val studiesByEkId = mutableMapOf<UUID, Study>()
+        val studiesByLegacyStudyId = mutableMapOf<UUID,Study> ()
 
         val studies = BasePostgresIterable(
             PreparedStatementHolderSupplier(hds, getStudiesSql(config.candidatesTable)) {}
-        ) { study(it) }.forEach(studyService::createStudy)
+        ) {
+            val study = study(it)
+            val studyId = studyService.createStudy(study)
 
+            check(study.id == studyId) { "Safety check to make sure study id got set appropriately"}
+            studiesByEkId[it.getObject(LEGACY_STUDY_EK_ID, UUID::class.java)] = study
+            studiesByLegacyStudyId[it.getObject(LEGACY_STUDY_ID, UUID::class.java)] = study
+        }
+
+        val participants = BasePostgresIterable(
+            PreparedStatementHolderSupplier(hds, getCandidatesSql(config.candidatesTable)) {}
+        ) {
+            val participant = participant(it)
+            val studyEkId = it.getObject(LEGACY_STUDY_EK_ID, UUID::class.java)
+            studyService.registerParticipant()
+        }
     }
 
     private fun participant(rs: ResultSet): Participant {

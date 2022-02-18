@@ -25,4 +25,5 @@ interface StudyManager {
     fun getStudySettings(studyId: UUID): Map<String, Any>
     fun getStudyParticipants(studyId: UUID): Iterable<Participant>
     fun getStudySensors(studyId: UUID): Set<SensorType>
+    fun registerParticipant(studyId: UUID, participant: Participant): UUID
 }

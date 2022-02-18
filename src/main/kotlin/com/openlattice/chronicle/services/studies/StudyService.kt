@@ -379,6 +379,22 @@ class StudyService(
         }
     }
 
+    override fun registerParticipant( studyId: UUID, participant: Participant) : UUID {
+        return storageResolver.getPlatformStorage().connection.use { conn ->
+            AuditedOperationBuilder<UUID>(conn, auditingManager)
+                .operation { connection -> registerParticipant(connection, studyId, participant) }
+                .audit { candidateId ->
+                    listOf(
+                        AuditableEvent(
+                            AclKey(candidateId),
+                            eventType = AuditEventType.REGISTER_CANDIDATE,
+                            description = "Registering participant with $candidateId for study $studyId."
+                        )
+                    )
+                }
+                .buildAndRun()
+        }
+    }
     override fun registerParticipant(connection: Connection, studyId: UUID, participant: Participant): UUID {
         val candidateId = candidateService.registerCandidate(connection, participant.candidate)
         enrollmentService.registerParticipant(
