@@ -5,6 +5,7 @@ import com.geekbeast.postgres.PostgresArrays
 import com.geekbeast.postgres.PostgresDatatype
 import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
+import com.openlattice.chronicle.base.OK
 import com.openlattice.chronicle.data.ChronicleQuestionnaire
 import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.APP_USAGE_SURVEY
@@ -114,6 +115,17 @@ class SurveysService(
             FROM ${QUESTIONNAIRES.name}
             WHERE ${STUDY_ID.name} = ? AND ${QUESTIONNAIRE_ID.name} = ?
         """.trimIndent()
+
+        /**
+         * PreparedStatement bind order
+         * 1) studyId
+         * 2) questionnaireId
+         */
+        private val TOGGLE_QUESTIONNAIRE_STATUS_SQL = """
+            UPDATE ${QUESTIONNAIRES.name}
+              SET ${ACTIVE.name} = NOT ${ACTIVE.name}
+            WHERE ${STUDY_ID.name} = ? AND ${QUESTIONNAIRE_ID.name} = ?
+        """.trimIndent()
     }
 
     override fun getQuestionnaire(
@@ -195,8 +207,8 @@ class SurveysService(
     }
 
     override fun createQuestionnaire(studyId: UUID, questionnaireId: UUID, questionnaire: Questionnaire) {
-        val hds = storageResolver.getPlatformStorage()
         try {
+            val hds = storageResolver.getPlatformStorage()
             hds.connection.prepareStatement(CREATE_QUESTIONNAIRE_SQL).use { ps ->
                 var index = 0
                 ps.setObject(++index, studyId)
@@ -210,6 +222,21 @@ class SurveysService(
             }
         } catch (ex: Exception) {
             logger.error("unable to save questionnaire", ex)
+            throw ex
+        }
+    }
+
+    override fun toggleQuestionnaireStatus(studyId: UUID, questionnaireId: UUID) {
+        try {
+            val hds = storageResolver.getPlatformStorage()
+            val updated = hds.connection.prepareStatement(TOGGLE_QUESTIONNAIRE_STATUS_SQL).use { ps ->
+                ps.setObject(1, studyId)
+                ps.setObject(2, questionnaireId)
+                ps.executeUpdate()
+            }
+            if (updated != 1) throw Exception("no row matching studyId $studyId and questionnaireId $questionnaireId")
+        } catch (ex: Exception) {
+            logger.error("unable to toggle questionnaire active status")
             throw ex
         }
     }

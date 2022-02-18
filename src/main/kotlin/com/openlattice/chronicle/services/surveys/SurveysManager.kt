@@ -1,5 +1,6 @@
 package com.openlattice.chronicle.services.surveys
 
+import com.openlattice.chronicle.base.OK
 import com.openlattice.chronicle.data.ChronicleAppsUsageDetails
 import com.openlattice.chronicle.data.ChronicleQuestionnaire
 import com.openlattice.chronicle.survey.AppUsage
@@ -46,4 +47,9 @@ interface SurveysManager {
         studyId: UUID,
         questionnaireId: UUID
     ): Questionnaire
+
+    fun toggleQuestionnaireStatus(
+        studyId: UUID,
+        questionnaireId: UUID
+    )
 }

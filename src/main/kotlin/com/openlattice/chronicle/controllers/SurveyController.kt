@@ -5,6 +5,7 @@ import com.openlattice.chronicle.auditing.AuditingManager
 import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.authorization.AuthorizationManager
 import com.openlattice.chronicle.authorization.AuthorizingComponent
+import com.openlattice.chronicle.base.OK
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.services.surveys.SurveysService
 import com.openlattice.chronicle.survey.AppUsage
@@ -103,8 +104,18 @@ class SurveyController(
         return surveysService.getQuestionnaire(studyId, questionnaireId)
     }
 
-    override fun toggleQuestionnaireStatus(studyId: UUID, questionnaireId: UUID): Questionnaire {
-        TODO("Not yet implemented")
+    @PatchMapping(
+        path = [STUDY_ID_PATH + QUESTIONNAIRE_PATH + QUESTIONNAIRE_ID_PATH],
+        produces = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    override fun toggleQuestionnaireStatus(
+        @PathVariable(STUDY_ID) studyId: UUID,
+        @PathVariable(QUESTIONNAIRE_ID) questionnaireId: UUID
+    ): OK {
+        ensureWriteAccess(AclKey(studyId))
+        surveysService.toggleQuestionnaireStatus(studyId, questionnaireId)
+
+        return OK()
     }
 
     override fun getStudyQuestionnaires(studyId: UUID): List<Questionnaire> {
