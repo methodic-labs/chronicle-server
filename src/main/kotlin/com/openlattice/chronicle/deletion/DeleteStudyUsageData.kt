@@ -10,5 +10,5 @@ import java.util.*
 class DeleteStudyUsageData(
     override val studyId: UUID
 ) : ChronicleStudyJobDefinition {
-    var table: String = CHRONICLE_USAGE_EVENTS.name
+    val table: String = CHRONICLE_USAGE_EVENTS.name
 }
