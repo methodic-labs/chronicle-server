@@ -87,9 +87,9 @@ class StudyTests : ChronicleServerTests() {
 
         // client 1 is owner of orgs 1 & 2 and study 1 & 2
         // client 2 is owner of org 3 and study 3
-        val client1OrgId1 = chronicleClient.organizationsApi.createOrganization(organization1)
-        val client1OrgId2 = chronicleClient.organizationsApi.createOrganization(organization2)
-        val client2OrgId3 = chronicleClient2.organizationsApi.createOrganization(organization3)
+        val client1OrgId1 = chronicleClient.organizationApi.createOrganization(organization1)
+        val client1OrgId2 = chronicleClient.organizationApi.createOrganization(organization2)
+        val client2OrgId3 = chronicleClient2.organizationApi.createOrganization(organization3)
 
         // study 1 owned by client 1, org 1
         val study1OrgIds = setOf(client1OrgId1)

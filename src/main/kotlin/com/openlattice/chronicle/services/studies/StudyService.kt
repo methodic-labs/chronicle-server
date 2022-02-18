@@ -3,7 +3,6 @@ package com.openlattice.chronicle.services.studies
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.geekbeast.configuration.postgres.PostgresFlavor
 import com.geekbeast.mappers.mappers.ObjectMappers
-import com.openlattice.chronicle.storage.StorageResolver
 import com.geekbeast.postgres.PostgresArrays
 import com.geekbeast.postgres.PostgresDatatype
 import com.geekbeast.postgres.streams.BasePostgresIterable
@@ -11,8 +10,8 @@ import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
 import com.hazelcast.core.HazelcastInstance
 import com.openlattice.chronicle.auditing.*
 import com.openlattice.chronicle.authorization.AclKey
-import com.openlattice.chronicle.authorization.Permission.READ
 import com.openlattice.chronicle.authorization.AuthorizationManager
+import com.openlattice.chronicle.authorization.Permission.READ
 import com.openlattice.chronicle.authorization.SecurableObjectType
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.hazelcast.HazelcastMap
@@ -20,6 +19,7 @@ import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.ids.IdConstants
 import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.postgres.ResultSetAdapters
+import com.openlattice.chronicle.sensorkit.SensorType
 import com.openlattice.chronicle.services.candidates.CandidateManager
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.ORGANIZATION_STUDIES
@@ -47,8 +47,10 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_VERSION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TITLE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPDATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_ID
+import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.study.Study
 import com.openlattice.chronicle.study.StudyUpdate
+import com.openlattice.chronicle.util.ensureVanilla
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.sql.Connection
@@ -243,6 +245,10 @@ class StudyService(
             SELECT ${SETTINGS.name}
             FROM ${STUDIES.name}
             WHERE ${STUDY_ID.name} = ?
+        """.trimIndent()
+
+        private val SELECT_STUDY_PARTICIPANTS_SQL = """
+            SELECT * FROM ${STUDY_PARTICIPANTS.name} WHERE ${STUDY_ID.name} = ?
         """.trimIndent()
     }
 
@@ -450,5 +456,28 @@ class StudyService(
                 }
             }
         }
+    }
+
+    override fun getStudySensors(studyId: UUID): Set<SensorType> {
+        val settings = getStudySettings(studyId)
+        val sensors = settings[Study.SENSORS]
+        sensors?.let {
+            return (it as List<String>).map { sensor -> SensorType.valueOf(sensor) }.toSet()
+        }
+        return setOf()
+    }
+
+    override fun getStudyParticipants(studyId: UUID): Iterable<Participant> {
+        return selectStudyParticipants(studyId)
+    }
+
+    private fun selectStudyParticipants(studyId: UUID): Iterable<Participant> {
+        val (flavor, hds) = storageResolver.getDefaultPlatformStorage()
+        ensureVanilla(flavor)
+        return BasePostgresIterable(
+            PreparedStatementHolderSupplier(hds, SELECT_STUDY_PARTICIPANTS_SQL) { ps ->
+                ps.setObject(1, studyId)
+            }
+        ) { ResultSetAdapters.participant(it) }
     }
 }
