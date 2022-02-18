@@ -13,6 +13,8 @@ import com.openlattice.chronicle.authorization.AuthorizingComponent
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.base.OK
 import com.openlattice.chronicle.data.FileType
+import com.openlattice.chronicle.deletion.DeleteStudyAppUsageSurveyData
+import com.openlattice.chronicle.deletion.DeleteStudyTUDSubmissionData
 import com.openlattice.chronicle.deletion.DeleteStudyUsageData
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.ids.IdConstants
@@ -255,18 +257,33 @@ class StudyController @Inject constructor(
             contact = "test@openlattice.com",
             definition = DeleteStudyUsageData(studyId)
         )
+        val deleteStudyTUDSubmissionJob = ChronicleJob(
+            id = idGenerationService.getNextId(),
+            contact = "test@openlattice.com",
+            definition = DeleteStudyTUDSubmissionData(studyId)
+        )
+        val deleteStudyAppUsageSurveyJob = ChronicleJob(
+            id = idGenerationService.getNextId(),
+            contact = "test@openlattice.com",
+            definition = DeleteStudyAppUsageSurveyData(studyId)
+        )
+        val jobList = listOf(
+            deleteStudyDataJob,
+            deleteStudyTUDSubmissionJob,
+            deleteStudyAppUsageSurveyJob
+        )
         return storageResolver.getPlatformStorage().connection.use { conn ->
-            AuditedOperationBuilder<UUID>(conn, auditingManager)
+            AuditedOperationBuilder<Iterable<UUID>>(conn, auditingManager)
                 .operation { connection ->
-                    var jobId = chronicleJobService.createJob(connection, deleteStudyDataJob)
-                    logger.info("Created job with id = $jobId")
+                    val newJobIds = chronicleJobService.createJobs(connection, jobList)
+                    logger.info("Created jobs with ids = {}", newJobIds)
                     val studyIdList = listOf(studyId)
                     studyService.deleteStudies(connection, studyIdList)
                     studyService.removeStudiesFromOrganizations(connection, studyIdList)
                     studyService.removeAllParticipantsFromStudies(connection, studyIdList)
-                    return@operation jobId
+                    return@operation newJobIds
                 }
-                .audit { jobId ->
+                .audit { jobIds ->
                     listOf(
                         AuditableEvent(
                             AclKey(studyId),
@@ -277,16 +294,17 @@ class StudyController @Inject constructor(
                             studyId,
                             UUID(0, 0),
                             mapOf()
-                        ),
+                        )
+                    ) + jobIds.map {
                         AuditableEvent(
-                            AclKey(jobId),
+                            AclKey(it),
                             currentUser.id,
                             currentUser.principal,
                             AuditEventType.CREATE_JOB,
                             "",
                             studyId
-                        ),
-                    )
+                        )
+                    }
                 }
                 .buildAndRun()
         }
