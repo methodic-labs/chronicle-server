@@ -2,6 +2,7 @@ package com.openlattice.chronicle.controllers
 
 import com.codahale.metrics.annotation.Timed
 import com.geekbeast.configuration.postgres.PostgresFlavor
+import com.geekbeast.hazelcast.UUIDSet
 import com.google.common.collect.SetMultimap
 import com.openlattice.chronicle.auditing.AuditEventType
 import com.openlattice.chronicle.auditing.AuditableEvent
@@ -14,6 +15,8 @@ import com.openlattice.chronicle.authorization.Permission
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.base.OK
 import com.openlattice.chronicle.data.FileType
+import com.openlattice.chronicle.deletion.DeleteStudyAppUsageSurveyData
+import com.openlattice.chronicle.deletion.DeleteStudyTUDSubmissionData
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.ids.IdConstants
 import com.openlattice.chronicle.jobs.ChronicleJob
@@ -264,7 +267,7 @@ class StudyController @Inject constructor(
         path = [STUDY_ID_PATH],
         produces = [MediaType.APPLICATION_JSON_VALUE],
     )
-    override fun destroyStudy(@PathVariable studyId: UUID): UUID {
+    override fun destroyStudy(@PathVariable studyId: UUID): Iterable<UUID> {
         accessCheck(AclKey(studyId), EnumSet.of(Permission.OWNER))
         val currentUser = Principals.getCurrentSecurablePrincipal()
         logger.info("Deleting study with id $studyId")
@@ -274,18 +277,35 @@ class StudyController @Inject constructor(
             contact = "test@openlattice.com",
             definition = DeleteStudyUsageData(studyId)
         )
+        val deleteStudyTUDSubmissionJob = ChronicleJob(
+            id = idGenerationService.getNextId(),
+            contact = "test@openlattice.com",
+            definition = DeleteStudyTUDSubmissionData(studyId)
+        )
+        val deleteAppUsageSurveyJob = ChronicleJob(
+            id = idGenerationService.getNextId(),
+            contact = "test@openlattice.com",
+            definition = DeleteStudyAppUsageSurveyData(studyId)
+        )
         return storageResolver.getPlatformStorage().connection.use { conn ->
-            AuditedOperationBuilder<UUID>(conn, auditingManager)
+            AuditedOperationBuilder<List<UUID>>(conn, auditingManager)
                 .operation { connection ->
-                    var jobId = chronicleJobService.createJob(connection, deleteStudyDataJob)
-                    logger.info("Created job with id = $jobId")
+                    val deleteStudyJobId = chronicleJobService.createJob(connection, deleteStudyDataJob)
+                    val deleteTUDSJobId = chronicleJobService.createJob(connection, deleteStudyTUDSubmissionJob)
+                    val deleteAppUsageSurveyJobId = chronicleJobService.createJob(connection, deleteAppUsageSurveyJob)
+                    val newJobIds = listOf(
+                        deleteStudyJobId,
+                        deleteTUDSJobId,
+                        deleteAppUsageSurveyJobId,
+                    )
+                    logger.info("Created jobs with ids = {}", newJobIds)
                     val studyIdList = listOf(studyId)
                     studyService.deleteStudies(connection, studyIdList)
                     studyService.removeStudiesFromOrganizations(connection, studyIdList)
                     studyService.removeAllParticipantsFromStudies(connection, studyIdList)
-                    return@operation jobId
+                    return@operation newJobIds
                 }
-                .audit { jobId ->
+                .audit { jobIds ->
                     listOf(
                         AuditableEvent(
                             AclKey(studyId),
@@ -296,16 +316,17 @@ class StudyController @Inject constructor(
                             studyId,
                             UUID(0, 0),
                             mapOf()
-                        ),
+                        )
+                    ) + jobIds.map {
                         AuditableEvent(
-                            AclKey(jobId),
+                            AclKey(it),
                             currentUser.id,
                             currentUser.principal,
                             AuditEventType.CREATE_JOB,
                             "",
                             studyId
-                        ),
-                    )
+                        )
+                    }
                 }
                 .buildAndRun()
         }
