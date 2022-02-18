@@ -125,7 +125,7 @@ class ChronicleServerServicesPod {
     @Throws(IOException::class, ExecutionException::class)
     fun scheduledTasksManager(): ScheduledTasksManager {
         return ScheduledTasksManager(
-                storageResolver
+            storageResolver
         )
     }
 
@@ -203,7 +203,8 @@ class ChronicleServerServicesPod {
     @Throws(IOException::class, ExecutionException::class)
     fun surveysManager(): SurveysManager {
         return SurveysService(
-                storageResolver,
+            storageResolver,
+            enrollmentManager()
         )
     }
 

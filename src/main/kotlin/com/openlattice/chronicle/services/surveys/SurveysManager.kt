@@ -5,6 +5,7 @@ import com.openlattice.chronicle.data.ChronicleAppsUsageDetails
 import com.openlattice.chronicle.data.ChronicleQuestionnaire
 import com.openlattice.chronicle.survey.AppUsage
 import com.openlattice.chronicle.survey.Questionnaire
+import com.openlattice.chronicle.survey.QuestionnaireResponse
 import org.apache.olingo.commons.api.edm.FullQualifiedName
 import java.time.OffsetDateTime
 import java.util.*
@@ -56,4 +57,12 @@ interface SurveysManager {
     fun getStudyQuestionnaires(
         studyId: UUID
     ): List<Questionnaire>
+
+    fun submitQuestionnaireResponses(
+        studyId: UUID,
+        participantId: String,
+        questionnaireId: UUID,
+        submissionId: UUID,
+        responses: List<QuestionnaireResponse>
+    )
 }

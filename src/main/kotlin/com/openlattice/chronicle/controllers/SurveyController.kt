@@ -7,6 +7,7 @@ import com.openlattice.chronicle.authorization.AuthorizationManager
 import com.openlattice.chronicle.authorization.AuthorizingComponent
 import com.openlattice.chronicle.base.OK
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
+import com.openlattice.chronicle.services.enrollment.EnrollmentService
 import com.openlattice.chronicle.services.surveys.SurveysService
 import com.openlattice.chronicle.survey.AppUsage
 import com.openlattice.chronicle.survey.Questionnaire
@@ -27,6 +28,7 @@ import com.openlattice.chronicle.survey.SurveyApi.Companion.STUDY_ID_PATH
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.*
+import retrofit2.http.Body
 import java.time.OffsetDateTime
 import java.util.*
 import javax.inject.Inject
@@ -126,8 +128,19 @@ class SurveyController(
         return surveysService.getStudyQuestionnaires(studyId)
     }
 
-    override fun submitQuestionnaireResponses(studyId: UUID, participantId: String, questionnaireId: UUID, responses: List<QuestionnaireResponse>): Int {
-        TODO("Not yet implemented")
+    @PostMapping(
+        path = [STUDY_ID_PATH + PARTICIPANT_PATH + PARTICIPANT_ID_PATH + QUESTIONNAIRE_PATH + QUESTIONNAIRE_ID_PATH],
+        produces = []
+    )
+    override fun submitQuestionnaireResponses(
+        @PathVariable(STUDY_ID) studyId: UUID,
+        @PathVariable(PARTICIPANT_ID) participantId: String,
+        @PathVariable(QUESTIONNAIRE_ID) questionnaireId: UUID,
+        @RequestBody responses: List<QuestionnaireResponse>
+    ): OK {
+        val id = idGenerationService.getNextId()
+        surveysService.submitQuestionnaireResponses(studyId, participantId, questionnaireId, id, responses)
+        return OK()
     }
 
     override fun getQuestionnaireResponses(studyId: UUID, participantId: String, questionnaireId: UUID): Iterable<Map<String, Any>> {

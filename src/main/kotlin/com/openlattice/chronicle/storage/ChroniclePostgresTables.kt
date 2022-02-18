@@ -200,10 +200,12 @@ class ChroniclePostgresTables {
             .addColumns(
                 STUDY_ID,
                 PARTICIPANT_ID,
-                QUESTIONNAIRE_ID,
+                QUESTIONNAIRE_ID.foreignKey(QUESTIONNAIRES, QUESTIONNAIRE_ID),
+                SUBMISSION_ID,
                 COMPLETED_AT,
                 SUBMISSION
-            )
+            ).primaryKey(SUBMISSION_ID)
+
         /**
          * Authorization tables
          *

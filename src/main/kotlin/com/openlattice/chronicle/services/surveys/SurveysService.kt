@@ -7,8 +7,10 @@ import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
 import com.openlattice.chronicle.data.ChronicleQuestionnaire
 import com.openlattice.chronicle.postgres.ResultSetAdapters
+import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.APP_USAGE_SURVEY
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.QUESTIONNAIRES
+import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.QUESTIONNAIRE_SUBMISSIONS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACTIVE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CREATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DESCRIPTION
@@ -25,6 +27,7 @@ import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.CHRONICLE_
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.survey.AppUsage
 import com.openlattice.chronicle.survey.Questionnaire
+import com.openlattice.chronicle.survey.QuestionnaireResponse
 import com.openlattice.chronicle.util.ChronicleServerUtil.STUDY_PARTICIPANT
 import org.apache.olingo.commons.api.edm.FullQualifiedName
 import org.slf4j.LoggerFactory
@@ -42,6 +45,7 @@ import java.util.*
  */
 class SurveysService(
     private val storageResolver: StorageResolver,
+    private val enrollmentManager: EnrollmentManager
 ) : SurveysManager {
     companion object {
         private val logger = LoggerFactory.getLogger(SurveysService::class.java)
@@ -134,6 +138,25 @@ class SurveysService(
             SELECT $GET_QUESTIONNAIRE_COLS
             FROM ${QUESTIONNAIRES.name}
             WHERE ${STUDY_ID.name} = ?
+        """.trimIndent()
+
+        private val SUBMIT_QUESTIONNAIRE_COLS = QUESTIONNAIRE_SUBMISSIONS.columns.joinToString { it.name }
+        private val SUBMIT_QUESTIONNAIRE_PARAMS = QUESTIONNAIRE_SUBMISSIONS.columns.joinToString {
+            if (it.datatype == PostgresDatatype.JSONB) "?::jsonb" else "?"
+        }
+
+        /**
+         * PreparedStatement bind order
+         * 1) studyId
+         * 2) participantId
+         * 3) questionnaireId
+         * 4) submissionId
+         * 5) completedAt
+         * 6) submission
+         */
+        private val SUBMIT_QUESTIONNAIRE_SQL = """
+            INSERT INTO ${QUESTIONNAIRE_SUBMISSIONS.name} ($SUBMIT_QUESTIONNAIRE_COLS)
+            VALUES ($SUBMIT_QUESTIONNAIRE_PARAMS)
         """.trimIndent()
     }
 
@@ -258,7 +281,7 @@ class SurveysService(
                     ps.setObject(1, studyId)
                     ps.setObject(2, questionnaireId)
                 }
-            ){
+            ) {
                 ResultSetAdapters.questionnaire(it)
             }.toList().first()
 
@@ -278,6 +301,42 @@ class SurveysService(
             }.toList()
         } catch (ex: Exception) {
             logger.error("unable fetching study $studyId questionnaires")
+            throw ex
+        }
+    }
+
+    override fun submitQuestionnaireResponses(
+        studyId: UUID,
+        participantId: String,
+        questionnaireId: UUID,
+        submissionId: UUID,
+        responses: List<QuestionnaireResponse>
+    ) {
+        try {
+            val isKnownParticipant = enrollmentManager.isKnownParticipant(studyId, participantId)
+            if (!isKnownParticipant) {
+                logger.error(
+                    "cannot submit questionnaire because participant was not found $STUDY_PARTICIPANT",
+                    studyId,
+                    participantId
+                )
+                throw Exception("participant not found")
+            }
+            val rows = storageResolver.getPlatformStorage().connection.prepareStatement(SUBMIT_QUESTIONNAIRE_SQL).use { ps ->
+                var index = 0
+                ps.setObject(++index, studyId)
+                ps.setString(++index, participantId)
+                ps.setObject(++index, questionnaireId)
+                ps.setObject(++index, submissionId)
+                ps.setObject(++index, OffsetDateTime.now())
+                ps.setString(++index, mapper.writeValueAsString(responses))
+                ps.executeUpdate()
+            }
+            if (rows != 1) {
+                throw Exception("submission was not recorded")
+            }
+        } catch (ex: Exception) {
+            logger.error("error submitting questionnaire responses")
             throw ex
         }
     }

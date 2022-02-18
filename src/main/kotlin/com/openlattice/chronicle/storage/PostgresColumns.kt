@@ -51,7 +51,7 @@ class PostgresColumns {
         @JvmField val PRINCIPAL_ID = PostgresColumnDefinition("principal_id", PostgresDatatype.TEXT)
         @JvmField val PRINCIPAL_OF_ACL_KEY = PostgresColumnDefinition("principal_of_acl_key", PostgresDatatype.UUID_ARRAY)
         @JvmField val PRINCIPAL_TYPE = PostgresColumnDefinition("principal_type", PostgresDatatype.TEXT)
-        @JvmField val QUESTIONNAIRE_ID = PostgresColumnDefinition("id", PostgresDatatype.UUID).notNull()
+        @JvmField val QUESTIONNAIRE_ID = PostgresColumnDefinition("questionnaire_id", PostgresDatatype.UUID).notNull()
         @JvmField val QUESTIONS = PostgresColumnDefinition("questions", PostgresDatatype.JSONB).notNull()
         @JvmField val SCOPE = PostgresColumnDefinition("scope", PostgresDatatype.TEXT).notNull()
         @JvmField val SECURABLE_OBJECT_ID = PostgresColumnDefinition("id", PostgresDatatype.UUID).unique().notNull()
