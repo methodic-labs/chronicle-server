@@ -51,7 +51,7 @@ class BackgroundChronicleJobService(
 
         try {
             if (available.tryAcquire()) {
-                logger.info("Permit acquired to execute next chronicle job")
+                logger.info("Permit acquired to submit next chronicle job")
                 executor.execute {
                     try {
                         storageResolver.getPlatformStorage().connection.use { conn ->
@@ -81,7 +81,7 @@ class BackgroundChronicleJobService(
                     }
                 }
             } else {
-                logger.info("No permit acquired. Skipping chronicle job")
+                logger.info("No permits available. Skipping chronicle job submission.")
             }
         } catch (ex: InterruptedException) {
             logger.error("Error acquiring permit.", ex)
