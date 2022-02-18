@@ -2,7 +2,6 @@ package com.openlattice.chronicle.jobs
 
 import com.openlattice.chronicle.auditing.AuditableEvent
 import java.sql.Connection
-import java.util.concurrent.Callable
 
 /**
  *
