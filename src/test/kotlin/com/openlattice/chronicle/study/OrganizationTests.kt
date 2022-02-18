@@ -16,7 +16,7 @@ class OrganizationTests : ChronicleServerTests() {
 
     @Test
     fun createOrganization() {
-        val organizationsApi = chronicleClient.organizationsApi
+        val organizationsApi = chronicleClient.organizationApi
         val expected = Organization(title = "This is a test study.")
         val orgId =  organizationsApi.createOrganization(expected)
         expected.id = orgId
