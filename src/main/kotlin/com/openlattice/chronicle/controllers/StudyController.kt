@@ -219,7 +219,7 @@ class StudyController @Inject constructor(
         @RequestBody study: StudyUpdate,
         @RequestParam(value = RETRIEVE, required = false, defaultValue = "false") retrieve: Boolean
     ): Study? {
-        val studyAclKey = AclKey(studyId);
+        val studyAclKey = AclKey(studyId)
         ensureOwnerAccess(studyAclKey)
         val currentUser = Principals.getCurrentSecurablePrincipal()
         logger.info("Updating study with id $studyId on behalf of ${currentUser.principal.id}")
@@ -324,7 +324,6 @@ class StudyController @Inject constructor(
     ): Iterable<UUID> {
         ensureValidStudy(studyId)
         ensureWriteAccess(AclKey(studyId))
-        val currentUser = Principals.getCurrentSecurablePrincipal()
 
         val deleteParticipantUsageDataJob = ChronicleJob(
             id = idGenerationService.getNextId(),
@@ -357,23 +356,18 @@ class StudyController @Inject constructor(
                     return@operation newJobIds
                 }
                 .audit { jobIds ->
-                    participantIds.map {
+                    listOf(
                         AuditableEvent(
                             AclKey(studyId),
-                            currentUser.id,
-                            currentUser.principal,
-                            AuditEventType.DELETE_PARTICIPANT,
-                            "",
-                            studyId
+                            eventType = AuditEventType.DELETE_PARTICIPANT,
+                            description ="Participants $participantIds were removed from study $studyId",
+                            study = studyId
                         )
-                    } + jobIds.map {
+                    ) + jobIds.map {
                         AuditableEvent(
                             AclKey(it),
-                            currentUser.id,
-                            currentUser.principal,
-                            AuditEventType.CREATE_JOB,
-                            "",
-                            studyId
+                            eventType = AuditEventType.CREATE_JOB,
+                            study = studyId
                         )
                     }
                 }
