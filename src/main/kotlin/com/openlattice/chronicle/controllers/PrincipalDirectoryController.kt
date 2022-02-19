@@ -24,24 +24,51 @@ import com.auth0.json.mgmt.users.User
 import com.codahale.metrics.annotation.Timed
 import com.google.common.base.Preconditions
 import com.openlattice.chronicle.auditing.AuditingManager
-import com.openlattice.chronicle.authorization.*
+import com.openlattice.chronicle.authorization.AclKey
+import com.openlattice.chronicle.authorization.AuthorizationManager
+import com.openlattice.chronicle.authorization.AuthorizingComponent
+import com.openlattice.chronicle.authorization.Permission
+import com.openlattice.chronicle.authorization.Principal
+import com.openlattice.chronicle.authorization.PrincipalType
+import com.openlattice.chronicle.authorization.Role
+import com.openlattice.chronicle.authorization.SecurableObjectType
+import com.openlattice.chronicle.authorization.SecurablePrincipal
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.authorization.principals.SecurePrincipalsManager
 import com.openlattice.chronicle.base.OK
 import com.openlattice.chronicle.base.OK.Companion.ok
 import com.openlattice.chronicle.directory.UserDirectoryService
 import com.openlattice.chronicle.organizations.ChronicleOrganizationService
-import com.openlattice.chronicle.users.*
-import com.openlattice.chronicle.users.PrincipalApi.*
+import com.openlattice.chronicle.users.Auth0SyncService
+import com.openlattice.chronicle.users.Auth0UserSearchFields
+import com.openlattice.chronicle.users.DirectedAclKeys
+import com.openlattice.chronicle.users.PrincipalApi
+import com.openlattice.chronicle.users.PrincipalApi.CONTROLLER
+import com.openlattice.chronicle.users.PrincipalApi.CURRENT
+import com.openlattice.chronicle.users.PrincipalApi.ROLES
+import com.openlattice.chronicle.users.PrincipalApi.SEARCH
+import com.openlattice.chronicle.users.PrincipalApi.SYNC
+import com.openlattice.chronicle.users.PrincipalApi.UPDATE
+import com.openlattice.chronicle.users.PrincipalApi.USERS
+import com.openlattice.chronicle.users.PrincipalApi.USER_ID
+import com.openlattice.chronicle.users.PrincipalApi.USER_ID_PATH
+import com.openlattice.chronicle.users.UserListingService
 import org.springframework.http.MediaType
 import org.springframework.security.authentication.BadCredentialsException
-import org.springframework.web.bind.annotation.*
-import java.util.*
+import org.springframework.web.bind.annotation.DeleteMapping
+import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestMethod
+import org.springframework.web.bind.annotation.RestController
+import java.util.EnumSet
+import java.util.Objects
 import java.util.stream.Collectors
 import kotlin.streams.asSequence
 
 @RestController
-@RequestMapping(PrincipalApi.CONTROLLER)
+@RequestMapping(CONTROLLER)
 class PrincipalDirectoryController(
     override val authorizationManager: AuthorizationManager,
     val userDirectoryService: UserDirectoryService,
@@ -57,11 +84,11 @@ class PrincipalDirectoryController(
     @RequestMapping(method = [RequestMethod.POST], produces = [MediaType.APPLICATION_JSON_VALUE])
     override fun getSecurablePrincipal(@RequestBody principal: Principal): SecurablePrincipal {
         val aclKey: AclKey = spm.lookup(principal)
-        
+
         //TODO: Should we check read access if a user?
         if (principal.type != PrincipalType.USER) {
             ensureReadAccess(aclKey)
-        } 
+        }
         return spm.getSecurablePrincipal(aclKey)
     }
 
