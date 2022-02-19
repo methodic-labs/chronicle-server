@@ -37,7 +37,6 @@ class DeleteParticipantUsageDataRunner(
     }
 
     override fun runJob(connection: Connection, job: ChronicleJob): List<AuditableEvent> {
-        logger.info("Running delete participant usage events task.")
         // delete usage data from redshift with separate connection
         val (_, eventHds) = storageResolver.getDefaultEventStorage()
 

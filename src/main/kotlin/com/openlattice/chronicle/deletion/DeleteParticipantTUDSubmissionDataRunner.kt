@@ -29,8 +29,6 @@ class DeleteParticipantTUDSubmissionDataRunner : AbstractChronicleDeleteJobRunne
     }
 
     override fun runJob(connection: Connection, job: ChronicleJob): List<AuditableEvent> {
-        logger.info("Running delete participant tud submissions task.")
-
         job.definition as DeleteParticipantTUDSubmissionData
 
         val deletedRows = deleteTUDSubmissionData(connection, job.definition)
@@ -57,7 +55,7 @@ class DeleteParticipantTUDSubmissionDataRunner : AbstractChronicleDeleteJobRunne
     }
 
     private fun deleteTUDSubmissionData(connection: Connection, jobDefinition: DeleteParticipantTUDSubmissionData): Long {
-        logger.info("Deleting tud data with studyId = {} for participantIds = {}", jobDefinition.studyId, jobDefinition.participantIds)
+        logger.info("Deleting TUD submission data with studyId = {} for participantIds = {}", jobDefinition.studyId, jobDefinition.participantIds)
         return connection.prepareStatement(DELETE_PARTICIPANT_TUD_DATA_SQL).use { ps ->
             ps.setObject(1, jobDefinition.studyId)
             val pgParticipantIds = PostgresArrays.createTextArray(ps.connection, jobDefinition.participantIds)

@@ -27,7 +27,6 @@ class DeleteStudyTUDSubmissionDataRunner : AbstractChronicleDeleteJobRunner<Dele
     }
 
     override fun runJob(connection: Connection, job: ChronicleJob): List<AuditableEvent> {
-        logger.info("Running delete participant tud submissions task.")
 
         job.definition as DeleteStudyTUDSubmissionData
 

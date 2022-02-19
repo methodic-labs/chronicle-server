@@ -26,7 +26,6 @@ class DeleteStudyAppUsageSurveyDataRunner : AbstractChronicleDeleteJobRunner<Del
     }
 
     override fun runJob(connection: Connection, job: ChronicleJob): List<AuditableEvent> {
-        logger.info("Running delete study app usage survey data task.")
         job.definition as DeleteStudyAppUsageSurveyData
 
         val deletedRows = deleteAppUsageSurveyData(connection, job.definition)
