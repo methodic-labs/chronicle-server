@@ -27,7 +27,6 @@ import com.geekbeast.auth0.EMAIL
 import com.geekbeast.auth0.EMAIL_VERIFIED
 import com.geekbeast.auth0.USER_ID
 import com.geekbeast.authentication.Auth0Configuration
-import com.openlattice.users.UserListingService
 import com.openlattice.users.parseAlgorithm
 import org.slf4j.LoggerFactory
 import java.time.Instant
@@ -76,6 +75,10 @@ class LocalUserListingService(auth0Configuration: Auth0Configuration) : UserList
 
     override fun getUpdatedUsers(from: Instant, to: Instant): Sequence<User> {
         return users.values.asSequence()
+    }
+
+    override fun getUser(userId: String): User {
+        return users.getValue(userId)
     }
 
 }

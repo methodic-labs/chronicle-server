@@ -258,4 +258,7 @@ interface AuthorizationManager {
 
     @Timed
     fun getOwnersForSecurableObjects(aclKeys: Collection<AclKey>): SetMultimap<AclKey, Principal>
+
+    @Timed
+    fun deleteAllPrincipalPermissions(principal: Principal)
 }

@@ -20,10 +20,7 @@ package com.openlattice.chronicle.pods.servlet
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.openlattice.chronicle.constants.CustomMediaType
-import com.openlattice.chronicle.controllers.AdminController
-import com.openlattice.chronicle.controllers.CandidateController
-import com.openlattice.chronicle.controllers.ChronicleServerExceptionHandler
-import com.openlattice.chronicle.controllers.StudyController
+import com.openlattice.chronicle.controllers.*
 import com.openlattice.chronicle.controllers.legacy.ChronicleController
 import com.openlattice.chronicle.controllers.v2.ChronicleControllerV2
 import com.openlattice.chronicle.converters.LegacyPostgresDownloadCsvHttpMessageConverter
@@ -55,6 +52,7 @@ import javax.inject.Inject
         ChronicleControllerV2::class,
         StudyController::class,
         AdminController::class,
+        PrincipalDirectoryController::class
     ],
     includeFilters = [ComponentScan.Filter(
         value = [Controller::class, RestControllerAdvice::class],

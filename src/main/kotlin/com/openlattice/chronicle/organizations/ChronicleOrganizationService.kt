@@ -92,4 +92,8 @@ class ChronicleOrganizationService(
         ) { ResultSetAdapters.organization(it) }
     }
 
+    fun removeMemberFromAllOrganizations(principal: Principal) {
+        TODO("Not yet implemented")
+    }
+
 }
