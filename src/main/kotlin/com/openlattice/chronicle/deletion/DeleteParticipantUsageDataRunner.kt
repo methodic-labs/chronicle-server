@@ -69,11 +69,11 @@ class DeleteParticipantUsageDataRunner(
 
     // Delete participant usage data from event storage and return count of deleted rows
     private fun deleteParticipantUsageData(connection: Connection, jobDefinition: DeleteParticipantUsageData): Long {
-        logger.info("Deleting usage data with studyId = {}, participantIds = {}", jobDefinition.studyId, jobDefinition.participantIds)
+        logger.info("Deleting usage data with studyId = {} for participantIds = {}", jobDefinition.studyId, jobDefinition.participantIds)
         return connection.prepareStatement(DELETE_PARTICIPANT_USAGE_DATA_SQL).use { ps ->
             ps.setObject(1, jobDefinition.studyId)
             val pgParticipantIds = PostgresArrays.createUuidArray(ps.connection, jobDefinition.participantIds)
-            ps.setObject(2,pgParticipantIds)
+            ps.setObject(2, pgParticipantIds)
             ps.executeUpdate().toLong()
         }
     }
