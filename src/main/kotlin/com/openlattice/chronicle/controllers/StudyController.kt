@@ -1,7 +1,6 @@
 package com.openlattice.chronicle.controllers
 
 import com.codahale.metrics.annotation.Timed
-import com.geekbeast.configuration.postgres.PostgresFlavor
 import com.google.common.collect.SetMultimap
 import com.openlattice.chronicle.auditing.AuditEventType
 import com.openlattice.chronicle.auditing.AuditableEvent
@@ -13,6 +12,9 @@ import com.openlattice.chronicle.authorization.AuthorizingComponent
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.base.OK
 import com.openlattice.chronicle.data.FileType
+import com.openlattice.chronicle.deletion.DeleteParticipantAppUsageSurveyData
+import com.openlattice.chronicle.deletion.DeleteParticipantUsageData
+import com.openlattice.chronicle.deletion.DeleteParticipantTUDSubmissionData
 import com.openlattice.chronicle.deletion.DeleteStudyAppUsageSurveyData
 import com.openlattice.chronicle.deletion.DeleteStudyTUDSubmissionData
 import com.openlattice.chronicle.deletion.DeleteStudyUsageData
@@ -296,6 +298,75 @@ class StudyController @Inject constructor(
                             mapOf()
                         )
                     ) + jobIds.map {
+                        AuditableEvent(
+                            AclKey(it),
+                            currentUser.id,
+                            currentUser.principal,
+                            AuditEventType.CREATE_JOB,
+                            "",
+                            studyId
+                        )
+                    }
+                }
+                .buildAndRun()
+        }
+    }
+
+    @Timed
+    @DeleteMapping(
+        path = [STUDY_ID_PATH + PARTICIPANTS_PATH],
+        consumes = [MediaType.APPLICATION_JSON_VALUE],
+        produces = [MediaType.APPLICATION_JSON_VALUE],
+    )
+    override fun deleteParticipantsFromStudy(
+        @PathVariable(STUDY_ID) studyId: UUID,
+        @RequestBody participantIds: Set<String>
+    ): Iterable<UUID> {
+        ensureValidStudy(studyId)
+        ensureWriteAccess(AclKey(studyId))
+        val currentUser = Principals.getCurrentSecurablePrincipal()
+
+        val deleteParticipantUsageDataJob = ChronicleJob(
+            id = idGenerationService.getNextId(),
+            contact = "test@openlattice.com",
+            definition = DeleteParticipantUsageData(studyId, participantIds)
+        )
+        val deleteParticipantTUDSubmissionsJob = ChronicleJob(
+            id = idGenerationService.getNextId(),
+            contact = "test@openlattice.com",
+            definition = DeleteParticipantTUDSubmissionData(studyId, participantIds)
+        )
+        val deleteParticipantAppUsageSurveysJob = ChronicleJob(
+            id = idGenerationService.getNextId(),
+            contact = "test@openlattice.com",
+            definition = DeleteParticipantAppUsageSurveyData(studyId, participantIds)
+        )
+
+        val jobList = listOf(
+            deleteParticipantUsageDataJob,
+            deleteParticipantTUDSubmissionsJob,
+            deleteParticipantAppUsageSurveysJob,
+        )
+
+        return storageResolver.getPlatformStorage().connection.use { conn ->
+            AuditedOperationBuilder<Iterable<UUID>>(conn, auditingManager)
+                .operation { connection ->
+                    val newJobIds = chronicleJobService.createJobs(connection, jobList)
+                    logger.info("Created jobs with ids = {}", newJobIds)
+                    studyService.removeParticipantsFromStudy(connection, studyId, participantIds)
+                    return@operation newJobIds
+                }
+                .audit { jobIds ->
+                    participantIds.map {
+                        AuditableEvent(
+                            AclKey(studyId),
+                            currentUser.id,
+                            currentUser.principal,
+                            AuditEventType.DELETE_PARTICIPANT,
+                            "",
+                            studyId
+                        )
+                    } + jobIds.map {
                         AuditableEvent(
                             AclKey(it),
                             currentUser.id,
