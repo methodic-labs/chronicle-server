@@ -43,24 +43,25 @@ class DeleteParticipantTUDSubmissionDataRunner : AbstractChronicleDeleteJobRunne
 
         updateFinishedDeleteJob(connection, job)
 
-        return job.definition.participantIds.map { participantId ->
+        return listOf(
             AuditableEvent(
-                AclKey(participantId),
+                AclKey(job.definition.studyId),
                 job.securablePrincipalId,
                 job.principal,
                 eventType = AuditEventType.BACKGROUND_TUD_DATA_DELETION,
                 data = mapOf( "definition" to job.definition),
                 study = job.definition.studyId
             )
-        }
+        )
+
     }
 
     private fun deleteTUDSubmissionData(connection: Connection, jobDefinition: DeleteParticipantTUDSubmissionData): Long {
         logger.info("Deleting tud data with studyId = {} for participantIds = {}", jobDefinition.studyId, jobDefinition.participantIds)
         return connection.prepareStatement(DELETE_PARTICIPANT_TUD_DATA_SQL).use { ps ->
             ps.setObject(1, jobDefinition.studyId)
-            val pgParticipantIds = PostgresArrays.createUuidArray(ps.connection, jobDefinition.participantIds)
-            ps.setObject(2, pgParticipantIds)
+            val pgParticipantIds = PostgresArrays.createTextArray(ps.connection, jobDefinition.participantIds)
+            ps.setArray(2, pgParticipantIds)
             ps.executeUpdate().toLong()
         }
     }

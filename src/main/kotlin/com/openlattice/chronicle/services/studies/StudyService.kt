@@ -469,10 +469,10 @@ class StudyService(
         }
     }
 
-    override fun removeParticipantsFromStudy(connection: Connection, studyId: UUID, participantIds: Collection<UUID>): Int {
+    override fun removeParticipantsFromStudy(connection: Connection, studyId: UUID, participantIds: Collection<String>): Int {
         return connection.prepareStatement(REMOVE_PARTICIPANTS_FROM_STUDY_SQL).use { ps ->
             ps.setObject(1, studyId)
-            val pgParticipantIds = PostgresArrays.createUuidArray(ps.connection, participantIds)
+            val pgParticipantIds = PostgresArrays.createTextArray(ps.connection, participantIds)
             ps.setObject(2, pgParticipantIds)
             return ps.executeUpdate()
         }

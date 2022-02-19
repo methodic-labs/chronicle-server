@@ -31,7 +31,7 @@ class DeleteParticipantAppUsageSurveyDataRunner : AbstractChronicleDeleteJobRunn
     override fun runJob(connection: Connection, job: ChronicleJob): List<AuditableEvent> {
         logger.info("Running delete participant app usage survey data task.")
 
-        job.definition as DeleteParticipantTUDSubmissionData
+        job.definition as DeleteParticipantAppUsageSurveyData
 
         val deletedRows = deleteAppUsageSurveyData(connection, job.definition)
 
@@ -43,23 +43,23 @@ class DeleteParticipantAppUsageSurveyDataRunner : AbstractChronicleDeleteJobRunn
 
         updateFinishedDeleteJob(connection, job)
 
-        return job.definition.participantIds.map { participantId ->
+        return listOf(
             AuditableEvent(
-                AclKey(participantId),
+                AclKey(job.definition.studyId),
                 job.securablePrincipalId,
                 job.principal,
                 eventType = AuditEventType.BACKGROUND_APP_USAGE_SURVEY_DATA_DELETION,
                 data = mapOf( "definition" to job.definition),
                 study = job.definition.studyId
             )
-        }
+        )
     }
 
-    private fun deleteAppUsageSurveyData(connection: Connection, jobDefinition: DeleteParticipantTUDSubmissionData): Long {
+    private fun deleteAppUsageSurveyData(connection: Connection, jobDefinition: DeleteParticipantAppUsageSurveyData): Long {
         logger.info("Deleting app usage survey data with studyId = {} for participantIds = {}", jobDefinition.studyId, jobDefinition.participantIds)
         return connection.prepareStatement(DELETE_PARTICIPANT_APP_USAGE_SURVEY_DATA_SQL).use { ps ->
             ps.setObject(1, jobDefinition.studyId)
-            val pgParticipantIds = PostgresArrays.createUuidArray(ps.connection, jobDefinition.participantIds)
+            val pgParticipantIds = PostgresArrays.createTextArray(ps.connection, jobDefinition.participantIds)
             ps.setObject(2, pgParticipantIds)
             ps.executeUpdate().toLong()
         }

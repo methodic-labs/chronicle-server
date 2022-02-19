@@ -26,7 +26,7 @@ interface StudyManager {
     fun registerParticipant(connection: Connection, studyId: UUID, participant: Participant): UUID
     fun registerParticipant(studyId: UUID, participant: Participant): UUID
     fun removeAllParticipantsFromStudies(connection: Connection, studyIds: Collection<UUID>): Int
-    fun removeParticipantsFromStudy(connection: Connection, studyId: UUID, participantIds: Collection<UUID>): Int
+    fun removeParticipantsFromStudy(connection: Connection, studyId: UUID, participantIds: Collection<String>): Int
     fun removeStudiesFromOrganizations(connection: Connection, studyIds: Collection<UUID>): Int
     fun updateStudy(connection: Connection, studyId: UUID, study: StudyUpdate)
 }

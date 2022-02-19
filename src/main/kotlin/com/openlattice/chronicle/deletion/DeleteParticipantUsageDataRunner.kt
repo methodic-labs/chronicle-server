@@ -27,7 +27,7 @@ class DeleteParticipantUsageDataRunner(
 ) : AbstractChronicleDeleteJobRunner<DeleteParticipantUsageData>() {
 
     companion object {
-        private val logger = LoggerFactory.getLogger(DeleteStudyUsageDataRunner::class.java)!!
+        private val logger = LoggerFactory.getLogger(DeleteParticipantUsageDataRunner::class.java)!!
 
         private val DELETE_PARTICIPANT_USAGE_DATA_SQL = """
             DELETE FROM ${CHRONICLE_USAGE_EVENTS.name}
@@ -55,16 +55,16 @@ class DeleteParticipantUsageDataRunner(
 
         updateFinishedDeleteJob(connection, job)
 
-        return job.definition.participantIds.map { participantId ->
+        return listOf(
             AuditableEvent(
-                AclKey(participantId),
+                AclKey(job.definition.studyId),
                 job.securablePrincipalId,
                 job.principal,
                 eventType = AuditEventType.BACKGROUND_USAGE_DATA_DELETION,
                 data = mapOf( "definition" to job.definition),
                 study = job.definition.studyId
             )
-        }
+        )
     }
 
     // Delete participant usage data from event storage and return count of deleted rows
@@ -72,8 +72,8 @@ class DeleteParticipantUsageDataRunner(
         logger.info("Deleting usage data with studyId = {} for participantIds = {}", jobDefinition.studyId, jobDefinition.participantIds)
         return connection.prepareStatement(DELETE_PARTICIPANT_USAGE_DATA_SQL).use { ps ->
             ps.setObject(1, jobDefinition.studyId)
-            val pgParticipantIds = PostgresArrays.createUuidArray(ps.connection, jobDefinition.participantIds)
-            ps.setObject(2, pgParticipantIds)
+            val pgParticipantIds = PostgresArrays.createTextArray(ps.connection, jobDefinition.participantIds)
+            ps.setArray(2, pgParticipantIds)
             ps.executeUpdate().toLong()
         }
     }
