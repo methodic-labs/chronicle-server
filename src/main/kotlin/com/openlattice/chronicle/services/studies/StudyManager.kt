@@ -11,19 +11,22 @@ import java.util.UUID
  * @author Solomon Tang <solomon@openlattice.com>
  */
 interface StudyManager {
-    fun createStudy(study: Study): UUID
     fun createStudy(connection: Connection, study: Study)
-    fun getStudy(studyId: UUID): Study
-    fun getStudies(studyIds: Collection<UUID>): Iterable<Study>
+    fun createStudy(study: Study): UUID
     fun deleteStudies(connection: Connection, studyIds: Collection<UUID>): Int
     fun getOrgStudies(organizationId: UUID): List<Study>
-    fun updateStudy(connection: Connection, studyId: UUID, study: StudyUpdate)
-    fun registerParticipant(connection: Connection, studyId: UUID, participant: Participant): UUID
-    fun isNotificationsEnabled(studyId: UUID): Boolean
     fun getOrganizationIdForLegacyStudy(studyId: UUID): UUID
-    fun refreshStudyCache(studyIds: Set<UUID>)
-    fun getStudySettings(studyId: UUID): Map<String, Any>
+    fun getStudies(studyIds: Collection<UUID>): Iterable<Study>
+    fun getStudy(studyId: UUID): Study
     fun getStudyParticipants(studyId: UUID): Iterable<Participant>
     fun getStudySensors(studyId: UUID): Set<SensorType>
+    fun getStudySettings(studyId: UUID): Map<String, Any>
+    fun isNotificationsEnabled(studyId: UUID): Boolean
+    fun refreshStudyCache(studyIds: Set<UUID>)
+    fun registerParticipant(connection: Connection, studyId: UUID, participant: Participant): UUID
     fun registerParticipant(studyId: UUID, participant: Participant): UUID
+    fun removeAllParticipantsFromStudies(connection: Connection, studyIds: Collection<UUID>): Int
+    fun removeParticipantsFromStudy(connection: Connection, studyId: UUID, participantIds: Collection<UUID>): Int
+    fun removeStudiesFromOrganizations(connection: Connection, studyIds: Collection<UUID>): Int
+    fun updateStudy(connection: Connection, studyId: UUID, study: StudyUpdate)
 }

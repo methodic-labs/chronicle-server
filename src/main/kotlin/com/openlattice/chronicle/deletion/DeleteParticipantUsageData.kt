@@ -9,7 +9,7 @@ import java.util.UUID
  */
 class DeleteParticipantUsageData (
     override val studyId: UUID,
-    override val participantId: UUID
+    override val participantIds: Collection<UUID>
 ) : ChronicleParticipantJobDefinition {
     companion object {
         val table: String = CHRONICLE_USAGE_EVENTS.name
