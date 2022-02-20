@@ -64,7 +64,7 @@ class CandidateService(
     }
 
     override fun registerCandidate(connection: Connection, candidate: Candidate) : UUID {
-        if (candidate.id == IdConstants.UNINITIALIZED.id) {
+        return if (candidate.id == IdConstants.UNINITIALIZED.id) {
             candidate.id = idGenerationService.getNextId()
             insertCandidate(connection, candidate)
             authorizationService.createSecurableObject(
@@ -73,12 +73,11 @@ class CandidateService(
                 principal = Principals.getCurrentUser(),
                 objectType = SecurableObjectType.Candidate
             )
-            return candidate.id
+            candidate.id
         }
         else if (exists(connection, candidate.id)) {
-            return candidate.id
-        }
-        throw InvalidParameterException("cannot register candidate with an invalid id - ${candidate.id}")
+            candidate.id
+        } else throw InvalidParameterException("cannot register candidate with an invalid id - ${candidate.id}")
     }
 
     //

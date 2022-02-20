@@ -11,6 +11,7 @@ import java.util.UUID
  * @author Solomon Tang <solomon@openlattice.com>
  */
 interface StudyManager {
+    fun createStudy(study: Study): UUID
     fun createStudy(connection: Connection, study: Study)
     fun getStudy(studyId: UUID): Study
     fun getStudies(studyIds: Collection<UUID>): Iterable<Study>
@@ -24,4 +25,5 @@ interface StudyManager {
     fun getStudySettings(studyId: UUID): Map<String, Any>
     fun getStudyParticipants(studyId: UUID): Iterable<Participant>
     fun getStudySensors(studyId: UUID): Set<SensorType>
+    fun registerParticipant(studyId: UUID, participant: Participant): UUID
 }

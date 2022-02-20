@@ -82,8 +82,8 @@ class BackgroundChronicleJobService(
             } else {
                 logger.info("No permits available. Skipping chronicle job submission.")
             }
-        } catch (error: InterruptedException) {
-            logger.info("Error acquiring permit.", error)
+        } catch (ex: InterruptedException) {
+            logger.error("Error acquiring permit.", ex)
         }
     }
 

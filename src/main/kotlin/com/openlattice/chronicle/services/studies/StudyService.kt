@@ -1,20 +1,21 @@
 package com.openlattice.chronicle.services.studies
 
 import com.fasterxml.jackson.module.kotlin.readValue
+import com.geekbeast.configuration.postgres.PostgresFlavor
 import com.geekbeast.mappers.mappers.ObjectMappers
 import com.geekbeast.postgres.PostgresArrays
 import com.geekbeast.postgres.PostgresDatatype
 import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
 import com.hazelcast.core.HazelcastInstance
-import com.openlattice.chronicle.auditing.AuditingComponent
-import com.openlattice.chronicle.auditing.AuditingManager
+import com.openlattice.chronicle.auditing.*
 import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.authorization.AuthorizationManager
 import com.openlattice.chronicle.authorization.Permission.READ
 import com.openlattice.chronicle.authorization.SecurableObjectType
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.hazelcast.HazelcastMap
+import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.ids.IdConstants
 import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.postgres.ResultSetAdapters
@@ -65,6 +66,7 @@ class StudyService(
     private val authorizationService: AuthorizationManager,
     private val candidateService: CandidateManager,
     private val enrollmentService: EnrollmentManager,
+    private val idGenerationService: HazelcastIdGenerationService,
     override val auditingManager: AuditingManager,
     hazelcast: HazelcastInstance,
 ) : StudyManager, AuditingComponent {
@@ -250,6 +252,40 @@ class StudyService(
         """.trimIndent()
     }
 
+    override fun createStudy( study: Study ) : UUID {
+        val (flavor, hds) = storageResolver.getDefaultPlatformStorage()
+        check(flavor == PostgresFlavor.VANILLA) { "Only vanilla postgres supported for studies." }
+        study.id = idGenerationService.getNextId()
+
+        hds.connection.use { connection ->
+            AuditedOperationBuilder<Unit>(connection, auditingManager)
+                .operation { connection -> createStudy(connection, study) }
+                .audit {
+                    listOf(
+                        AuditableEvent(
+                            AclKey(study.id),
+                            eventType = AuditEventType.CREATE_STUDY,
+                            description = "",
+                            study = study.id,
+                            organization = IdConstants.UNINITIALIZED.id,
+                            data = mapOf()
+                        )
+                    ) + study.organizationIds.map { organizationId ->
+                        AuditableEvent(
+                            AclKey(study.id),
+                            eventType = AuditEventType.ASSOCIATE_STUDY,
+                            description = "",
+                            study = study.id,
+                            organization = organizationId,
+                            data = mapOf()
+                        )
+                    }
+                }
+                .buildAndRun()
+        }
+        return study.id
+    }
+
     override fun createStudy(connection: Connection, study: Study) {
         insertStudy(connection, study)
         insertOrgStudy(connection, study)
@@ -343,6 +379,22 @@ class StudyService(
         }
     }
 
+    override fun registerParticipant( studyId: UUID, participant: Participant) : UUID {
+        return storageResolver.getPlatformStorage().connection.use { conn ->
+            AuditedOperationBuilder<UUID>(conn, auditingManager)
+                .operation { connection -> registerParticipant(connection, studyId, participant) }
+                .audit { candidateId ->
+                    listOf(
+                        AuditableEvent(
+                            AclKey(candidateId),
+                            eventType = AuditEventType.REGISTER_CANDIDATE,
+                            description = "Registering participant with $candidateId for study $studyId."
+                        )
+                    )
+                }
+                .buildAndRun()
+        }
+    }
     override fun registerParticipant(connection: Connection, studyId: UUID, participant: Participant): UUID {
         val candidateId = candidateService.registerCandidate(connection, participant.candidate)
         enrollmentService.registerParticipant(

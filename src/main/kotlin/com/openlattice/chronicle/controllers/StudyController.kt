@@ -13,6 +13,8 @@ import com.openlattice.chronicle.authorization.AuthorizingComponent
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.base.OK
 import com.openlattice.chronicle.data.FileType
+import com.openlattice.chronicle.deletion.DeleteStudyAppUsageSurveyData
+import com.openlattice.chronicle.deletion.DeleteStudyTUDSubmissionData
 import com.openlattice.chronicle.deletion.DeleteStudyUsageData
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.ids.IdConstants
@@ -141,37 +143,7 @@ class StudyController @Inject constructor(
         ensureAuthenticated()
         study.organizationIds.forEach { organizationId -> ensureOwnerAccess(AclKey(organizationId)) }
         logger.info("Creating study associated with organizations ${study.organizationIds}")
-        val (flavor, hds) = storageResolver.getDefaultPlatformStorage()
-        check(flavor == PostgresFlavor.VANILLA) { "Only vanilla postgres supported for studies." }
-        study.id = idGenerationService.getNextId()
-
-        hds.connection.use { connection ->
-            AuditedOperationBuilder<Unit>(connection, auditingManager)
-                .operation { connection -> studyService.createStudy(connection, study) }
-                .audit {
-                    listOf(
-                        AuditableEvent(
-                            AclKey(study.id),
-                            eventType = AuditEventType.CREATE_STUDY,
-                            description = "",
-                            study = study.id,
-                            organization = IdConstants.UNINITIALIZED.id,
-                            data = mapOf()
-                        )
-                    ) + study.organizationIds.map { organizationId ->
-                        AuditableEvent(
-                            AclKey(study.id),
-                            eventType = AuditEventType.ASSOCIATE_STUDY,
-                            description = "",
-                            study = study.id,
-                            organization = organizationId,
-                            data = mapOf()
-                        )
-                    }
-                }
-                .buildAndRun()
-        }
-        return study.id
+        return studyService.createStudy(study)
     }
 
     @Timed
@@ -275,7 +247,7 @@ class StudyController @Inject constructor(
         path = [STUDY_ID_PATH],
         produces = [MediaType.APPLICATION_JSON_VALUE],
     )
-    override fun destroyStudy(@PathVariable studyId: UUID): UUID {
+    override fun destroyStudy(@PathVariable studyId: UUID): Iterable<UUID> {
         ensureOwnerAccess(AclKey(studyId))
         val currentUser = Principals.getCurrentSecurablePrincipal()
         logger.info("Deleting study with id $studyId")
@@ -285,18 +257,33 @@ class StudyController @Inject constructor(
             contact = "test@openlattice.com",
             definition = DeleteStudyUsageData(studyId)
         )
+        val deleteStudyTUDSubmissionJob = ChronicleJob(
+            id = idGenerationService.getNextId(),
+            contact = "test@openlattice.com",
+            definition = DeleteStudyTUDSubmissionData(studyId)
+        )
+        val deleteStudyAppUsageSurveyJob = ChronicleJob(
+            id = idGenerationService.getNextId(),
+            contact = "test@openlattice.com",
+            definition = DeleteStudyAppUsageSurveyData(studyId)
+        )
+        val jobList = listOf(
+            deleteStudyDataJob,
+            deleteStudyTUDSubmissionJob,
+            deleteStudyAppUsageSurveyJob
+        )
         return storageResolver.getPlatformStorage().connection.use { conn ->
-            AuditedOperationBuilder<UUID>(conn, auditingManager)
+            AuditedOperationBuilder<Iterable<UUID>>(conn, auditingManager)
                 .operation { connection ->
-                    var jobId = chronicleJobService.createJob(connection, deleteStudyDataJob)
-                    logger.info("Created job with id = $jobId")
+                    val newJobIds = chronicleJobService.createJobs(connection, jobList)
+                    logger.info("Created jobs with ids = {}", newJobIds)
                     val studyIdList = listOf(studyId)
                     studyService.deleteStudies(connection, studyIdList)
                     studyService.removeStudiesFromOrganizations(connection, studyIdList)
                     studyService.removeAllParticipantsFromStudies(connection, studyIdList)
-                    return@operation jobId
+                    return@operation newJobIds
                 }
-                .audit { jobId ->
+                .audit { jobIds ->
                     listOf(
                         AuditableEvent(
                             AclKey(studyId),
@@ -307,16 +294,17 @@ class StudyController @Inject constructor(
                             studyId,
                             UUID(0, 0),
                             mapOf()
-                        ),
+                        )
+                    ) + jobIds.map {
                         AuditableEvent(
-                            AclKey(jobId),
+                            AclKey(it),
                             currentUser.id,
                             currentUser.principal,
                             AuditEventType.CREATE_JOB,
                             "",
                             studyId
-                        ),
-                    )
+                        )
+                    }
                 }
                 .buildAndRun()
         }
@@ -334,20 +322,7 @@ class StudyController @Inject constructor(
         ensureValidStudy(studyId)
         ensureWriteAccess(AclKey(studyId))
 
-        return storageResolver.getPlatformStorage().connection.use { conn ->
-            AuditedOperationBuilder<UUID>(conn, auditingManager)
-                .operation { connection -> studyService.registerParticipant(connection, studyId, participant) }
-                .audit { candidateId ->
-                    listOf(
-                        AuditableEvent(
-                            AclKey(candidateId),
-                            eventType = AuditEventType.REGISTER_CANDIDATE,
-                            description = "Registering participant with $candidateId for study $studyId."
-                        )
-                    )
-                }
-                .buildAndRun()
-        }
+        return studyService.registerParticipant(studyId, participant)
     }
 
     @Timed
