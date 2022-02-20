@@ -55,7 +55,6 @@ class SurveysService(
     private val storageResolver: StorageResolver,
     private val enrollmentManager: EnrollmentManager,
     private val scheduledTasksManager: ScheduledTasksManager,
-    private val downloadManager: DataDownloadManager
 ) : SurveysManager {
     companion object {
         private val logger = LoggerFactory.getLogger(SurveysService::class.java)

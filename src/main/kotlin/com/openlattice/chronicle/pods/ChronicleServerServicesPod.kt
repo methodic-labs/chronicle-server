@@ -209,7 +209,6 @@ class ChronicleServerServicesPod {
             storageResolver,
             enrollmentManager(),
             scheduledTasksManager(),
-            dataDownloadManager()
         )
     }
 
