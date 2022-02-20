@@ -69,7 +69,6 @@ class SurveysService(
          * 2) participantId
          * 3) date
          */
-        // TODO: Later modify this query to only return certain event types (Move to Foreground, etc) that better represent apps that the user actually interacted with
         val GET_APP_USAGE_SQL = """
             SELECT ${APP_PACKAGE_NAME.name}, ${APPLICATION_LABEL.name}, ${TIMESTAMP.name}, ${TIMEZONE.name}
             FROM ${CHRONICLE_USAGE_EVENTS.name}
