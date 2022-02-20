@@ -5,23 +5,21 @@ import com.geekbeast.postgres.PostgresArrays
 import com.geekbeast.postgres.PostgresDatatype
 import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
-import com.geekbeast.util.log
 import com.openlattice.chronicle.data.LegacyChronicleQuestionnaire
 import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.services.ScheduledTasksManager
-import com.openlattice.chronicle.services.download.DataDownloadManager
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.APP_USAGE_SURVEY
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.QUESTIONNAIRES
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.QUESTIONNAIRE_SUBMISSIONS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACTIVE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.COMPLETED_AT
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.CREATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DESCRIPTION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.QUESTIONNAIRE_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.QUESTIONS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.QUESTION_TITLE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.RECURRENCE_RULE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.RESPONSES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TITLE
@@ -35,6 +33,7 @@ import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.survey.AppUsage
 import com.openlattice.chronicle.survey.Questionnaire
 import com.openlattice.chronicle.survey.QuestionnaireResponse
+import com.openlattice.chronicle.survey.QuestionnaireUpdate
 import com.openlattice.chronicle.util.ChronicleServerUtil.STUDY_PARTICIPANT
 import com.zaxxer.hikari.HikariDataSource
 import org.apache.olingo.commons.api.edm.FullQualifiedName
@@ -129,17 +128,6 @@ class SurveysService(
         /**
          * PreparedStatement bind order
          * 1) studyId
-         * 2) questionnaireId
-         */
-        private val TOGGLE_QUESTIONNAIRE_STATUS_SQL = """
-            UPDATE ${QUESTIONNAIRES.name}
-              SET ${ACTIVE.name} = NOT ${ACTIVE.name}
-            WHERE ${STUDY_ID.name} = ? AND ${QUESTIONNAIRE_ID.name} = ?
-        """.trimIndent()
-
-        /**
-         * PreparedStatement bind order
-         * 1) studyId
          */
         private val GET_STUDY_QUESTIONNAIRES_SQL = """
             SELECT $QUESTIONNAIRE_COLUMNS
@@ -176,6 +164,33 @@ class SurveysService(
             FROM ${QUESTIONNAIRE_SUBMISSIONS.name}
             WHERE ${STUDY_ID.name} = ? AND ${QUESTIONNAIRE_ID.name} = ?
         """.trimIndent()
+
+        /**
+         * PreparedStatement bind order
+         * 1) studyId
+         * 2) questionnaireId
+         */
+        val DELETE_QUESTIONNAIRE_SQL = """
+            DELETE FROM ${QUESTIONNAIRES.name}
+            WHERE ${STUDY_ID.name} = ? AND ${QUESTIONNAIRE_ID.name} = ?
+        """.trimIndent()
+
+        private fun getOptionalUpdateQuestionnaireSetClause(update: QuestionnaireUpdate): String {
+            var result = "";
+            update.description?.let { result += ", ${DESCRIPTION.name} = ? " }
+            update.recurrenceRule?.let { result += ", ${RECURRENCE_RULE.name} = ?" }
+            update.active?.let { result += ", ${ACTIVE.name} = ? " }
+            update.questions?.let { result += ", ${QUESTIONS.name} = ?::jsonb" }
+
+            return result
+        }
+        private fun getUpdateQuestionnaireSql(update: QuestionnaireUpdate): String {
+            return """
+            UPDATE ${QUESTIONNAIRES.name}
+              SET ${TITLE.name} = ? ${getOptionalUpdateQuestionnaireSetClause(update)}
+            WHERE ${STUDY_ID.name} = ? AND ${QUESTIONNAIRE_ID.name} = ?
+        """.trimIndent()
+        }
     }
 
     override fun getLegacyQuestionnaire(
@@ -277,14 +292,24 @@ class SurveysService(
         }
     }
 
-    override fun toggleQuestionnaireStatus(studyId: UUID, questionnaireId: UUID) {
+    override fun updateQuestionnaire(studyId: UUID, questionnaireId: UUID, update: QuestionnaireUpdate) {
         try {
             val hds = storageResolver.getPlatformStorage()
-            val updated = hds.connection.prepareStatement(TOGGLE_QUESTIONNAIRE_STATUS_SQL).use { ps ->
-                ps.setObject(1, studyId)
-                ps.setObject(2, questionnaireId)
-                ps.executeUpdate()
+            val updated = hds.connection.use { connection ->
+                connection.prepareStatement(getUpdateQuestionnaireSql(update)).use { ps ->
+                    var index = 0
+                    ps.setString(++index, update.title)
+                    update.description?.let { ps.setString(++index, it) }
+                    update.recurrenceRule?.let { ps.setString(++index, it.toString()) }
+                    update.active?.let { ps.setBoolean(++index, it) }
+                    update.questions?.let { ps.setString(++index, mapper.writeValueAsString(it)) }
+                    ps.setObject(++index, studyId)
+                    ps.setObject(++index, questionnaireId)
+
+                    ps.executeUpdate()
+                }
             }
+
             if (updated != 1) throw Exception("no row matching studyId $studyId and questionnaireId $questionnaireId")
         } catch (ex: Exception) {
             logger.error("unable to toggle questionnaire active status")
@@ -308,6 +333,20 @@ class SurveysService(
             logger.error("unable to fetch questionnaire: id = $questionnaireId, studyId = $studyId")
             throw ex
         }
+    }
+
+    override fun deleteQuestionnaire(studyId: UUID, questionnaireId: UUID) {
+       try {
+           val hds = storageResolver.getPlatformStorage()
+           hds.connection.prepareStatement(DELETE_QUESTIONNAIRE_SQL).use { ps ->
+               ps.setObject(1, studyId)
+               ps.setObject(2, questionnaireId)
+               ps.execute()
+           }
+       } catch (ex: Exception) {
+           logger.info("error deleting questionnaire $questionnaireId in study $studyId")
+           throw ex
+       }
     }
 
     override fun getStudyQuestionnaires(studyId: UUID): List<Questionnaire> {

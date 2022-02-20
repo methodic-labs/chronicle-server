@@ -10,10 +10,7 @@ import com.openlattice.chronicle.data.FileType
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.services.download.DataDownloadService
 import com.openlattice.chronicle.services.surveys.SurveysService
-import com.openlattice.chronicle.survey.AppUsage
-import com.openlattice.chronicle.survey.Questionnaire
-import com.openlattice.chronicle.survey.QuestionnaireResponse
-import com.openlattice.chronicle.survey.SurveyApi
+import com.openlattice.chronicle.survey.*
 import com.openlattice.chronicle.survey.SurveyApi.Companion.APP_USAGE_PATH
 import com.openlattice.chronicle.survey.SurveyApi.Companion.CONTROLLER
 import com.openlattice.chronicle.survey.SurveyApi.Companion.DATA_PATH
@@ -89,16 +86,23 @@ class SurveyController @Inject constructor(
         @PathVariable(STUDY_ID) studyId: UUID,
         @RequestBody questionnaire: Questionnaire
     ): UUID {
-        // ensureWriteAccess(AclKey(studyId))
-        // TODO: ensure study write access on study
+        ensureWriteAccess(AclKey(studyId))
         val id = idGenerationService.getNextId()
         surveysService.createQuestionnaire(studyId, id, questionnaire)
 
         return id
     }
 
-    override fun deleteQuestionnaire(studyId: UUID, questionnaireId: UUID) {
-        TODO("Not yet implemented")
+    @DeleteMapping(
+        path = [STUDY_ID_PATH + QUESTIONNAIRE_PATH + QUESTIONNAIRE_ID_PATH]
+    )
+    override fun deleteQuestionnaire(
+        @PathVariable(STUDY_ID) studyId: UUID,
+        @PathVariable(QUESTIONNAIRE_ID) questionnaireId: UUID
+    ): OK {
+        ensureOwnerAccess(AclKey(studyId))
+        surveysService.deleteQuestionnaire(studyId, questionnaireId)
+        return OK("Successfully deleted questionnaire $questionnaireId")
     }
 
     @GetMapping(
@@ -114,17 +118,18 @@ class SurveyController @Inject constructor(
 
     @PatchMapping(
         path = [STUDY_ID_PATH + QUESTIONNAIRE_PATH + QUESTIONNAIRE_ID_PATH],
-        produces = [MediaType.APPLICATION_JSON_VALUE]
+        consumes = [MediaType.APPLICATION_JSON_VALUE],
     )
-    override fun toggleQuestionnaireStatus(
+    override fun updateQuestionnaire(
         @PathVariable(STUDY_ID) studyId: UUID,
-        @PathVariable(QUESTIONNAIRE_ID) questionnaireId: UUID
+        @PathVariable(QUESTIONNAIRE_ID) questionnaireId: UUID,
+        @RequestBody update: QuestionnaireUpdate
     ): OK {
         // TODO: ensure write access on study
         // ensureWriteAccess(AclKey(studyId))
-        surveysService.toggleQuestionnaireStatus(studyId, questionnaireId)
+        surveysService.updateQuestionnaire(studyId, questionnaireId, update)
 
-        return OK()
+        return OK("Successfully updated questionnaire $questionnaireId")
     }
 
     @GetMapping(
