@@ -5,8 +5,10 @@ import com.geekbeast.postgres.PostgresArrays
 import com.geekbeast.postgres.PostgresDatatype
 import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
-import com.openlattice.chronicle.data.ChronicleQuestionnaire
+import com.openlattice.chronicle.data.LegacyChronicleQuestionnaire
 import com.openlattice.chronicle.postgres.ResultSetAdapters
+import com.openlattice.chronicle.services.ScheduledTasksManager
+import com.openlattice.chronicle.services.download.DataDownloadManager
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.APP_USAGE_SURVEY
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.QUESTIONNAIRES
@@ -21,6 +23,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TITLE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APPLICATION_LABEL
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_PACKAGE_NAME
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.INTERACTION_TYPE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMESTAMP
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMEZONE
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.CHRONICLE_USAGE_EVENTS
@@ -45,7 +48,9 @@ import java.util.*
  */
 class SurveysService(
     private val storageResolver: StorageResolver,
-    private val enrollmentManager: EnrollmentManager
+    private val enrollmentManager: EnrollmentManager,
+    private val scheduledTasksManager: ScheduledTasksManager,
+    private val downloadManager: DataDownloadManager
 ) : SurveysManager {
     companion object {
         private val logger = LoggerFactory.getLogger(SurveysService::class.java)
@@ -68,6 +73,7 @@ class SurveysService(
                 AND ${PARTICIPANT_ID.name} = ?
                 AND ${TIMESTAMP.name} >=  ?
                 AND ${TIMESTAMP.name} < ?
+                AND ${INTERACTION_TYPE.name} = 'Move to Foreground'
         """.trimIndent()
 
         /**
@@ -160,19 +166,19 @@ class SurveysService(
         """.trimIndent()
     }
 
-    override fun getQuestionnaire(
+    override fun getLegacyQuestionnaire(
         organizationId: UUID, studyId: UUID, questionnaireEKID: UUID
-    ): ChronicleQuestionnaire {
+    ): LegacyChronicleQuestionnaire {
         TODO("Not yet implemented")
     }
 
-    override fun getStudyQuestionnaires(
+    override fun getLegacyStudyQuestionnaires(
         organizationId: UUID, studyId: UUID
     ): Map<UUID, Map<FullQualifiedName, Set<Any>>> {
         return mapOf()
     }
 
-    override fun submitQuestionnaire(
+    override fun submitLegacyQuestionnaire(
         organizationId: UUID, studyId: UUID, participantId: String,
         questionnaireResponses: Map<UUID, Map<FullQualifiedName, Set<Any>>>
     ) {
@@ -219,7 +225,7 @@ class SurveysService(
             ) {
                 ResultSetAdapters.appUsage(it)
 
-            }.toList()
+            }.toList().filterNot { scheduledTasksManager.systemAppPackageNames.contains(it.appPackageName) }
 
             logger.info(
                 "fetched {} app usage entities spanning {} to {} $STUDY_PARTICIPANT",

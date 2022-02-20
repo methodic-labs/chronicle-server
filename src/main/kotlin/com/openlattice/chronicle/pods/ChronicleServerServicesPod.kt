@@ -207,7 +207,9 @@ class ChronicleServerServicesPod {
     fun surveysManager(): SurveysManager {
         return SurveysService(
             storageResolver,
-            enrollmentManager()
+            enrollmentManager(),
+            scheduledTasksManager(),
+            dataDownloadManager()
         )
     }
 

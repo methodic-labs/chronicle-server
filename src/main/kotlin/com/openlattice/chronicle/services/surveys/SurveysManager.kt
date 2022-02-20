@@ -1,8 +1,6 @@
 package com.openlattice.chronicle.services.surveys
 
-import com.openlattice.chronicle.base.OK
-import com.openlattice.chronicle.data.ChronicleAppsUsageDetails
-import com.openlattice.chronicle.data.ChronicleQuestionnaire
+import com.openlattice.chronicle.data.LegacyChronicleQuestionnaire
 import com.openlattice.chronicle.survey.AppUsage
 import com.openlattice.chronicle.survey.Questionnaire
 import com.openlattice.chronicle.survey.QuestionnaireResponse
@@ -16,9 +14,9 @@ import java.util.*
  */
 interface SurveysManager {
 
-    fun getQuestionnaire(organizationId: UUID, studyId: UUID, questionnaireEKID: UUID): ChronicleQuestionnaire
-    fun getStudyQuestionnaires(organizationId: UUID, studyId: UUID): Map<UUID, Map<FullQualifiedName, Set<Any>>>
-    fun submitQuestionnaire(
+    fun getLegacyQuestionnaire(organizationId: UUID, studyId: UUID, questionnaireEKID: UUID): LegacyChronicleQuestionnaire
+    fun getLegacyStudyQuestionnaires(organizationId: UUID, studyId: UUID): Map<UUID, Map<FullQualifiedName, Set<Any>>>
+    fun submitLegacyQuestionnaire(
             organizationId: UUID,
             studyId: UUID,
             participantId: String,

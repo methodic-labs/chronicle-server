@@ -4,7 +4,7 @@ import com.codahale.metrics.annotation.Timed
 import com.google.common.base.Optional
 import com.openlattice.chronicle.ChronicleStudyApi
 import com.openlattice.chronicle.data.ChronicleAppsUsageDetails
-import com.openlattice.chronicle.data.ChronicleQuestionnaire
+import com.openlattice.chronicle.data.LegacyChronicleQuestionnaire
 import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import com.openlattice.chronicle.services.studies.StudyManager
@@ -121,9 +121,9 @@ class ChronicleStudyController : ChronicleStudyApi {
     override fun getChronicleQuestionnaire(
         @PathVariable(ChronicleStudyApi.STUDY_ID) studyId: UUID,
         @PathVariable(ChronicleStudyApi.ENTITY_KEY_ID) questionnaireEKID: UUID
-    ): ChronicleQuestionnaire {
+    ): LegacyChronicleQuestionnaire {
         val organizationId = studyManager.getOrganizationIdForLegacyStudy(studyId)
-        return surveysManager.getQuestionnaire(organizationId, studyId, questionnaireEKID)
+        return surveysManager.getLegacyQuestionnaire(organizationId, studyId, questionnaireEKID)
     }
 
     @Timed
@@ -137,7 +137,7 @@ class ChronicleStudyController : ChronicleStudyApi {
         @RequestBody questionnaireResponses: Map<UUID, Map<FullQualifiedName, Set<Any>>>
     ) {
         val organizationId = studyManager.getOrganizationIdForLegacyStudy(studyId)
-        surveysManager.submitQuestionnaire(organizationId, studyId, participantId, questionnaireResponses)
+        surveysManager.submitLegacyQuestionnaire(organizationId, studyId, participantId, questionnaireResponses)
     }
 
     @Timed
@@ -149,7 +149,7 @@ class ChronicleStudyController : ChronicleStudyApi {
         @PathVariable(ChronicleStudyApi.STUDY_ID) studyId: UUID
     ): Map<UUID, Map<FullQualifiedName, Set<Any>>> {
         val organizationId = studyManager.getOrganizationIdForLegacyStudy(studyId)
-        return surveysManager.getStudyQuestionnaires(organizationId, studyId)
+        return surveysManager.getLegacyStudyQuestionnaires(organizationId, studyId)
     }
 
     @RequestMapping(

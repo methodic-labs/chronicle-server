@@ -9,7 +9,6 @@ import com.openlattice.chronicle.base.OK
 import com.openlattice.chronicle.data.FileType
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.services.download.DataDownloadService
-import com.openlattice.chronicle.services.enrollment.EnrollmentService
 import com.openlattice.chronicle.services.surveys.SurveysService
 import com.openlattice.chronicle.survey.AppUsage
 import com.openlattice.chronicle.survey.Questionnaire
@@ -32,8 +31,6 @@ import com.openlattice.chronicle.util.ChronicleServerUtil
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.*
-import retrofit2.http.Body
-import retrofit2.http.Path
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
