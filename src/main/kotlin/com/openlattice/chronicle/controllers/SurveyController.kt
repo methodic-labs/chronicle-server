@@ -125,8 +125,7 @@ class SurveyController @Inject constructor(
         @PathVariable(QUESTIONNAIRE_ID) questionnaireId: UUID,
         @RequestBody update: QuestionnaireUpdate
     ): OK {
-        // TODO: ensure write access on study
-        // ensureWriteAccess(AclKey(studyId))
+        ensureWriteAccess(AclKey(studyId))
         surveysService.updateQuestionnaire(studyId, questionnaireId, update)
 
         return OK("Successfully updated questionnaire $questionnaireId")
@@ -159,8 +158,8 @@ class SurveyController @Inject constructor(
         questionnaireId: UUID,
         fileType: FileType
     ): Iterable<Map<String, Any>> {
-        // TODO: ensure read on study
-       return downloadService.getQuestionnaireResponses(studyId, questionnaireId)
+        ensureReadAccess(AclKey(studyId))
+        return downloadService.getQuestionnaireResponses(studyId, questionnaireId)
     }
 
     @GetMapping(
@@ -174,9 +173,9 @@ class SurveyController @Inject constructor(
         httpServletResponse: HttpServletResponse
     ): Iterable<Map<String, Any>> {
 
-        val data =  getQuestionnaireResponses(studyId, questionnaireId, fileType)
+        val data = getQuestionnaireResponses(studyId, questionnaireId, fileType)
         //TODO: rename file
-        val fileName = "Questionnaire_${questionnaireId}_${LocalDate.now().format( DateTimeFormatter.BASIC_ISO_DATE )}"
+        val fileName = "Questionnaire_${questionnaireId}_${LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE)}"
 
         ChronicleServerUtil.setDownloadContentType(httpServletResponse, fileType)
         ChronicleServerUtil.setContentDisposition(httpServletResponse, fileName, fileType)
