@@ -111,6 +111,7 @@ class SurveysService(
          * 5) questions
          * 6) active
          * 7) date
+         * 8) recurrenceRule
          */
         private val CREATE_QUESTIONNAIRE_SQL = """
             INSERT INTO ${QUESTIONNAIRES.name}(${QUESTIONNAIRE_COLUMNS}) VALUES ($QUESTIONNAIRE_PARAMS)
@@ -272,6 +273,7 @@ class SurveysService(
                 ps.setString(++index, mapper.writeValueAsString(questionnaire.questions))
                 ps.setBoolean(++index, true)
                 ps.setObject(++index, OffsetDateTime.now())
+                ps.setString(++index, questionnaire.recurrenceRule?.toString())
                 ps.executeUpdate()
             }
         } catch (ex: Exception) {

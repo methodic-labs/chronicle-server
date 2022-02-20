@@ -178,6 +178,8 @@ dependencies {
     implementation "com.amazon.redshift:redshift-jdbc42:2.1.0.3"
     implementation "org.apache.commons:commons-text:${commonsText_version}"
 
+    implementation "org.dmfs:lib-recur:0.10.2"
+
     if (project.hasProperty('developmentMode') && project.developmentMode) {
         logger.quiet(project.name + " using project dependencies.")
         implementation project(":rhizome")

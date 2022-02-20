@@ -76,6 +76,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_OF_
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_TYPE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.QUESTIONNAIRE_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.QUESTIONS
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.RECURRENCE_RULE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_NAME
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_TYPE
@@ -99,6 +100,7 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.USERNAME
 import com.openlattice.chronicle.study.Study
 import com.openlattice.chronicle.survey.AppUsage
 import com.openlattice.chronicle.survey.Questionnaire
+import org.dmfs.rfc5545.recur.RecurrenceRule
 import org.slf4j.LoggerFactory
 import java.sql.ResultSet
 import java.sql.SQLException
@@ -401,7 +403,8 @@ class ResultSetAdapters {
                 rs.getObject(CREATED_AT.name, OffsetDateTime::class.java),
                 rs.getString(DESCRIPTION.name),
                 rs.getBoolean(ACTIVE.name),
-                mapper.readValue(rs.getString(QUESTIONS.name))
+                mapper.readValue(rs.getString(QUESTIONS.name)),
+                rs.getObject(RECURRENCE_RULE.name, RecurrenceRule::class.java)
             )
         }
     }
