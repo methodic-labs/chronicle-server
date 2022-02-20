@@ -50,7 +50,7 @@ class PostgresColumns {
         @JvmField val QUESTIONNAIRE_ID = PostgresColumnDefinition("questionnaire_id", PostgresDatatype.UUID).notNull()
         @JvmField val QUESTION_TITLE = PostgresColumnDefinition("question_title", PostgresDatatype.TEXT).notNull()
         @JvmField val QUESTIONS = PostgresColumnDefinition("questions", PostgresDatatype.JSONB).notNull()
-        @JvmField val RESPONSES = PostgresColumnDefinition("response", PostgresDatatype.JSONB).notNull()
+        @JvmField val RESPONSES = PostgresColumnDefinition("response", PostgresDatatype.TEXT_ARRAY)
         @JvmField val RECURRENCE_RULE = PostgresColumnDefinition("recurrence_rule", PostgresDatatype.TEXT)
         @JvmField val SCOPE = PostgresColumnDefinition("scope", PostgresDatatype.TEXT).notNull()
         @JvmField val SECURABLE_OBJECT_ID = PostgresColumnDefinition("id", PostgresDatatype.UUID).unique().notNull()

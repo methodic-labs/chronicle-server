@@ -89,7 +89,8 @@ class SurveyController @Inject constructor(
         @PathVariable(STUDY_ID) studyId: UUID,
         @RequestBody questionnaire: Questionnaire
     ): UUID {
-        ensureWriteAccess(AclKey(studyId))
+        // ensureWriteAccess(AclKey(studyId))
+        // TODO: ensure study write access on study
         val id = idGenerationService.getNextId()
         surveysService.createQuestionnaire(studyId, id, questionnaire)
 
@@ -119,7 +120,8 @@ class SurveyController @Inject constructor(
         @PathVariable(STUDY_ID) studyId: UUID,
         @PathVariable(QUESTIONNAIRE_ID) questionnaireId: UUID
     ): OK {
-        ensureWriteAccess(AclKey(studyId))
+        // TODO: ensure write access on study
+        // ensureWriteAccess(AclKey(studyId))
         surveysService.toggleQuestionnaireStatus(studyId, questionnaireId)
 
         return OK()
@@ -157,7 +159,7 @@ class SurveyController @Inject constructor(
     }
 
     @GetMapping(
-        path = [STUDY_ID_PATH + PARTICIPANT_PATH + QUESTIONNAIRE_PATH + QUESTIONNAIRE_ID_PATH + DATA_PATH],
+        path = [STUDY_ID_PATH + QUESTIONNAIRE_PATH + QUESTIONNAIRE_ID_PATH + DATA_PATH],
         produces = [MediaType.APPLICATION_JSON_VALUE]
     )
     fun downloadQuestionnaireResponses(

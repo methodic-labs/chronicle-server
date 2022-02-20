@@ -117,16 +117,13 @@ class SurveysService(
             INSERT INTO ${QUESTIONNAIRES.name}(${QUESTIONNAIRE_COLUMNS}) VALUES ($QUESTIONNAIRE_PARAMS)
         """.trimIndent()
 
-        private val GET_QUESTIONNAIRE_COLS = setOf(QUESTIONNAIRE_ID, TITLE, DESCRIPTION, QUESTIONS, ACTIVE, CREATED_AT)
-            .joinToString { it.name }
-
         /**
          * PreparedStatement bind order
          * 1) studyId
          * 2) questionnaireId
          */
         private val GET_QUESTIONNAIRE_SQL = """
-            SELECT $GET_QUESTIONNAIRE_COLS
+            SELECT $QUESTIONNAIRE_COLUMNS
             FROM ${QUESTIONNAIRES.name}
             WHERE ${STUDY_ID.name} = ? AND ${QUESTIONNAIRE_ID.name} = ?
         """.trimIndent()
@@ -147,7 +144,7 @@ class SurveysService(
          * 1) studyId
          */
         private val GET_STUDY_QUESTIONNAIRES_SQL = """
-            SELECT $GET_QUESTIONNAIRE_COLS
+            SELECT $QUESTIONNAIRE_COLUMNS
             FROM ${QUESTIONNAIRES.name}
             WHERE ${STUDY_ID.name} = ?
         """.trimIndent()
@@ -179,7 +176,7 @@ class SurveysService(
         val GET_QUESTIONNAIRE_SUBMISSIONS_SQL = """
             SELECT ${PARTICIPANT_ID.name}, ${QUESTION_TITLE.name}, ${COMPLETED_AT.name}, ${RESPONSES.name}
             FROM ${QUESTIONNAIRE_SUBMISSIONS.name}
-            WHERE $STUDY_ID = ? AND ${QUESTIONNAIRE_ID.name} = ?
+            WHERE ${STUDY_ID.name} = ? AND ${QUESTIONNAIRE_ID.name} = ?
         """.trimIndent()
     }
 
@@ -307,7 +304,7 @@ class SurveysService(
                 }
             ) {
                 ResultSetAdapters.questionnaire(it)
-            }.toList().first()
+            }.first()
 
         } catch (ex: Exception) {
             logger.error("unable to fetch questionnaire: id = $questionnaireId, studyId = $studyId")

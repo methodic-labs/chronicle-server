@@ -204,7 +204,7 @@ class ChroniclePostgresTables {
             .addColumns(
                 STUDY_ID,
                 PARTICIPANT_ID,
-                QUESTIONNAIRE_ID.foreignKey(QUESTIONNAIRES, QUESTIONNAIRE_ID),
+                QUESTIONNAIRE_ID,
                 COMPLETED_AT,
                 QUESTION_TITLE,
                 RESPONSES,

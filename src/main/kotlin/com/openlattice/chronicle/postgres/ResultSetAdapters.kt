@@ -397,6 +397,8 @@ class ResultSetAdapters {
 
         @Throws(SQLException::class)
         fun questionnaire(rs: ResultSet): Questionnaire {
+            val recur = rs.getString(RECURRENCE_RULE.name)
+            val recurrenceRule = if (recur != null ) RecurrenceRule(recur) else null
             return Questionnaire(
                 rs.getObject(QUESTIONNAIRE_ID.name, UUID::class.java),
                 rs.getString(TITLE.name),
@@ -404,7 +406,7 @@ class ResultSetAdapters {
                 rs.getString(DESCRIPTION.name),
                 rs.getBoolean(ACTIVE.name),
                 mapper.readValue(rs.getString(QUESTIONS.name)),
-                rs.getObject(RECURRENCE_RULE.name, RecurrenceRule::class.java)
+                recurrenceRule
             )
         }
     }
