@@ -39,6 +39,8 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_OF_
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_TYPE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.QUESTIONNAIRE_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.QUESTIONS
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.QUESTION_TITLE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.RESPONSES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SCOPE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_NAME
@@ -201,10 +203,10 @@ class ChroniclePostgresTables {
                 STUDY_ID,
                 PARTICIPANT_ID,
                 QUESTIONNAIRE_ID.foreignKey(QUESTIONNAIRES, QUESTIONNAIRE_ID),
-                SUBMISSION_ID,
                 COMPLETED_AT,
-                SUBMISSION
-            ).primaryKey(SUBMISSION_ID)
+                QUESTION_TITLE,
+                RESPONSES,
+            ).primaryKey(QUESTION_TITLE, RESPONSES)
 
         /**
          * Authorization tables

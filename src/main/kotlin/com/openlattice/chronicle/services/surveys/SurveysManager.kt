@@ -2,6 +2,7 @@ package com.openlattice.chronicle.services.surveys
 
 import com.openlattice.chronicle.data.LegacyChronicleQuestionnaire
 import com.openlattice.chronicle.survey.AppUsage
+import com.openlattice.chronicle.survey.Question
 import com.openlattice.chronicle.survey.Questionnaire
 import com.openlattice.chronicle.survey.QuestionnaireResponse
 import org.apache.olingo.commons.api.edm.FullQualifiedName
@@ -60,7 +61,6 @@ interface SurveysManager {
         studyId: UUID,
         participantId: String,
         questionnaireId: UUID,
-        submissionId: UUID,
         responses: List<QuestionnaireResponse>
     )
 }

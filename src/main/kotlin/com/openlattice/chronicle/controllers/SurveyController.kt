@@ -27,6 +27,7 @@ import com.openlattice.chronicle.survey.SurveyApi.Companion.QUESTIONNAIRE_PATH
 import com.openlattice.chronicle.survey.SurveyApi.Companion.START_DATE
 import com.openlattice.chronicle.survey.SurveyApi.Companion.STUDY_ID
 import com.openlattice.chronicle.survey.SurveyApi.Companion.STUDY_ID_PATH
+import com.openlattice.chronicle.survey.SurveyApi.Companion.TYPE
 import com.openlattice.chronicle.util.ChronicleServerUtil
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.MediaType
@@ -142,13 +143,17 @@ class SurveyController @Inject constructor(
         @PathVariable(QUESTIONNAIRE_ID) questionnaireId: UUID,
         @RequestBody responses: List<QuestionnaireResponse>
     ): OK {
-        val id = idGenerationService.getNextId()
-        surveysService.submitQuestionnaireResponses(studyId, participantId, questionnaireId, id, responses)
+        surveysService.submitQuestionnaireResponses(studyId, participantId, questionnaireId, responses)
         return OK()
     }
 
-    override fun getQuestionnaireResponses(studyId: UUID, participantId: String, questionnaireId: UUID): Iterable<Map<String, Any>> {
-        TODO("Not yet implemented")
+    override fun getQuestionnaireResponses(
+        studyId: UUID,
+        questionnaireId: UUID,
+        fileType: FileType
+    ): Iterable<Map<String, Any>> {
+        // TODO: ensure read on study
+       return downloadService.getQuestionnaireResponses(studyId, questionnaireId)
     }
 
     @GetMapping(
@@ -157,16 +162,17 @@ class SurveyController @Inject constructor(
     )
     fun downloadQuestionnaireResponses(
         @PathVariable(STUDY_ID) studyId: UUID,
-        @PathVariable(PARTICIPANT_ID) participantId: String,
         @PathVariable(QUESTIONNAIRE_ID) questionnaireId: UUID,
+        @RequestParam(value = TYPE) fileType: FileType,
         httpServletResponse: HttpServletResponse
     ): Iterable<Map<String, Any>> {
 
-        val data =  getQuestionnaireResponses(studyId, participantId, questionnaireId)
-        val fileName = "Questionnaire_${LocalDate.now().format( DateTimeFormatter.BASIC_ISO_DATE )}_$participantId"
+        val data =  getQuestionnaireResponses(studyId, questionnaireId, fileType)
+        //TODO: rename file
+        val fileName = "Questionnaire_${questionnaireId}_${LocalDate.now().format( DateTimeFormatter.BASIC_ISO_DATE )}"
 
-        ChronicleServerUtil.setDownloadContentType(httpServletResponse, FileType.csv)
-        ChronicleServerUtil.setContentDisposition(httpServletResponse, fileName, FileType.csv)
+        ChronicleServerUtil.setDownloadContentType(httpServletResponse, fileType)
+        ChronicleServerUtil.setContentDisposition(httpServletResponse, fileName, fileType)
 
         return data
     }
