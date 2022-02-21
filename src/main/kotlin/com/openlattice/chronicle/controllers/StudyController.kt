@@ -54,6 +54,7 @@ import com.openlattice.chronicle.study.StudyApi.Companion.SOURCE_DEVICE_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.SOURCE_DEVICE_ID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.STUDY_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.STUDY_ID_PATH
+import com.openlattice.chronicle.study.StudyApi.Companion.VERIFY_PATH
 import com.openlattice.chronicle.study.StudyUpdate
 import com.openlattice.chronicle.util.ChronicleServerUtil
 import org.slf4j.LoggerFactory
@@ -452,6 +453,17 @@ class StudyController @Inject constructor(
         ensureAuthenticated()
         ensureReadAccess(AclKey(studyId))
         return studyService.getStudyParticipants(studyId)
+    }
+
+    @Timed
+    @GetMapping(
+        path = [STUDY_ID_PATH + PARTICIPANT_PATH + PARTICIPANT_ID_PATH + VERIFY_PATH]
+    )
+    override fun isKnownParticipant(
+        @PathVariable(STUDY_ID) studyId: UUID,
+        @PathVariable(PARTICIPANT_ID) participantId: String
+    ): Boolean {
+       return enrollmentService.isKnownParticipant(studyId, participantId)
     }
 
     /**
