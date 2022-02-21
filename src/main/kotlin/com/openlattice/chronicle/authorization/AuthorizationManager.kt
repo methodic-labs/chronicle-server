@@ -261,4 +261,10 @@ interface AuthorizationManager {
 
     @Timed
     fun deleteAllPrincipalPermissions(principal: Principal)
+    @Timed
+    fun listAuthorizedObjectsOfType(
+        principals: Set<Principal>,
+        objectType: SecurableObjectType,
+        permissions: EnumSet<Permission>
+    ): List<AclKey>
 }

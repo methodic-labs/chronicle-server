@@ -472,6 +472,10 @@ class HazelcastAuthorizationService(
     }
 
     @Timed
+    @Deprecated(
+        message = "Deprecated inefficient version using stream",
+        replaceWith = ReplaceWith("listAuthorizedObjectsOfType")
+    )
     override fun getAuthorizedObjectsOfType(
         principals: Set<Principal>,
         objectType: SecurableObjectType,
@@ -490,6 +494,24 @@ class HazelcastAuthorizationService(
             .stream()
             .map { it.aclKey }
             .distinct()
+    }
+
+    @Timed
+    override fun listAuthorizedObjectsOfType(
+        principals: Set<Principal>,
+        objectType: SecurableObjectType,
+        permissions: EnumSet<Permission>
+    ): List<AclKey> {
+        val principalPredicate = if (principals.size == 1) hasPrincipal(principals.first()) else hasAnyPrincipals(
+            principals
+        )
+        val p = Predicates.and<AceKey, AceValue>(
+            principalPredicate,
+            hasType(objectType),
+            hasExactPermissions(permissions)
+        )
+
+        return aces.keySet(p).map { it.aclKey }
     }
 
     @Timed
