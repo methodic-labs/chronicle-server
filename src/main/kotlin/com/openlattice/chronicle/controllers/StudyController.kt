@@ -466,6 +466,10 @@ class StudyController @Inject constructor(
        return enrollmentService.isKnownParticipant(studyId, participantId)
     }
 
+    override fun getAllStudies(): Iterable<Study> {
+        TODO("Not yet implemented")
+    }
+
     /**
      * Ensures that study id provided is for a valid study.
      *
