@@ -27,10 +27,11 @@ import org.springframework.context.annotation.Configuration
 
 @Configuration
 class ChronicleServerServletsPod {
+
     @Bean
-    fun edmServlet(): DispatcherServletConfiguration {
+    fun chronicleServlet(): DispatcherServletConfiguration {
         return DispatcherServletConfiguration(
-            "chronicle", arrayOf("/chronicle/*"),
+            "chronicle", arrayOf("/chronicle/*", "/datastore/*"),
             1,
             Lists.newArrayList<Class<*>>(ChronicleServerMvcPod::class.java)
         )

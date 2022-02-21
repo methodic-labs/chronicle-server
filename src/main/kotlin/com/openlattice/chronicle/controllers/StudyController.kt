@@ -7,9 +7,7 @@ import com.openlattice.chronicle.auditing.AuditEventType
 import com.openlattice.chronicle.auditing.AuditableEvent
 import com.openlattice.chronicle.auditing.AuditedOperationBuilder
 import com.openlattice.chronicle.auditing.AuditingManager
-import com.openlattice.chronicle.authorization.AclKey
-import com.openlattice.chronicle.authorization.AuthorizationManager
-import com.openlattice.chronicle.authorization.AuthorizingComponent
+import com.openlattice.chronicle.authorization.*
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.base.OK
 import com.openlattice.chronicle.data.FileType
@@ -68,9 +66,11 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
-import java.util.UUID
+import java.util.*
 import javax.inject.Inject
 import javax.servlet.http.HttpServletResponse
+import kotlin.NoSuchElementException
+import kotlin.streams.asSequence
 
 
 /**
@@ -452,6 +452,32 @@ class StudyController @Inject constructor(
         ensureAuthenticated()
         ensureReadAccess(AclKey(studyId))
         return studyService.getStudyParticipants(studyId)
+    }
+
+    @Timed
+    @GetMapping(
+        path = ["","/"],
+        produces = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    override fun getAllStudies(): Iterable<Study> {
+        ensureAuthenticated()
+        val studyAclKeys = authorizationManager.listAuthorizedObjectsOfType(
+            Principals.getCurrentPrincipals(),
+            SecurableObjectType.Study,
+            EnumSet.of(Permission.READ)
+        )
+        val studies = studyService.getStudies(studyAclKeys.mapTo(mutableSetOf()) { it.first() })
+
+        auditingManager.recordEvents(studies.map {
+            AuditableEvent(
+                aclKey = AclKey(it.id),
+                eventType = AuditEventType.GET_ALL_STUDIES,
+                study = it.id,
+                description = "Loaded all accessible studies."
+            )
+        })
+
+        return studies
     }
 
     /**

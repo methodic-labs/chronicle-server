@@ -45,4 +45,5 @@ enum class AuditEventType {
     SUBMIT_TIME_USE_DIARY,
     UPDATE_STUDY,
     UPDATE_STUDY_SETTINGS,
+    GET_ALL_STUDIES,
 }
