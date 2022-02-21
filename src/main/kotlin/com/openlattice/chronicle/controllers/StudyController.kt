@@ -454,6 +454,11 @@ class StudyController @Inject constructor(
         return studyService.getStudyParticipants(studyId)
     }
 
+    @Timed
+    @GetMapping(
+        path = ["","/"],
+        produces = [MediaType.APPLICATION_JSON_VALUE]
+    )
     override fun getAllStudies(): Iterable<Study> {
         ensureAuthenticated()
         val studyAclKeys = authorizationManager.listAuthorizedObjectsOfType(
