@@ -131,7 +131,7 @@ class QuestionnaireTests : ChronicleServerTests() {
         Questionnaire(
             id = null,
             title = "Bad questionnaire",
-            description = "Questionnaire with duplicate titles",
+            description = "Questionnaire with no questions",
             recurrenceRule = null,
             active = false,
             questions = listOf(),
