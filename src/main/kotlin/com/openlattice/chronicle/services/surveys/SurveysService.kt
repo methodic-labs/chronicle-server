@@ -10,6 +10,7 @@ import com.openlattice.chronicle.auditing.AuditableEvent
 import com.openlattice.chronicle.auditing.AuditingComponent
 import com.openlattice.chronicle.auditing.AuditingManager
 import com.openlattice.chronicle.authorization.AclKey
+import com.openlattice.chronicle.constants.EdmConstants
 import com.openlattice.chronicle.data.LegacyChronicleQuestionnaire
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.postgres.ResultSetAdapters
@@ -213,7 +214,15 @@ class SurveysService(
     override fun getLegacyStudyQuestionnaires(
         organizationId: UUID, studyId: UUID
     ): Map<UUID, Map<FullQualifiedName, Set<Any>>> {
-        return mapOf()
+        val questionnaires = getStudyQuestionnaires(studyId)
+        return questionnaires.associate { questionnaire ->
+            questionnaire.id!! to mapOf(
+                EdmConstants.NAME_FQN to setOf(questionnaire.title),
+                EdmConstants.ACTIVE_FQN to setOf(questionnaire.active),
+                EdmConstants.RRULE_FQN to setOf(questionnaire.recurrenceRule ?: ""),
+                EdmConstants.DESCRIPTION_FQN to setOf(questionnaire.description)
+            )
+        }
     }
 
     override fun submitLegacyQuestionnaire(
