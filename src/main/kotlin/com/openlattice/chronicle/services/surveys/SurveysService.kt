@@ -100,7 +100,7 @@ class SurveysService(
          * 8) timezone
          */
         val SUBMIT_APP_USAGE_SURVEY_SQL = """
-            INSERT INTO ${APP_USAGE_SURVEY.name}($APP_USAGE_SURVEY_COLS) VALUES ($APP_USAGE_SURVEY_PARAMS)
+            INSERT INTO ${APP_USAGE_SURVEY.name} ($APP_USAGE_SURVEY_COLS) VALUES ($APP_USAGE_SURVEY_PARAMS)
             ON CONFLICT DO NOTHING
         """.trimIndent()
 
@@ -295,7 +295,7 @@ class SurveysService(
                 ps.setString(++index, mapper.writeValueAsString(questionnaire.questions))
                 ps.setBoolean(++index, true)
                 ps.setObject(++index, OffsetDateTime.now())
-                ps.setString(++index, questionnaire.recurrenceRule?.toString())
+                ps.setString(++index, questionnaire.recurrenceRule)
                 ps.executeUpdate()
             }
 
@@ -323,7 +323,7 @@ class SurveysService(
                     var index = 0
                     ps.setString(++index, update.title)
                     update.description?.let { ps.setString(++index, it) }
-                    update.recurrenceRule?.let { ps.setString(++index, it.toString()) }
+                    update.recurrenceRule?.let { ps.setString(++index, it) }
                     update.active?.let { ps.setBoolean(++index, it) }
                     update.questions?.let { ps.setString(++index, mapper.writeValueAsString(it)) }
                     ps.setObject(++index, studyId)
@@ -334,7 +334,7 @@ class SurveysService(
             }
 
             if (updated != 1) throw Exception("no row matching studyId $studyId and questionnaireId $questionnaireId")
-            
+
             recordEvent(
                 AuditableEvent(
                     aclKey = AclKey(studyId),
