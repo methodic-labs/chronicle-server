@@ -7,6 +7,7 @@ import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
 import com.openlattice.chronicle.auditing.AuditEventType
 import com.openlattice.chronicle.auditing.AuditableEvent
+import com.openlattice.chronicle.auditing.AuditingComponent
 import com.openlattice.chronicle.auditing.AuditingManager
 import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.data.LegacyChronicleQuestionnaire
@@ -43,6 +44,7 @@ import com.openlattice.chronicle.util.ChronicleServerUtil.STUDY_PARTICIPANT
 import com.zaxxer.hikari.HikariDataSource
 import org.apache.olingo.commons.api.edm.FullQualifiedName
 import org.slf4j.LoggerFactory
+import org.springframework.stereotype.Service
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.util.*
@@ -55,13 +57,14 @@ import java.util.*
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
  */
+@Service
 class SurveysService(
     private val storageResolver: StorageResolver,
     private val enrollmentManager: EnrollmentManager,
     private val scheduledTasksManager: ScheduledTasksManager,
-    private val auditingManager: AuditingManager,
+    override val auditingManager: AuditingManager,
     val idGenerationService: HazelcastIdGenerationService
-) : SurveysManager {
+) : SurveysManager, AuditingComponent {
     companion object {
         private val logger = LoggerFactory.getLogger(SurveysService::class.java)
         private val mapper = ObjectMappers.newJsonMapper()
@@ -296,14 +299,14 @@ class SurveysService(
                 ps.executeUpdate()
             }
 
-            auditingManager.recordEvents(listOf(
+            recordEvent(
                 AuditableEvent(
                     AclKey(studyId),
                     eventType = AuditEventType.CREATE_QUESTIONNAIRE,
                     description = "Created questionnaire with id $questionnaireId",
                     study = studyId,
                 )
-            ))
+            )
 
             return questionnaireId
         } catch (ex: Exception) {
@@ -331,15 +334,15 @@ class SurveysService(
             }
 
             if (updated != 1) throw Exception("no row matching studyId $studyId and questionnaireId $questionnaireId")
-
-            auditingManager.recordEvents(listOf(
+            
+            recordEvent(
                 AuditableEvent(
                     aclKey = AclKey(studyId),
                     eventType = AuditEventType.UPDATE_QUESTIONNAIRE,
                     description = "Updated questionnaire with id $questionnaireId",
                     study = studyId
                 )
-            ))
+            )
         } catch (ex: Exception) {
             logger.error("unable to toggle questionnaire active status")
             throw ex
@@ -373,14 +376,13 @@ class SurveysService(
                 ps.execute()
             }
 
-            auditingManager.recordEvents(listOf(
-                AuditableEvent(
-                    aclKey = AclKey(studyId),
-                    eventType = AuditEventType.DELETE_QUESTIONNAIRE,
-                    description = "Deleted questionnaire of id $questionnaireId",
-                    study = studyId
-                )
+            recordEvent(AuditableEvent(
+                aclKey = AclKey(studyId),
+                eventType = AuditEventType.DELETE_QUESTIONNAIRE,
+                description = "Deleted questionnaire of id $questionnaireId",
+                study = studyId
             ))
+
         } catch (ex: Exception) {
             logger.info("error deleting questionnaire $questionnaireId in study $studyId")
             throw ex
