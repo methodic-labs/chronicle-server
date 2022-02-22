@@ -51,6 +51,8 @@ class DataDownloadService(
              ${STUDY_ID.name} = ? AND ${PARTICIPANT_ID.name} = ?
         """.trimIndent()
 
+        private const val FETCH_SIZE = 32768
+
         fun associateString(rs: ResultSet, pcd: PostgresColumnDefinition) = pcd.name to rs.getString(pcd.name)
         fun associateOffsetDatetimeWithTimezone(
             rs: ResultSet,
@@ -99,7 +101,7 @@ class DataDownloadService(
             PreparedStatementHolderSupplier(
                 hds,
                 CHRONICLE_USAGE_EVENT_SQL,
-                32768
+                FETCH_SIZE
             ) { ps ->
                 ps.setString(1, studyId.toString())
                 ps.setString(2, participantId)
@@ -134,7 +136,7 @@ class DataDownloadService(
             PreparedStatementHolderSupplier(
                 hds,
                 sql,
-                32768
+                FETCH_SIZE
             ) { ps ->
                 var index = 0
                 ps.setString(++index, studyId.toString())
@@ -166,7 +168,7 @@ class DataDownloadService(
             PreparedStatementHolderSupplier(
                 hds = storageResolver.getPlatformStorage(),
                 SurveysService.GET_QUESTIONNAIRE_SUBMISSIONS_SQL,
-                32768
+                FETCH_SIZE
             ) { ps ->
                 ps.setObject(1, studyId)
                 ps.setObject(2, questionnaireId)
