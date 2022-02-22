@@ -34,6 +34,7 @@ import java.util.concurrent.locks.Lock
 import java.util.concurrent.locks.ReentrantLock
 
 class Principals {
+
     companion object {
         private val logger = LoggerFactory
             .getLogger(Principals::class.java)
