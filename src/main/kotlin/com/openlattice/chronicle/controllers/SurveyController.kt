@@ -135,6 +135,7 @@ class SurveyController @Inject constructor(
     }
 
     @Timed
+    @Timed
     @GetMapping(
         path = [STUDY_ID_PATH + QUESTIONNAIRE_PATH],
         produces = [MediaType.APPLICATION_JSON_VALUE]
