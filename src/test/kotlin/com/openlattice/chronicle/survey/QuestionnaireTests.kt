@@ -2,6 +2,7 @@ package com.openlattice.chronicle.survey
 
 import com.openlattice.chronicle.ChronicleServerTests
 import com.openlattice.chronicle.client.ChronicleClient
+import com.openlattice.chronicle.constants.EdmConstants
 import com.openlattice.chronicle.util.TestDataFactory
 import org.dmfs.rfc5545.recur.RecurrenceRule
 import org.junit.Assert
@@ -84,6 +85,30 @@ class QuestionnaireTests : ChronicleServerTests() {
         Assert.assertEquals(questionnaires.size, 2)
     }
 
+
+    @Test
+    fun testLegacyGetQuestionnaires() {
+        val studyApi = chronicleClient.studyApi
+        val surveyApi = chronicleClient.surveyApi
+        val legacyStudyApi = chronicleClient.legacyChronicleStudyApi
+
+        val studyId = studyApi.createStudy(TestDataFactory.study())
+        val questionnaire = questionnaire()
+        questionnaire.recurrenceRule = RecurrenceRule("FREQ=DAILY;BYHOUR=19;BYMINUTE=0;BYSECOND=0").toString()
+        val questionnaireId = surveyApi.createQuestionnaire(studyId, questionnaire)
+
+        val v3Questionnaire = surveyApi.getQuestionnaire(studyId, questionnaireId)
+        val legacyQuestionnaires = legacyStudyApi.getStudyQuestionnaires(studyId)
+
+        Assert.assertEquals(legacyQuestionnaires.size, 1)
+        Assert.assertEquals(legacyQuestionnaires.keys.first(), questionnaireId)
+
+        val legacyQuestionnaire = legacyQuestionnaires.getValue(questionnaireId)
+        Assert.assertEquals(legacyQuestionnaire.getValue(EdmConstants.NAME_FQN).iterator().next().toString(), v3Questionnaire.title)
+        Assert.assertEquals(legacyQuestionnaire.getValue(EdmConstants.DESCRIPTION_FQN).iterator().next().toString(), v3Questionnaire.description)
+        Assert.assertEquals(legacyQuestionnaire.getValue(EdmConstants.ACTIVE_FQN).iterator().next() as Boolean, v3Questionnaire.active)
+        Assert.assertEquals(legacyQuestionnaire.getValue(EdmConstants.RRULE_FQN).iterator().next().toString(), v3Questionnaire.recurrenceRule)
+    }
 
     @Test(expected = Exception::class)
     fun testDuplicateQuestionsShouldThrow() {
