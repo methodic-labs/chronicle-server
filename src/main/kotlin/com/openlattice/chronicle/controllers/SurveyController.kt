@@ -119,6 +119,7 @@ class SurveyController @Inject constructor(
     }
 
     @Timed
+    @Timed
     @PatchMapping(
         path = [STUDY_ID_PATH + QUESTIONNAIRE_PATH + QUESTIONNAIRE_ID_PATH],
         consumes = [MediaType.APPLICATION_JSON_VALUE],
