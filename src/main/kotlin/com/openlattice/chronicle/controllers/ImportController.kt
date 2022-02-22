@@ -25,6 +25,7 @@ import com.openlattice.chronicle.services.studies.StudyService
 import com.openlattice.chronicle.services.timeusediary.TimeUseDiaryService
 import com.openlattice.chronicle.services.upload.AppDataUploadService
 import com.openlattice.chronicle.study.Study
+import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
@@ -50,7 +51,9 @@ class ImportController(
     override val auditingManager: AuditingManager,
     hazelcast: HazelcastInstance
 ) : ImportApi, AuthorizingComponent {
-
+    companion object {
+        private val logger = LoggerFactory.getLogger(ImportController::class.java)
+    }
 
     @PostMapping(
         path = [STUDIES],
@@ -69,6 +72,8 @@ class ImportController(
             val study = study(it)
             val studyId = studyService.createStudy(study)
 
+            logger.info("Created study {}",study)
+
             check(study.id == studyId) { "Safety check to make sure study id got set appropriately" }
             studiesByEkId[it.getObject(LEGACY_STUDY_EK_ID, UUID::class.java)] = study
             studiesByLegacyStudyId[it.getObject(LEGACY_STUDY_ID, UUID::class.java)] = study
@@ -85,6 +90,7 @@ class ImportController(
                 "Missing study with legacy id $studyEkId"
             )
             studyService.registerParticipant(study.id, participant)
+            logger.info("Registered participant {} in study {}", participant.participantId, study)
         }
     }
 
