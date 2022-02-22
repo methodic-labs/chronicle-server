@@ -87,10 +87,7 @@ class SurveyController @Inject constructor(
         @RequestBody questionnaire: Questionnaire
     ): UUID {
         ensureWriteAccess(AclKey(studyId))
-        val id = idGenerationService.getNextId()
-        surveysService.createQuestionnaire(studyId, id, questionnaire)
-
-        return id
+        return surveysService.createQuestionnaire(studyId, questionnaire)
     }
 
     @Timed

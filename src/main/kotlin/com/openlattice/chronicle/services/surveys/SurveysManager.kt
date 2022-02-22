@@ -39,9 +39,8 @@ interface SurveysManager {
 
     fun createQuestionnaire(
         studyId: UUID,
-        questionnaireId: UUID,
         questionnaire: Questionnaire
-    )
+    ): UUID
 
     fun getQuestionnaire(
         studyId: UUID,

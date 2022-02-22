@@ -5,7 +5,12 @@ import com.geekbeast.postgres.PostgresArrays
 import com.geekbeast.postgres.PostgresDatatype
 import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
+import com.openlattice.chronicle.auditing.AuditEventType
+import com.openlattice.chronicle.auditing.AuditableEvent
+import com.openlattice.chronicle.auditing.AuditingManager
+import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.data.LegacyChronicleQuestionnaire
+import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.services.ScheduledTasksManager
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
@@ -54,6 +59,8 @@ class SurveysService(
     private val storageResolver: StorageResolver,
     private val enrollmentManager: EnrollmentManager,
     private val scheduledTasksManager: ScheduledTasksManager,
+    private val auditingManager: AuditingManager,
+    val idGenerationService: HazelcastIdGenerationService
 ) : SurveysManager {
     companion object {
         private val logger = LoggerFactory.getLogger(SurveysService::class.java)
@@ -184,6 +191,7 @@ class SurveysService(
 
             return result
         }
+
         private fun getUpdateQuestionnaireSql(update: QuestionnaireUpdate): String {
             return """
             UPDATE ${QUESTIONNAIRES.name}
@@ -271,8 +279,9 @@ class SurveysService(
         }
     }
 
-    override fun createQuestionnaire(studyId: UUID, questionnaireId: UUID, questionnaire: Questionnaire) {
+    override fun createQuestionnaire(studyId: UUID, questionnaire: Questionnaire): UUID {
         try {
+            val questionnaireId = idGenerationService.getNextId()
             val hds = storageResolver.getPlatformStorage()
             hds.connection.prepareStatement(CREATE_QUESTIONNAIRE_SQL).use { ps ->
                 var index = 0
@@ -286,6 +295,17 @@ class SurveysService(
                 ps.setString(++index, questionnaire.recurrenceRule?.toString())
                 ps.executeUpdate()
             }
+
+            auditingManager.recordEvents(listOf(
+                AuditableEvent(
+                    AclKey(studyId),
+                    eventType = AuditEventType.CREATE_QUESTIONNAIRE,
+                    description = "Created questionnaire with id $questionnaireId",
+                    study = studyId,
+                )
+            ))
+
+            return questionnaireId
         } catch (ex: Exception) {
             logger.error("unable to save questionnaire", ex)
             throw ex
@@ -311,6 +331,15 @@ class SurveysService(
             }
 
             if (updated != 1) throw Exception("no row matching studyId $studyId and questionnaireId $questionnaireId")
+
+            auditingManager.recordEvents(listOf(
+                AuditableEvent(
+                    aclKey = AclKey(studyId),
+                    eventType = AuditEventType.UPDATE_QUESTIONNAIRE,
+                    description = "Updated questionnaire with id $questionnaireId",
+                    study = studyId
+                )
+            ))
         } catch (ex: Exception) {
             logger.error("unable to toggle questionnaire active status")
             throw ex
@@ -336,17 +365,26 @@ class SurveysService(
     }
 
     override fun deleteQuestionnaire(studyId: UUID, questionnaireId: UUID) {
-       try {
-           val hds = storageResolver.getPlatformStorage()
-           hds.connection.prepareStatement(DELETE_QUESTIONNAIRE_SQL).use { ps ->
-               ps.setObject(1, studyId)
-               ps.setObject(2, questionnaireId)
-               ps.execute()
-           }
-       } catch (ex: Exception) {
-           logger.info("error deleting questionnaire $questionnaireId in study $studyId")
-           throw ex
-       }
+        try {
+            val hds = storageResolver.getPlatformStorage()
+            hds.connection.prepareStatement(DELETE_QUESTIONNAIRE_SQL).use { ps ->
+                ps.setObject(1, studyId)
+                ps.setObject(2, questionnaireId)
+                ps.execute()
+            }
+
+            auditingManager.recordEvents(listOf(
+                AuditableEvent(
+                    aclKey = AclKey(studyId),
+                    eventType = AuditEventType.DELETE_QUESTIONNAIRE,
+                    description = "Deleted questionnaire of id $questionnaireId",
+                    study = studyId
+                )
+            ))
+        } catch (ex: Exception) {
+            logger.info("error deleting questionnaire $questionnaireId in study $studyId")
+            throw ex
+        }
     }
 
     override fun getStudyQuestionnaires(studyId: UUID): List<Questionnaire> {
