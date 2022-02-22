@@ -388,5 +388,6 @@ class ResultSetAdapters {
                 participantStatus(rs)
             )
         }
+
     }
 }
