@@ -93,6 +93,7 @@ class SurveyController @Inject constructor(
         return id
     }
 
+    @Timed
     @DeleteMapping(
         path = [STUDY_ID_PATH + QUESTIONNAIRE_PATH + QUESTIONNAIRE_ID_PATH]
     )
