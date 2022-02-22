@@ -119,7 +119,6 @@ class SurveyController @Inject constructor(
     }
 
     @Timed
-    @Timed
     @PatchMapping(
         path = [STUDY_ID_PATH + QUESTIONNAIRE_PATH + QUESTIONNAIRE_ID_PATH],
         consumes = [MediaType.APPLICATION_JSON_VALUE],
@@ -135,7 +134,6 @@ class SurveyController @Inject constructor(
         return OK("Successfully updated questionnaire $questionnaireId")
     }
 
-    @Timed
     @Timed
     @GetMapping(
         path = [STUDY_ID_PATH + QUESTIONNAIRE_PATH],
