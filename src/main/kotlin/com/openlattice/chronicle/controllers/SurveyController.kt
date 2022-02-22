@@ -106,6 +106,7 @@ class SurveyController @Inject constructor(
         return OK("Successfully deleted questionnaire $questionnaireId")
     }
 
+    @Timed
     @GetMapping(
         path = [STUDY_ID_PATH + QUESTIONNAIRE_PATH + QUESTIONNAIRE_ID_PATH],
         produces = [MediaType.APPLICATION_JSON_VALUE]
@@ -117,6 +118,7 @@ class SurveyController @Inject constructor(
         return surveysService.getQuestionnaire(studyId, questionnaireId)
     }
 
+    @Timed
     @PatchMapping(
         path = [STUDY_ID_PATH + QUESTIONNAIRE_PATH + QUESTIONNAIRE_ID_PATH],
         consumes = [MediaType.APPLICATION_JSON_VALUE],
@@ -132,6 +134,7 @@ class SurveyController @Inject constructor(
         return OK("Successfully updated questionnaire $questionnaireId")
     }
 
+    @Timed
     @GetMapping(
         path = [STUDY_ID_PATH + QUESTIONNAIRE_PATH],
         produces = [MediaType.APPLICATION_JSON_VALUE]
@@ -155,15 +158,21 @@ class SurveyController @Inject constructor(
         return OK()
     }
 
+    @Timed
+    @GetMapping(
+        path = [STUDY_ID_PATH  + QUESTIONNAIRE_PATH + QUESTIONNAIRE_ID_PATH + DATA_PATH],
+        produces = [MediaType.APPLICATION_JSON_VALUE]
+    )
     override fun getQuestionnaireResponses(
-        studyId: UUID,
-        questionnaireId: UUID,
-        fileType: FileType
+        @PathVariable(STUDY_ID) studyId: UUID,
+        @PathVariable(QUESTIONNAIRE_ID) questionnaireId: UUID,
+        @PathVariable(TYPE) fileType: FileType
     ): Iterable<Map<String, Any>> {
         ensureReadAccess(AclKey(studyId))
         return downloadService.getQuestionnaireResponses(studyId, questionnaireId)
     }
 
+    @Timed
     @GetMapping(
         path = [STUDY_ID_PATH + QUESTIONNAIRE_PATH + QUESTIONNAIRE_ID_PATH + DATA_PATH],
         produces = [MediaType.APPLICATION_JSON_VALUE]
