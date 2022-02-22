@@ -15,6 +15,7 @@ import com.openlattice.chronicle.survey.SurveyApi.Companion.APP_USAGE_PATH
 import com.openlattice.chronicle.survey.SurveyApi.Companion.CONTROLLER
 import com.openlattice.chronicle.survey.SurveyApi.Companion.DATA_PATH
 import com.openlattice.chronicle.survey.SurveyApi.Companion.END_DATE
+import com.openlattice.chronicle.survey.SurveyApi.Companion.FILE_NAME
 import com.openlattice.chronicle.survey.SurveyApi.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.survey.SurveyApi.Companion.PARTICIPANT_ID_PATH
 import com.openlattice.chronicle.survey.SurveyApi.Companion.PARTICIPANT_PATH
@@ -173,12 +174,11 @@ class SurveyController @Inject constructor(
         @PathVariable(STUDY_ID) studyId: UUID,
         @PathVariable(QUESTIONNAIRE_ID) questionnaireId: UUID,
         @RequestParam(value = TYPE) fileType: FileType,
+        @RequestParam(value = FILE_NAME) fileName: String? = "Questionnaire_${questionnaireId}_${LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE)}",
         httpServletResponse: HttpServletResponse
     ): Iterable<Map<String, Any>> {
 
         val data = getQuestionnaireResponses(studyId, questionnaireId, fileType)
-        //TODO: rename file
-        val fileName = "Questionnaire_${questionnaireId}_${LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE)}"
 
         ChronicleServerUtil.setDownloadContentType(httpServletResponse, fileType)
         ChronicleServerUtil.setContentDisposition(httpServletResponse, fileName, fileType)
