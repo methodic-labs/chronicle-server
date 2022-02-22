@@ -1,6 +1,130 @@
 package com.openlattice.chronicle.survey
 
+import com.openlattice.chronicle.ChronicleServerTests
+import com.openlattice.chronicle.client.ChronicleClient
+import com.openlattice.chronicle.util.TestDataFactory
+import org.dmfs.rfc5545.recur.RecurrenceRule
+import org.junit.Assert
+import org.junit.Test
+
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
- */class QuestionnaireTests {
+ */
+class QuestionnaireTests : ChronicleServerTests() {
+    private val chronicleClient: ChronicleClient = clientUser1
+
+    @Test
+    fun testCreateQuestionnaire() {
+        val studyApi = chronicleClient.studyApi
+        val surveyApi = chronicleClient.surveyApi
+
+        val questionnaire = questionnaire()
+        val studyId = studyApi.createStudy(TestDataFactory.study())
+        val questionnaireId = surveyApi.createQuestionnaire(studyId, questionnaire)
+
+        val created = surveyApi.getQuestionnaire(studyId, questionnaireId)
+        Assert.assertEquals(questionnaire.title, created.title)
+        Assert.assertEquals(questionnaire.description, created.description)
+        Assert.assertEquals(questionnaire.active, created.active)
+        Assert.assertArrayEquals(questionnaire.questions.toTypedArray(), created.questions.toTypedArray())
+        Assert.assertNotNull(created.dateCreated)
+    }
+
+    @Test
+    fun testUpdateQuestionnaire() {
+        val studyApi = chronicleClient.studyApi
+        val surveyApi = chronicleClient.surveyApi
+
+        val studyId = studyApi.createStudy(TestDataFactory.study())
+        val questionnaire = questionnaire()
+        val questionnaireId = surveyApi.createQuestionnaire(studyId, questionnaire)
+
+        val update = QuestionnaireUpdate(
+            title = "Updated Title",
+            description = null,
+            recurrenceRule = RecurrenceRule("FREQ=DAILY;BYHOUR=19;BYMINUTE=0;BYSECOND=0").toString(),
+            active = false,
+            questions = null
+        )
+        surveyApi.updateQuestionnaire(studyId, questionnaireId, update)
+        val updated = surveyApi.getQuestionnaire(studyId, questionnaireId)
+
+        Assert.assertEquals(updated.title, update.title)
+        Assert.assertEquals(updated.description, questionnaire.description) //description field in update object, therefore description shouldn't be updated
+        Assert.assertEquals(updated.recurrenceRule, update.recurrenceRule)
+        Assert.assertEquals(updated.active, update.active)
+        Assert.assertEquals(updated.questions, questionnaire.questions) //questions field in update object is null, so questions shouldn't be updated
+
+    }
+
+    @Test(expected = Exception::class)
+    fun testDeleteQuestionnaire() {
+        val studyApi = chronicleClient.studyApi
+        val surveyApi = chronicleClient.surveyApi
+
+        val studyId = studyApi.createStudy(TestDataFactory.study())
+        val questionnaire = questionnaire()
+        val questionnaireId = surveyApi.createQuestionnaire(studyId, questionnaire)
+
+        surveyApi.deleteQuestionnaire(studyId, questionnaireId)
+        surveyApi.getQuestionnaire(studyId, questionnaireId)
+    }
+
+    @Test
+    fun testGetStudyQuestionnaires() {
+        val studyApi = chronicleClient.studyApi
+        val surveyApi = chronicleClient.surveyApi
+
+        val studyId = studyApi.createStudy(TestDataFactory.study())
+
+        surveyApi.createQuestionnaire(studyId, questionnaire())
+        surveyApi.createQuestionnaire(studyId, questionnaire())
+
+        val questionnaires = surveyApi.getStudyQuestionnaires(studyId)
+        Assert.assertEquals(questionnaires.size, 2)
+    }
+
+
+    @Test(expected = Exception::class)
+    fun testDuplicateQuestionsShouldThrow() {
+        Questionnaire(
+            id = null,
+            title = "Bad questionnaire",
+            description = "Questionnaire with duplicate titles",
+            recurrenceRule = null,
+            active = false,
+            questions = listOf(
+                Question("title1"),
+                Question("title1")
+            ),
+            dateCreated = null
+        )
+    }
+
+    @Test(expected = Exception::class)
+    fun testEmptyQuestionsListShouldThrow(){
+        Questionnaire(
+            id = null,
+            title = "Bad questionnaire",
+            description = "Questionnaire with duplicate titles",
+            recurrenceRule = null,
+            active = false,
+            questions = listOf(),
+            dateCreated = null
+        )
+    }
+
+    private fun questionnaire(): Questionnaire {
+        return Questionnaire(
+            id = null,
+            title = "Test questionnaire",
+            description = "test questionnaire",
+            questions = listOf(
+                Question(title = "Question 1"),
+                Question(title = "Question 2", choices = setOf("choice 1", "choice 2", "choice 3"))
+            ),
+            dateCreated = null,
+            recurrenceRule = null
+        )
+    }
 }
