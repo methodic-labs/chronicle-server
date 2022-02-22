@@ -140,6 +140,7 @@ class SurveyController @Inject constructor(
         return surveysService.getStudyQuestionnaires(studyId)
     }
 
+    @Timed
     @PostMapping(
         path = [STUDY_ID_PATH + PARTICIPANT_PATH + PARTICIPANT_ID_PATH + QUESTIONNAIRE_PATH + QUESTIONNAIRE_ID_PATH],
         produces = []
