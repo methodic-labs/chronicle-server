@@ -111,7 +111,7 @@ class SurveysService(
          * 8) recurrenceRule
          */
         private val CREATE_QUESTIONNAIRE_SQL = """
-            INSERT INTO ${QUESTIONNAIRES.name}(${QUESTIONNAIRE_COLUMNS}) VALUES ($QUESTIONNAIRE_PARAMS)
+            INSERT INTO ${QUESTIONNAIRES.name} (${QUESTIONNAIRE_COLUMNS}) VALUES ($QUESTIONNAIRE_PARAMS)
         """.trimIndent()
 
         /**
