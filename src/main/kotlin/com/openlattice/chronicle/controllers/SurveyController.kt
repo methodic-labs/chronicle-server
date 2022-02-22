@@ -158,11 +158,6 @@ class SurveyController @Inject constructor(
         return OK()
     }
 
-    @Timed
-    @GetMapping(
-        path = [STUDY_ID_PATH  + QUESTIONNAIRE_PATH + QUESTIONNAIRE_ID_PATH + DATA_PATH],
-        produces = [MediaType.APPLICATION_JSON_VALUE]
-    )
     override fun getQuestionnaireResponses(
         @PathVariable(STUDY_ID) studyId: UUID,
         @PathVariable(QUESTIONNAIRE_ID) questionnaireId: UUID,
