@@ -180,33 +180,4 @@ class StudyTests : ChronicleServerTests() {
             )
         }
     }
-
-    @Test
-    fun testGetStudyParticipants() {
-        val studyApi = clientUser1.studyApi
-
-        val studyId = studyApi.createStudy(TestDataFactory.study())
-
-        val participant1 = Participant("p1", c1!!,  ParticipationStatus.ENROLLED)
-        val participant2 = Participant("p2", c2!!, ParticipationStatus.ENROLLED)
-
-        studyApi.registerParticipant(studyId, participant1)
-        studyApi.registerParticipant(studyId, participant2)
-
-        val statsMap = studyApi.getParticipantStats(studyId)
-
-        Assert.assertEquals(statsMap.keys, setOf(participant1.participantId, participant2.participantId))
-        listOf(participant1, participant2).forEach {
-            val stats = statsMap.getValue(it.participantId)
-            Assert.assertEquals(stats.androidDatesCount, 0)
-            Assert.assertEquals(stats.androidFirstDate, null)
-            Assert.assertEquals(stats.androidLastDate, null)
-            Assert.assertEquals(stats.iosDatesCount, 0)
-            Assert.assertEquals(stats.iosFirstDate, null)
-            Assert.assertEquals(stats.iosLastDate, null)
-            Assert.assertEquals(stats.tudDatesCount, 0)
-            Assert.assertEquals(stats.tudFirsDate, null)
-            Assert.assertEquals(stats.tudLastDate, null)
-        }
-    }
 }
