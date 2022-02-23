@@ -2,12 +2,9 @@ package com.openlattice.chronicle.storage
 
 import com.geekbeast.postgres.PostgresColumnDefinition
 import com.geekbeast.postgres.PostgresDatatype
-import com.geekbeast.postgres.PostgresTableDefinition
-import com.geekbeast.postgres.PostgresTables
 import java.lang.reflect.Field
 import java.lang.reflect.Modifier
 import java.util.*
-import java.util.stream.Stream
 
 /**
  *
@@ -28,6 +25,7 @@ class PostgresColumns {
         @JvmField val DELETED_ROWS = PostgresColumnDefinition("deleted_rows", PostgresDatatype.BIGINT).notNull()
         @JvmField val DEVICE_ID = PostgresColumnDefinition("device_id", PostgresDatatype.UUID).notNull()
         @JvmField val EMAIL = PostgresColumnDefinition("email", PostgresDatatype.TEXT).unique()
+        @JvmField val EMAIL_NOT_UNIQUE = PostgresColumnDefinition("email", PostgresDatatype.TEXT)
         @JvmField val ENDED_AT = PostgresColumnDefinition("ended_at", PostgresDatatype.TIMESTAMPTZ).notNull().withDefault("'infinity'")
         @JvmField val EXPIRATION = PostgresColumnDefinition("expiration", PostgresDatatype.BIGINT)
         @JvmField val EXPIRATION_DATE = PostgresColumnDefinition("expiration_date", PostgresDatatype.TIMESTAMPTZ).withDefault("'infinity'").notNull()
@@ -47,6 +45,7 @@ class PostgresColumns {
         @JvmField val PERMISSION = PostgresColumnDefinition("permission", PostgresDatatype.TEXT)
         @JvmField val PERMISSIONS = PostgresColumnDefinition("permissions", PostgresDatatype.TEXT_ARRAY)
         @JvmField val PHONE_NUMBER = PostgresColumnDefinition("phone_number", PostgresDatatype.TEXT).unique()
+        @JvmField val PHONE_NUMBER_NOT_UNIQUE = PostgresColumnDefinition("phone_number", PostgresDatatype.TEXT)
         @JvmField val PRINCIPAL_ID = PostgresColumnDefinition("principal_id", PostgresDatatype.TEXT)
         @JvmField val PRINCIPAL_OF_ACL_KEY = PostgresColumnDefinition("principal_of_acl_key", PostgresDatatype.UUID_ARRAY)
         @JvmField val PRINCIPAL_TYPE = PostgresColumnDefinition("principal_type", PostgresDatatype.TEXT)
@@ -76,6 +75,10 @@ class PostgresColumns {
         @JvmField val JOB_DEFINITION = PostgresColumnDefinition("definition", PostgresDatatype.JSONB).withDefault("'{}'::jsonb")
         @JvmField val MESSAGE = PostgresColumnDefinition("message", PostgresDatatype.TEXT)
 
+        @JvmField val NOTIFICATION_ID = PostgresColumnDefinition("notification_id", PostgresDatatype.UUID).notNull()
+        @JvmField val MESSAGE_ID = PostgresColumnDefinition("message_id", PostgresDatatype.TEXT).unique()
+        @JvmField val TYPE = PostgresColumnDefinition("type", PostgresDatatype.TEXT)
+        @JvmField val BODY = PostgresColumnDefinition("body", PostgresDatatype.TEXT)
 
         val columnTypes : Map<String, PostgresDatatype> = postgresColumns().associate { it.name to it.datatype }
 
