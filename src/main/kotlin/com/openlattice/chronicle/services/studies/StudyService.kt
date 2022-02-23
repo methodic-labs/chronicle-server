@@ -499,7 +499,7 @@ class StudyService(
     override fun getStudyParticipantStats(studyId: UUID): Map<String, ParticipantStats> {
         val hds = storageResolver.getPlatformStorage()
         return BasePostgresIterable(
-            PreparedStatementHolderSupplier(hds, GET_NOTIFICATION_STATUS_SQL) { ps ->
+            PreparedStatementHolderSupplier(hds, GET_STUDY_PARTICIPANT_STATS) { ps ->
                 ps.setObject(1, studyId)
             }
         ) { ResultSetAdapters.participantStats(it)}
