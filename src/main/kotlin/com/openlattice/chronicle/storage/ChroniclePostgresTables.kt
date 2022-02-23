@@ -202,13 +202,14 @@ class ChroniclePostgresTables {
         @JvmField
         val QUESTIONNAIRE_SUBMISSIONS = PostgresTableDefinition("questionnaire_submissions")
             .addColumns(
+                SUBMISSION_ID,
                 STUDY_ID,
                 PARTICIPANT_ID,
                 QUESTIONNAIRE_ID,
                 COMPLETED_AT,
                 QUESTION_TITLE,
                 RESPONSES,
-            ).primaryKey(QUESTION_TITLE, RESPONSES)
+            ).primaryKey(SUBMISSION_ID)
 
         /**
          * Authorization tables

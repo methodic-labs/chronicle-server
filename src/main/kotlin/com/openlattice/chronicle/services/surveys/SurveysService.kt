@@ -153,10 +153,11 @@ class SurveysService(
 
         /**
          * PreparedStatement bind order
-         * 1) studyId
-         * 2) participantId
-         * 3) questionnaireId
-         * 4) completedAt
+         * 1) id
+         * 2) studyId
+         * 3) participantId
+         * 4) questionnaireId
+         * 5) completedAt
          * 6) questionTitle
          * 7) responses
          */
@@ -452,17 +453,19 @@ class SurveysService(
         questionnaireId: UUID,
         responses: List<QuestionnaireResponse>
     ): Int {
+        val submissionId = idGenerationService.getNextId()
         return hds.connection.use { connection ->
             try {
                 val wc = connection.prepareStatement(SUBMIT_QUESTIONNAIRE_SQL).use { ps ->
-                    ps.setObject(1, studyId)
-                    ps.setString(2, participantId)
-                    ps.setObject(3, questionnaireId)
-                    ps.setObject(4, OffsetDateTime.now())
+                    ps.setObject(1, submissionId)
+                    ps.setObject(2, studyId)
+                    ps.setString(3, participantId)
+                    ps.setObject(4, questionnaireId)
+                    ps.setObject(5, OffsetDateTime.now())
 
                     responses.forEach { response ->
-                        ps.setString(5, response.questionTitle)
-                        ps.setArray(6, PostgresArrays.createTextArray(connection, response.value))
+                        ps.setString(6, response.questionTitle)
+                        ps.setArray(7, PostgresArrays.createTextArray(connection, response.value))
                         ps.addBatch()
                     }
 
