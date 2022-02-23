@@ -170,7 +170,7 @@ class SurveyController @Inject constructor(
         path = [STUDY_ID_PATH + QUESTIONNAIRE_PATH + QUESTIONNAIRE_ID_PATH + DATA_PATH],
         produces = [MediaType.APPLICATION_JSON_VALUE]
     )
-    fun downloadQuestionnaireResponses(
+    fun getQuestionnaireResponses(
         @PathVariable(STUDY_ID) studyId: UUID,
         @PathVariable(QUESTIONNAIRE_ID) questionnaireId: UUID,
         @RequestParam(value = TYPE) fileType: FileType,
