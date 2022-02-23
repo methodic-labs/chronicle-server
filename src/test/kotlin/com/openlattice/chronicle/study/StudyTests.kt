@@ -209,9 +209,4 @@ class StudyTests : ChronicleServerTests() {
             Assert.assertEquals(stats.tudLastDate, null)
         }
     }
-
-    @Test
-    fun testCreateParticipantStats() {
-        
-    }
 }
