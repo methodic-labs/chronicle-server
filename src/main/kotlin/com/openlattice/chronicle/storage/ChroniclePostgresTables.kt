@@ -209,7 +209,8 @@ class ChroniclePostgresTables {
                 COMPLETED_AT,
                 QUESTION_TITLE,
                 RESPONSES,
-            ).primaryKey(SUBMISSION_ID)
+            ).primaryKey(SUBMISSION_ID, QUESTION_TITLE)
+        // All the questions in a single submission are unique. A single submission can write multiple records in the table
 
         /**
          * Authorization tables

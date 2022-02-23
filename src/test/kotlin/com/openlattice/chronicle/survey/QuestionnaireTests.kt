@@ -1,11 +1,15 @@
 package com.openlattice.chronicle.survey
 
+import com.google.common.collect.Iterables
+import com.google.common.collect.Lists
 import com.openlattice.chronicle.ChronicleServerTests
 import com.openlattice.chronicle.client.ChronicleClient
 import com.openlattice.chronicle.constants.EdmConstants
 import com.openlattice.chronicle.data.FileType
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.QUESTION_TITLE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.RESPONSES
 import com.openlattice.chronicle.util.TestDataFactory
-import org.apache.commons.collections4.IterableUtils
 import org.dmfs.rfc5545.recur.RecurrenceRule
 import org.junit.Assert
 import org.junit.Test
@@ -147,35 +151,16 @@ class QuestionnaireTests : ChronicleServerTests() {
         val surveyApi = chronicleClient.surveyApi
 
         val studyId = studyApi.createStudy(TestDataFactory.study())
-        val participant1 = TestDataFactory.participant()
-        val participant2 = TestDataFactory.participant()
-        studyApi.registerParticipant(studyId, participant1)
-        studyApi.registerParticipant(studyId, participant2)
+        val participant = TestDataFactory.participant()
+        studyApi.registerParticipant(studyId, participant)
 
         val questionnaireId = surveyApi.createQuestionnaire(studyId, questionnaire())
 
-        val response1 = listOf(
-            QuestionnaireResponse(questionTitle = "Question 1", setOf("answer1", "answer2")),
-            QuestionnaireResponse(questionTitle = "Question 2", setOf("answer3")),
-        )
-        surveyApi.submitQuestionnaireResponses(studyId, participant1.participantId, questionnaireId, response1)
+        val response1 = QuestionnaireResponse(questionTitle = "Question 1", setOf("answer1", "answer2"))
+        val response2 = QuestionnaireResponse(questionTitle = "Question 2", setOf("answer3"))
+        val responses = listOf(response1, response2)
 
-        val response2 = listOf(
-            QuestionnaireResponse(questionTitle = "Question 1", setOf("answer4", "answer5")),
-            QuestionnaireResponse(questionTitle = "Question 2", setOf("answer6")),
-        )
-        surveyApi.submitQuestionnaireResponses(studyId, participant2.participantId, questionnaireId, response2)
-
-        // get responses
-        val submittedResponses = surveyApi.getQuestionnaireResponses(studyId, questionnaireId, FileType.csv)
-
-        // each QuestionnaireResponse instance is inserted as a record in the table
-        Assert.assertEquals(IterableUtils.size(submittedResponses), (response1 + response2).size)
-
-        val submission1 = submittedResponses.iterator().next()
-        val submission2 = submittedResponses.iterator().next()
-
-       print("submitted responses: $submittedResponses")
+        surveyApi.submitQuestionnaireResponses(studyId, participant.participantId, questionnaireId, responses)
     }
 
     private fun questionnaire(): Questionnaire {
