@@ -180,4 +180,9 @@ class StudyTests : ChronicleServerTests() {
             )
         }
     }
+
+    @Test
+    fun testStudyParticipants() {
+        TODO("add test after implementing functionality to update table")
+    }
 }
