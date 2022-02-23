@@ -20,15 +20,13 @@ package com.openlattice.chronicle.pods.servlet
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.openlattice.chronicle.constants.CustomMediaType
-import com.openlattice.chronicle.controllers.AdminController
-import com.openlattice.chronicle.controllers.CandidateController
-import com.openlattice.chronicle.controllers.ChronicleServerExceptionHandler
-import com.openlattice.chronicle.controllers.StudyController
+import com.openlattice.chronicle.controllers.*
 import com.openlattice.chronicle.controllers.legacy.ChronicleController
 import com.openlattice.chronicle.controllers.v2.ChronicleControllerV2
 import com.openlattice.chronicle.converters.LegacyPostgresDownloadCsvHttpMessageConverter
 import com.openlattice.chronicle.converters.PostgresDownloadCsvHttpMessageConverter
 import com.openlattice.chronicle.converters.YamlHttpMessageConverter
+import com.openlattice.chronicle.services.twilio.TwilioService
 import com.ryantenney.metrics.spring.config.annotation.EnableMetrics
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.ComponentScan
@@ -53,6 +51,7 @@ import javax.inject.Inject
         ChronicleController::class,
         ChronicleServerExceptionHandler::class,
         ChronicleControllerV2::class,
+        NotificationController::class,
         StudyController::class,
         AdminController::class,
     ],
