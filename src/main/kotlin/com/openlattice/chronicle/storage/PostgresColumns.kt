@@ -13,7 +13,7 @@ class PostgresColumns {
     companion object {
         @JvmField val ACTIVE = PostgresColumnDefinition("active", PostgresDatatype.BOOLEAN)
         @JvmField val ACL_KEY = PostgresColumnDefinition("acl_key", PostgresDatatype.UUID_ARRAY)
-        @JvmField val ANDROID_DATES_COUNT = PostgresColumnDefinition("android_date_count", PostgresDatatype.INTEGER).withDefault(0)
+        @JvmField val ANDROID_DATES_COUNT = PostgresColumnDefinition("android_dates_count", PostgresDatatype.INTEGER).withDefault(0)
         @JvmField val ANDROID_FIRST_DATE = PostgresColumnDefinition("android_first_date", PostgresDatatype.TIMESTAMPTZ)
         @JvmField val ANDROID_LAST_DATE = PostgresColumnDefinition("android_last_date", PostgresDatatype.TIMESTAMPTZ)
         @JvmField val APP_USERS = PostgresColumnDefinition("users", PostgresDatatype.TEXT_ARRAY)
