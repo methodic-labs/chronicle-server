@@ -161,7 +161,7 @@ class SurveyController @Inject constructor(
         @PathVariable(QUESTIONNAIRE_ID) questionnaireId: UUID,
         @PathVariable(TYPE) fileType: FileType
     ): Iterable<Map<String, Any>> {
-        ensureReadAccess(AclKey(studyId))
+       // ensureReadAccess(AclKey(studyId))
         return downloadService.getQuestionnaireResponses(studyId, questionnaireId)
     }
 

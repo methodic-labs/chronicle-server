@@ -5,10 +5,7 @@ import com.geekbeast.postgres.PostgresArrays
 import com.geekbeast.postgres.PostgresDatatype
 import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
-import com.openlattice.chronicle.auditing.AuditEventType
-import com.openlattice.chronicle.auditing.AuditableEvent
-import com.openlattice.chronicle.auditing.AuditingComponent
-import com.openlattice.chronicle.auditing.AuditingManager
+import com.openlattice.chronicle.auditing.*
 import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.constants.EdmConstants
 import com.openlattice.chronicle.data.LegacyChronicleQuestionnaire
@@ -295,28 +292,35 @@ class SurveysService(
     override fun createQuestionnaire(studyId: UUID, questionnaire: Questionnaire): UUID {
         try {
             val questionnaireId = idGenerationService.getNextId()
-            val hds = storageResolver.getPlatformStorage()
-            hds.connection.prepareStatement(CREATE_QUESTIONNAIRE_SQL).use { ps ->
-                var index = 0
-                ps.setObject(++index, studyId)
-                ps.setObject(++index, questionnaireId)
-                ps.setString(++index, questionnaire.title)
-                ps.setString(++index, questionnaire.description)
-                ps.setString(++index, mapper.writeValueAsString(questionnaire.questions))
-                ps.setBoolean(++index, true)
-                ps.setObject(++index, OffsetDateTime.now())
-                ps.setString(++index, questionnaire.recurrenceRule)
-                ps.executeUpdate()
-            }
 
-            recordEvent(
-                AuditableEvent(
-                    AclKey(studyId),
-                    eventType = AuditEventType.CREATE_QUESTIONNAIRE,
-                    description = "Created questionnaire with id $questionnaireId",
-                    study = studyId,
-                )
-            )
+            storageResolver.getPlatformStorage().connection.use { connection ->
+                AuditedOperationBuilder<Unit>(connection, auditingManager)
+                    .operation { conn ->
+                        conn.prepareStatement(CREATE_QUESTIONNAIRE_SQL).use { ps ->
+                            var index = 0
+                            ps.setObject(++index, studyId)
+                            ps.setObject(++index, questionnaireId)
+                            ps.setString(++index, questionnaire.title)
+                            ps.setString(++index, questionnaire.description)
+                            ps.setString(++index, mapper.writeValueAsString(questionnaire.questions))
+                            ps.setBoolean(++index, true)
+                            ps.setObject(++index, OffsetDateTime.now())
+                            ps.setString(++index, questionnaire.recurrenceRule)
+                            ps.executeUpdate()
+                        }
+                    }
+                    .audit {
+                        listOf(
+                            AuditableEvent(
+                                AclKey(studyId),
+                                eventType = AuditEventType.CREATE_QUESTIONNAIRE,
+                                description = "Created questionnaire with id $questionnaireId",
+                                study = studyId,
+                            )
+                        )
+                    }
+                    .buildAndRun()
+            }
 
             return questionnaireId
         } catch (ex: Exception) {
@@ -327,32 +331,34 @@ class SurveysService(
 
     override fun updateQuestionnaire(studyId: UUID, questionnaireId: UUID, update: QuestionnaireUpdate) {
         try {
-            val hds = storageResolver.getPlatformStorage()
-            val updated = hds.connection.use { connection ->
-                connection.prepareStatement(getUpdateQuestionnaireSql(update)).use { ps ->
-                    var index = 0
-                    ps.setString(++index, update.title)
-                    update.description?.let { ps.setString(++index, it) }
-                    update.recurrenceRule?.let { ps.setString(++index, it) }
-                    update.active?.let { ps.setBoolean(++index, it) }
-                    update.questions?.let { ps.setString(++index, mapper.writeValueAsString(it)) }
-                    ps.setObject(++index, studyId)
-                    ps.setObject(++index, questionnaireId)
+            storageResolver.getPlatformStorage().connection.use { connection ->
+                AuditedOperationBuilder<Int>(connection, auditingManager)
+                    .operation {
+                        connection.prepareStatement(getUpdateQuestionnaireSql(update)).use { ps ->
+                            var index = 0
+                            ps.setString(++index, update.title)
+                            update.description?.let { ps.setString(++index, it) }
+                            update.recurrenceRule?.let { ps.setString(++index, it) }
+                            update.active?.let { ps.setBoolean(++index, it) }
+                            update.questions?.let { ps.setString(++index, mapper.writeValueAsString(it)) }
+                            ps.setObject(++index, studyId)
+                            ps.setObject(++index, questionnaireId)
 
-                    ps.executeUpdate()
-                }
+                            ps.executeUpdate()
+                        }
+                    }
+                    .audit {
+                        listOf(
+                            AuditableEvent(
+                                aclKey = AclKey(studyId),
+                                eventType = AuditEventType.UPDATE_QUESTIONNAIRE,
+                                description = "Updated questionnaire with id $questionnaireId",
+                                study = studyId
+                            )
+                        )
+                    }
             }
 
-            if (updated != 1) throw Exception("no row matching studyId $studyId and questionnaireId $questionnaireId")
-
-            recordEvent(
-                AuditableEvent(
-                    aclKey = AclKey(studyId),
-                    eventType = AuditEventType.UPDATE_QUESTIONNAIRE,
-                    description = "Updated questionnaire with id $questionnaireId",
-                    study = studyId
-                )
-            )
         } catch (ex: Exception) {
             logger.error("unable to toggle questionnaire active status")
             throw ex
@@ -379,19 +385,25 @@ class SurveysService(
 
     override fun deleteQuestionnaire(studyId: UUID, questionnaireId: UUID) {
         try {
-            val hds = storageResolver.getPlatformStorage()
-            hds.connection.prepareStatement(DELETE_QUESTIONNAIRE_SQL).use { ps ->
-                ps.setObject(1, studyId)
-                ps.setObject(2, questionnaireId)
-                ps.execute()
+            storageResolver.getPlatformStorage().connection.use { connection ->
+                AuditedOperationBuilder<Unit>(connection, auditingManager)
+                    .operation {
+                        connection.prepareStatement(DELETE_QUESTIONNAIRE_SQL).use { ps ->
+                            ps.setObject(1, studyId)
+                            ps.setObject(2, questionnaireId)
+                            ps.execute()
+                        }
+                    }.audit {
+                        listOf(
+                            AuditableEvent(
+                                aclKey = AclKey(studyId),
+                                eventType = AuditEventType.DELETE_QUESTIONNAIRE,
+                                description = "Deleted questionnaire of id $questionnaireId",
+                                study = studyId
+                            )
+                        )
+                    }.buildAndRun()
             }
-
-            recordEvent(AuditableEvent(
-                aclKey = AclKey(studyId),
-                eventType = AuditEventType.DELETE_QUESTIONNAIRE,
-                description = "Deleted questionnaire of id $questionnaireId",
-                study = studyId
-            ))
 
         } catch (ex: Exception) {
             logger.info("error deleting questionnaire $questionnaireId in study $studyId")
