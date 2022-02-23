@@ -29,6 +29,7 @@ import com.geekbeast.hazelcast.HazelcastClientProvider
 import com.geekbeast.jdbc.DataSourceManager
 import com.geekbeast.mappers.mappers.ObjectMappers
 import com.geekbeast.rhizome.configuration.ConfigurationConstants
+import com.geekbeast.rhizome.configuration.service.ConfigurationService
 import com.google.common.eventbus.EventBus
 import com.google.common.util.concurrent.ListeningExecutorService
 import com.hazelcast.core.HazelcastInstance
@@ -41,6 +42,7 @@ import com.openlattice.chronicle.authorization.initializers.AuthorizationInitial
 import com.openlattice.chronicle.authorization.principals.*
 import com.openlattice.chronicle.authorization.reservations.AclKeyReservationService
 import com.openlattice.chronicle.configuration.ChronicleConfiguration
+import com.openlattice.chronicle.configuration.TwilioConfiguration
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.jobs.BackgroundChronicleJobService
 import com.openlattice.chronicle.organizations.ChronicleOrganizationService
@@ -56,6 +58,7 @@ import com.openlattice.chronicle.services.download.DataDownloadService
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import com.openlattice.chronicle.services.enrollment.EnrollmentService
 import com.openlattice.chronicle.services.jobs.JobService
+import com.openlattice.chronicle.services.notifications.NotificationService
 import com.openlattice.chronicle.services.settings.OrganizationSettingsManager
 import com.openlattice.chronicle.services.settings.OrganizationSettingsService
 import com.openlattice.chronicle.services.studies.StudyService
@@ -63,6 +66,7 @@ import com.openlattice.chronicle.services.surveys.SurveysManager
 import com.openlattice.chronicle.services.surveys.SurveysService
 import com.openlattice.chronicle.services.timeusediary.TimeUseDiaryManager
 import com.openlattice.chronicle.services.timeusediary.TimeUseDiaryService
+import com.openlattice.chronicle.services.twilio.TwilioService
 import com.openlattice.chronicle.services.upload.AppDataUploadManager
 import com.openlattice.chronicle.services.upload.AppDataUploadService
 import com.openlattice.chronicle.services.upload.SensorDataUploadService
@@ -87,6 +91,9 @@ import javax.inject.Inject
 class ChronicleServerServicesPod {
     @Inject
     private lateinit var auth0Configuration: Auth0Configuration
+
+    @Inject
+    private lateinit var configurationService: ConfigurationService
 
     @Inject
     private lateinit var dataSourceManager: DataSourceManager
@@ -282,6 +289,29 @@ class ChronicleServerServicesPod {
             enrollmentManager(),
             auditingManager(),
             hazelcast
+        )
+    }
+
+    @Bean(name = ["twilioConfiguration"])
+    @Throws(IOException::class)
+    fun getTwilioConfiguration(): TwilioConfiguration? {
+        return configurationService.getConfiguration( TwilioConfiguration::class.java )
+    }
+
+    @Bean
+    fun twilioService(): TwilioService {
+        return TwilioService(
+            getTwilioConfiguration()
+        )
+    }
+
+    @Bean
+    fun notificationService(): NotificationService {
+        return NotificationService(
+            storageResolver,
+            authorizationService(),
+            twilioService(),
+            auditingManager(),
         )
     }
 
