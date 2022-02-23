@@ -230,12 +230,12 @@ class ChroniclePostgresTables {
                 ANDROID_FIRST_DATE,
                 ANDROID_LAST_DATE,
                 ANDROID_DATES_COUNT,
-                TUD_FIRST_DATE,
-                TUD_LAST_DATE,
-                TUD_DATES_COUNT,
                 IOS_FIRST_DATE,
                 IOS_LAST_DATE,
-                IOS_DATES_COUNT
+                IOS_DATES_COUNT,
+                TUD_FIRST_DATE,
+                TUD_LAST_DATE,
+                TUD_DATES_COUNT
             ).primaryKey(STUDY_ID, PARTICIPANT_ID)
         /**
          * Authorization tables
