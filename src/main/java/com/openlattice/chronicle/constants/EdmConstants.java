@@ -95,6 +95,7 @@ public class EdmConstants {
     public static final FullQualifiedName LOC_LAT_FQN = new FullQualifiedName( "location.latitude" );
     public static final FullQualifiedName LOC_LON_FQN = new FullQualifiedName( "location.longitude" );
     public static final FullQualifiedName LOC_ALT_FQN = new FullQualifiedName( "location.altitude" );
+    public static final FullQualifiedName DESCRIPTION_FQN = new FullQualifiedName( "ol.description" );
 
     //Store schedule of recurring questionnaire notifications.
     public static final FullQualifiedName RRULE_FQN             = new FullQualifiedName( "ol.rrule" );

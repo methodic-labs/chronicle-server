@@ -3,6 +3,7 @@ package com.openlattice.chronicle.storage
 import com.geekbeast.postgres.PostgresColumnsIndexDefinition
 import com.geekbeast.postgres.PostgresTableDefinition
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACTIVE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_USERS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.BASE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CANDIDATE_ID
@@ -36,6 +37,11 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.PHONE_NUMBER
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_OF_ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_TYPE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.QUESTIONNAIRE_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.QUESTIONS
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.QUESTION_TITLE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.RECURRENCE_RULE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.RESPONSES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SCOPE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_NAME
@@ -179,6 +185,32 @@ class ChroniclePostgresTables {
                 APP_USERS
             )
             .primaryKey(RedshiftColumns.APP_PACKAGE_NAME, RedshiftColumns.APP_PACKAGE_NAME, RedshiftColumns.TIMESTAMP)
+
+        @JvmField
+        val QUESTIONNAIRES: PostgresTableDefinition = PostgresTableDefinition("questionnaires")
+            .addColumns(
+                STUDY_ID,
+                QUESTIONNAIRE_ID,
+                TITLE,
+                DESCRIPTION,
+                QUESTIONS,
+                ACTIVE,
+                CREATED_AT,
+                RECURRENCE_RULE
+            ).primaryKey(QUESTIONNAIRE_ID)
+
+        @JvmField
+        val QUESTIONNAIRE_SUBMISSIONS = PostgresTableDefinition("questionnaire_submissions")
+            .addColumns(
+                SUBMISSION_ID,
+                STUDY_ID,
+                PARTICIPANT_ID,
+                QUESTIONNAIRE_ID,
+                COMPLETED_AT,
+                QUESTION_TITLE,
+                RESPONSES,
+            ).primaryKey(SUBMISSION_ID, QUESTION_TITLE)
+        // All the questions in a single submission are unique. A single submission can write multiple records in the table
 
         /**
          * Authorization tables

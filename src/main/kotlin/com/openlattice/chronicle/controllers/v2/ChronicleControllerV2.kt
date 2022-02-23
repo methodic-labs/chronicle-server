@@ -5,7 +5,7 @@ import com.google.common.base.Optional
 import com.google.common.collect.SetMultimap
 import com.openlattice.chronicle.api.ChronicleApi
 import com.openlattice.chronicle.data.ChronicleAppsUsageDetails
-import com.openlattice.chronicle.data.ChronicleQuestionnaire
+import com.openlattice.chronicle.data.LegacyChronicleQuestionnaire
 import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import com.openlattice.chronicle.services.legacy.LegacyEdmResolver
@@ -103,8 +103,8 @@ class ChronicleControllerV2 : ChronicleApi {
             @PathVariable(ChronicleApi.ORGANIZATION_ID) organizationId: UUID,
             @PathVariable(ChronicleApi.STUDY_ID) studyId: UUID,
             @PathVariable(ChronicleApi.ENTITY_KEY_ID) questionnaireEKID: UUID
-    ): ChronicleQuestionnaire {
-        return surveysManager.getQuestionnaire(organizationId, studyId, questionnaireEKID)
+    ): LegacyChronicleQuestionnaire {
+        return surveysManager.getLegacyQuestionnaire(organizationId, studyId, questionnaireEKID)
     }
 
     @Timed
@@ -132,7 +132,7 @@ class ChronicleControllerV2 : ChronicleApi {
             @PathVariable(ChronicleApi.PARTICIPANT_ID) participantId: String,
             @RequestBody questionnaireResponses: Map<UUID, Map<FullQualifiedName, Set<Any>>>
     ) {
-        surveysManager.submitQuestionnaire(organizationId, studyId, participantId, questionnaireResponses)
+        surveysManager.submitLegacyQuestionnaire(organizationId, studyId, participantId, questionnaireResponses)
     }
 
     @Timed
@@ -159,7 +159,7 @@ class ChronicleControllerV2 : ChronicleApi {
             @PathVariable(ChronicleApi.ORGANIZATION_ID) organizationId: UUID,
             @PathVariable(ChronicleApi.STUDY_ID) studyId: UUID
     ): Map<UUID, Map<FullQualifiedName, Set<Any>>> {
-        return surveysManager.getStudyQuestionnaires(organizationId, studyId)
+        return surveysManager.getLegacyStudyQuestionnaires(organizationId, studyId)
     }
 
     @RequestMapping(

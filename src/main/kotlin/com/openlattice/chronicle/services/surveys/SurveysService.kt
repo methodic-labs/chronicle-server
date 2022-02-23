@@ -1,23 +1,48 @@
 package com.openlattice.chronicle.services.surveys
 
+import com.geekbeast.mappers.mappers.ObjectMappers
 import com.geekbeast.postgres.PostgresArrays
+import com.geekbeast.postgres.PostgresDatatype
 import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
-import com.openlattice.chronicle.data.ChronicleQuestionnaire
+import com.openlattice.chronicle.auditing.*
+import com.openlattice.chronicle.authorization.AclKey
+import com.openlattice.chronicle.constants.EdmConstants
+import com.openlattice.chronicle.data.LegacyChronicleQuestionnaire
+import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.postgres.ResultSetAdapters
+import com.openlattice.chronicle.services.ScheduledTasksManager
+import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.APP_USAGE_SURVEY
+import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.QUESTIONNAIRES
+import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.QUESTIONNAIRE_SUBMISSIONS
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACTIVE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.COMPLETED_AT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.DESCRIPTION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.QUESTIONNAIRE_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.QUESTIONS
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.QUESTION_TITLE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.RECURRENCE_RULE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.RESPONSES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.TITLE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APPLICATION_LABEL
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_PACKAGE_NAME
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.INTERACTION_TYPE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMESTAMP
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMEZONE
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.CHRONICLE_USAGE_EVENTS
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.survey.AppUsage
+import com.openlattice.chronicle.survey.Questionnaire
+import com.openlattice.chronicle.survey.QuestionnaireResponse
+import com.openlattice.chronicle.survey.QuestionnaireUpdate
 import com.openlattice.chronicle.util.ChronicleServerUtil.STUDY_PARTICIPANT
+import com.zaxxer.hikari.HikariDataSource
 import org.apache.olingo.commons.api.edm.FullQualifiedName
 import org.slf4j.LoggerFactory
+import org.springframework.stereotype.Service
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.util.*
@@ -30,11 +55,17 @@ import java.util.*
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
  */
+@Service
 class SurveysService(
-        private val storageResolver: StorageResolver,
-) : SurveysManager {
+    private val storageResolver: StorageResolver,
+    private val enrollmentManager: EnrollmentManager,
+    private val scheduledTasksManager: ScheduledTasksManager,
+    override val auditingManager: AuditingManager,
+    val idGenerationService: HazelcastIdGenerationService
+) : SurveysManager, AuditingComponent {
     companion object {
         private val logger = LoggerFactory.getLogger(SurveysService::class.java)
+        private val mapper = ObjectMappers.newJsonMapper()
 
         private val APP_USAGE_SURVEY_COLS = APP_USAGE_SURVEY.columns.joinToString(",") { it.name }
         private val APP_USAGE_SURVEY_PARAMS = APP_USAGE_SURVEY.columns.joinToString(",") { "?" }
@@ -45,7 +76,6 @@ class SurveysService(
          * 2) participantId
          * 3) date
          */
-        // TODO: Later modify this query to only return certain event types (Move to Foreground, etc) that better represent apps that the user actually interacted with
         val GET_APP_USAGE_SQL = """
             SELECT ${APP_PACKAGE_NAME.name}, ${APPLICATION_LABEL.name}, ${TIMESTAMP.name}, ${TIMEZONE.name}
             FROM ${CHRONICLE_USAGE_EVENTS.name}
@@ -53,6 +83,7 @@ class SurveysService(
                 AND ${PARTICIPANT_ID.name} = ?
                 AND ${TIMESTAMP.name} >=  ?
                 AND ${TIMESTAMP.name} < ?
+                AND ${INTERACTION_TYPE.name} = 'Move to Foreground'
         """.trimIndent()
 
         /**
@@ -67,45 +98,153 @@ class SurveysService(
          * 8) timezone
          */
         val SUBMIT_APP_USAGE_SURVEY_SQL = """
-            INSERT INTO ${APP_USAGE_SURVEY.name}($APP_USAGE_SURVEY_COLS) VALUES ($APP_USAGE_SURVEY_PARAMS)
+            INSERT INTO ${APP_USAGE_SURVEY.name} ($APP_USAGE_SURVEY_COLS) VALUES ($APP_USAGE_SURVEY_PARAMS)
             ON CONFLICT DO NOTHING
         """.trimIndent()
+
+        private val QUESTIONNAIRE_COLUMNS = QUESTIONNAIRES.columns.joinToString { it.name }
+        private val QUESTIONNAIRE_PARAMS = QUESTIONNAIRES.columns.joinToString {
+            if (it.datatype == PostgresDatatype.JSONB) "?::jsonb" else "?"
+        }
+
+        /**
+         * PreparedStatement bind order
+         * 1) studyId
+         * 2) questionnaireId
+         * 3) title
+         * 4) description
+         * 5) questions
+         * 6) active
+         * 7) date
+         * 8) recurrenceRule
+         */
+        private val CREATE_QUESTIONNAIRE_SQL = """
+            INSERT INTO ${QUESTIONNAIRES.name} (${QUESTIONNAIRE_COLUMNS}) VALUES ($QUESTIONNAIRE_PARAMS)
+        """.trimIndent()
+
+        /**
+         * PreparedStatement bind order
+         * 1) studyId
+         * 2) questionnaireId
+         */
+        private val GET_QUESTIONNAIRE_SQL = """
+            SELECT $QUESTIONNAIRE_COLUMNS
+            FROM ${QUESTIONNAIRES.name}
+            WHERE ${STUDY_ID.name} = ? AND ${QUESTIONNAIRE_ID.name} = ?
+        """.trimIndent()
+
+        /**
+         * PreparedStatement bind order
+         * 1) studyId
+         */
+        private val GET_STUDY_QUESTIONNAIRES_SQL = """
+            SELECT $QUESTIONNAIRE_COLUMNS
+            FROM ${QUESTIONNAIRES.name}
+            WHERE ${STUDY_ID.name} = ?
+        """.trimIndent()
+
+        private val SUBMIT_QUESTIONNAIRE_COLS = QUESTIONNAIRE_SUBMISSIONS.columns.joinToString { it.name }
+        private val SUBMIT_QUESTIONNAIRE_PARAMS = QUESTIONNAIRE_SUBMISSIONS.columns.joinToString {
+            if (it.datatype == PostgresDatatype.JSONB) "?::jsonb" else "?"
+        }
+
+        /**
+         * PreparedStatement bind order
+         * 1) id
+         * 2) studyId
+         * 3) participantId
+         * 4) questionnaireId
+         * 5) completedAt
+         * 6) questionTitle
+         * 7) responses
+         */
+        private val SUBMIT_QUESTIONNAIRE_SQL = """
+            INSERT INTO ${QUESTIONNAIRE_SUBMISSIONS.name} ($SUBMIT_QUESTIONNAIRE_COLS)
+            VALUES ($SUBMIT_QUESTIONNAIRE_PARAMS)
+        """.trimIndent()
+
+        /**
+         * PreparedStatement bind order
+         * 1) studyId
+         * 2) questionnaireId
+         */
+        val GET_QUESTIONNAIRE_SUBMISSIONS_SQL = """
+            SELECT ${PARTICIPANT_ID.name}, ${QUESTION_TITLE.name}, ${COMPLETED_AT.name}, ${RESPONSES.name}
+            FROM ${QUESTIONNAIRE_SUBMISSIONS.name}
+            WHERE ${STUDY_ID.name} = ? AND ${QUESTIONNAIRE_ID.name} = ?
+        """.trimIndent()
+
+        /**
+         * PreparedStatement bind order
+         * 1) studyId
+         * 2) questionnaireId
+         */
+        val DELETE_QUESTIONNAIRE_SQL = """
+            DELETE FROM ${QUESTIONNAIRES.name}
+            WHERE ${STUDY_ID.name} = ? AND ${QUESTIONNAIRE_ID.name} = ?
+        """.trimIndent()
+
+        private fun getOptionalUpdateQuestionnaireSetClause(update: QuestionnaireUpdate): String {
+            var result = "";
+            update.description?.let { result += ", ${DESCRIPTION.name} = ? " }
+            update.recurrenceRule?.let { result += ", ${RECURRENCE_RULE.name} = ?" }
+            update.active?.let { result += ", ${ACTIVE.name} = ? " }
+            update.questions?.let { result += ", ${QUESTIONS.name} = ?::jsonb" }
+
+            return result
+        }
+
+        private fun getUpdateQuestionnaireSql(update: QuestionnaireUpdate): String {
+            return """
+            UPDATE ${QUESTIONNAIRES.name}
+              SET ${TITLE.name} = ? ${getOptionalUpdateQuestionnaireSetClause(update)}
+            WHERE ${STUDY_ID.name} = ? AND ${QUESTIONNAIRE_ID.name} = ?
+        """.trimIndent()
+        }
     }
 
-    override fun getQuestionnaire(
-            organizationId: UUID, studyId: UUID, questionnaireEKID: UUID
-    ): ChronicleQuestionnaire {
+    override fun getLegacyQuestionnaire(
+        organizationId: UUID, studyId: UUID, questionnaireEKID: UUID
+    ): LegacyChronicleQuestionnaire {
         TODO("Not yet implemented")
     }
 
-    override fun getStudyQuestionnaires(
-            organizationId: UUID, studyId: UUID
+    override fun getLegacyStudyQuestionnaires(
+        organizationId: UUID, studyId: UUID
     ): Map<UUID, Map<FullQualifiedName, Set<Any>>> {
-        return mapOf()
+        val questionnaires = getStudyQuestionnaires(studyId)
+        return questionnaires.associate { questionnaire ->
+            questionnaire.id!! to mapOf(
+                EdmConstants.NAME_FQN to setOf(questionnaire.title),
+                EdmConstants.ACTIVE_FQN to setOf(questionnaire.active),
+                EdmConstants.RRULE_FQN to setOf(questionnaire.recurrenceRule ?: ""),
+                EdmConstants.DESCRIPTION_FQN to setOf(questionnaire.description)
+            )
+        }
     }
 
-    override fun submitQuestionnaire(
-            organizationId: UUID, studyId: UUID, participantId: String,
-            questionnaireResponses: Map<UUID, Map<FullQualifiedName, Set<Any>>>
+    override fun submitLegacyQuestionnaire(
+        organizationId: UUID, studyId: UUID, participantId: String,
+        questionnaireResponses: Map<UUID, Map<FullQualifiedName, Set<Any>>>
     ) {
         TODO("Not yet implemented")
     }
 
 
     override fun submitAppUsageSurvey(
-            studyId: UUID,
-            participantId: String,
-            surveyResponses: List<AppUsage>
+        studyId: UUID,
+        participantId: String,
+        surveyResponses: List<AppUsage>
     ) {
         logger.info(
-                "submitting app usage survey $STUDY_PARTICIPANT",
-                studyId,
-                participantId
+            "submitting app usage survey $STUDY_PARTICIPANT",
+            studyId,
+            participantId
         )
 
         val numWritten = writeToAppUsageTable(studyId, participantId, surveyResponses)
 
-        if (numWritten  != surveyResponses.size) {
+        if (numWritten != surveyResponses.size) {
             logger.warn("wrote {} entities but expected to write {} entities", numWritten, surveyResponses.size)
         }
     }
@@ -122,24 +261,24 @@ class SurveysService(
             val (_, hds) = storageResolver.resolveAndGetFlavor(studyId)
 
             val result = BasePostgresIterable(
-                    PreparedStatementHolderSupplier(hds, GET_APP_USAGE_SQL) { ps ->
-                        ps.setString(1, studyId.toString())
-                        ps.setString(2, participantId)
-                        ps.setObject(3, startDateTime)
-                        ps.setObject(4, endDateTime)
-                    }
+                PreparedStatementHolderSupplier(hds, GET_APP_USAGE_SQL) { ps ->
+                    ps.setString(1, studyId.toString())
+                    ps.setString(2, participantId)
+                    ps.setObject(3, startDateTime)
+                    ps.setObject(4, endDateTime)
+                }
             ) {
                 ResultSetAdapters.appUsage(it)
 
-            }.toList()
+            }.toList().filterNot { scheduledTasksManager.systemAppPackageNames.contains(it.appPackageName) }
 
             logger.info(
-                    "fetched {} app usage entities spanning {} to {} $STUDY_PARTICIPANT",
-                    result.size,
-                    startDateTime,
-                    endDateTime,
-                    studyId,
-                    participantId
+                "fetched {} app usage entities spanning {} to {} $STUDY_PARTICIPANT",
+                result.size,
+                startDateTime,
+                endDateTime,
+                studyId,
+                participantId
             )
 
             return result
@@ -147,6 +286,207 @@ class SurveysService(
         } catch (ex: Exception) {
             logger.error("unable to fetch data for app usage survey")
             throw ex
+        }
+    }
+
+    override fun createQuestionnaire(studyId: UUID, questionnaire: Questionnaire): UUID {
+        try {
+            val questionnaireId = idGenerationService.getNextId()
+
+            storageResolver.getPlatformStorage().connection.use { connection ->
+                AuditedOperationBuilder<Unit>(connection, auditingManager)
+                    .operation { conn ->
+                        conn.prepareStatement(CREATE_QUESTIONNAIRE_SQL).use { ps ->
+                            var index = 0
+                            ps.setObject(++index, studyId)
+                            ps.setObject(++index, questionnaireId)
+                            ps.setString(++index, questionnaire.title)
+                            ps.setString(++index, questionnaire.description)
+                            ps.setString(++index, mapper.writeValueAsString(questionnaire.questions))
+                            ps.setBoolean(++index, true)
+                            ps.setObject(++index, OffsetDateTime.now())
+                            ps.setString(++index, questionnaire.recurrenceRule)
+                            ps.executeUpdate()
+                        }
+                    }
+                    .audit {
+                        listOf(
+                            AuditableEvent(
+                                AclKey(studyId),
+                                eventType = AuditEventType.CREATE_QUESTIONNAIRE,
+                                description = "Created questionnaire with id $questionnaireId",
+                                study = studyId,
+                            )
+                        )
+                    }
+                    .buildAndRun()
+            }
+
+            return questionnaireId
+        } catch (ex: Exception) {
+            logger.error("unable to save questionnaire", ex)
+            throw ex
+        }
+    }
+
+    override fun updateQuestionnaire(studyId: UUID, questionnaireId: UUID, update: QuestionnaireUpdate) {
+        try {
+            storageResolver.getPlatformStorage().connection.use { connection ->
+                AuditedOperationBuilder<Int>(connection, auditingManager)
+                    .operation {
+                        connection.prepareStatement(getUpdateQuestionnaireSql(update)).use { ps ->
+                            var index = 0
+                            ps.setString(++index, update.title)
+                            update.description?.let { ps.setString(++index, it) }
+                            update.recurrenceRule?.let { ps.setString(++index, it) }
+                            update.active?.let { ps.setBoolean(++index, it) }
+                            update.questions?.let { ps.setString(++index, mapper.writeValueAsString(it)) }
+                            ps.setObject(++index, studyId)
+                            ps.setObject(++index, questionnaireId)
+
+                            ps.executeUpdate()
+                        }
+                    }
+                    .audit {
+                        listOf(
+                            AuditableEvent(
+                                aclKey = AclKey(studyId),
+                                eventType = AuditEventType.UPDATE_QUESTIONNAIRE,
+                                description = "Updated questionnaire with id $questionnaireId",
+                                study = studyId
+                            )
+                        )
+                    }
+            }
+
+        } catch (ex: Exception) {
+            logger.error("unable to toggle questionnaire active status")
+            throw ex
+        }
+    }
+
+    override fun getQuestionnaire(studyId: UUID, questionnaireId: UUID): Questionnaire {
+        try {
+            val hds = storageResolver.getPlatformStorage()
+            return BasePostgresIterable(
+                PreparedStatementHolderSupplier(hds, GET_QUESTIONNAIRE_SQL) { ps ->
+                    ps.setObject(1, studyId)
+                    ps.setObject(2, questionnaireId)
+                }
+            ) {
+                ResultSetAdapters.questionnaire(it)
+            }.first()
+
+        } catch (ex: Exception) {
+            logger.error("unable to fetch questionnaire: id = $questionnaireId, studyId = $studyId")
+            throw ex
+        }
+    }
+
+    override fun deleteQuestionnaire(studyId: UUID, questionnaireId: UUID) {
+        try {
+            storageResolver.getPlatformStorage().connection.use { connection ->
+                AuditedOperationBuilder<Unit>(connection, auditingManager)
+                    .operation {
+                        connection.prepareStatement(DELETE_QUESTIONNAIRE_SQL).use { ps ->
+                            ps.setObject(1, studyId)
+                            ps.setObject(2, questionnaireId)
+                            ps.execute()
+                        }
+                    }.audit {
+                        listOf(
+                            AuditableEvent(
+                                aclKey = AclKey(studyId),
+                                eventType = AuditEventType.DELETE_QUESTIONNAIRE,
+                                description = "Deleted questionnaire of id $questionnaireId",
+                                study = studyId
+                            )
+                        )
+                    }.buildAndRun()
+            }
+
+        } catch (ex: Exception) {
+            logger.info("error deleting questionnaire $questionnaireId in study $studyId")
+            throw ex
+        }
+    }
+
+    override fun getStudyQuestionnaires(studyId: UUID): List<Questionnaire> {
+        try {
+            val hds = storageResolver.getPlatformStorage()
+            return BasePostgresIterable(PreparedStatementHolderSupplier(hds, GET_STUDY_QUESTIONNAIRES_SQL) { ps ->
+                ps.setObject(1, studyId)
+            }) {
+                ResultSetAdapters.questionnaire(it)
+            }.toList()
+        } catch (ex: Exception) {
+            logger.error("unable fetching study $studyId questionnaires")
+            throw ex
+        }
+    }
+
+    override fun submitQuestionnaireResponses(
+        studyId: UUID,
+        participantId: String,
+        questionnaireId: UUID,
+        responses: List<QuestionnaireResponse>
+    ) {
+        try {
+            val isKnownParticipant = enrollmentManager.isKnownParticipant(studyId, participantId)
+            if (!isKnownParticipant) {
+                logger.error(
+                    "cannot submit questionnaire because participant was not found $STUDY_PARTICIPANT",
+                    studyId,
+                    participantId
+                )
+                throw Exception("participant not found")
+            }
+
+            val hds = storageResolver.getPlatformStorage()
+            val rowsWritten = writeQuestionnaireResponses(hds, studyId, participantId, questionnaireId, responses)
+            logger.info(
+                "recorded {} questionnaire responses", STUDY_PARTICIPANT,
+                rowsWritten,
+                studyId,
+                participantId
+            )
+
+        } catch (ex: Exception) {
+            logger.error("error submitting questionnaire responses")
+            throw ex
+        }
+    }
+
+    // writes questionnaire responses to postgres and returns number of rows written
+    private fun writeQuestionnaireResponses(
+        hds: HikariDataSource,
+        studyId: UUID,
+        participantId: String,
+        questionnaireId: UUID,
+        responses: List<QuestionnaireResponse>
+    ): Int {
+        val submissionId = idGenerationService.getNextId()
+        return hds.connection.use { connection ->
+            try {
+                val wc = connection.prepareStatement(SUBMIT_QUESTIONNAIRE_SQL).use { ps ->
+                    ps.setObject(1, submissionId)
+                    ps.setObject(2, studyId)
+                    ps.setString(3, participantId)
+                    ps.setObject(4, questionnaireId)
+                    ps.setObject(5, OffsetDateTime.now())
+
+                    responses.forEach { response ->
+                        ps.setString(6, response.questionTitle)
+                        ps.setArray(7, PostgresArrays.createTextArray(connection, response.value))
+                        ps.addBatch()
+                    }
+
+                    ps.executeBatch().sum()
+                }
+                return@use wc
+            } catch (ex: Exception) {
+                throw ex
+            }
         }
     }
 
@@ -177,10 +517,10 @@ class SurveysService(
 
             } catch (ex: Exception) {
                 logger.error(
-                        "unable to submit app usage survey $STUDY_PARTICIPANT",
-                        studyId,
-                        participantId,
-                        ex
+                    "unable to submit app usage survey $STUDY_PARTICIPANT",
+                    studyId,
+                    participantId,
+                    ex
                 )
                 conn.rollback()
                 throw ex

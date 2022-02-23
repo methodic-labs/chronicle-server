@@ -2,12 +2,8 @@ package com.openlattice.chronicle.storage
 
 import com.geekbeast.postgres.PostgresColumnDefinition
 import com.geekbeast.postgres.PostgresDatatype
-import com.geekbeast.postgres.PostgresTableDefinition
-import com.geekbeast.postgres.PostgresTables
 import java.lang.reflect.Field
 import java.lang.reflect.Modifier
-import java.util.*
-import java.util.stream.Stream
 
 /**
  *
@@ -15,6 +11,7 @@ import java.util.stream.Stream
  */
 class PostgresColumns {
     companion object {
+        @JvmField val ACTIVE = PostgresColumnDefinition("active", PostgresDatatype.BOOLEAN)
         @JvmField val ACL_KEY = PostgresColumnDefinition("acl_key", PostgresDatatype.UUID_ARRAY)
         @JvmField val APP_USERS = PostgresColumnDefinition("users", PostgresDatatype.TEXT_ARRAY)
         @JvmField val BASE = PostgresColumnDefinition("base", PostgresDatatype.BIGINT).notNull()
@@ -50,6 +47,11 @@ class PostgresColumns {
         @JvmField val PRINCIPAL_ID = PostgresColumnDefinition("principal_id", PostgresDatatype.TEXT)
         @JvmField val PRINCIPAL_OF_ACL_KEY = PostgresColumnDefinition("principal_of_acl_key", PostgresDatatype.UUID_ARRAY)
         @JvmField val PRINCIPAL_TYPE = PostgresColumnDefinition("principal_type", PostgresDatatype.TEXT)
+        @JvmField val QUESTIONNAIRE_ID = PostgresColumnDefinition("questionnaire_id", PostgresDatatype.UUID).notNull()
+        @JvmField val QUESTION_TITLE = PostgresColumnDefinition("question_title", PostgresDatatype.TEXT).notNull()
+        @JvmField val QUESTIONS = PostgresColumnDefinition("questions", PostgresDatatype.JSONB).notNull()
+        @JvmField val RESPONSES = PostgresColumnDefinition("response", PostgresDatatype.TEXT_ARRAY)
+        @JvmField val RECURRENCE_RULE = PostgresColumnDefinition("recurrence_rule", PostgresDatatype.TEXT)
         @JvmField val SCOPE = PostgresColumnDefinition("scope", PostgresDatatype.TEXT).notNull()
         @JvmField val SECURABLE_OBJECT_ID = PostgresColumnDefinition("id", PostgresDatatype.UUID).unique().notNull()
         @JvmField val SECURABLE_OBJECT_NAME = PostgresColumnDefinition("name", PostgresDatatype.TEXT).notNull().unique()

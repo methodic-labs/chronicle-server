@@ -72,7 +72,6 @@ import com.openlattice.chronicle.services.upload.SensorDataUploadService
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.tasks.PostConstructInitializerTaskDependencies
 import com.openlattice.chronicle.users.*
-import com.openlattice.chronicle.users.UserListingService
 import com.openlattice.users.export.Auth0ApiExtension
 import org.slf4j.LoggerFactory
 import org.springframework.context.annotation.Bean
@@ -207,6 +206,10 @@ class ChronicleServerServicesPod {
     fun surveysManager(): SurveysManager {
         return SurveysService(
             storageResolver,
+            enrollmentManager(),
+            scheduledTasksManager(),
+            auditingManager(),
+            idGenerationService(),
         )
     }
 
