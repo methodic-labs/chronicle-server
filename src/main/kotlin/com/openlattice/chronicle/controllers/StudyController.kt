@@ -490,7 +490,7 @@ class StudyController @Inject constructor(
     )
     override fun getParticipantStats(@PathVariable(STUDY_ID) studyId: UUID): Map<String, ParticipantStats> {
         ensureReadAccess(AclKey(studyId))
-        
+        return studyService.getStudyParticipantStats(studyId)
     }
 
     @Timed

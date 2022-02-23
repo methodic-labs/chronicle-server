@@ -18,11 +18,13 @@ import com.openlattice.chronicle.hazelcast.HazelcastMap
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.ids.IdConstants
 import com.openlattice.chronicle.participants.Participant
+import com.openlattice.chronicle.participants.ParticipantStats
 import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.sensorkit.SensorType
 import com.openlattice.chronicle.services.candidates.CandidateManager
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.ORGANIZATION_STUDIES
+import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.PARTICIPANT_STATS
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.PERMISSIONS
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.STUDIES
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.STUDY_PARTICIPANTS
@@ -249,6 +251,17 @@ class StudyService(
 
         private val SELECT_STUDY_PARTICIPANTS_SQL = """
             SELECT * FROM ${STUDY_PARTICIPANTS.name} WHERE ${STUDY_ID.name} = ?
+        """.trimIndent()
+
+        private val PARTICIPANT_STATS_COLUMNS = PARTICIPANT_STATS.columns.joinToString { it.name }
+        /**
+         * PreparedStatement bind order
+         * 1) studyId
+         */
+        private val GET_STUDY_PARTICIPANT_STATS = """
+            SELECT $PARTICIPANT_STATS_COLUMNS
+            FROM ${PARTICIPANT_STATS.name}
+            WHERE ${STUDY_ID.name} = ?
         """.trimIndent()
     }
 
@@ -481,6 +494,16 @@ class StudyService(
             return (it as List<String>).map { sensor -> SensorType.valueOf(sensor) }.toSet()
         }
         return setOf()
+    }
+
+    override fun getStudyParticipantStats(studyId: UUID): Map<String, ParticipantStats> {
+        val hds = storageResolver.getPlatformStorage()
+        return BasePostgresIterable(
+            PreparedStatementHolderSupplier(hds, GET_NOTIFICATION_STATUS_SQL) { ps ->
+                ps.setObject(1, studyId)
+            }
+        ) { ResultSetAdapters.participantStats(it)}
+            .associateBy { it.participantId }
     }
 
     override fun getStudyParticipants(studyId: UUID): Iterable<Participant> {
