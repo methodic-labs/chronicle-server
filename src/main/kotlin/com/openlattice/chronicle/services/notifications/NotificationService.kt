@@ -124,8 +124,9 @@ class NotificationService(
                 val hds = storageResolver.getPlatformStorage()
                 hds.connection.use { connection-> updateNotification(connection, notification) }
             }
+            logger.info("Message status updated to $status for notification with SID $messageId")
         } catch (e: ExecutionException) {
-            logger.error("Unable to track undelivered message for message with SID $messageId", e)
+            logger.error("Unable to update message status for notification with SID $messageId", e)
         }
 
     }
