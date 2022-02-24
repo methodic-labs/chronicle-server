@@ -61,12 +61,6 @@ class TimeUseDiaryService(
             participantId,
             responses
         )
-        authorizationService.createSecurableObject(
-            connection = connection,
-            aclKey = AclKey(timeUseDiaryId),
-            principal = Principals.getCurrentUser(),
-            objectType = SecurableObjectType.TimeUseDiary
-        )
     }
 
     override fun getSubmissionByDate(
