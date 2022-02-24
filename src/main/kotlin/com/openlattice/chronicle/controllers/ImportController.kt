@@ -138,14 +138,18 @@ class ImportController(
 
         val v2StudyId = rs.getString(LEGACY_STUDY_ID)
         val v2StudyEkid = rs.getString(LEGACY_STUDY_EK_ID)
+
+        var description = rs.getString(LEGACY_DESC)
+        if (StringUtils.isBlank(description)) {
+            description = ""
+        }
+
         var title = rs.getString(LEGACY_TITLE)
         if (StringUtils.isBlank(title)) {
             title = "NO TITLE - POSSIBLY DELETED STUDY"
-        }
-        var description = rs.getString(LEGACY_DESC)
-        if (StringUtils.isBlank(description)) {
             description = "study_id $v2StudyId study_ekid $v2StudyEkid"
         }
+
         return Study(
             title = title,
             description = description,
