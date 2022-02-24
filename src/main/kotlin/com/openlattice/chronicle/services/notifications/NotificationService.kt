@@ -1,12 +1,13 @@
 package com.openlattice.chronicle.services.notifications
 
-import com.openlattice.chronicle.auditing.AuditingComponent
-import com.openlattice.chronicle.auditing.AuditingManager
+import com.openlattice.chronicle.auditing.*
 import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.authorization.AuthorizationManager
 import com.openlattice.chronicle.authorization.SecurableObjectType
 import com.openlattice.chronicle.authorization.principals.Principals
+import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.notifications.Notification
+import com.openlattice.chronicle.notifications.NotificationDetails
 import com.openlattice.chronicle.notifications.NotificationStatus
 import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.services.twilio.TwilioService
@@ -21,6 +22,7 @@ import org.springframework.stereotype.Service
 import java.sql.Connection
 import java.sql.SQLException
 import java.time.OffsetDateTime
+import java.util.*
 import java.util.concurrent.ExecutionException
 
 
@@ -32,6 +34,7 @@ import java.util.concurrent.ExecutionException
 class NotificationService(
     private val storageResolver: StorageResolver,
     private val authorizationService: AuthorizationManager,
+    val idGenerationService: HazelcastIdGenerationService,
     private val twilioService :TwilioService,
     override val auditingManager: AuditingManager,
 ) : NotificationManager, AuditingComponent {
@@ -133,9 +136,45 @@ class NotificationService(
 
     }
 
-    override fun sendNotifications(connection: Connection, notifications: List<Notification>) {
+    override fun sendNotifications(organizationId: UUID, notificationDetailsList: List<NotificationDetails>) {
+        val hds = storageResolver.getPlatformStorage()
+        val notificationAuditEvents = mutableListOf<AuditableEvent>();
+        val notifications :List<Notification> = notificationDetailsList.map { notificationDetails ->
+            val messageText = "Chronicle device enrollment:  Please download app from your app store and click on ${notificationDetails.url} to enroll your device."
+            val notificationId = idGenerationService.getNextId();
+            notificationAuditEvents.add(
+                AuditableEvent(
+                    AclKey(notificationId),
+                    eventType = AuditEventType.SEND_SMS_NOTIFICATION,
+                    description = "send message to ${notificationDetails.candidateId}",
+                    study = notificationDetails.studyId,
+                    organization = organizationId,
+                )
+            )
+            Notification(
+                notificationId,
+                notificationDetails.candidateId,
+                organizationId,
+                notificationDetails.studyId,
+                OffsetDateTime.now(),
+                OffsetDateTime.now(),
+                NotificationStatus.sent.name,
+                "notification not sent for id, $notificationId",
+                notificationDetails.notificationType,
+                messageText,
+                null,
+                notificationDetails.phoneNumber
+            )
+        }
         logger.info("preparing to send batch of ${notifications.size} messages to participants")
-        val notificationOutcomes = twilioService.sendNotifications(notifications)
-        insertNotifications(connection, notificationOutcomes)
+        hds.connection.use { connection ->
+            AuditedOperationBuilder<Unit>(connection, auditingManager)
+                .operation { conn ->
+                    val notificationOutcomes = twilioService.sendNotifications(notifications)
+                    insertNotifications(conn, notificationOutcomes)
+                }
+                .audit { notificationAuditEvents }
+                .buildAndRun()
+        }
     }
 }

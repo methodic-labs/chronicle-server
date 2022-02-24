@@ -48,46 +48,12 @@ class NotificationController @Inject constructor(
         @RequestBody notificationDetailsList: List<NotificationDetails>
     ) {
         ensureAuthenticated()
-        val hds = storageResolver.getPlatformStorage()
-        val notificationAuditEvents = mutableListOf<AuditableEvent>();
-        val notifications :List<Notification> = notificationDetailsList.map { notificationDetails ->
-            val messageText = "Chronicle device enrollment:  Please download app from your app store and click on ${notificationDetails.url} to enroll your device."
-            val notificationId = idGenerationService.getNextId();
-            notificationAuditEvents.add(
-                AuditableEvent(
-                    AclKey(notificationId),
-                    eventType = AuditEventType.SEND_SMS_NOTIFICATION,
-                    description = "send message to ${notificationDetails.candidateId}",
-                    study = notificationDetails.studyId,
-                    organization = organizationId,
-                )
-            )
-            Notification(
-                notificationId,
-                notificationDetails.candidateId,
-                organizationId,
-                notificationDetails.studyId,
-                OffsetDateTime.now(),
-                OffsetDateTime.now(),
-                NotificationStatus.sent.name,
-                "notification not sent",
-                notificationDetails.notificationType,
-                messageText,
-                null,
-                notificationDetails.phoneNumber
-            )
-        }
-        hds.connection.use { connection ->
-            AuditedOperationBuilder<Unit>(connection, auditingManager)
-                .operation { conn -> notificationService.sendNotifications(conn, notifications) }
-                .audit { notificationAuditEvents }
-                .buildAndRun()
-        }
+        notificationService.sendNotifications(organizationId, notificationDetailsList)
     }
 
     @RequestMapping(path = [STATUS_PATH],
         method = [RequestMethod.POST])
-    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @ResponseStatus(HttpStatus.OK)
     override fun updateNotificationStatus(
         @RequestParam(value = "MessageSid") messageId: String,
         @RequestParam(value = "MessageStatus") messageStatus: String
