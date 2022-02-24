@@ -17,10 +17,11 @@
  * You can contact the owner of the copyright at support@openlattice.com
  *
  */
-package com.openlattice.chronicle.authorization
+package com.openlattice.chronicle.controllers
 
 import com.codahale.metrics.annotation.Timed
 import com.openlattice.chronicle.auditing.AuditingManager
+import com.openlattice.chronicle.authorization.*
 import com.openlattice.chronicle.authorization.principals.Principals
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.*
@@ -31,10 +32,9 @@ import javax.inject.Inject
 @RestController
 @RequestMapping(AuthorizationsApi.CONTROLLER)
 class AuthorizationsController @Inject constructor(
-    override val auditingManager: AuditingManager
+    override val auditingManager: AuditingManager,
+    override val authorizationManager: AuthorizationManager
 ) : AuthorizationsApi, AuthorizingComponent {
-    @Inject
-    override lateinit var authorizationManager: AuthorizationManager
 
     @Timed
     @RequestMapping(

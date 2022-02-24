@@ -30,6 +30,12 @@ import com.openlattice.chronicle.storage.PostgresColumns
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.util.toAceKeys
 import com.geekbeast.postgres.PostgresArrays
+import com.geekbeast.postgres.streams.BasePostgresIterable
+import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
+import com.openlattice.chronicle.postgres.ResultSetAdapters
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_TYPE
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.sql.Connection
@@ -80,6 +86,11 @@ class HazelcastAuthorizationService(
          */
         private val INSERT_ACES = """
             INSERT INTO ${PERMISSIONS.name} VALUES (?,?,?,?,?)
+        """.trimIndent()
+
+        private val DELETE_PRINCIPAL_PERMISSIONS = """
+            DELETE FROM ${PERMISSIONS.name} WHERE ${PRINCIPAL_TYPE.name} = ? AND ${PRINCIPAL_ID.name} = ? 
+            RETURNING ${ACL_KEY.name}
         """.trimIndent()
 
         private fun noAccess(permissions: EnumSet<Permission>): EnumMap<Permission, Boolean> {
@@ -461,6 +472,10 @@ class HazelcastAuthorizationService(
     }
 
     @Timed
+    @Deprecated(
+        message = "Deprecated inefficient version using stream",
+        replaceWith = ReplaceWith("listAuthorizedObjectsOfType")
+    )
     override fun getAuthorizedObjectsOfType(
         principals: Set<Principal>,
         objectType: SecurableObjectType,
@@ -479,6 +494,24 @@ class HazelcastAuthorizationService(
             .stream()
             .map { it.aclKey }
             .distinct()
+    }
+
+    @Timed
+    override fun listAuthorizedObjectsOfType(
+        principals: Set<Principal>,
+        objectType: SecurableObjectType,
+        permissions: EnumSet<Permission>
+    ): List<AclKey> {
+        val principalPredicate = if (principals.size == 1) hasPrincipal(principals.first()) else hasAnyPrincipals(
+            principals
+        )
+        val p = Predicates.and<AceKey, AceValue>(
+            principalPredicate,
+            hasType(objectType),
+            hasExactPermissions(permissions)
+        )
+
+        return aces.keySet(p).map { it.aclKey }
     }
 
     @Timed
@@ -565,6 +598,23 @@ class HazelcastAuthorizationService(
             .forEach { result.put(it.aclKey, it.principal) }
 
         return result
+    }
+
+    override fun deleteAllPrincipalPermissions(principal: Principal) {
+        /*
+        This will delete from db and then evict from memory.
+        Since we check if principal exists before adding a permission it should fail cleanly as long as principal
+        was deleted before permissions were deleted.
+        */
+        BasePostgresIterable(
+            PreparedStatementHolderSupplier(
+                authorizationStorage.second,
+                DELETE_PRINCIPAL_PERMISSIONS
+            ) {
+                it.setString(1, principal.type.name)
+                it.setString(2, principal.id)
+            }) { AceKey(ResultSetAdapters.aclKey(it), principal) }
+            .forEach(aces::evict)
     }
 
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020. OpenLattice, Inc.
+ * Copyright (C) 2019. OpenLattice, Inc.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,29 +19,34 @@
  *
  */
 
-package com.openlattice.chronicle.users
+package com.openlattice.chronicle.directory
 
 import com.auth0.json.mgmt.users.User
-import java.time.Instant
+import com.codahale.metrics.annotation.Timed
+import com.openlattice.chronicle.users.Auth0UserSearchFields
 
-/**
- *
- * @author Matthew Tamayo-Rios &lt;matthew@openlattice.com&gt;
- */
-interface UserListingService {
-    /**
-     * Retrieves all users as a sequence.
-     */
-    fun getAllUsers() : Sequence<User>
+internal const val DEFAULT_PAGE_SIZE = 100
+internal const val SEARCH_ENGINE_VERSION = "v3"
 
-    /**
-     * Retrieves updated users where update was happening after [from] (exclusive) and at or before [to] (inclusive)
-     * as a sequence.
-     */
-    fun getUpdatedUsers(from: Instant, to: Instant) : Sequence<User>
+interface UserDirectoryService {
 
-    /**
-     * Retrieves a single user by id
-     */
-    fun getUser( userId: String ) : User
+    @Timed
+    fun getAllUsers(): Map<String, User>
+
+    @Timed
+    fun getUser(userId: String): User
+
+    @Timed
+    fun getUsers(userIds: Set<String>): Map<String, User>
+
+    //TODO: Switch over to a Hazelcast map to relieve pressure from Auth0
+    @Timed
+    fun searchAllUsers(fields: Auth0UserSearchFields): Map<String, User>
+
+    @Timed
+    fun deleteUser(userId: String)
 }
+
+
+
+

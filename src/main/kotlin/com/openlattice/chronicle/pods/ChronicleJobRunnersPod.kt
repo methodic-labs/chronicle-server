@@ -8,7 +8,10 @@ import com.google.common.eventbus.EventBus
 import com.google.common.util.concurrent.ListeningExecutorService
 import com.hazelcast.core.HazelcastInstance
 import com.openlattice.chronicle.configuration.ChronicleConfiguration
-import com.openlattice.chronicle.deletion.DeleteChronicleUsageDataRunner
+import com.openlattice.chronicle.deletion.DeleteStudyUsageDataRunner
+import com.openlattice.chronicle.deletion.DeleteParticipantUsageDataRunner
+import com.openlattice.chronicle.deletion.DeleteStudyAppUsageSurveyDataRunner
+import com.openlattice.chronicle.deletion.DeleteStudyTUDSubmissionDataRunner
 import com.openlattice.chronicle.storage.StorageResolver
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -47,7 +50,24 @@ class ChronicleJobRunnersPod {
         private lateinit var storageResolver: StorageResolver
 
         @Bean
-        fun deleteChronicleUsageDataRunner() : DeleteChronicleUsageDataRunner {
-            return DeleteChronicleUsageDataRunner(storageResolver)
+        fun deleteStudyUsageDataRunner() : DeleteStudyUsageDataRunner {
+            return DeleteStudyUsageDataRunner(storageResolver)
         }
+
+        @Bean
+        fun deleteStudyTUDSubmissionDataRunner() : DeleteStudyTUDSubmissionDataRunner {
+                return DeleteStudyTUDSubmissionDataRunner()
+        }
+
+        @Bean
+        fun deleteAppUsageSurveyDataRunner() : DeleteStudyAppUsageSurveyDataRunner {
+                return DeleteStudyAppUsageSurveyDataRunner()
+        }
+
+        @Bean
+        fun deleteParticipantUsageDataRunner() : DeleteParticipantUsageDataRunner {
+                return DeleteParticipantUsageDataRunner(storageResolver)
+        }
+
+
 }

@@ -17,23 +17,26 @@
  * You can contact the owner of the copyright at support@openlattice.com
  *
  */
-package com.openlattice.chronicle.pods
 
-import com.geekbeast.rhizome.configuration.servlets.DispatcherServletConfiguration
-import com.google.common.collect.Lists
-import com.openlattice.chronicle.pods.servlet.ChronicleServerMvcPod
-import org.springframework.context.annotation.Bean
-import org.springframework.context.annotation.Configuration
+package com.openlattice.chronicle.pods;
+
+import com.geekbeast.rhizome.configuration.servlets.DispatcherServletConfiguration;
+import com.google.common.collect.Lists;
+import com.openlattice.chronicle.pods.servlet.ChronicleServerMvcPod;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 
 @Configuration
-class ChronicleServerServletsPod {
+public class ChronicleServerServletsPod {
 
     @Bean
-    fun chronicleServlet(): DispatcherServletConfiguration {
-        return DispatcherServletConfiguration(
-            "chronicle", arrayOf("/chronicle/*", "/datastore/*"),
-            1,
-            Lists.newArrayList<Class<*>>(ChronicleServerMvcPod::class.java)
-        )
+    public DispatcherServletConfiguration edmServlet() {
+
+        return new DispatcherServletConfiguration(
+                "chronicle",
+                new String[] { "/chronicle/*" },
+                1,
+                Lists.<Class<?>>newArrayList( ChronicleServerMvcPod.class ) );
     }
+
 }

@@ -258,4 +258,13 @@ interface AuthorizationManager {
 
     @Timed
     fun getOwnersForSecurableObjects(aclKeys: Collection<AclKey>): SetMultimap<AclKey, Principal>
+
+    @Timed
+    fun deleteAllPrincipalPermissions(principal: Principal)
+    @Timed
+    fun listAuthorizedObjectsOfType(
+        principals: Set<Principal>,
+        objectType: SecurableObjectType,
+        permissions: EnumSet<Permission>
+    ): List<AclKey>
 }

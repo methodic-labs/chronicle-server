@@ -43,6 +43,9 @@ import com.openlattice.chronicle.authorization.principals.*
 import com.openlattice.chronicle.authorization.reservations.AclKeyReservationService
 import com.openlattice.chronicle.configuration.ChronicleConfiguration
 import com.openlattice.chronicle.configuration.TwilioConfiguration
+import com.openlattice.chronicle.directory.Auth0UserDirectoryService
+import com.openlattice.chronicle.directory.LocalUserDirectoryService
+import com.openlattice.chronicle.directory.UserDirectoryService
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.jobs.BackgroundChronicleJobService
 import com.openlattice.chronicle.organizations.ChronicleOrganizationService
@@ -73,7 +76,6 @@ import com.openlattice.chronicle.services.upload.SensorDataUploadService
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.tasks.PostConstructInitializerTaskDependencies
 import com.openlattice.chronicle.users.*
-import com.openlattice.users.UserListingService
 import com.openlattice.users.export.Auth0ApiExtension
 import org.slf4j.LoggerFactory
 import org.springframework.context.annotation.Bean
@@ -132,7 +134,7 @@ class ChronicleServerServicesPod {
     @Throws(IOException::class, ExecutionException::class)
     fun scheduledTasksManager(): ScheduledTasksManager {
         return ScheduledTasksManager(
-                storageResolver
+            storageResolver
         )
     }
 
@@ -210,7 +212,11 @@ class ChronicleServerServicesPod {
     @Throws(IOException::class, ExecutionException::class)
     fun surveysManager(): SurveysManager {
         return SurveysService(
-                storageResolver,
+            storageResolver,
+            enrollmentManager(),
+            scheduledTasksManager(),
+            auditingManager(),
+            idGenerationService(),
         )
     }
 
@@ -262,7 +268,7 @@ class ChronicleServerServicesPod {
 
     @Bean
     fun userListingService(): UserListingService {
-        if (auth0Configuration!!.managementApiUrl.contains(Auth0Configuration.NO_SYNC_URL)) {
+        if (auth0Configuration.managementApiUrl.contains(Auth0Configuration.NO_SYNC_URL)) {
             return LocalUserListingService(auth0Configuration)
         }
         val auth0Token = auth0TokenProvider().token
@@ -270,6 +276,15 @@ class ChronicleServerServicesPod {
             ManagementAPI(auth0Configuration.domain, auth0Token),
             Auth0ApiExtension(auth0Configuration.domain, auth0Token)
         )
+    }
+
+    @Bean
+    fun userDirectoryService(): UserDirectoryService {
+        return if (auth0Configuration.managementApiUrl.contains(Auth0Configuration.NO_SYNC_URL)) {
+            LocalUserDirectoryService(auth0Configuration)
+        } else {
+            Auth0UserDirectoryService(auth0TokenProvider(), hazelcast)
+        }
     }
 
     @Bean
@@ -287,6 +302,7 @@ class ChronicleServerServicesPod {
             authorizationService(),
             candidateService(),
             enrollmentManager(),
+            idGenerationService(),
             auditingManager(),
             hazelcast
         )

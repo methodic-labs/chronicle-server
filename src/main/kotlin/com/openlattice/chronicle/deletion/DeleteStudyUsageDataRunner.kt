@@ -4,45 +4,28 @@ import com.geekbeast.rhizome.jobs.JobStatus
 import com.openlattice.chronicle.auditing.AuditEventType
 import com.openlattice.chronicle.auditing.AuditableEvent
 import com.openlattice.chronicle.authorization.AclKey
-import com.openlattice.chronicle.jobs.AbstractChronicleJobRunner
+import com.openlattice.chronicle.jobs.AbstractChronicleDeleteJobRunner
+import java.sql.Connection
+import java.time.OffsetDateTime
 import com.openlattice.chronicle.jobs.ChronicleJob
-import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.JOBS
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.COMPLETED_AT
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.DELETED_ROWS
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.JOB_ID
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPDATED_AT
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.CHRONICLE_USAGE_EVENTS
 import com.openlattice.chronicle.storage.StorageResolver
 import org.slf4j.LoggerFactory
-import java.sql.Connection
-import java.time.OffsetDateTime
 
 /**
  * @author Solomon Tang <solomon@openlattice.com>
  */
-class DeleteChronicleUsageDataRunner(
+class DeleteStudyUsageDataRunner(
     private val storageResolver: StorageResolver
-) : AbstractChronicleJobRunner<DeleteStudyUsageData>() {
+) : AbstractChronicleDeleteJobRunner<DeleteStudyUsageData>() {
 
     companion object {
-        private val logger = LoggerFactory.getLogger(DeleteChronicleUsageDataRunner::class.java)!!
+        private val logger = LoggerFactory.getLogger(DeleteStudyUsageDataRunner::class.java)!!
 
         private val DELETE_CHRONICLE_STUDY_USAGE_DATA_SQL = """
             DELETE FROM ${CHRONICLE_USAGE_EVENTS.name}
             WHERE ${STUDY_ID.name} = ?
-        """.trimIndent()
-
-        private val UPDATE_FINISHED_JOB_COLUMNS = listOf(
-            UPDATED_AT,
-            COMPLETED_AT,
-            DELETED_ROWS
-        ).joinToString(",") { it.name }
-
-        private val UPDATE_FINISHED_DELETE_JOB_SQL = """
-            UPDATE ${JOBS.name}
-            SET ($UPDATE_FINISHED_JOB_COLUMNS) = (?, ?, ?)
-            WHERE ${JOB_ID.name} = ?
         """.trimIndent()
     }
 
@@ -83,18 +66,6 @@ class DeleteChronicleUsageDataRunner(
         return connection.prepareStatement(DELETE_CHRONICLE_STUDY_USAGE_DATA_SQL).use { ps ->
             ps.setObject(1, jobData.studyId)
             ps.executeUpdate().toLong()
-        }
-    }
-
-    // update job with number of deleted usage data rows
-    private fun updateFinishedDeleteJob(connection: Connection, job: ChronicleJob) {
-        return connection.prepareStatement(UPDATE_FINISHED_DELETE_JOB_SQL).use { ps ->
-            var index = 1
-            ps.setObject(index++, job.updatedAt)
-            ps.setObject(index++, job.completedAt)
-            ps.setLong(index++, job.deletedRows)
-            ps.setObject(index, job.id)
-            ps.executeUpdate()
         }
     }
 

@@ -54,6 +54,7 @@ import javax.inject.Inject
         NotificationController::class,
         StudyController::class,
         AdminController::class,
+        PrincipalDirectoryController::class
     ],
     includeFilters = [ComponentScan.Filter(
         value = [Controller::class, RestControllerAdvice::class],
