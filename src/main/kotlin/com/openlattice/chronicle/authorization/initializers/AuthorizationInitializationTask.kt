@@ -39,6 +39,7 @@ class AuthorizationInitializationTask : HazelcastInitializationTask<Authorizatio
         val spm = dependencies.securePrincipalsManager
         spm.createSecurablePrincipalIfNotExists(SystemRole.AUTHENTICATED_USER.principal, GLOBAL_USER_ROLE)
         spm.createSecurablePrincipalIfNotExists(SystemRole.ADMIN.principal, GLOBAL_ADMIN_ROLE)
+        spm.createSecurablePrincipalIfNotExists(SystemRole.ANONYMOUS_USER.principal, ANONYMOUS_USER_ROLE)
         val source = spm.lookup(SystemRole.AUTHENTICATED_USER.principal)
         val target = spm.lookup(SystemRole.ADMIN.principal)
         spm.addPrincipalToPrincipal(source, target)
@@ -81,6 +82,15 @@ class AuthorizationInitializationTask : HazelcastInitializationTask<Authorizatio
             IdConstants.SYSTEM_ORGANIZATION.id,
             SystemRole.ADMIN.principal,
             "Global Admin Role",
+            Optional.of("The global administrative role that allows management of entity data model.")
+        )
+
+        @JvmField
+        val ANONYMOUS_USER_ROLE = Role(
+            Optional.empty(),
+            IdConstants.SYSTEM_ORGANIZATION.id,
+            SystemRole.ANONYMOUS_USER.principal,
+            "Anonymous User Role",
             Optional.of("The global administrative role that allows management of entity data model.")
         )
     }
