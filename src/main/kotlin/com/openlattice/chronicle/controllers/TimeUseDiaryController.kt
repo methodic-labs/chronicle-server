@@ -73,7 +73,6 @@ class TimeUseDiaryController(
         @PathVariable(PARTICIPANT_ID) participantId: String,
         @RequestBody responses: List<TimeUseDiaryResponse>
     ): UUID {
-        ensureAuthenticated()
         val hds = storageResolver.getPlatformStorage(PostgresFlavor.VANILLA)
         val timeUseDiaryId = idGenerationService.getNextId()
         AuditedOperationBuilder<Unit>(hds.connection, auditingManager)
