@@ -40,6 +40,7 @@ import com.openlattice.chronicle.mapstores.ids.Range
 import com.openlattice.chronicle.organizations.Organization
 import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACTIVE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CANDIDATE_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CATEGORY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.COMPLETED_AT
@@ -73,6 +74,9 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.PHONE_NUMBER
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_OF_ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_TYPE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.QUESTIONNAIRE_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.QUESTIONS
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.RECURRENCE_RULE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_NAME
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_TYPE
@@ -95,6 +99,8 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMEZONE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.USERNAME
 import com.openlattice.chronicle.study.Study
 import com.openlattice.chronicle.survey.AppUsage
+import com.openlattice.chronicle.survey.Questionnaire
+import org.dmfs.rfc5545.recur.RecurrenceRule
 import org.slf4j.LoggerFactory
 import java.sql.ResultSet
 import java.sql.SQLException
@@ -389,5 +395,17 @@ class ResultSetAdapters {
             )
         }
 
+        @Throws(SQLException::class)
+        fun questionnaire(rs: ResultSet): Questionnaire {
+            return Questionnaire(
+                rs.getObject(QUESTIONNAIRE_ID.name, UUID::class.java),
+                rs.getString(TITLE.name),
+                rs.getObject(CREATED_AT.name, OffsetDateTime::class.java),
+                rs.getString(DESCRIPTION.name),
+                rs.getBoolean(ACTIVE.name),
+                mapper.readValue(rs.getString(QUESTIONS.name)),
+                rs.getString(RECURRENCE_RULE.name)
+            )
+        }
     }
 }
