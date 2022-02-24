@@ -5,8 +5,8 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.geekbeast.configuration.postgres.PostgresFlavor
 import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
-import com.openlattice.chronicle.authorization.AuthorizationManager
 import com.openlattice.chronicle.converters.PostgresDownloadWrapper
+import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.TIME_USE_DIARY_SUBMISSIONS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_ID
@@ -32,7 +32,7 @@ import java.util.*
  */
 class TimeUseDiaryService(
     private val storageResolver: StorageResolver,
-    private val authorizationService: AuthorizationManager,
+    private val idGenerationService: HazelcastIdGenerationService,
 ) : TimeUseDiaryManager {
 
     companion object {
@@ -44,12 +44,12 @@ class TimeUseDiaryService(
 
     override fun submitTimeUseDiary(
         connection: Connection,
-        timeUseDiaryId: UUID,
         organizationId: UUID,
         studyId: UUID,
         participantId: String,
         responses: List<TimeUseDiaryResponse>
-    ) {
+    ): UUID {
+        val timeUseDiaryId = idGenerationService.getNextId()
         executeInsertTimeUseDiarySql(
             connection,
             timeUseDiaryId,
@@ -58,6 +58,7 @@ class TimeUseDiaryService(
             participantId,
             responses
         )
+        return timeUseDiaryId
     }
 
     override fun getSubmissionByDate(
