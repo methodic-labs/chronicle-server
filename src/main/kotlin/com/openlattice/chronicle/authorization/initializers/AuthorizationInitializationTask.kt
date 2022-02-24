@@ -91,7 +91,7 @@ class AuthorizationInitializationTask : HazelcastInitializationTask<Authorizatio
             IdConstants.SYSTEM_ORGANIZATION.id,
             SystemRole.ANONYMOUS_USER.principal,
             "Anonymous User Role",
-            Optional.of("The global administrative role that allows management of entity data model.")
+            Optional.of("The anonymous user role for operations that do not require authentication.")
         )
     }
 
