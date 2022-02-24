@@ -20,7 +20,6 @@ import com.openlattice.chronicle.storage.StorageResolver
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.sql.Connection
-import java.sql.SQLException
 import java.time.OffsetDateTime
 import java.util.*
 import java.util.concurrent.ExecutionException
@@ -64,33 +63,28 @@ class NotificationService(
 
     private fun insertNotifications(connection: Connection, notifications: List<Notification>): Int {
         val ps = connection.prepareStatement(INSERT_NOTIFICATION_SQL)
-        try {
-            notifications.forEach { notification ->
-                ps.setObject(1, notification.id)
-                ps.setObject(2, notification.candidateId)
-                ps.setObject(3, notification.organizationId)
-                ps.setObject(4, notification.studyId)
-                ps.setObject(5, notification.createdAt)
-                ps.setObject(6, notification.updatedAt)
-                ps.setObject(7, notification.messageId)
-                ps.setObject(8, notification.type)
-                ps.setObject(9, notification.status)
-                ps.setObject(10, notification.body)
-                ps.setObject(11, notification.email)
-                ps.setObject(12, notification.phone)
-                ps.addBatch()
-                authorizationService.createSecurableObject(
-                    connection = connection,
-                    aclKey = AclKey(notification.id),
-                    principal = Principals.getCurrentUser(),
-                    objectType = SecurableObjectType.Notification
-                )
-            }
-            return ps.executeBatch().sum()
-        } catch (e :SQLException) {
-            throw Error(e)
-            return 0
+        notifications.forEach { notification ->
+            ps.setObject(1, notification.id)
+            ps.setObject(2, notification.candidateId)
+            ps.setObject(3, notification.organizationId)
+            ps.setObject(4, notification.studyId)
+            ps.setObject(5, notification.createdAt)
+            ps.setObject(6, notification.updatedAt)
+            ps.setObject(7, notification.messageId)
+            ps.setObject(8, notification.type)
+            ps.setObject(9, notification.status)
+            ps.setObject(10, notification.body)
+            ps.setObject(11, notification.email)
+            ps.setObject(12, notification.phone)
+            ps.addBatch()
+            authorizationService.createSecurableObject(
+                connection = connection,
+                aclKey = AclKey(notification.id),
+                principal = Principals.getCurrentUser(),
+                objectType = SecurableObjectType.Notification
+            )
         }
+        return ps.executeBatch().sum()
     }
 
     private fun getNotificationByMessageId(messageId: String) :Notification? {
