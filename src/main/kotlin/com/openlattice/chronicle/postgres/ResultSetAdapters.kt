@@ -34,8 +34,8 @@ import com.openlattice.chronicle.notifications.Notification
 import com.openlattice.chronicle.organizations.Organization
 import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.BODY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACTIVE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.BODY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CANDIDATE_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CATEGORY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.COMPLETED_AT
@@ -99,7 +99,6 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.USERNAME
 import com.openlattice.chronicle.study.Study
 import com.openlattice.chronicle.survey.AppUsage
 import com.openlattice.chronicle.survey.Questionnaire
-import org.dmfs.rfc5545.recur.RecurrenceRule
 import org.slf4j.LoggerFactory
 import java.sql.ResultSet
 import java.sql.SQLException
