@@ -1,5 +1,6 @@
 package com.openlattice.chronicle.storage
 
+import com.geekbeast.postgres.PostgresColumnDefinition
 import com.geekbeast.postgres.PostgresColumnsIndexDefinition
 import com.geekbeast.postgres.PostgresTableDefinition
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
@@ -23,6 +24,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.JOB_DEFINITIO
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.JOB_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LAST_NAME
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LAT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.LEGACY_STUDY_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LON
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LSB
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.MESSAGE
@@ -103,6 +105,11 @@ class ChroniclePostgresTables {
             )
             .primaryKey(STUDY_ID)
             .overwriteOnConflict()
+
+        @JvmField
+        val LEGACY_STUDY_IDS = PostgresTableDefinition("legacy_study_ids")
+            .addColumns(STUDY_ID, LEGACY_STUDY_ID)
+            .primaryKey(STUDY_ID, LEGACY_STUDY_ID)
 
         @JvmField
         val LEGACY_STUDY_SETTINGS = PostgresTableDefinition("legacy_study_settings")
