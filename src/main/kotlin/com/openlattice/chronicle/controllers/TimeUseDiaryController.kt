@@ -28,6 +28,7 @@ import com.openlattice.chronicle.constants.CustomMediaType
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.services.timeusediary.TimeUseDiaryManager
 import com.openlattice.chronicle.storage.StorageResolver
+import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.STUDY_PATH
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryDownloadDataType
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryResponse
 import org.slf4j.LoggerFactory
@@ -73,7 +74,6 @@ class TimeUseDiaryController(
         @PathVariable(PARTICIPANT_ID) participantId: String,
         @RequestBody responses: List<TimeUseDiaryResponse>
     ): UUID {
-        ensureAuthenticated()
         val hds = storageResolver.getPlatformStorage(PostgresFlavor.VANILLA)
         val timeUseDiaryId = idGenerationService.getNextId()
         AuditedOperationBuilder<Unit>(hds.connection, auditingManager)
@@ -89,8 +89,8 @@ class TimeUseDiaryController(
             .audit { listOf(
                 AuditableEvent(
                     AclKey(timeUseDiaryId),
-                    Principals.getCurrentSecurablePrincipal().id,
-                    Principals.getCurrentUser(),
+                    Principals.getAnonymousSecurablePrincipal().id,
+                    Principals.getAnonymousUser(),
                     AuditEventType.SUBMIT_TIME_USE_DIARY,
                     ""
                 )
@@ -104,7 +104,7 @@ class TimeUseDiaryController(
         path = [IDS_PATH + ORGANIZATION_ID_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH],
         produces = [MediaType.APPLICATION_JSON_VALUE]
     )
-    override fun getSubmissionsByDate(
+    override fun getParticipantTUDSubmissionsByDate(
         @PathVariable(ORGANIZATION_ID) organizationId: UUID,
         @PathVariable(STUDY_ID) studyId: UUID,
         @PathVariable(PARTICIPANT_ID) participantId: String,
@@ -112,8 +112,8 @@ class TimeUseDiaryController(
         @RequestParam(END_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) endDateTime: OffsetDateTime,
     ): Map<LocalDate, Set<UUID>> {
         accessCheck(AclKey(studyId), EnumSet.of(Permission.READ))
-        logger.info("Retrieving TimeUseDiary ids from study $studyId")
-        val submissionsIdsByDate = timeUseDiaryManager.getSubmissionByDate(
+        logger.info("Retrieving TimeUseDiary ids from study $studyId for $participantId")
+        val submissionsIdsByDate = timeUseDiaryManager.getParticipantTUDSubmissionsByDate(
             organizationId,
             studyId,
             participantId,
@@ -126,11 +126,42 @@ class TimeUseDiaryController(
                 Principals.getCurrentSecurablePrincipal().id,
                 Principals.getCurrentUser(),
                 AuditEventType.GET_TIME_USE_DIARY_SUBMISSION,
-                "$startDateTime - $endDateTime",
+                "[$participantId]: $startDateTime - $endDateTime",
                 studyId,
                 organizationId,
                 mapOf()
                 )
+        )
+        submissionsIdsByDate.values.flatten().forEach {
+            accessCheck(AclKey(it), EnumSet.of(Permission.READ))
+        }
+        return submissionsIdsByDate
+    }
+
+    @Timed
+    @GetMapping(
+        path = [STUDY_PATH + STUDY_ID_PATH],
+        produces = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    override fun getStudyTUDSubmissionsByDate(
+        @PathVariable(STUDY_ID) studyId: UUID,
+        @RequestParam(START_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) startDateTime: OffsetDateTime,
+        @RequestParam(END_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) endDateTime: OffsetDateTime,
+    ): Map<LocalDate, Set<UUID>> {
+        accessCheck(AclKey(studyId), EnumSet.of(Permission.READ))
+        logger.info("Retrieving TimeUseDiary ids from study $studyId")
+        val submissionsIdsByDate = timeUseDiaryManager.getStudyTUDSubmissionsByDate(
+            studyId,
+            startDateTime,
+            endDateTime
+        )
+        recordEvent(
+            AuditableEvent(
+                AclKey(studyId),
+                eventType = AuditEventType.GET_TIME_USE_DIARY_SUBMISSION,
+                description = "$startDateTime - $endDateTime",
+                study = studyId,
+            )
         )
         submissionsIdsByDate.values.flatten().forEach {
             accessCheck(AclKey(it), EnumSet.of(Permission.READ))
