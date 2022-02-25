@@ -86,15 +86,10 @@ class TimeUseDiaryController(
                     participantId,
                     responses
                 ) }
-            .audit { listOf(
-                AuditableEvent(
-                    AclKey(timeUseDiaryId),
-                    Principals.getAnonymousSecurablePrincipal().id,
-                    Principals.getAnonymousUser(),
-                    AuditEventType.SUBMIT_TIME_USE_DIARY,
-                    ""
-                )
-            ) }
+            .audit {
+                // TODO: Audit against anonymous user principal
+                listOf()
+            }
             .buildAndRun()
         return timeUseDiaryId
     }
@@ -148,7 +143,7 @@ class TimeUseDiaryController(
         @RequestParam(START_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) startDateTime: OffsetDateTime,
         @RequestParam(END_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) endDateTime: OffsetDateTime,
     ): Map<LocalDate, Set<UUID>> {
-        accessCheck(AclKey(studyId), EnumSet.of(Permission.READ))
+        ensureReadAccess(AclKey(studyId))
         logger.info("Retrieving TimeUseDiary ids from study $studyId")
         val submissionsIdsByDate = timeUseDiaryManager.getStudyTUDSubmissionsByDate(
             studyId,
@@ -163,9 +158,6 @@ class TimeUseDiaryController(
                 study = studyId,
             )
         )
-        submissionsIdsByDate.values.flatten().forEach {
-            accessCheck(AclKey(it), EnumSet.of(Permission.READ))
-        }
         return submissionsIdsByDate
     }
 
