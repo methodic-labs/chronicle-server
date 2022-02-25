@@ -285,14 +285,14 @@ class TimeUseDiaryService(
      * @param endDate           Date that submissions must be submitted before or on
      */
     private val getSubmissionsByDateSql = """
-                SELECT ${SUBMISSION_ID.name}, ${SUBMISSION_DATE.name}
-                FROM ${TIME_USE_DIARY_SUBMISSIONS.name}
-                WHERE ${ORGANIZATION_ID.name} = ?
-                AND ${STUDY_ID.name} = ?
-                AND ${PARTICIPANT_ID.name} = ?
-                AND ${SUBMISSION_DATE.name} BETWEEN ? AND ?
-                ORDER BY ${SUBMISSION_DATE.name} ASC
-            """.trimIndent()
+        SELECT ${SUBMISSION_ID.name}, ${SUBMISSION_DATE.name}
+        FROM ${TIME_USE_DIARY_SUBMISSIONS.name}
+        WHERE ${ORGANIZATION_ID.name} = ?
+        AND ${STUDY_ID.name} = ?
+        AND ${PARTICIPANT_ID.name} = ?
+        AND ${SUBMISSION_DATE.name} BETWEEN ? AND ?
+        ORDER BY ${SUBMISSION_DATE.name} ASC
+    """.trimIndent()
 
     /**
      * SQL String to create a [java.sql.PreparedStatement] to retrieve all study submissions within a date range
