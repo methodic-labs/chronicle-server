@@ -21,10 +21,16 @@ interface TimeUseDiaryManager {
         responses: List<TimeUseDiaryResponse>
     ): UUID
 
-    fun getSubmissionByDate(
+    fun getParticipantTUDSubmissionsByDate(
         organizationId: UUID,
         studyId: UUID,
         participantId: String,
+        startDate: OffsetDateTime,
+        endDate: OffsetDateTime,
+    ): Map<LocalDate, Set<UUID>>
+
+    fun getStudyTUDSubmissionsByDate(
+        studyId: UUID,
         startDate: OffsetDateTime,
         endDate: OffsetDateTime,
     ): Map<LocalDate, Set<UUID>>

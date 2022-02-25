@@ -5,6 +5,9 @@ import com.geekbeast.postgres.PostgresColumnsIndexDefinition
 import com.geekbeast.postgres.PostgresTableDefinition
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACTIVE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.ANDROID_DATES_COUNT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.ANDROID_FIRST_DATE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.ANDROID_LAST_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_USERS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.BASE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CANDIDATE_ID
@@ -20,6 +23,9 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.ENDED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.EXPIRATION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.EXPIRATION_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.FIRST_NAME
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.IOS_DATES_COUNT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.IOS_FIRST_DATE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.IOS_LAST_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.JOB_DEFINITION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.JOB_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LAST_NAME
@@ -62,6 +68,9 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TITLE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_DATES_COUNT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_FIRST_DATE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_LAST_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPDATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_DATA
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_ID
@@ -219,6 +228,21 @@ class ChroniclePostgresTables {
             ).primaryKey(SUBMISSION_ID, QUESTION_TITLE)
         // All the questions in a single submission are unique. A single submission can write multiple records in the table
 
+        @JvmField
+        val PARTICIPANT_STATS = PostgresTableDefinition("participant_stats")
+            .addColumns(
+                STUDY_ID,
+                PARTICIPANT_ID,
+                ANDROID_FIRST_DATE,
+                ANDROID_LAST_DATE,
+                ANDROID_DATES_COUNT,
+                IOS_FIRST_DATE,
+                IOS_LAST_DATE,
+                IOS_DATES_COUNT,
+                TUD_FIRST_DATE,
+                TUD_LAST_DATE,
+                TUD_DATES_COUNT
+            ).primaryKey(STUDY_ID, PARTICIPANT_ID)
         /**
          * Authorization tables
          *

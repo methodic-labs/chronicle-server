@@ -39,8 +39,12 @@ import com.openlattice.chronicle.jobs.ChronicleJob
 import com.openlattice.chronicle.mapstores.ids.Range
 import com.openlattice.chronicle.organizations.Organization
 import com.openlattice.chronicle.participants.Participant
+import com.openlattice.chronicle.participants.ParticipantStats
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACTIVE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.ANDROID_DATES_COUNT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.ANDROID_FIRST_DATE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.ANDROID_LAST_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CANDIDATE_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CATEGORY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.COMPLETED_AT
@@ -54,6 +58,9 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.EMAIL
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ENDED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.EXPIRATION_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.FIRST_NAME
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.IOS_DATES_COUNT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.IOS_FIRST_DATE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.IOS_LAST_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.JOB_DEFINITION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.JOB_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LAST_NAME
@@ -89,6 +96,8 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_GROUP
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_VERSION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TITLE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_FIRST_DATE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_LAST_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPDATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.URL
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APPLICATION_LABEL
@@ -405,6 +414,22 @@ class ResultSetAdapters {
                 rs.getBoolean(ACTIVE.name),
                 mapper.readValue(rs.getString(QUESTIONS.name)),
                 rs.getString(RECURRENCE_RULE.name)
+            )
+        }
+
+        @Throws
+        fun participantStats(rs: ResultSet): ParticipantStats {
+            return ParticipantStats(
+                rs.getString(PARTICIPANT_ID.name),
+                rs.getObject(ANDROID_FIRST_DATE.name, OffsetDateTime::class.java),
+                rs.getObject(ANDROID_LAST_DATE.name, OffsetDateTime::class.java),
+                rs.getInt(ANDROID_DATES_COUNT.name),
+                rs.getObject(IOS_FIRST_DATE.name, OffsetDateTime::class.java),
+                rs.getObject(IOS_LAST_DATE.name, OffsetDateTime::class.java),
+                rs.getInt(IOS_DATES_COUNT.name),
+                rs.getObject(TUD_FIRST_DATE.name, OffsetDateTime::class.java),
+                rs.getObject(TUD_LAST_DATE.name, OffsetDateTime::class.java),
+                rs.getInt(IOS_DATES_COUNT.name)
             )
         }
     }

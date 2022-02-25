@@ -1,6 +1,7 @@
 package com.openlattice.chronicle.services.studies
 
 import com.openlattice.chronicle.participants.Participant
+import com.openlattice.chronicle.participants.ParticipantStats
 import com.openlattice.chronicle.sensorkit.SensorType
 import com.openlattice.chronicle.study.Study
 import com.openlattice.chronicle.study.StudyUpdate
@@ -28,4 +29,5 @@ interface StudyManager {
     fun getStudyParticipants(studyId: UUID): Iterable<Participant>
     fun getStudySensors(studyId: UUID): Set<SensorType>
     fun registerParticipant(studyId: UUID, participant: Participant): UUID
+    fun getStudyParticipantStats(studyId: UUID): Map<String, ParticipantStats>
 }

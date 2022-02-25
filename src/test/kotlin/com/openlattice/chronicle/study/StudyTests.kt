@@ -7,6 +7,7 @@ import com.openlattice.chronicle.client.ChronicleClient
 import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.organizations.Organization
 import com.openlattice.chronicle.participants.Participant
+import com.openlattice.chronicle.util.TestDataFactory
 import org.junit.After
 import org.junit.Assert
 import org.junit.Before
@@ -178,5 +179,10 @@ class StudyTests : ChronicleServerTests() {
                 e.body.contains("cannot register candidate with an invalid id")
             )
         }
+    }
+
+    @Test
+    fun testStudyParticipants() {
+        TODO("add test after implementing functionality to update table")
     }
 }

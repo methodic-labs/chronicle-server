@@ -28,6 +28,7 @@ import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.START_DA
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.STATUS_PATH
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.STUDY_ID
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.STUDY_ID_PATH
+import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.STUDY_PATH
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryDownloadDataType
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryResponse
 import org.slf4j.LoggerFactory
@@ -102,6 +103,8 @@ class TimeUseDiaryController(
                             aclKey = AclKey(realStudyId),
                             study = realStudyId,
                             eventType = AuditEventType.SUBMIT_TIME_USE_DIARY,
+                            principal = Principals.getAnonymousUser(),
+                            securablePrincipalId = Principals.getAnonymousSecurablePrincipal().id
                         )
                     )
                 }
@@ -114,7 +117,7 @@ class TimeUseDiaryController(
         path = [IDS_PATH + ORGANIZATION_ID_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH],
         produces = [MediaType.APPLICATION_JSON_VALUE]
     )
-    override fun getSubmissionsByDate(
+    override fun getParticipantTUDSubmissionsByDate(
         @PathVariable(ORGANIZATION_ID) organizationId: UUID,
         @PathVariable(STUDY_ID) studyId: UUID,
         @PathVariable(PARTICIPANT_ID) participantId: String,
@@ -122,8 +125,8 @@ class TimeUseDiaryController(
         @RequestParam(END_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) endDateTime: OffsetDateTime,
     ): Map<LocalDate, Set<UUID>> {
         accessCheck(AclKey(studyId), EnumSet.of(Permission.READ))
-        logger.info("Retrieving TimeUseDiary ids from study $studyId")
-        val submissionsIdsByDate = timeUseDiaryService.getSubmissionByDate(
+        logger.info("Retrieving TimeUseDiary ids from study $studyId for $participantId")
+        val submissionsIdsByDate = timeUseDiaryService.getParticipantTUDSubmissionsByDate(
             organizationId,
             studyId,
             participantId,
@@ -136,7 +139,7 @@ class TimeUseDiaryController(
                 Principals.getCurrentSecurablePrincipal().id,
                 Principals.getCurrentUser(),
                 AuditEventType.GET_TIME_USE_DIARY_SUBMISSION,
-                "$startDateTime - $endDateTime",
+                "[$participantId]: $startDateTime - $endDateTime",
                 studyId,
                 organizationId,
                 mapOf()
@@ -145,6 +148,34 @@ class TimeUseDiaryController(
         submissionsIdsByDate.values.flatten().forEach {
             accessCheck(AclKey(it), EnumSet.of(Permission.READ))
         }
+        return submissionsIdsByDate
+    }
+
+    @Timed
+    @GetMapping(
+        path = [STUDY_PATH + STUDY_ID_PATH],
+        produces = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    override fun getStudyTUDSubmissionsByDate(
+        @PathVariable(STUDY_ID) studyId: UUID,
+        @RequestParam(START_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) startDateTime: OffsetDateTime,
+        @RequestParam(END_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) endDateTime: OffsetDateTime,
+    ): Map<LocalDate, Set<UUID>> {
+        ensureReadAccess(AclKey(studyId))
+        logger.info("Retrieving TimeUseDiary ids from study $studyId")
+        val submissionsIdsByDate = timeUseDiaryService.getStudyTUDSubmissionsByDate(
+            studyId,
+            startDateTime,
+            endDateTime
+        )
+        recordEvent(
+            AuditableEvent(
+                AclKey(studyId),
+                eventType = AuditEventType.GET_TIME_USE_DIARY_SUBMISSION,
+                description = "$startDateTime - $endDateTime",
+                study = studyId,
+            )
+        )
         return submissionsIdsByDate
     }
 
