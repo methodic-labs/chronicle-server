@@ -5,10 +5,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.geekbeast.configuration.postgres.PostgresFlavor
 import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
-import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.authorization.AuthorizationManager
-import com.openlattice.chronicle.authorization.SecurableObjectType
-import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.converters.PostgresDownloadWrapper
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryDownloadDataType
@@ -205,14 +202,15 @@ class TimeUseDiaryService(
         participantId: String,
         responses: List<TimeUseDiaryResponse>
     ) {
-        val preparedStatement = connection.prepareStatement(insertTimeUseDiarySql)
-        var index = 1
-        preparedStatement.setObject(index++, tudId)
-        preparedStatement.setObject(index++, organizationId)
-        preparedStatement.setObject(index++, studyId)
-        preparedStatement.setString(index++, participantId)
-        preparedStatement.setObject(index, objectMapper.writeValueAsString(responses), Types.OTHER)
-        preparedStatement.execute()
+        connection.prepareStatement(insertTimeUseDiarySql).use { ps ->
+            var index = 1
+            ps.setObject(index++, tudId)
+            ps.setObject(index++, organizationId)
+            ps.setObject(index++, studyId)
+            ps.setString(index++, participantId)
+            ps.setObject(index, objectMapper.writeValueAsString(responses), Types.OTHER)
+            ps.executeUpdate()
+        }
     }
 
     private fun executeGetSubmissionByDateSql(
