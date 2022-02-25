@@ -19,6 +19,7 @@ import com.openlattice.chronicle.ids.IdConstants
 import com.openlattice.chronicle.jobs.ChronicleJob
 import com.openlattice.chronicle.organizations.ChronicleDataCollectionSettings
 import com.openlattice.chronicle.participants.Participant
+import com.openlattice.chronicle.participants.ParticipantStats
 import com.openlattice.chronicle.sensorkit.SensorDataSample
 import com.openlattice.chronicle.sensorkit.SensorType
 import com.openlattice.chronicle.services.download.DataDownloadService
@@ -50,6 +51,7 @@ import com.openlattice.chronicle.study.StudyApi.Companion.SENSORS_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.SETTINGS_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.SOURCE_DEVICE_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.SOURCE_DEVICE_ID_PATH
+import com.openlattice.chronicle.study.StudyApi.Companion.STATS_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.STUDY_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.STUDY_ID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.VERIFY_PATH
@@ -480,6 +482,17 @@ class StudyController @Inject constructor(
 
         return studies
     }
+
+    @Timed
+    @GetMapping(
+        path = [STUDY_ID_PATH + PARTICIPANTS_PATH + STATS_PATH],
+        produces = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    override fun getParticipantStats(@PathVariable(STUDY_ID) studyId: UUID): Map<String, ParticipantStats> {
+        ensureReadAccess(AclKey(studyId))
+        return studyService.getStudyParticipantStats(studyId)
+    }
+
     @Timed
     @GetMapping(
         path = [STUDY_ID_PATH + PARTICIPANT_PATH + PARTICIPANT_ID_PATH + VERIFY_PATH]
