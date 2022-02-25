@@ -1,6 +1,7 @@
 package com.openlattice.chronicle.authorization.mapstores
 
 import com.geekbeast.postgres.PostgresArrays
+import com.geekbeast.postgres.PostgresColumnDefinition
 import com.geekbeast.postgres.mapstores.AbstractBasePostgresMapstore
 import com.hazelcast.config.IndexConfig
 import com.hazelcast.config.IndexType
@@ -10,6 +11,8 @@ import com.openlattice.chronicle.authorization.SecurableObjectType
 import com.openlattice.chronicle.hazelcast.HazelcastMap
 import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.storage.ChroniclePostgresTables
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_TYPE
 import com.zaxxer.hikari.HikariDataSource
 import java.sql.PreparedStatement
 import java.sql.ResultSet
@@ -23,6 +26,9 @@ class SecurableObjectTypeMapstore(hds: HikariDataSource?) : AbstractBasePostgres
         const val ACL_KEY_INDEX = "__key.index"
         const val SECURABLE_OBJECT_TYPE_INDEX = "this"
     }
+
+    override fun getInsertColumns(): MutableList<PostgresColumnDefinition> = mutableListOf(ACL_KEY, SECURABLE_OBJECT_TYPE)
+
 
     @Throws(SQLException::class)
     override fun bind(
