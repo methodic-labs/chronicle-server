@@ -5,10 +5,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.geekbeast.configuration.postgres.PostgresFlavor
 import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
-import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.authorization.AuthorizationManager
-import com.openlattice.chronicle.authorization.SecurableObjectType
-import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.converters.PostgresDownloadWrapper
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryDownloadDataType
@@ -61,15 +58,9 @@ class TimeUseDiaryService(
             participantId,
             responses
         )
-        authorizationService.createSecurableObject(
-            connection = connection,
-            aclKey = AclKey(timeUseDiaryId),
-            principal = Principals.getCurrentUser(),
-            objectType = SecurableObjectType.TimeUseDiary
-        )
     }
 
-    override fun getSubmissionByDate(
+    override fun getParticipantTUDSubmissionsByDate(
         organizationId: UUID,
         studyId: UUID,
         participantId: String,
@@ -87,6 +78,39 @@ class TimeUseDiaryService(
                     organizationId,
                     studyId,
                     participantId,
+                    startDate,
+                    endDate
+                )
+            }
+            while (result.next()) {
+                val currentDate = result.getDate(SUBMISSION_DATE.name, cal).toLocalDate()
+                val currentUUID = UUID.fromString(result.getString(SUBMISSION_ID.name))
+                if (submissionsByDate[currentDate].isNullOrEmpty()) {
+                    submissionsByDate[currentDate] = mutableSetOf(currentUUID)
+                } else {
+                    submissionsByDate[currentDate]!!.add(currentUUID)
+                }
+            }
+        } catch (ex: SQLException) {
+            logger.error("hds error: $ex")
+        }
+        return submissionsByDate
+    }
+
+    override fun getStudyTUDSubmissionsByDate(
+        studyId: UUID,
+        startDate: OffsetDateTime,
+        endDate: OffsetDateTime,
+    ): Map<LocalDate, Set<UUID>> {
+        val submissionsByDate = mutableMapOf<LocalDate,MutableSet<UUID>>()
+        // Use Calendar to convert response to user's timezone
+        cal.timeZone = TimeZone.getTimeZone("GMT${startDate.offset.id}")
+        try {
+            val hds = storageResolver.getPlatformStorage(PostgresFlavor.VANILLA)
+            val result = hds.connection.use { connection ->
+                executeGetStudyTUDSubmissionsByDateSql(
+                    connection,
+                    studyId,
                     startDate,
                     endDate
                 )
@@ -178,14 +202,15 @@ class TimeUseDiaryService(
         participantId: String,
         responses: List<TimeUseDiaryResponse>
     ) {
-        val preparedStatement = connection.prepareStatement(insertTimeUseDiarySql)
-        var index = 1
-        preparedStatement.setObject(index++, tudId)
-        preparedStatement.setObject(index++, organizationId)
-        preparedStatement.setObject(index++, studyId)
-        preparedStatement.setString(index++, participantId)
-        preparedStatement.setObject(index, objectMapper.writeValueAsString(responses), Types.OTHER)
-        preparedStatement.execute()
+        connection.prepareStatement(insertTimeUseDiarySql).use { ps ->
+            var index = 1
+            ps.setObject(index++, tudId)
+            ps.setObject(index++, organizationId)
+            ps.setObject(index++, studyId)
+            ps.setString(index++, participantId)
+            ps.setObject(index, objectMapper.writeValueAsString(responses), Types.OTHER)
+            ps.executeUpdate()
+        }
     }
 
     private fun executeGetSubmissionByDateSql(
@@ -201,6 +226,20 @@ class TimeUseDiaryService(
         preparedStatement.setObject(index++, organizationId)
         preparedStatement.setObject(index++, studyId)
         preparedStatement.setString(index++, participantId)
+        preparedStatement.setObject(index++, startDate)
+        preparedStatement.setObject(index, endDate)
+        return preparedStatement.executeQuery()
+    }
+
+    private fun executeGetStudyTUDSubmissionsByDateSql(
+        connection: Connection,
+        studyId: UUID,
+        startDate: OffsetDateTime,
+        endDate: OffsetDateTime
+    ): ResultSet {
+        val preparedStatement = connection.prepareStatement(getStudyTUDSubmissionsByDateSql)
+        var index = 1
+        preparedStatement.setObject(index++, studyId)
         preparedStatement.setObject(index++, startDate)
         preparedStatement.setObject(index, endDate)
         return preparedStatement.executeQuery()
@@ -226,9 +265,9 @@ class TimeUseDiaryService(
      * SQL String to create a [java.sql.PreparedStatement] to submit a study response for a participant
      *
      * @param tudId             Identifies the Time Use Diary submission
-     * @param organizationId    Identifies the organization from which to retrieve submissions
-     * @param studyId           Identifies the study from which to retrieve submissions
-     * @param participantId     Identifies the participant for whom to retrieve submissions
+     * @param organizationId    Identifies the organization from which to insert submissions
+     * @param studyId           Identifies the study from which to insert submissions
+     * @param participantId     Identifies the participant for whom to insert submissions
      * @param responses         List of survey responses for a Time Use Diary study
      */
     private val insertTimeUseDiarySql = """
@@ -254,6 +293,22 @@ class TimeUseDiaryService(
         AND ${SUBMISSION_DATE.name} BETWEEN ? AND ?
         ORDER BY ${SUBMISSION_DATE.name} ASC
     """.trimIndent()
+
+    /**
+     * SQL String to create a [java.sql.PreparedStatement] to retrieve all study submissions within a date range
+     *
+     * @param organizationId    Identifies the organization from which to retrieve submissions
+     * @param studyId           Identifies the study from which to retrieve submissions
+     * @param startDate         Date that submissions must be submitted after or on
+     * @param endDate           Date that submissions must be submitted before or on
+     */
+    private val getStudyTUDSubmissionsByDateSql = """
+                SELECT ${SUBMISSION_ID.name}, ${SUBMISSION_DATE.name}
+                FROM ${TIME_USE_DIARY_SUBMISSIONS.name}
+                WHERE ${STUDY_ID.name} = ?
+                AND ${SUBMISSION_DATE.name} BETWEEN ? AND ?
+                ORDER BY ${SUBMISSION_DATE.name} ASC
+            """.trimIndent()
 
     /**
      * SQL String to create a [java.sql.PreparedStatement] to retrieve time use diary responses for download

@@ -90,6 +90,11 @@ class Principals {
             return SystemRole.adminRole
         }
 
+        fun getAnonymousUser(): Principal = SystemRole.ANONYMOUS_USER.principal
+        fun getAnonymousSecurablePrincipal(): SecurablePrincipal {
+            return securablePrincipals[getAnonymousUser().id]!!
+        }
+
         fun getUserPrincipal(principalId: String): Principal {
             return Principal(PrincipalType.USER, principalId)
         }
