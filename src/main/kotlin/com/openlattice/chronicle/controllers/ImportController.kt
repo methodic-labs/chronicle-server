@@ -24,6 +24,7 @@ import com.openlattice.chronicle.services.candidates.CandidateService
 import com.openlattice.chronicle.services.studies.StudyService
 import com.openlattice.chronicle.services.timeusediary.TimeUseDiaryService
 import com.openlattice.chronicle.services.upload.AppDataUploadService
+import com.openlattice.chronicle.storage.ChroniclePostgresTables
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.LEGACY_STUDY_IDS
 import com.openlattice.chronicle.storage.PostgresColumns
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SETTINGS
@@ -90,7 +91,7 @@ class ImportController(
          * 8) tudDatesCount
          */
         private val INSERT_PARTICIPANT_STATS_SQL = """
-            INSERT INTO $PARTICIPANT_STATS_COLUMNS (${PARTICIPANT_STATS_COLUMNS.joinToString { it.name }}) 
+            INSERT INTO ${ChroniclePostgresTables.PARTICIPANT_STATS.name} (${PARTICIPANT_STATS_COLUMNS.joinToString { it.name }}) 
             VALUES (${PARTICIPANT_STATS_COLUMNS.joinToString { "?" }})
         """.trimIndent()
     }
