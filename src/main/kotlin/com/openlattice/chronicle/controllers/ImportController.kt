@@ -1,6 +1,9 @@
 package com.openlattice.chronicle.controllers
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.kotlin.readValue
 import com.geekbeast.jdbc.DataSourceManager
+import com.geekbeast.mappers.mappers.ObjectMappers
 import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
 import com.hazelcast.core.HazelcastInstance
@@ -17,11 +20,11 @@ import com.openlattice.chronicle.import.ImportStudiesConfiguration
 import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.services.candidates.CandidateService
 import com.openlattice.chronicle.services.studies.StudyService
-import com.openlattice.chronicle.services.surveys.SurveysService
 import com.openlattice.chronicle.services.timeusediary.TimeUseDiaryService
 import com.openlattice.chronicle.services.upload.AppDataUploadService
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.LEGACY_STUDY_IDS
 import com.openlattice.chronicle.storage.PostgresColumns
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.SETTINGS
 import com.openlattice.chronicle.study.Study
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
@@ -55,6 +58,7 @@ class ImportController(
 
     companion object {
         private val logger = LoggerFactory.getLogger(ImportController::class.java)
+        private val mapper: ObjectMapper = ObjectMappers.newJsonMapper()
 
         private val INSERT_LEGACY_STUDY_ID_SQL = """
             INSERT INTO ${LEGACY_STUDY_IDS.name}(${PostgresColumns.STUDY_ID.name}, ${PostgresColumns.LEGACY_STUDY_ID.name})
@@ -72,11 +76,23 @@ class ImportController(
         val hds = dataSourceManager.getDataSource(config.dataSourceName)
         val studiesByEkId = mutableMapOf<UUID, Study>()
         val studiesByLegacyStudyId = mutableMapOf<UUID, UUID>()
+        val settingsByLegacyStudyId = mutableMapOf<UUID, Map<String, Any>>()
+
+        BasePostgresIterable(
+            PreparedStatementHolderSupplier(hds, getStudySettingsSql(config.studySettingsTable)) {}
+        ) {
+            val v2StudyId: UUID? = v2StudyId(it)
+            val studySettings = mapper.readValue<Map<String, Any>>(it.getString(SETTINGS.name))
+            if (v2StudyId != null) {
+                settingsByLegacyStudyId[v2StudyId] = studySettings ?: mapOf()
+            }
+        }.count()
 
         val studies = BasePostgresIterable(
             PreparedStatementHolderSupplier(hds, getStudiesSql(config.studiesTable)) {}
         ) {
-            val study = study(it)
+            val v2StudyId: UUID? = v2StudyId(it)
+            val study = study(it, settingsByLegacyStudyId[v2StudyId])
             val studyId = studyService.createStudy(study)
 
             logger.info("Created study {}", study)
@@ -84,9 +100,8 @@ class ImportController(
 
             studiesByEkId[it.getObject(LEGACY_STUDY_EK_ID, UUID::class.java)] = study
 
-            val v2StudyId = it.getString(LEGACY_STUDY_ID)
-            if (StringUtils.isNotBlank(v2StudyId)) {
-                studiesByLegacyStudyId[UUID.fromString(v2StudyId)] = study.id
+            if (v2StudyId != null) {
+                studiesByLegacyStudyId[v2StudyId] = study.id
             }
         }.count()
 
@@ -134,7 +149,7 @@ class ImportController(
         )
     }
 
-    private fun study(rs: ResultSet): Study {
+    private fun study(rs: ResultSet, settings: Map<String, Any>?): Study {
 
         val v2StudyId = rs.getString(LEGACY_STUDY_ID)
         val v2StudyEkid = rs.getString(LEGACY_STUDY_EK_ID)
@@ -153,11 +168,17 @@ class ImportController(
         return Study(
             title = title,
             description = description,
+            settings = settings ?: mapOf(),
             group = rs.getString(LEGACY_STUDY_GROUP) ?: "",
             version = rs.getString(LEGACY_STUDY_VERSION) ?: "",
             contact = rs.getString(LEGACY_STUDY_CONTACT) ?: "",
             updatedAt = rs.getObject(LEGACY_UPDATE_AT, OffsetDateTime::class.java)
         )
+    }
+
+    private fun v2StudyId(rs: ResultSet): UUID? {
+        val v2StudyIdStr = rs.getString(LEGACY_STUDY_ID)
+        return if (StringUtils.isNotBlank(v2StudyIdStr)) UUID.fromString(v2StudyIdStr) else null
     }
 }
 
@@ -187,5 +208,11 @@ private fun getStudiesSql(studiesTable: String): String {
 private fun getCandidatesSql(candidateTable: String): String {
     return """
         SELECT * FROM $candidateTable
+    """.trimIndent()
+}
+
+private fun getStudySettingsSql(studySettingsTable: String): String {
+    return """
+        SELECT * FROM $studySettingsTable
     """.trimIndent()
 }
