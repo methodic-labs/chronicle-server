@@ -5,34 +5,34 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.geekbeast.configuration.postgres.PostgresFlavor
 import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
-import com.openlattice.chronicle.authorization.AuthorizationManager
 import com.openlattice.chronicle.converters.PostgresDownloadWrapper
+import com.openlattice.chronicle.ids.HazelcastIdGenerationService
+import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.TIME_USE_DIARY_SUBMISSIONS
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION_DATE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION_ID
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryDownloadDataType
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryResponse
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION_ID
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_ID
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_ID
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION_DATE
-import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.TIME_USE_DIARY_SUBMISSIONS
 import org.postgresql.util.PGobject
 import org.slf4j.LoggerFactory
 import java.sql.Connection
 import java.sql.ResultSet
 import java.sql.SQLException
-import java.time.LocalDate
-import java.util.*
 import java.sql.Types
+import java.time.LocalDate
 import java.time.OffsetDateTime
+import java.util.*
 
 /**
  * @author Andrew Carter andrew@openlattice.com
  */
 class TimeUseDiaryService(
     private val storageResolver: StorageResolver,
-    private val authorizationService: AuthorizationManager,
+    private val idGenerationService: HazelcastIdGenerationService,
 ) : TimeUseDiaryManager {
 
     companion object {
@@ -44,12 +44,12 @@ class TimeUseDiaryService(
 
     override fun submitTimeUseDiary(
         connection: Connection,
-        timeUseDiaryId: UUID,
         organizationId: UUID,
         studyId: UUID,
         participantId: String,
         responses: List<TimeUseDiaryResponse>
-    ) {
+    ): UUID {
+        val timeUseDiaryId = idGenerationService.getNextId()
         executeInsertTimeUseDiarySql(
             connection,
             timeUseDiaryId,
@@ -58,6 +58,7 @@ class TimeUseDiaryService(
             participantId,
             responses
         )
+        return timeUseDiaryId
     }
 
     override fun getParticipantTUDSubmissionsByDate(
@@ -271,9 +272,9 @@ class TimeUseDiaryService(
      * @param responses         List of survey responses for a Time Use Diary study
      */
     private val insertTimeUseDiarySql = """
-            INSERT INTO ${TIME_USE_DIARY_SUBMISSIONS.name} 
-            VALUES ( ?, ?, ?, ?, now(), ? )
-            """.trimIndent()
+        INSERT INTO ${TIME_USE_DIARY_SUBMISSIONS.name} 
+        VALUES ( ?, ?, ?, ?, now(), ? )
+    """.trimIndent()
 
     /**
      * SQL String to create a [java.sql.PreparedStatement] to retrieve study submissions for a participant within a date range
@@ -303,12 +304,12 @@ class TimeUseDiaryService(
      * @param endDate           Date that submissions must be submitted before or on
      */
     private val getStudyTUDSubmissionsByDateSql = """
-                SELECT ${SUBMISSION_ID.name}, ${SUBMISSION_DATE.name}
-                FROM ${TIME_USE_DIARY_SUBMISSIONS.name}
-                WHERE ${STUDY_ID.name} = ?
-                AND ${SUBMISSION_DATE.name} BETWEEN ? AND ?
-                ORDER BY ${SUBMISSION_DATE.name} ASC
-            """.trimIndent()
+        SELECT ${SUBMISSION_ID.name}, ${SUBMISSION_DATE.name}
+        FROM ${TIME_USE_DIARY_SUBMISSIONS.name}
+        WHERE ${STUDY_ID.name} = ?
+        AND ${SUBMISSION_DATE.name} BETWEEN ? AND ?
+        ORDER BY ${SUBMISSION_DATE.name} ASC
+    """.trimIndent()
 
     /**
      * SQL String to create a [java.sql.PreparedStatement] to retrieve time use diary responses for download

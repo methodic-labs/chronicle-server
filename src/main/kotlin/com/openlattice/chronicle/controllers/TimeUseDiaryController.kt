@@ -1,20 +1,6 @@
 package com.openlattice.chronicle.controllers
 
 import com.codahale.metrics.annotation.Timed
-import com.geekbeast.configuration.postgres.PostgresFlavor
-import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi
-import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.CONTROLLER
-import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.DOWNLOAD_TYPE
-import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.END_DATE
-import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.IDS_PATH
-import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.ORGANIZATION_ID
-import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.ORGANIZATION_ID_PATH
-import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.PARTICIPANT_ID
-import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.PARTICIPANT_ID_PATH
-import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.STUDY_ID
-import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.STUDY_ID_PATH
-import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.START_DATE
-import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.STATUS_PATH
 import com.openlattice.chronicle.auditing.AuditEventType
 import com.openlattice.chronicle.auditing.AuditableEvent
 import com.openlattice.chronicle.auditing.AuditedOperationBuilder
@@ -26,20 +12,40 @@ import com.openlattice.chronicle.authorization.Permission
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.constants.CustomMediaType
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
-import com.openlattice.chronicle.services.timeusediary.TimeUseDiaryManager
+import com.openlattice.chronicle.services.studies.StudyService
+import com.openlattice.chronicle.services.timeusediary.TimeUseDiaryService
 import com.openlattice.chronicle.storage.StorageResolver
+import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi
+import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.CONTROLLER
+import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.DOWNLOAD_TYPE
+import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.END_DATE
+import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.IDS_PATH
+import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.ORGANIZATION_ID
+import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.ORGANIZATION_ID_PATH
+import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.PARTICIPANT_ID
+import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.PARTICIPANT_ID_PATH
+import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.START_DATE
+import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.STATUS_PATH
+import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.STUDY_ID
+import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.STUDY_ID_PATH
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.STUDY_PATH
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryDownloadDataType
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryResponse
 import org.slf4j.LoggerFactory
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.MediaType
-import org.springframework.web.bind.annotation.*
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.bind.annotation.RestController
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
-import java.util.*
-import javax.inject.Inject
+import java.util.EnumSet
+import java.util.UUID
 import javax.servlet.http.HttpServletResponse
 
 /**
@@ -52,11 +58,10 @@ class TimeUseDiaryController(
     override val authorizationManager: AuthorizationManager,
     override val auditingManager: AuditingManager,
     val storageResolver: StorageResolver,
-    val idGenerationService: HazelcastIdGenerationService
+    val idGenerationService: HazelcastIdGenerationService,
+    val timeUseDiaryService: TimeUseDiaryService,
+    val studyService: StudyService
 ) : TimeUseDiaryApi, AuthorizingComponent {
-
-    @Inject
-    private lateinit var timeUseDiaryManager: TimeUseDiaryManager
 
     companion object {
         private val logger = LoggerFactory.getLogger(TimeUseDiaryController::class.java)!!
@@ -74,24 +79,37 @@ class TimeUseDiaryController(
         @PathVariable(PARTICIPANT_ID) participantId: String,
         @RequestBody responses: List<TimeUseDiaryResponse>
     ): UUID {
-        val hds = storageResolver.getPlatformStorage(PostgresFlavor.VANILLA)
-        val timeUseDiaryId = idGenerationService.getNextId()
-        AuditedOperationBuilder<Unit>(hds.connection, auditingManager)
-            .operation { connection ->
-                timeUseDiaryManager.submitTimeUseDiary(
-                    connection,
-                    timeUseDiaryId,
-                    organizationId,
-                    studyId,
-                    participantId,
-                    responses
-                ) }
-            .audit {
-                // TODO: Audit against anonymous user principal
-                listOf()
-            }
-            .buildAndRun()
-        return timeUseDiaryId
+
+        var maybeRealStudyId: UUID? = null
+        if (studyService.isLegacyStudyId(studyId)) {
+            maybeRealStudyId = studyService.getRealStudyIdForLegacyStudyId(studyId)
+        }
+        val realStudyId = maybeRealStudyId ?: studyId
+
+        return storageResolver.getPlatformStorage().connection.use { conn ->
+            AuditedOperationBuilder<UUID>(conn, auditingManager)
+                .operation { connection ->
+                    timeUseDiaryService.submitTimeUseDiary(
+                        connection,
+                        organizationId,
+                        realStudyId,
+                        participantId,
+                        responses
+                    )
+                }
+                .audit {
+                    listOf(
+                        AuditableEvent(
+                            aclKey = AclKey(realStudyId),
+                            study = realStudyId,
+                            eventType = AuditEventType.SUBMIT_TIME_USE_DIARY,
+                            principal = Principals.getAnonymousUser(),
+                            securablePrincipalId = Principals.getAnonymousSecurablePrincipal().id
+                        )
+                    )
+                }
+                .buildAndRun()
+        }
     }
 
     @Timed
@@ -108,7 +126,7 @@ class TimeUseDiaryController(
     ): Map<LocalDate, Set<UUID>> {
         accessCheck(AclKey(studyId), EnumSet.of(Permission.READ))
         logger.info("Retrieving TimeUseDiary ids from study $studyId for $participantId")
-        val submissionsIdsByDate = timeUseDiaryManager.getParticipantTUDSubmissionsByDate(
+        val submissionsIdsByDate = timeUseDiaryService.getParticipantTUDSubmissionsByDate(
             organizationId,
             studyId,
             participantId,
@@ -145,7 +163,7 @@ class TimeUseDiaryController(
     ): Map<LocalDate, Set<UUID>> {
         ensureReadAccess(AclKey(studyId))
         logger.info("Retrieving TimeUseDiary ids from study $studyId")
-        val submissionsIdsByDate = timeUseDiaryManager.getStudyTUDSubmissionsByDate(
+        val submissionsIdsByDate = timeUseDiaryService.getStudyTUDSubmissionsByDate(
             studyId,
             startDateTime,
             endDateTime
@@ -189,7 +207,7 @@ class TimeUseDiaryController(
         response: HttpServletResponse
     ): Iterable<Map<String,Any>> {
         accessCheck(AclKey(studyId), EnumSet.of(Permission.READ))
-        val data = timeUseDiaryManager.downloadTimeUseDiaryData(
+        val data = timeUseDiaryService.downloadTimeUseDiaryData(
             organizationId,
             studyId,
             participantId,

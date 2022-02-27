@@ -20,6 +20,8 @@ interface StudyManager {
     fun getOrgStudies(organizationId: UUID): List<Study>
     fun updateStudy(connection: Connection, studyId: UUID, study: StudyUpdate)
     fun registerParticipant(connection: Connection, studyId: UUID, participant: Participant): UUID
+    fun getRealStudyIdForLegacyStudyId(legacyStudyId: UUID): UUID?
+    fun isLegacyStudyId(studyId: UUID): Boolean
     fun isNotificationsEnabled(studyId: UUID): Boolean
     fun getOrganizationIdForLegacyStudy(studyId: UUID): UUID
     fun refreshStudyCache(studyIds: Set<UUID>)

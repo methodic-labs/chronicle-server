@@ -8,7 +8,11 @@ import com.geekbeast.postgres.PostgresDatatype
 import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
 import com.hazelcast.core.HazelcastInstance
-import com.openlattice.chronicle.auditing.*
+import com.openlattice.chronicle.auditing.AuditEventType
+import com.openlattice.chronicle.auditing.AuditableEvent
+import com.openlattice.chronicle.auditing.AuditedOperationBuilder
+import com.openlattice.chronicle.auditing.AuditingComponent
+import com.openlattice.chronicle.auditing.AuditingManager
 import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.authorization.AuthorizationManager
 import com.openlattice.chronicle.authorization.Permission.READ
@@ -23,6 +27,7 @@ import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.sensorkit.SensorType
 import com.openlattice.chronicle.services.candidates.CandidateManager
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
+import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.LEGACY_STUDY_IDS
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.ORGANIZATION_STUDIES
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.PARTICIPANT_STATS
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.PERMISSIONS
@@ -35,6 +40,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.CREATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DESCRIPTION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ENDED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LAT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.LEGACY_STUDY_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LON
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.NOTIFICATIONS_ENABLED
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_ID
@@ -251,6 +257,14 @@ class StudyService(
 
         private val SELECT_STUDY_PARTICIPANTS_SQL = """
             SELECT * FROM ${STUDY_PARTICIPANTS.name} WHERE ${STUDY_ID.name} = ?
+        """.trimIndent()
+
+        private val COUNT_LEGACY_STUDY_ID_SQL = """
+            SELECT count(*) FROM ${LEGACY_STUDY_IDS.name} WHERE ${LEGACY_STUDY_ID.name} = ?
+        """.trimIndent()
+
+        private val SELECT_REAL_STUDY_ID_SQL = """
+            SELECT ${STUDY_ID.name} FROM ${LEGACY_STUDY_IDS.name} WHERE ${LEGACY_STUDY_ID.name} = ?
         """.trimIndent()
 
         private val PARTICIPANT_STATS_COLUMNS = PARTICIPANT_STATS.columns.joinToString { it.name }
@@ -518,5 +532,35 @@ class StudyService(
                 ps.setObject(1, studyId)
             }
         ) { ResultSetAdapters.participant(it) }
+    }
+
+    override fun isLegacyStudyId(studyId: UUID): Boolean {
+        return countLegacyStudyId(studyId) == 1L
+    }
+
+    private fun countLegacyStudyId(legacyStudyId: UUID): Long {
+        return storageResolver.getPlatformStorage().connection.use { connection ->
+            connection.prepareStatement(COUNT_LEGACY_STUDY_ID_SQL).use { ps ->
+                ps.setObject(1, legacyStudyId)
+                ps.executeQuery().use { rs ->
+                    if (rs.next()) ResultSetAdapters.count(rs) else 0
+                }
+            }
+        }
+    }
+
+    override fun getRealStudyIdForLegacyStudyId(legacyStudyId: UUID): UUID? {
+        return selectRealStudyId(legacyStudyId)
+    }
+
+    private fun selectRealStudyId(legacyStudyId: UUID): UUID? {
+        return storageResolver.getPlatformStorage().connection.use { connection ->
+            connection.prepareStatement(SELECT_REAL_STUDY_ID_SQL).use { ps ->
+                ps.setObject(1, legacyStudyId)
+                ps.executeQuery().use { rs ->
+                    if (rs.next()) ResultSetAdapters.studyId(rs) else null
+                }
+            }
+        }
     }
 }
