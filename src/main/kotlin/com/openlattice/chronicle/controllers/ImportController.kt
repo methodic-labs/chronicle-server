@@ -127,7 +127,7 @@ class ImportController(
             logger.info("Created study {}", study)
             check(study.id == studyId) { "Safety check to make sure study id got set appropriately" }
 
-            studiesByEkId[it.getObject(LEGACY_STUDY_EK_ID, UUID::class.java)] = study
+            studiesByEkId[it.getObject(V2_STUDY_EK_ID, UUID::class.java)] = study
 
             if (v2StudyId != null) {
                 studiesByLegacyStudyId[v2StudyId] = study.id
@@ -151,7 +151,7 @@ class ImportController(
             PreparedStatementHolderSupplier(hds, getCandidatesSql(config.candidatesTable)) {}
         ) {
             val participant = participant(it)
-            val studyEkId = it.getObject(LEGACY_STUDY_EK_ID, UUID::class.java)
+            val studyEkId = it.getObject(V2_STUDY_EK_ID, UUID::class.java)
 
             val study = studiesByEkId[studyEkId] ?: throw StudyNotFoundException(
                 studyEkId,
@@ -171,23 +171,15 @@ class ImportController(
         ensureAdminAccess()
         val hds = dataSourceManager.getDataSource(config.dataSourceName)
         val participantStats: List<ParticipantStats> = BasePostgresIterable(
-            PreparedStatementHolderSupplier(
-                hds,
-                "SELECT * FROM ${config.participantStatsTable}"
-            ) {}
-        ) {
-            participantStat(it)
-        }.toList()
+            PreparedStatementHolderSupplier(hds, "SELECT * FROM ${config.participantStatsTable}") {}
+        ) { participantStat(it) }
+            .toList()
         logger.info("Retrieved ${participantStats.size} legacy participant stats entities")
 
         val legacyStudIdMapping :Map<UUID, UUID> = BasePostgresIterable(
-            PreparedStatementHolderSupplier(
-                hds,
-                "SELECT * FROM ${LEGACY_STUDY_IDS.name}"
-            ){}
-        ) {
-            legacyStudyId(it)
-        }.flatMap { it.asSequence() }
+            PreparedStatementHolderSupplier(hds, "SELECT * FROM ${LEGACY_STUDY_IDS.name}") {}
+        ) { legacyStudyId(it) }
+            .flatMap { it.asSequence() }
             .associate { it.key to it.value }
 
         val inserts = hds.connection.prepareStatement(INSERT_PARTICIPANT_STATS_SQL).use { ps ->
@@ -231,8 +223,8 @@ class ImportController(
 
     private fun study(rs: ResultSet, settings: Map<String, Any>?): Study {
 
-        val v2StudyId = rs.getString(LEGACY_STUDY_ID)
-        val v2StudyEkid = rs.getString(LEGACY_STUDY_EK_ID)
+        val v2StudyId = rs.getString(V2_STUDY_ID)
+        val v2StudyEkid = rs.getString(V2_STUDY_EK_ID)
 
         var description = rs.getString(LEGACY_DESC)
         if (StringUtils.isBlank(description)) {
@@ -275,7 +267,7 @@ class ImportController(
         )
     }
     private fun v2StudyId(rs: ResultSet): UUID? {
-        val v2StudyIdStr = rs.getString(LEGACY_STUDY_ID)
+        val v2StudyIdStr = rs.getString(V2_STUDY_ID)
         return if (StringUtils.isNotBlank(v2StudyIdStr)) UUID.fromString(v2StudyIdStr) else null
     }
 }
@@ -285,8 +277,9 @@ private const val LEGACY_LAST_NAME = "last_name"
 private const val LEGACY_DOB = "dob"
 private const val LEGACY_PARTICIPANT_ID = "participant_id"
 private const val LEGACY_PARTICIPATION_STATUS = "participation_status"
-private const val LEGACY_STUDY_ID = "v2_study_id"
-private const val LEGACY_STUDY_EK_ID = "v2_study_ekid"
+private const val V2_STUDY_ID = "v2_study_id"
+private const val LEGACY_STUDY_ID = "legacy_study_id"
+private const val V2_STUDY_EK_ID = "v2_study_ekid"
 private const val LEGACY_TITLE = "title"
 private const val LEGACY_DESC = "description"
 private const val LEGACY_LAT = "lat"
