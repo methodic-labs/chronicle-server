@@ -64,7 +64,14 @@ class SurveyController @Inject constructor(
         @RequestParam(value = START_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) startDateTime: OffsetDateTime,
         @RequestParam(value = END_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) endDateTime: OffsetDateTime
     ): List<AppUsage> {
-        return surveysService.getAppUsageData(studyId, participantId, startDateTime, endDateTime)
+
+        var maybeRealStudyId: UUID? = null
+        if (studyService.isLegacyStudyId(studyId)) {
+            maybeRealStudyId = studyService.getRealStudyIdForLegacyStudyId(studyId)
+        }
+        val realStudyId = maybeRealStudyId ?: studyId
+
+        return surveysService.getAppUsageData(realStudyId, participantId, startDateTime, endDateTime)
     }
 
     @Timed
@@ -147,7 +154,14 @@ class SurveyController @Inject constructor(
         produces = [MediaType.APPLICATION_JSON_VALUE]
     )
     override fun getStudyQuestionnaires(@PathVariable(STUDY_ID) studyId: UUID): List<Questionnaire> {
-        return surveysService.getStudyQuestionnaires(studyId)
+
+        var maybeRealStudyId: UUID? = null
+        if (studyService.isLegacyStudyId(studyId)) {
+            maybeRealStudyId = studyService.getRealStudyIdForLegacyStudyId(studyId)
+        }
+        val realStudyId = maybeRealStudyId ?: studyId
+
+        return surveysService.getStudyQuestionnaires(realStudyId)
     }
 
     @Timed
