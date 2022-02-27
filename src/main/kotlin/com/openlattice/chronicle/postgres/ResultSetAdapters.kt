@@ -420,6 +420,7 @@ class ResultSetAdapters {
         @Throws
         fun participantStats(rs: ResultSet): ParticipantStats {
             return ParticipantStats(
+                rs.getObject(STUDY_ID.name, UUID::class.java),
                 rs.getString(PARTICIPANT_ID.name),
                 rs.getObject(ANDROID_FIRST_DATE.name, OffsetDateTime::class.java),
                 rs.getObject(ANDROID_LAST_DATE.name, OffsetDateTime::class.java),

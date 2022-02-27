@@ -15,9 +15,11 @@ import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.import.ImportApi
 import com.openlattice.chronicle.import.ImportApi.Companion.CONTROLLER
+import com.openlattice.chronicle.import.ImportApi.Companion.PARTICIPANT_STATS
 import com.openlattice.chronicle.import.ImportApi.Companion.STUDIES
 import com.openlattice.chronicle.import.ImportStudiesConfiguration
 import com.openlattice.chronicle.participants.Participant
+import com.openlattice.chronicle.participants.ParticipantStats
 import com.openlattice.chronicle.services.candidates.CandidateService
 import com.openlattice.chronicle.services.studies.StudyService
 import com.openlattice.chronicle.services.timeusediary.TimeUseDiaryService
@@ -63,6 +65,33 @@ class ImportController(
         private val INSERT_LEGACY_STUDY_ID_SQL = """
             INSERT INTO ${LEGACY_STUDY_IDS.name}(${PostgresColumns.STUDY_ID.name}, ${PostgresColumns.LEGACY_STUDY_ID.name})
             VALUES (?, ?)
+        """.trimIndent()
+
+        private val PARTICIPANT_STATS_COLUMNS = linkedSetOf(
+            PostgresColumns.STUDY_ID,
+            PostgresColumns.PARTICIPANT_ID,
+            PostgresColumns.ANDROID_FIRST_DATE,
+            PostgresColumns.ANDROID_LAST_DATE,
+            PostgresColumns.ANDROID_DATES_COUNT,
+            PostgresColumns.TUD_FIRST_DATE,
+            PostgresColumns.TUD_LAST_DATE,
+            PostgresColumns.TUD_DATES_COUNT
+        )
+
+        /**
+         * PreparedStatement binding
+         * 1) studyId
+         * 2) participantId,
+         * 3) androidFirstDate,
+         * 4) androidLastDate,
+         * 5) androidDatesCount
+         * 6) tudFirstDate,
+         * 7) tudLastDate
+         * 8) tudDatesCount
+         */
+        private val INSERT_PARTICIPANT_STATS_SQL = """
+            INSERT INTO $PARTICIPANT_STATS_COLUMNS (${PARTICIPANT_STATS_COLUMNS.joinToString { it.name }}) 
+            VALUES (${PARTICIPANT_STATS_COLUMNS.joinToString { "?" }})
         """.trimIndent()
     }
 
@@ -133,6 +162,57 @@ class ImportController(
         }.count()
     }
 
+    @PostMapping(
+        path = [PARTICIPANT_STATS],
+        consumes = [MediaType.APPLICATION_JSON_VALUE],
+        produces = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    override fun importParticipantStats(config: ImportStudiesConfiguration) {
+        ensureAdminAccess()
+        val hds = dataSourceManager.getDataSource(config.dataSourceName)
+        val participantStats: List<ParticipantStats> = BasePostgresIterable(
+            PreparedStatementHolderSupplier(
+                hds,
+                "SELECT * FROM ${config.participantStatsTable}"
+            ) {}
+        ) {
+            participantStat(it)
+        }.toList()
+        logger.info("Retrieved ${participantStats.size} legacy participant stats entities")
+
+        val legacyStudIdMapping :Map<UUID, UUID> = BasePostgresIterable(
+            PreparedStatementHolderSupplier(
+                hds,
+                "SELECT * FROM ${LEGACY_STUDY_IDS.name}"
+            ){}
+        ) {
+            legacyStudyId(it)
+        }.flatMap { it.asSequence() }
+            .associate { it.key to it.value }
+
+        val inserts = hds.connection.prepareStatement(INSERT_PARTICIPANT_STATS_SQL).use { ps ->
+            participantStats.forEach {
+                val studyId = legacyStudIdMapping[it.studyId]
+                if (studyId == null) {
+                    logger.warn("Missing study with legacy study ${it.studyId}. skipping insert")
+                    return@forEach
+                }
+                var index = 0
+                ps.setObject(++index, studyId)
+                ps.setString(++index, it.participantId)
+                ps.setObject(++index, it.androidFirstDate)
+                ps.setObject(++index, it.androidLastDate)
+                ps.setInt(++index, it.androidDatesCount)
+                ps.setObject(++index, it.tudFirstDate)
+                ps.setObject(++index, it.tudLastDate)
+                ps.setInt(++index, it.tudDatesCount)
+                ps.addBatch()
+            }
+            ps.executeBatch().sum()
+        }
+        logger.info("Inserted $inserts entities into participant_stats table")
+    }
+
     private fun participant(rs: ResultSet): Participant {
         var status = rs.getString(LEGACY_PARTICIPATION_STATUS)
         if (status == null || status == "DELETE") {
@@ -176,6 +256,24 @@ class ImportController(
         )
     }
 
+    private fun participantStat(rs: ResultSet): ParticipantStats {
+        return ParticipantStats(
+            studyId = rs.getObject(LEGACY_STUDY_ID, UUID::class.java),
+            participantId = rs.getString(LEGACY_PARTICIPANT_ID),
+            androidFirstDate = rs.getObject(ANDROID_FIRST_DATE, OffsetDateTime::class.java),
+            androidLastDate = rs.getObject(ANDROID_LAST_DATE, OffsetDateTime::class.java),
+            androidDatesCount = rs.getInt(ANDROID_DATES_COUNT),
+            tudFirstDate = rs.getObject(TUD_FIRST_DATE, OffsetDateTime::class.java),
+            tudLastDate = rs.getObject(TUD_LAST_DATE, OffsetDateTime::class.java),
+            tudDatesCount = rs.getInt(TUD_DATES_COUNT)
+        )
+    }
+
+    private fun legacyStudyId(rs: ResultSet): Map<UUID, UUID> {
+        return mapOf(
+            rs.getObject(PostgresColumns.LEGACY_STUDY_ID.name, UUID::class.java) to rs.getObject(PostgresColumns.STUDY_ID.name, UUID::class.java)
+        )
+    }
     private fun v2StudyId(rs: ResultSet): UUID? {
         val v2StudyIdStr = rs.getString(LEGACY_STUDY_ID)
         return if (StringUtils.isNotBlank(v2StudyIdStr)) UUID.fromString(v2StudyIdStr) else null
@@ -197,6 +295,12 @@ private const val LEGACY_UPDATE_AT = "updated_at"
 private const val LEGACY_STUDY_GROUP = "study_group"
 private const val LEGACY_STUDY_VERSION = "study_version"
 private const val LEGACY_STUDY_CONTACT = "contact"
+private const val ANDROID_FIRST_DATE = "android_first_date"
+private const val ANDROID_LAST_DATE = "android_last_date"
+private const val ANDROID_DATES_COUNT = "android_dates_count"
+private const val TUD_FIRST_DATE = "tud_first_date"
+private const val TUD_LAST_DATE = "tud_last_date"
+private const val TUD_DATES_COUNT = "tud_dates_count"
 
 
 private fun getStudiesSql(studiesTable: String): String {
