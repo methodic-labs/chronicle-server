@@ -256,7 +256,6 @@ class ImportController(
         )
     }
 
-<<<<<<< HEAD
     private fun participantStat(rs: ResultSet): ParticipantStats {
         return ParticipantStats(
             studyId = rs.getObject(LEGACY_STUDY_ID, UUID::class.java),
@@ -274,11 +273,10 @@ class ImportController(
         return mapOf(
             rs.getObject(PostgresColumns.LEGACY_STUDY_ID.name, UUID::class.java) to rs.getObject(PostgresColumns.STUDY_ID.name, UUID::class.java)
         )
-=======
+    }
     private fun v2StudyId(rs: ResultSet): UUID? {
         val v2StudyIdStr = rs.getString(LEGACY_STUDY_ID)
         return if (StringUtils.isNotBlank(v2StudyIdStr)) UUID.fromString(v2StudyIdStr) else null
->>>>>>> feature/chronicle-v3
     }
 }
 
