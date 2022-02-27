@@ -167,7 +167,7 @@ class ImportController(
         consumes = [MediaType.APPLICATION_JSON_VALUE],
         produces = [MediaType.APPLICATION_JSON_VALUE]
     )
-    override fun importParticipantStats(config: ImportStudiesConfiguration) {
+    override fun importParticipantStats(@RequestBody config: ImportStudiesConfiguration) {
         ensureAdminAccess()
         val hds = dataSourceManager.getDataSource(config.dataSourceName)
         val participantStats: List<ParticipantStats> = BasePostgresIterable(
