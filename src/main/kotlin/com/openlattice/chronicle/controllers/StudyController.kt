@@ -1,7 +1,6 @@
 package com.openlattice.chronicle.controllers
 
 import com.codahale.metrics.annotation.Timed
-import com.geekbeast.configuration.postgres.PostgresFlavor
 import com.google.common.collect.SetMultimap
 import com.openlattice.chronicle.auditing.AuditEventType
 import com.openlattice.chronicle.auditing.AuditableEvent
@@ -73,7 +72,6 @@ import java.util.*
 import javax.inject.Inject
 import javax.servlet.http.HttpServletResponse
 import kotlin.NoSuchElementException
-import kotlin.streams.asSequence
 
 
 /**
