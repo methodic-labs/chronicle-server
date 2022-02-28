@@ -101,7 +101,7 @@ class HazelcastPrincipalService(
         val aclKey = principal.aclKey
         try {
             // Reserve securable object id
-            reservations.registerSecurableObject(principal) { principal.name }
+            reservations.registerSecurableObject(principal) { "${principal.principalType}|${principal.name}" }
 
             // Initialize entries in principals and principalTrees mapstores
             principals[aclKey] = principal

@@ -25,6 +25,7 @@ interface StudyManager {
     fun getStudySensors(studyId: UUID): Set<SensorType>
     fun getStudySettings(studyId: UUID): Map<String, Any>
     fun isNotificationsEnabled(studyId: UUID): Boolean
+    fun isValidStudy(studyId: UUID): Boolean
     fun refreshStudyCache(studyIds: Set<UUID>)
     fun registerParticipant(connection: Connection, studyId: UUID, participant: Participant): UUID
     fun registerParticipant(studyId: UUID, participant: Participant): UUID
