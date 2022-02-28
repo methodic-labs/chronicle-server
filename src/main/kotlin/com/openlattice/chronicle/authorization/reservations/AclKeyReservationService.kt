@@ -121,9 +121,7 @@ class AclKeyReservationService(private val dsm: DataSourceManager) {
                 ps.setString(1, name)
                 val rs = ps.executeQuery()
                 rs.use {
-                    checkState(rs.next()) {
-                        "No id found for $name"
-                    }
+                    check(rs.next()) { "No id found for $name" }
                     return ResultSetAdapters.securableObjectId(rs)
                 }
             }

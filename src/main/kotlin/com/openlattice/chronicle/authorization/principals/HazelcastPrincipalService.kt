@@ -75,10 +75,14 @@ class HazelcastPrincipalService(
         private fun hasAnySecurablePrincipal(aclKeys: Set<AclKey>): Predicate<AclKey, AclKeySet> {
             return Predicates.`in`(PrincipalTreesMapstore.INDEX, *aclKeys.map { it.index }.toTypedArray())
         }
+
+        fun getPrincipalReservationName(principalId:String )  : String {
+            return "$principalId"
+        }
     }
 
     override fun createSecurablePrincipalIfNotExists(owner: Principal, principal: SecurablePrincipal): Boolean {
-        if (reservations.isReserved(principal.name)) {
+        if (reservations.isReserved(HazelcastPrincipalService.getPrincipalReservationName(principal.name))) {
             logger.warn("Securable Principal {} already exists", principal)
             return false
         }
@@ -98,11 +102,11 @@ class HazelcastPrincipalService(
     }
 
     private fun createSecurablePrincipal(owner: Principal, principal: SecurablePrincipal) {
-        val aclKey = principal.aclKey
+        var aclKey : AclKey? = null
         try {
             // Reserve securable object id
-            reservations.registerSecurableObject(principal) { "${principal.principalType}|${principal.name}" }
-
+            reservations.registerSecurableObject(principal) { getPrincipalReservationName(principal.name) }
+            aclKey = principal.aclKey
             // Initialize entries in principals and principalTrees mapstores
             principals[aclKey] = principal
             principalTrees[aclKey] = AclKeySet()
@@ -113,9 +117,11 @@ class HazelcastPrincipalService(
 
         } catch (e: Exception) {
             logger.error("Unable to create principal {}", principal, e)
-            principals.delete(aclKey)
-            principalTrees.delete(aclKey)
-            authorizationManager.deletePermissions(aclKey)
+            if( aclKey!= null ) {
+                principals.delete(aclKey)
+                principalTrees.delete(aclKey)
+                authorizationManager.deletePermissions(aclKey)
+            }
             reservations.release(principal.id)
             throw IllegalStateException("Unable to create principal: $principal")
         }
