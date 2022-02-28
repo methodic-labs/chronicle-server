@@ -45,6 +45,7 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import java.sql.Array
+import java.sql.Date
 import java.sql.ResultSet
 import java.time.LocalDate
 import java.time.OffsetDateTime
@@ -95,10 +96,10 @@ class ImportController(
          * 2) participantId,
          * 3) androidFirstDate,
          * 4) androidLastDate,
-         * 5) androidDatesCount
+         * 5) androidUniqueDates
          * 6) tudFirstDate,
          * 7) tudLastDate
-         * 8) tudDatesCount
+         * 8) tudUniqueDates
          */
         private val INSERT_PARTICIPANT_STATS_SQL = """
             INSERT INTO ${ChroniclePostgresTables.PARTICIPANT_STATS.name} (${PARTICIPANT_STATS_COLUMNS.joinToString { it.name }})
@@ -187,29 +188,26 @@ class ImportController(
             .toList()
         logger.info("Retrieved ${participantStats.size} legacy participant stats entities")
 
-        val legacyStudIdMapping :Map<UUID, UUID> = BasePostgresIterable(
-            PreparedStatementHolderSupplier(hds, "SELECT * FROM ${LEGACY_STUDY_IDS.name}") {}
-        ) { legacyStudyId(it) }
-            .flatMap { it.asSequence() }
-            .associate { it.key to it.value }
-
         val inserts = hds.connection.use { connection ->
             connection.prepareStatement(INSERT_PARTICIPANT_STATS_SQL).use { ps ->
                 participantStats.forEach {
-                    val studyId = legacyStudIdMapping[it.studyId]
+                    val studyId = studyService.getStudyId(it.studyId)
                     if (studyId == null) {
                         logger.warn("Missing study with legacy study ${it.studyId}. skipping insert")
                         return@forEach
                     }
                     var index = 0
+                    val androidUniqueDates = connection.createArrayOf(PostgresDatatype.DATE.sql(), it.androidUniqueDates.toTypedArray())
+                    val tudUniqueDates = connection.createArrayOf(PostgresDatatype.DATE.sql(), it.tudUniqueDates.toTypedArray())
+
                     ps.setObject(++index, studyId)
                     ps.setString(++index, it.participantId)
                     ps.setObject(++index, it.androidFirstDate)
                     ps.setObject(++index, it.androidLastDate)
-                    ps.setArray(++index,  connection.createArrayOf(PostgresDatatype.DATE_ARRAY.sql(), it.androidUniqueDates.toTypedArray()))
+                    ps.setArray(++index, androidUniqueDates)
                     ps.setObject(++index, it.tudFirstDate)
                     ps.setObject(++index, it.tudLastDate)
-                    ps.setArray(++index, connection.createArrayOf(PostgresDatatype.DATE_ARRAY.sql(), it.tudUniqueDates.toTypedArray()))
+                    ps.setArray(++index, tudUniqueDates)
                     ps.addBatch()
                 }
                 ps.executeBatch().sum()
@@ -329,17 +327,17 @@ class ImportController(
     }
 
     private fun participantStat(rs: ResultSet): ParticipantStats {
-        val androidDates: kotlin.Array<LocalDate> = rs.getArray(ANDROID_UNIQUE_DATES) as kotlin.Array<LocalDate>
-        val tudDates: kotlin.Array<LocalDate> = rs.getArray(TUD_UNIQUE_DATES) as kotlin.Array<LocalDate>
+        val androidDates: kotlin.Array<Date> = rs.getArray(ANDROID_UNIQUE_DATES).array as kotlin.Array<Date>
+        val tudDates: kotlin.Array<Date> = rs.getArray(TUD_UNIQUE_DATES).array as kotlin.Array<Date>
         return ParticipantStats(
             studyId = rs.getObject(LEGACY_STUDY_ID, UUID::class.java),
             participantId = rs.getString(LEGACY_PARTICIPANT_ID),
             androidFirstDate = rs.getObject(ANDROID_FIRST_DATE, OffsetDateTime::class.java),
             androidLastDate = rs.getObject(ANDROID_LAST_DATE, OffsetDateTime::class.java),
-            androidUniqueDates = androidDates.toSet(),
+            androidUniqueDates = androidDates.map { it.toLocalDate() }.toSet(),
             tudFirstDate = rs.getObject(TUD_FIRST_DATE, OffsetDateTime::class.java),
             tudLastDate = rs.getObject(TUD_LAST_DATE, OffsetDateTime::class.java),
-            tudUniqueDates = tudDates.toSet()
+            tudUniqueDates = tudDates.map { it.toLocalDate() }.toSet()
         )
     }
 

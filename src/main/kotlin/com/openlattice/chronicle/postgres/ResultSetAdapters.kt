@@ -111,6 +111,7 @@ import com.openlattice.chronicle.study.Study
 import com.openlattice.chronicle.survey.AppUsage
 import com.openlattice.chronicle.survey.Questionnaire
 import org.slf4j.LoggerFactory
+import java.sql.Date
 import java.sql.ResultSet
 import java.sql.SQLException
 import java.time.LocalDate
@@ -419,22 +420,22 @@ class ResultSetAdapters {
 
         @Throws
         fun participantStats(rs: ResultSet): ParticipantStats {
-            val androidDates: Array<LocalDate> = rs.getArray(ANDROID_UNIQUE_DATES.name) as Array<LocalDate>
-            val tudDates: Array<LocalDate> = rs.getArray(TUD_UNIQUE_DATES.name) as Array<LocalDate>
-            val iosDates: Array<LocalDate> = rs.getArray(IOS_UNIQUE_DATES.name) as Array<LocalDate>
+            val androidDates: Array<Date> = rs.getArray(ANDROID_UNIQUE_DATES.name).array as Array<Date>
+            val tudDates: Array<Date> = rs.getArray(TUD_UNIQUE_DATES.name).array as Array<Date>
+            val iosDates: Array<Date> = rs.getArray(IOS_UNIQUE_DATES.name).array as Array<Date>
 
             return ParticipantStats(
                 rs.getObject(STUDY_ID.name, UUID::class.java),
                 rs.getString(PARTICIPANT_ID.name),
                 rs.getObject(ANDROID_FIRST_DATE.name, OffsetDateTime::class.java),
                 rs.getObject(ANDROID_LAST_DATE.name, OffsetDateTime::class.java),
-                androidDates.toSet(),
+                androidDates.map { it.toLocalDate() }.toSet(),
                 rs.getObject(IOS_FIRST_DATE.name, OffsetDateTime::class.java),
                 rs.getObject(IOS_LAST_DATE.name, OffsetDateTime::class.java),
-                iosDates.toSet(),
+                iosDates.map { it.toLocalDate() }.toSet(),
                 rs.getObject(TUD_FIRST_DATE.name, OffsetDateTime::class.java),
                 rs.getObject(TUD_LAST_DATE.name, OffsetDateTime::class.java),
-                tudDates.toSet()
+                tudDates.map { it.toLocalDate() }.toSet()
             )
         }
         @Throws
