@@ -19,6 +19,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION_ID
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryDownloadDataType
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryResponse
+import com.openlattice.chronicle.util.ChronicleServerUtil
 import org.postgresql.util.PGobject
 import org.slf4j.LoggerFactory
 import java.sql.Connection
@@ -64,6 +65,7 @@ class TimeUseDiaryService(
             submissionDate
         )
         updateParticipantStats(studyId, participantId, submissionDate)
+        logger.info("submitted time use diary responses ${ChronicleServerUtil.STUDY_PARTICIPANT}", studyId, participantId)
         return timeUseDiaryId
     }
 
