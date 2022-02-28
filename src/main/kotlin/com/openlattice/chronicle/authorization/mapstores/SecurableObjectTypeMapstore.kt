@@ -45,8 +45,9 @@ class SecurableObjectTypeMapstore(hds: HikariDataSource?) : AbstractBasePostgres
     override fun bind(
         ps: PreparedStatement, key: AclKey, value: SecurableObjectType
     ) {
-        bind(ps, key, 1)
-        ps.setString(2, value.name)
+        //Since this is using an update statement we have to be careful about the order of binding the parameters
+        bind(ps, key, 2)
+        ps.setString(1, value.name)
     }
 
     @Throws(SQLException::class)
