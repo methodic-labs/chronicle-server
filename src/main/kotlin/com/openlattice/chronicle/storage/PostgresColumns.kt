@@ -80,7 +80,7 @@ class PostgresColumns {
         @JvmField val SUBMISSION_DATE = PostgresColumnDefinition("submission_date", PostgresDatatype.TIMESTAMPTZ).notNull().withDefault("NOW()")
         @JvmField val SUBMISSION_ID = PostgresColumnDefinition("submission_id", PostgresDatatype.UUID).notNull()
         @JvmField val TITLE = PostgresColumnDefinition("title", PostgresDatatype.TEXT)
-        @JvmField val TUD_UNIQUE_DATES = PostgresColumnDefinition("tud_dates_count", PostgresDatatype.DATE_ARRAY).withDefault("'{}'")
+        @JvmField val TUD_UNIQUE_DATES = PostgresColumnDefinition("tud_unique_dates", PostgresDatatype.DATE_ARRAY).withDefault("'{}'")
         @JvmField val TUD_FIRST_DATE = PostgresColumnDefinition("tud_first_date", PostgresDatatype.TIMESTAMPTZ)
         @JvmField val TUD_LAST_DATE = PostgresColumnDefinition("tud_last_date", PostgresDatatype.TIMESTAMPTZ)
         @JvmField val UPDATED_AT = PostgresColumnDefinition("updated_at", PostgresDatatype.TIMESTAMPTZ).notNull().withDefault("now()")
