@@ -193,7 +193,12 @@ class ChronicleServerServicesPod {
     @Bean
     @Throws(IOException::class, ExecutionException::class)
     fun enrollmentManager(): EnrollmentManager {
-        return EnrollmentService(storageResolver, idGenerationService(), candidateService(), scheduledTasksManager())
+        return EnrollmentService(
+            storageResolver,
+            idGenerationService(),
+            candidateService(),
+            auditingManager()
+        )
     }
 
 

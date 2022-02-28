@@ -111,27 +111,13 @@ class StudyController @Inject constructor(
         @PathVariable(SOURCE_DEVICE_ID) datasourceId: String,
         @RequestBody sourceDevice: SourceDevice
     ): UUID {
-//        check( enrollmentService.isKnownParticipant(studyId, participantId)) { "Cannot enroll device for an unknown participant." }
-//        TODO: Move checks out from enrollment data source into the controller.
-        val deviceId = enrollmentService.registerDatasource(studyId, participantId, datasourceId, sourceDevice)
-        val organizationIds = studyService.getStudy(studyId).organizationIds
+        var maybeRealStudyId: UUID? = null
+        if (studyService.isLegacyStudyId(studyId)) {
+            maybeRealStudyId = studyService.getRealStudyIdForLegacyStudyId(studyId)
+        }
+        val realStudyId = maybeRealStudyId ?: studyId
 
-        /**
-         * We don't record an enrollment event into each organization as the organization associated with a study
-         * can change.
-         */
-        recordEvent(
-            AuditableEvent(
-                AclKey(deviceId),
-                eventType = AuditEventType.ENROLL_DEVICE,
-                description = "Enrolled ${sourceDevice.javaClass}",
-                study = studyId,
-                organization = IdConstants.UNINITIALIZED.id,
-                data = mapOf("device" to sourceDevice)
-            )
-        )
-
-        return deviceId
+        return enrollmentService.registerDatasource(realStudyId, participantId, datasourceId, sourceDevice)
     }
 
     @Timed
