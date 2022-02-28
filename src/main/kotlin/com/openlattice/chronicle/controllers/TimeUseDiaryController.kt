@@ -99,13 +99,14 @@ class TimeUseDiaryController(
                 }
                 .audit {
                     listOf(
-                        AuditableEvent(
-                            aclKey = AclKey(realStudyId),
-                            study = realStudyId,
-                            eventType = AuditEventType.SUBMIT_TIME_USE_DIARY,
-                            principal = Principals.getAnonymousUser(),
-                            securablePrincipalId = Principals.getAnonymousSecurablePrincipal().id
-                        )
+                        // TODO - fix Principals.getAnonymousSecurablePrincipal(), always throws NPE
+                        // AuditableEvent(
+                        //     aclKey = AclKey(realStudyId),
+                        //     study = realStudyId,
+                        //     eventType = AuditEventType.SUBMIT_TIME_USE_DIARY,
+                        //     principal = Principals.getAnonymousUser(),
+                        //     securablePrincipalId = Principals.getAnonymousSecurablePrincipal().id
+                        // )
                     )
                 }
                 .buildAndRun()

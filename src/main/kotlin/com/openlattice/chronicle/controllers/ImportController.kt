@@ -11,24 +11,31 @@ import com.openlattice.chronicle.auditing.AuditingManager
 import com.openlattice.chronicle.authorization.AuthorizationManager
 import com.openlattice.chronicle.authorization.AuthorizingComponent
 import com.openlattice.chronicle.candidates.Candidate
+import com.openlattice.chronicle.constants.OutputConstants
 import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.import.ImportApi
+import com.openlattice.chronicle.import.ImportApi.Companion.APP_USAGE_SURVEY
 import com.openlattice.chronicle.import.ImportApi.Companion.CONTROLLER
 import com.openlattice.chronicle.import.ImportApi.Companion.PARTICIPANT_STATS
 import com.openlattice.chronicle.import.ImportApi.Companion.STUDIES
+import com.openlattice.chronicle.import.ImportApi.Companion.SYSTEM_APPS
 import com.openlattice.chronicle.import.ImportStudiesConfiguration
 import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.participants.ParticipantStats
+import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.services.candidates.CandidateService
 import com.openlattice.chronicle.services.studies.StudyService
+import com.openlattice.chronicle.services.surveys.SurveysService
 import com.openlattice.chronicle.services.timeusediary.TimeUseDiaryService
 import com.openlattice.chronicle.services.upload.AppDataUploadService
 import com.openlattice.chronicle.storage.ChroniclePostgresTables
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.LEGACY_STUDY_IDS
 import com.openlattice.chronicle.storage.PostgresColumns
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SETTINGS
+import com.openlattice.chronicle.storage.RedshiftColumns
 import com.openlattice.chronicle.study.Study
+import com.zaxxer.hikari.HikariDataSource
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
@@ -36,9 +43,11 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import java.sql.Array
 import java.sql.ResultSet
 import java.time.LocalDate
 import java.time.OffsetDateTime
+import java.time.ZoneId
 import java.util.UUID
 
 /**
@@ -91,7 +100,7 @@ class ImportController(
          * 8) tudDatesCount
          */
         private val INSERT_PARTICIPANT_STATS_SQL = """
-            INSERT INTO ${ChroniclePostgresTables.PARTICIPANT_STATS.name} (${PARTICIPANT_STATS_COLUMNS.joinToString { it.name }}) 
+            INSERT INTO ${ChroniclePostgresTables.PARTICIPANT_STATS.name} (${PARTICIPANT_STATS_COLUMNS.joinToString { it.name }})
             VALUES (${PARTICIPANT_STATS_COLUMNS.joinToString { "?" }})
         """.trimIndent()
     }
@@ -206,6 +215,73 @@ class ImportController(
         logger.info("Inserted $inserts entities into participant_stats table")
     }
 
+    @PostMapping(
+        path = [APP_USAGE_SURVEY],
+        consumes = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    override fun importAppUsageSurvey(@RequestBody config: ImportStudiesConfiguration) {
+        ensureAdminAccess()
+        val hds = dataSourceManager.getDataSource(config.dataSourceName)
+        val entities: List<V2AppUsageEntity> = BasePostgresIterable(
+            PreparedStatementHolderSupplier(
+                hds,
+                "SELECT * FROM ${config.appUsageSurveyTable}"
+            ){}
+        ) {
+            appUsageSurvey(it)
+        }.toList()
+
+        val legacyStudyIdMapping = getLegacyStudyIdMapping(hds)
+
+        val inserts = hds.connection.use { connection ->
+            connection.prepareStatement(SurveysService.SUBMIT_APP_USAGE_SURVEY_SQL).use { ps ->
+                entities.forEach {
+                    val studyId = legacyStudyIdMapping[it.studyId]
+                    if (studyId == null) {
+                        logger.warn("Missing study with legacy studyId ${it.studyId}")
+                        return@forEach
+                    }
+                    var index = 0
+                    ps.setObject(++index, studyId)
+                    ps.setString(++index, it.participant_id)
+                    ps.setObject(++index, it.submissionDate)
+                    ps.setString(++index, it.applicationLabel)
+                    ps.setString(++index, it.appPackageName)
+                    ps.setObject(++index, it.timestamp)
+                    ps.setString(++index, it.timezone)
+                    ps.setArray(++index, it.users)
+                    ps.addBatch()
+                }
+                ps.executeBatch().sum()
+            }
+        }
+        logger.info("inserted $inserts entities into app usage survey table")
+    }
+
+    @PostMapping(
+        path = [SYSTEM_APPS],
+        consumes = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    override fun importSystemApps(@RequestBody config: ImportStudiesConfiguration) {
+        ensureAdminAccess()
+        val hds = dataSourceManager.getDataSource(config.dataSourceName)
+        hds.connection.createStatement().use { statement ->
+            statement.execute("INSERT INTO ${ChroniclePostgresTables.SYSTEM_APPS.name} SELECT * FROM ${config.systemAppsTable} ON CONFLICT DO NOTHING")
+        }
+
+        // check inserts
+        val inserted = BasePostgresIterable(
+            PreparedStatementHolderSupplier(
+                hds,
+                "SELECT * FROM ${ChroniclePostgresTables.SYSTEM_APPS.name}"
+            ){}
+        ){
+            ResultSetAdapters.systemApp(it)
+        }.toList()
+
+        logger.info("Inserted ${inserted.size} entities into system apps table")
+    }
+
     private fun participant(rs: ResultSet): Participant {
         var status = rs.getString(LEGACY_PARTICIPATION_STATUS)
         if (status == null || status == "DELETE") {
@@ -262,6 +338,34 @@ class ImportController(
         )
     }
 
+    private fun getAppUsageTimestamp(rs: ResultSet): OffsetDateTime {
+        val timezone: String = rs.getString(RedshiftColumns.TIMEZONE.name) ?: OutputConstants.DEFAULT_TIMEZONE
+        val timestamp = rs.getObject(RedshiftColumns.TIMESTAMP.name, OffsetDateTime::class.java)
+        val zoneId = ZoneId.of(timezone)
+        return timestamp.toInstant().atZone(zoneId).toOffsetDateTime()
+    }
+
+    private fun appUsageSurvey(rs: ResultSet): V2AppUsageEntity {
+        return V2AppUsageEntity(
+            studyId = rs.getObject(V2_STUDY_ID, UUID::class.java),
+            participant_id = rs.getString(LEGACY_PARTICIPANT_ID),
+            submissionDate = rs.getObject(PostgresColumns.SUBMISSION_DATE.name, OffsetDateTime::class.java),
+            applicationLabel = rs.getString(RedshiftColumns.APPLICATION_LABEL.name),
+            appPackageName = rs.getString(RedshiftColumns.APP_PACKAGE_NAME.name),
+            timestamp = getAppUsageTimestamp(rs),
+            timezone = rs.getString(RedshiftColumns.TIMEZONE.name),
+            users = rs.getArray(PostgresColumns.APP_USERS.name)
+        )
+    }
+
+    private fun getLegacyStudyIdMapping(hds: HikariDataSource): Map<UUID, UUID> {
+        return BasePostgresIterable(
+            PreparedStatementHolderSupplier(hds, "SELECT * FROM ${LEGACY_STUDY_IDS.name}") {}
+        ) { legacyStudyId(it) }
+            .flatMap { it.asSequence() }
+            .associate { it.key to it.value }
+    }
+
     private fun legacyStudyId(rs: ResultSet): Map<UUID, UUID> {
         return mapOf(
             rs.getObject(PostgresColumns.LEGACY_STUDY_ID.name, UUID::class.java) to rs.getObject(PostgresColumns.STUDY_ID.name, UUID::class.java)
@@ -313,3 +417,14 @@ private fun getStudySettingsSql(studySettingsTable: String): String {
         SELECT * FROM $studySettingsTable
     """.trimIndent()
 }
+
+private data class V2AppUsageEntity(
+    val studyId: UUID,
+    val participant_id: String,
+    val submissionDate: OffsetDateTime,
+    val applicationLabel: String?,
+    val appPackageName: String?,
+    val timestamp: OffsetDateTime,
+    val timezone: String?,
+    val users: Array
+)
