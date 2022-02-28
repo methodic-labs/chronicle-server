@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.geekbeast.jdbc.DataSourceManager
 import com.geekbeast.mappers.mappers.ObjectMappers
+import com.geekbeast.postgres.PostgresDatatype
 import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
 import com.hazelcast.core.HazelcastInstance
@@ -77,10 +78,10 @@ class ImportController(
             PostgresColumns.PARTICIPANT_ID,
             PostgresColumns.ANDROID_FIRST_DATE,
             PostgresColumns.ANDROID_LAST_DATE,
-            PostgresColumns.ANDROID_DATES_COUNT,
+            PostgresColumns.ANDROID_UNIQUE_DATES,
             PostgresColumns.TUD_FIRST_DATE,
             PostgresColumns.TUD_LAST_DATE,
-            PostgresColumns.TUD_DATES_COUNT
+            PostgresColumns.TUD_UNIQUE_DATES
         )
 
         /**
@@ -187,25 +188,27 @@ class ImportController(
             .flatMap { it.asSequence() }
             .associate { it.key to it.value }
 
-        val inserts = hds.connection.prepareStatement(INSERT_PARTICIPANT_STATS_SQL).use { ps ->
-            participantStats.forEach {
-                val studyId = legacyStudIdMapping[it.studyId]
-                if (studyId == null) {
-                    logger.warn("Missing study with legacy study ${it.studyId}. skipping insert")
-                    return@forEach
+        val inserts = hds.connection.use { connection ->
+            connection.prepareStatement(INSERT_PARTICIPANT_STATS_SQL).use { ps ->
+                participantStats.forEach {
+                    val studyId = legacyStudIdMapping[it.studyId]
+                    if (studyId == null) {
+                        logger.warn("Missing study with legacy study ${it.studyId}. skipping insert")
+                        return@forEach
+                    }
+                    var index = 0
+                    ps.setObject(++index, studyId)
+                    ps.setString(++index, it.participantId)
+                    ps.setObject(++index, it.androidFirstDate)
+                    ps.setObject(++index, it.androidLastDate)
+                    ps.setArray(++index,  connection.createArrayOf(PostgresDatatype.DATE_ARRAY.sql(), it.androidUniqueDates.toTypedArray()))
+                    ps.setObject(++index, it.tudFirstDate)
+                    ps.setObject(++index, it.tudLastDate)
+                    ps.setArray(++index, connection.createArrayOf(PostgresDatatype.DATE_ARRAY.sql(), it.tudUniqueDates.toTypedArray()))
+                    ps.addBatch()
                 }
-                var index = 0
-                ps.setObject(++index, studyId)
-                ps.setString(++index, it.participantId)
-                ps.setObject(++index, it.androidFirstDate)
-                ps.setObject(++index, it.androidLastDate)
-                ps.setInt(++index, it.androidDatesCount)
-                ps.setObject(++index, it.tudFirstDate)
-                ps.setObject(++index, it.tudLastDate)
-                ps.setInt(++index, it.tudDatesCount)
-                ps.addBatch()
+                ps.executeBatch().sum()
             }
-            ps.executeBatch().sum()
         }
         logger.info("Inserted $inserts entities into participant_stats table")
     }
@@ -293,15 +296,17 @@ class ImportController(
     }
 
     private fun participantStat(rs: ResultSet): ParticipantStats {
+        val androidDates: kotlin.Array<LocalDate> = rs.getArray(ANDROID_UNIQUE_DATES) as kotlin.Array<LocalDate>
+        val tudDates: kotlin.Array<LocalDate> = rs.getArray(TUD_UNIQUE_DATES) as kotlin.Array<LocalDate>
         return ParticipantStats(
             studyId = rs.getObject(LEGACY_STUDY_ID, UUID::class.java),
             participantId = rs.getString(LEGACY_PARTICIPANT_ID),
             androidFirstDate = rs.getObject(ANDROID_FIRST_DATE, OffsetDateTime::class.java),
             androidLastDate = rs.getObject(ANDROID_LAST_DATE, OffsetDateTime::class.java),
-            androidDatesCount = rs.getInt(ANDROID_DATES_COUNT),
+            androidUniqueDates = androidDates.toSet(),
             tudFirstDate = rs.getObject(TUD_FIRST_DATE, OffsetDateTime::class.java),
             tudLastDate = rs.getObject(TUD_LAST_DATE, OffsetDateTime::class.java),
-            tudDatesCount = rs.getInt(TUD_DATES_COUNT)
+            tudUniqueDates = tudDates.toSet()
         )
     }
 
@@ -337,7 +342,7 @@ class ImportController(
     }
 }
 
-private const val ANDROID_DATES_COUNT = "android_dates_count"
+private const val ANDROID_UNIQUE_DATES = "android_unique_dates"
 private const val ANDROID_FIRST_DATE = "android_first_date"
 private const val ANDROID_LAST_DATE = "android_last_date"
 private const val LEGACY_DESC = "description"
@@ -354,7 +359,7 @@ private const val LEGACY_STUDY_ID = "legacy_study_id"
 private const val LEGACY_STUDY_VERSION = "study_version"
 private const val LEGACY_TITLE = "title"
 private const val LEGACY_UPDATE_AT = "updated_at"
-private const val TUD_DATES_COUNT = "tud_dates_count"
+private const val TUD_UNIQUE_DATES = "tud_unique_dates"
 private const val TUD_FIRST_DATE = "tud_first_date"
 private const val TUD_LAST_DATE = "tud_last_date"
 private const val V2_STUDY_EK_ID = "v2_study_ekid"
