@@ -264,7 +264,7 @@ class StudyService(
                 LEGACY_STUDY_IDS.name -> """
                     SELECT ${STUDY_ID.name} FROM ${LEGACY_STUDY_IDS.name} WHERE ${LEGACY_STUDY_ID.name} = ?                    
                 """.trimIndent()
-                STUDY_ID.name -> """
+                STUDIES.name -> """
                     SELECT ${STUDY_ID.name} FROM ${STUDIES.name} WHERE ${STUDY_ID.name} = ?
                 """.trimIndent()
                 else -> ""

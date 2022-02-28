@@ -6,7 +6,11 @@ import com.openlattice.chronicle.auditing.AuditEventType
 import com.openlattice.chronicle.auditing.AuditableEvent
 import com.openlattice.chronicle.auditing.AuditedOperationBuilder
 import com.openlattice.chronicle.auditing.AuditingManager
-import com.openlattice.chronicle.authorization.*
+import com.openlattice.chronicle.authorization.AclKey
+import com.openlattice.chronicle.authorization.AuthorizationManager
+import com.openlattice.chronicle.authorization.AuthorizingComponent
+import com.openlattice.chronicle.authorization.Permission
+import com.openlattice.chronicle.authorization.SecurableObjectType
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.base.OK
 import com.openlattice.chronicle.data.FileType
@@ -68,10 +72,10 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
-import java.util.*
+import java.util.EnumSet
+import java.util.UUID
 import javax.inject.Inject
 import javax.servlet.http.HttpServletResponse
-import kotlin.NoSuchElementException
 
 
 /**
@@ -111,12 +115,8 @@ class StudyController @Inject constructor(
         @PathVariable(SOURCE_DEVICE_ID) datasourceId: String,
         @RequestBody sourceDevice: SourceDevice
     ): UUID {
-        var maybeRealStudyId: UUID? = null
-        if (studyService.isLegacyStudyId(studyId)) {
-            maybeRealStudyId = studyService.getRealStudyIdForLegacyStudyId(studyId)
-        }
-        val realStudyId = maybeRealStudyId ?: studyId
-
+        val realStudyId = studyService.getStudyId(studyId)
+        checkNotNull(realStudyId) { "invalid study id" }
         return enrollmentService.registerDatasource(realStudyId, participantId, datasourceId, sourceDevice)
     }
 

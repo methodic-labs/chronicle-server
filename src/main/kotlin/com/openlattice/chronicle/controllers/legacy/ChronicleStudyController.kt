@@ -7,13 +7,18 @@ import com.openlattice.chronicle.data.ChronicleAppsUsageDetails
 import com.openlattice.chronicle.data.LegacyChronicleQuestionnaire
 import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
-import com.openlattice.chronicle.services.studies.StudyManager
+import com.openlattice.chronicle.services.studies.StudyService
 import com.openlattice.chronicle.services.surveys.SurveysManager
 import com.openlattice.chronicle.sources.SourceDevice
 import org.apache.olingo.commons.api.edm.FullQualifiedName
 import org.springframework.http.MediaType
-import org.springframework.web.bind.annotation.*
-import java.util.*
+import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestMethod
+import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.bind.annotation.RestController
+import java.util.UUID
 import javax.inject.Inject
 
 /**
@@ -30,7 +35,7 @@ class ChronicleStudyController : ChronicleStudyApi {
     private lateinit var enrollmentManager: EnrollmentManager
 
     @Inject
-    private lateinit var studyManager: StudyManager
+    private lateinit var studyService: StudyService
 
     @Timed
     @RequestMapping(
@@ -43,13 +48,8 @@ class ChronicleStudyController : ChronicleStudyApi {
         @PathVariable(ChronicleStudyApi.DATASOURCE_ID) datasourceId: String,
         @RequestBody datasource: Optional<SourceDevice>
     ): UUID {
-
-        var maybeRealStudyId: UUID? = null
-        if (studyManager.isLegacyStudyId(studyId)) {
-            maybeRealStudyId = studyManager.getRealStudyIdForLegacyStudyId(studyId)
-        }
-        val realStudyId = maybeRealStudyId ?: studyId
-
+        val realStudyId = studyService.getStudyId(studyId)
+        checkNotNull(realStudyId) { "invalid study id" }
         return enrollmentManager.registerDatasource(realStudyId, participantId, datasourceId, datasource.get())
     }
 
@@ -91,7 +91,7 @@ class ChronicleStudyController : ChronicleStudyApi {
     override fun isNotificationsEnabled(
         @PathVariable(ChronicleStudyApi.STUDY_ID) studyId: UUID
     ): Boolean {
-        return studyManager.isNotificationsEnabled(studyId)
+        return studyService.isNotificationsEnabled(studyId)
     }
 
     @Timed
@@ -129,7 +129,7 @@ class ChronicleStudyController : ChronicleStudyApi {
         @PathVariable(ChronicleStudyApi.STUDY_ID) studyId: UUID,
         @PathVariable(ChronicleStudyApi.ENTITY_KEY_ID) questionnaireEKID: UUID
     ): LegacyChronicleQuestionnaire {
-        val organizationId = studyManager.getOrganizationIdForLegacyStudy(studyId)
+        val organizationId = studyService.getOrganizationIdForLegacyStudy(studyId)
         return surveysManager.getLegacyQuestionnaire(organizationId, studyId, questionnaireEKID)
     }
 
@@ -143,7 +143,7 @@ class ChronicleStudyController : ChronicleStudyApi {
         @PathVariable(ChronicleStudyApi.PARTICIPANT_ID) participantId: String,
         @RequestBody questionnaireResponses: Map<UUID, Map<FullQualifiedName, Set<Any>>>
     ) {
-        val organizationId = studyManager.getOrganizationIdForLegacyStudy(studyId)
+        val organizationId = studyService.getOrganizationIdForLegacyStudy(studyId)
         surveysManager.submitLegacyQuestionnaire(organizationId, studyId, participantId, questionnaireResponses)
     }
 
@@ -155,7 +155,7 @@ class ChronicleStudyController : ChronicleStudyApi {
     override fun getStudyQuestionnaires(
         @PathVariable(ChronicleStudyApi.STUDY_ID) studyId: UUID
     ): Map<UUID, Map<FullQualifiedName, Set<Any>>> {
-        val organizationId = studyManager.getOrganizationIdForLegacyStudy(studyId)
+        val organizationId = studyService.getOrganizationIdForLegacyStudy(studyId)
         return surveysManager.getLegacyStudyQuestionnaires(organizationId, studyId)
     }
 
