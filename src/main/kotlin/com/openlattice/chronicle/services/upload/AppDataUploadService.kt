@@ -12,11 +12,8 @@ import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.services.ScheduledTasksManager
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import com.openlattice.chronicle.services.legacy.LegacyEdmResolver
-import com.openlattice.chronicle.services.settings.OrganizationSettingsManager
-import com.openlattice.chronicle.services.studies.StudyService
 import com.openlattice.chronicle.storage.PostgresDataTables
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.FQNS_TO_COLUMNS
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.ORGANIZATION_ID
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.CHRONICLE_USAGE_EVENTS
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.getAppendTembTableSql
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.getDeleteTempTableEntriesSql
@@ -41,7 +38,6 @@ class AppDataUploadService(
     private val storageResolver: StorageResolver,
     private val scheduledTasksManager: ScheduledTasksManager,
     private val enrollmentManager: EnrollmentManager,
-    private val studyService: StudyService
 ) : AppDataUploadManager {
     private val logger = LoggerFactory.getLogger(AppDataUploadService::class.java)
 
@@ -72,37 +68,33 @@ class AppDataUploadService(
         sourceDeviceId: String,
         data: List<SetMultimap<UUID, Any>>
     ): Int {
-
-        val realStudyId = studyService.getStudyId(studyId)
-        checkNotNull(realStudyId) { "invalid study id" }
-
         StopWatch(
             log = "logging ${data.size} entries for ${ChronicleServerUtil.STUDY_PARTICIPANT_DATASOURCE}",
             level = Level.INFO,
             logger = logger,
-            realStudyId,
+            studyId,
             participantId,
             sourceDeviceId
         ).use {
             try {
-                val (flavor, hds) = storageResolver.resolveAndGetFlavor(realStudyId)
+                val (flavor, hds) = storageResolver.resolveAndGetFlavor(studyId)
 
-                val status = enrollmentManager.getParticipationStatus(realStudyId, participantId)
+                val status = enrollmentManager.getParticipationStatus(studyId, participantId)
                 if (ParticipationStatus.NOT_ENROLLED == status) {
                     logger.warn(
                         "participant is not enrolled, ignoring upload" + ChronicleServerUtil.STUDY_PARTICIPANT_DATASOURCE,
-                        realStudyId,
+                        studyId,
                         participantId,
                         sourceDeviceId
                     )
                     return 0
                 }
-                val deviceEnrolled = enrollmentManager.isKnownDatasource(realStudyId, participantId, sourceDeviceId)
+                val deviceEnrolled = enrollmentManager.isKnownDatasource(studyId, participantId, sourceDeviceId)
 
                 if (!deviceEnrolled) {
                     logger.error(
                         "data source not found, ignoring upload" + ChronicleServerUtil.STUDY_PARTICIPANT_DATASOURCE,
-                        realStudyId,
+                        studyId,
                         participantId,
                         sourceDeviceId
                     )
@@ -111,7 +103,7 @@ class AppDataUploadService(
 
                 logger.info(
                     "attempting to log data" + ChronicleServerUtil.STUDY_PARTICIPANT_DATASOURCE,
-                    realStudyId,
+                    studyId,
                     participantId,
                     sourceDeviceId
                 )
@@ -120,8 +112,8 @@ class AppDataUploadService(
 
                 StopWatch(log = "Writing ${data.size} entites to DB ")
                 val written = when (flavor) {
-                    PostgresFlavor.VANILLA -> writeToPostgres(hds, realStudyId, participantId, mappedData)
-                    PostgresFlavor.REDSHIFT -> writeToRedshift(hds, realStudyId, participantId, mappedData)
+                    PostgresFlavor.VANILLA -> writeToPostgres(hds, studyId, participantId, mappedData)
+                    PostgresFlavor.REDSHIFT -> writeToRedshift(hds, studyId, participantId, mappedData)
                     else -> throw InvalidParameterException("Only regular postgres and redshift are supported.")
                 }
 
@@ -134,7 +126,7 @@ class AppDataUploadService(
             } catch (exception: Exception) {
                 logger.error(
                     "error logging data" + ChronicleServerUtil.STUDY_PARTICIPANT_DATASOURCE,
-                    realStudyId,
+                    studyId,
                     participantId,
                     sourceDeviceId,
                     exception

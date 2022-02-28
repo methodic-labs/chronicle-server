@@ -39,8 +39,9 @@ class ChronicleController : ChronicleApi {
             @PathVariable(ChronicleApi.DATASOURCE_ID) datasourceId: String,
             @RequestBody data: List<SetMultimap<UUID, Any>>
     ): Int {
-        val organizationId = studyManager.getOrganizationIdForLegacyStudy( studyId )
-        return dataUploadManager.upload(studyId, participantId, datasourceId, data)
+        val realStudyId = studyManager.getStudyId(studyId)
+        checkNotNull(realStudyId) { "invalid study id" }
+        return dataUploadManager.upload(realStudyId, participantId, datasourceId, data)
     }
 
     @Timed
