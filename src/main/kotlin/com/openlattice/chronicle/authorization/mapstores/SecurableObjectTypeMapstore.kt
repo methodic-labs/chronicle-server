@@ -40,8 +40,6 @@ class SecurableObjectTypeMapstore(hds: HikariDataSource?) : AbstractBasePostgres
     ) {
         bind(ps, key, 1)
         ps.setString(2, value.name)
-
-        ps.setString(3, value.name)
     }
 
     @Throws(SQLException::class)
