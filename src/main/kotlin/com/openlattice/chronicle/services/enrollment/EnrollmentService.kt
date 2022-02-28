@@ -2,11 +2,16 @@ package com.openlattice.chronicle.services.enrollment
 
 import com.geekbeast.controllers.exceptions.ResourceNotFoundException
 import com.geekbeast.mappers.mappers.ObjectMappers
+import com.openlattice.chronicle.auditing.AuditEventType
+import com.openlattice.chronicle.auditing.AuditableEvent
+import com.openlattice.chronicle.auditing.AuditingComponent
+import com.openlattice.chronicle.auditing.AuditingManager
+import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
+import com.openlattice.chronicle.ids.IdConstants
 import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.postgres.ResultSetAdapters
-import com.openlattice.chronicle.services.ScheduledTasksManager
 import com.openlattice.chronicle.services.candidates.CandidateManager
 import com.openlattice.chronicle.sources.AndroidDevice
 import com.openlattice.chronicle.sources.IOSDevice
@@ -23,6 +28,7 @@ import com.openlattice.chronicle.util.ChronicleServerUtil
 import com.openlattice.chronicle.util.ensureVanilla
 import org.slf4j.LoggerFactory
 import org.springframework.security.access.AccessDeniedException
+import org.springframework.stereotype.Service
 import java.sql.Connection
 import java.util.*
 
@@ -30,12 +36,13 @@ import java.util.*
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
  * @author Matthew Tamayo-Rios &lt;matthew@openlattice.com&gt;
  */
+@Service
 class EnrollmentService(
     private val storageResolver: StorageResolver,
     private val idGenerationService: HazelcastIdGenerationService,
     private val candidateManager: CandidateManager,
-    private val scheduledTasksManager: ScheduledTasksManager
-) : EnrollmentManager {
+    override val auditingManager: AuditingManager
+) : EnrollmentManager, AuditingComponent {
 
     companion object {
         private val logger = LoggerFactory.getLogger(EnrollmentService::class.java)
@@ -159,17 +166,30 @@ class EnrollmentService(
                 ps.executeUpdate()
             }
         }
-        return if (insertCount > 0) {
-            deviceId
-        } else {
-            logger.info(
-                "Datasource for ${ChronicleServerUtil.STUDY_PARTICIPANT_DATASOURCE} is already registered. Returning",
-                studyId,
-                participantId,
-                sourceDeviceId
+        if (insertCount > 0) {
+            /**
+             * We don't record an enrollment event into each organization as the organization associated with a study
+             * can change.
+             */
+            recordEvent(
+                AuditableEvent(
+                    AclKey(deviceId),
+                    eventType = AuditEventType.ENROLL_DEVICE,
+                    description = "Enrolled ${sourceDevice.javaClass}",
+                    study = studyId,
+                    organization = IdConstants.UNINITIALIZED.id,
+                    data = mapOf("device" to sourceDevice)
+                )
             )
-            getDeviceId(studyId, participantId, sourceDeviceId)
+            return deviceId
         }
+        logger.info(
+            "Datasource for ${ChronicleServerUtil.STUDY_PARTICIPANT_DATASOURCE} is already registered. Returning",
+            studyId,
+            participantId,
+            sourceDeviceId
+        )
+        return getDeviceId(studyId, participantId, sourceDeviceId)
     }
 
     override fun getDeviceId(studyId: UUID, participantId: String, sourceDeviceId: String): UUID {
