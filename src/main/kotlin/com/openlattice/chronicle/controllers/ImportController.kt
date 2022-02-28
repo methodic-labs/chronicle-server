@@ -99,7 +99,7 @@ class ImportController(
          * 8) tudDatesCount
          */
         private val INSERT_PARTICIPANT_STATS_SQL = """
-            INSERT INTO ${ChroniclePostgresTables.PARTICIPANT_STATS.name} (${PARTICIPANT_STATS_COLUMNS.joinToString { it.name }}) 
+            INSERT INTO ${ChroniclePostgresTables.PARTICIPANT_STATS.name} (${PARTICIPANT_STATS_COLUMNS.joinToString { it.name }})
             VALUES (${PARTICIPANT_STATS_COLUMNS.joinToString { "?" }})
         """.trimIndent()
     }
@@ -267,7 +267,7 @@ class ImportController(
         hds.connection.createStatement().use { statement ->
             statement.execute("INSERT INTO ${ChroniclePostgresTables.SYSTEM_APPS.name} SELECT * FROM ${config.systemAppsTable} ON CONFLICT DO NOTHING")
         }
-        
+
         // check inserts
         val inserted = BasePostgresIterable(
             PreparedStatementHolderSupplier(
