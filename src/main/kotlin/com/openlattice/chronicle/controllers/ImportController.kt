@@ -15,9 +15,11 @@ import com.openlattice.chronicle.candidates.Candidate
 import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.import.ImportApi
+import com.openlattice.chronicle.import.ImportApi.Companion.APP_USAGE_SURVEY
 import com.openlattice.chronicle.import.ImportApi.Companion.CONTROLLER
 import com.openlattice.chronicle.import.ImportApi.Companion.PARTICIPANT_STATS
 import com.openlattice.chronicle.import.ImportApi.Companion.STUDIES
+import com.openlattice.chronicle.import.ImportApi.Companion.SYSTEM_APPS
 import com.openlattice.chronicle.import.ImportStudiesConfiguration
 import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.participants.ParticipantStats
@@ -212,6 +214,10 @@ class ImportController(
         logger.info("Inserted $inserts entities into participant_stats table")
     }
 
+    @PostMapping(
+        path = [APP_USAGE_SURVEY],
+        consumes = [MediaType.APPLICATION_JSON_VALUE]
+    )
     override fun importAppUsageSurvey(@RequestBody config: ImportStudiesConfiguration) {
         ensureAdminAccess()
         val hds = dataSourceManager.getDataSource(config.dataSourceName)
@@ -251,7 +257,11 @@ class ImportController(
         logger.info("inserted $inserts entities into app usage survey table")
     }
 
-    override fun importSystemApps(config: ImportStudiesConfiguration) {
+    @PostMapping(
+        path = [SYSTEM_APPS],
+        consumes = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    override fun importSystemApps(@RequestBody config: ImportStudiesConfiguration) {
         ensureAdminAccess()
         val hds = dataSourceManager.getDataSource(config.dataSourceName)
         hds.connection.createStatement().use { statement ->
