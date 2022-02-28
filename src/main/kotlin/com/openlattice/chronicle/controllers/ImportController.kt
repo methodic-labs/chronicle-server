@@ -6,12 +6,12 @@ import com.geekbeast.jdbc.DataSourceManager
 import com.geekbeast.mappers.mappers.ObjectMappers
 import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
-import com.geekbeast.util.log
 import com.hazelcast.core.HazelcastInstance
 import com.openlattice.chronicle.auditing.AuditingManager
 import com.openlattice.chronicle.authorization.AuthorizationManager
 import com.openlattice.chronicle.authorization.AuthorizingComponent
 import com.openlattice.chronicle.candidates.Candidate
+import com.openlattice.chronicle.constants.OutputConstants
 import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.import.ImportApi
@@ -47,6 +47,7 @@ import java.sql.Array
 import java.sql.ResultSet
 import java.time.LocalDate
 import java.time.OffsetDateTime
+import java.time.ZoneId
 import java.util.UUID
 
 /**
@@ -337,6 +338,13 @@ class ImportController(
         )
     }
 
+    private fun getAppUsageTimestamp(rs: ResultSet): OffsetDateTime {
+        val timezone: String = rs.getString(RedshiftColumns.TIMEZONE.name) ?: OutputConstants.DEFAULT_TIMEZONE
+        val timestamp = rs.getObject(RedshiftColumns.TIMESTAMP.name, OffsetDateTime::class.java)
+        val zoneId = ZoneId.of(timezone)
+        return timestamp.toInstant().atZone(zoneId).toOffsetDateTime()
+    }
+
     private fun appUsageSurvey(rs: ResultSet): V2AppUsageEntity {
         return V2AppUsageEntity(
             studyId = rs.getObject(V2_STUDY_ID, UUID::class.java),
@@ -344,7 +352,7 @@ class ImportController(
             submissionDate = rs.getObject(PostgresColumns.SUBMISSION_DATE.name, OffsetDateTime::class.java),
             applicationLabel = rs.getString(RedshiftColumns.APPLICATION_LABEL.name),
             appPackageName = rs.getString(RedshiftColumns.APP_PACKAGE_NAME.name),
-            timestamp = rs.getObject(RedshiftColumns.TIMESTAMP.name, OffsetDateTime::class.java),
+            timestamp = getAppUsageTimestamp(rs),
             timezone = rs.getString(RedshiftColumns.TIMEZONE.name),
             users = rs.getArray(PostgresColumns.APP_USERS.name)
         )
@@ -417,6 +425,6 @@ private data class V2AppUsageEntity(
     val applicationLabel: String?,
     val appPackageName: String?,
     val timestamp: OffsetDateTime,
-    val timezone: String,
+    val timezone: String?,
     val users: Array
 )
