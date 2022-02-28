@@ -42,7 +42,7 @@ import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.participants.ParticipantStats
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACTIVE
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.ANDROID_DATES_COUNT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.ANDROID_UNIQUE_DATES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ANDROID_FIRST_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ANDROID_LAST_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CANDIDATE_ID
@@ -58,7 +58,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.EMAIL
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ENDED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.EXPIRATION_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.FIRST_NAME
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.IOS_DATES_COUNT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.IOS_UNIQUE_DATES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.IOS_FIRST_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.IOS_LAST_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.JOB_DEFINITION
@@ -98,6 +98,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_VERSION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TITLE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_FIRST_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_LAST_DATE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_UNIQUE_DATES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPDATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.URL
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APPLICATION_LABEL
@@ -109,7 +110,6 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.USERNAME
 import com.openlattice.chronicle.study.Study
 import com.openlattice.chronicle.survey.AppUsage
 import com.openlattice.chronicle.survey.Questionnaire
-import org.dmfs.rfc5545.recur.RecurrenceRule
 import org.slf4j.LoggerFactory
 import java.sql.ResultSet
 import java.sql.SQLException
@@ -419,18 +419,22 @@ class ResultSetAdapters {
 
         @Throws
         fun participantStats(rs: ResultSet): ParticipantStats {
+            val androidDates: Array<LocalDate> = rs.getArray(ANDROID_UNIQUE_DATES.name) as Array<LocalDate>
+            val tudDates: Array<LocalDate> = rs.getArray(TUD_UNIQUE_DATES.name) as Array<LocalDate>
+            val iosDates: Array<LocalDate> = rs.getArray(IOS_UNIQUE_DATES.name) as Array<LocalDate>
+
             return ParticipantStats(
                 rs.getObject(STUDY_ID.name, UUID::class.java),
                 rs.getString(PARTICIPANT_ID.name),
                 rs.getObject(ANDROID_FIRST_DATE.name, OffsetDateTime::class.java),
                 rs.getObject(ANDROID_LAST_DATE.name, OffsetDateTime::class.java),
-                rs.getInt(ANDROID_DATES_COUNT.name),
+                androidDates.toSet(),
                 rs.getObject(IOS_FIRST_DATE.name, OffsetDateTime::class.java),
                 rs.getObject(IOS_LAST_DATE.name, OffsetDateTime::class.java),
-                rs.getInt(IOS_DATES_COUNT.name),
+                iosDates.toSet(),
                 rs.getObject(TUD_FIRST_DATE.name, OffsetDateTime::class.java),
                 rs.getObject(TUD_LAST_DATE.name, OffsetDateTime::class.java),
-                rs.getInt(IOS_DATES_COUNT.name)
+                tudDates.toSet()
             )
         }
         @Throws
