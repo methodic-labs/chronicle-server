@@ -243,6 +243,11 @@ class ChroniclePostgresTables {
                 TUD_LAST_DATE,
                 TUD_DATES_COUNT
             ).primaryKey(STUDY_ID, PARTICIPANT_ID)
+
+        @JvmField
+        val SYSTEM_APPS = PostgresTableDefinition("system_apps")
+            .addColumns(RedshiftColumns.APP_PACKAGE_NAME)
+            .primaryKey(RedshiftColumns.APP_PACKAGE_NAME)
         /**
          * Authorization tables
          *
