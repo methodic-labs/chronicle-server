@@ -57,9 +57,15 @@ class ChronicleControllerV2 : ChronicleApi {
             @PathVariable(ChronicleApi.DATASOURCE_ID) datasourceId: String,
             @RequestBody datasource: Optional<SourceDevice>
     ): UUID {
+        var maybeRealStudyId: UUID? = null
+        if (studyManager.isLegacyStudyId(studyId)) {
+            maybeRealStudyId = studyManager.getRealStudyIdForLegacyStudyId(studyId)
+        }
+        val realStudyId = maybeRealStudyId ?: studyId
+
         if (datasource.isPresent) {
             return enrollmentManager.registerDatasource(
-                    studyId,
+                    realStudyId,
                     participantId,
                     datasourceId,
                     datasource.get()
