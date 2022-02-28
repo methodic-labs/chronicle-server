@@ -79,13 +79,8 @@ class TimeUseDiaryController(
         @PathVariable(PARTICIPANT_ID) participantId: String,
         @RequestBody responses: List<TimeUseDiaryResponse>
     ): UUID {
-
-        var maybeRealStudyId: UUID? = null
-        if (studyService.isLegacyStudyId(studyId)) {
-            maybeRealStudyId = studyService.getRealStudyIdForLegacyStudyId(studyId)
-        }
-        val realStudyId = maybeRealStudyId ?: studyId
-
+        val realStudyId = studyService.getStudyId(studyId)
+        checkNotNull(realStudyId) { "invalid study id" }
         return storageResolver.getPlatformStorage().connection.use { conn ->
             AuditedOperationBuilder<UUID>(conn, auditingManager)
                 .operation { connection ->

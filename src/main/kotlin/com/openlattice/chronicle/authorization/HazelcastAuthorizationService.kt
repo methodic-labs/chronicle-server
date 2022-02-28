@@ -35,6 +35,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_TYPE
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import java.security.InvalidParameterException
 import java.sql.Connection
 import java.time.OffsetDateTime
 import java.util.*
@@ -185,14 +186,24 @@ class HazelcastAuthorizationService(
     /** Set Securable Object Type **/
 
     override fun setSecurableObjectTypes(aclKeys: Set<AclKey>, objectType: SecurableObjectType) {
+        aclKeys.forEach {
+            if (!securableObjectTypes.containsKey(it)) {
+                throw InvalidParameterException("No securable object exists for aclkey $it")
+            }
+        }
         securableObjectTypes.setAll(aclKeys.associateWith { objectType })
         aces.loadAll(aces.keySet(hasAnyAclKeys(aclKeys)), true)
     }
 
     override fun setSecurableObjectType(aclKey: AclKey, objectType: SecurableObjectType) {
-        securableObjectTypes.set(aclKey, objectType)
-        aces.loadAll(aces.keySet(hasAclKey(aclKey)), true)
+        if (securableObjectTypes.containsKey(aclKey)) {
+            securableObjectTypes.set(aclKey, objectType)
+            aces.loadAll(aces.keySet(hasAclKey(aclKey)), true)
+        } else {
+            throw InvalidParameterException("No securable object exists for aclkey $aclKey")
+        }
     }
+
 
     /** Add Permissions **/
 

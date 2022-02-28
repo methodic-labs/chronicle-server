@@ -31,15 +31,23 @@ class SecurableObjectTypeMapstore(hds: HikariDataSource?) : AbstractBasePostgres
         const val SECURABLE_OBJECT_TYPE_INDEX = "this"
     }
 
-    override fun initKeyColumns(): List<PostgresColumnDefinition> = listOf( ACL_KEY )
-    override fun initValueColumns(): List<PostgresColumnDefinition>  = listOf( SECURABLE_OBJECT_TYPE )
+    override fun initKeyColumns(): List<PostgresColumnDefinition> = listOf(ACL_KEY)
+    override fun initValueColumns(): List<PostgresColumnDefinition> = listOf(SECURABLE_OBJECT_TYPE)
+
+    /**
+     * This mapstore can only update no insert. Inserts through mapstore will fail silently.
+     */
+    override fun buildInsertQuery(): String {
+        return table.updateQuery(keyColumns(), valueColumns(),true)
+    }
 
     @Throws(SQLException::class)
     override fun bind(
         ps: PreparedStatement, key: AclKey, value: SecurableObjectType
     ) {
-        bind(ps, key, 1)
-        ps.setString(2, value.name)
+        //Since this is using an update statement we have to be careful about the order of binding the parameters
+        bind(ps, key, 2)
+        ps.setString(1, value.name)
     }
 
     @Throws(SQLException::class)
