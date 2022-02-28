@@ -287,6 +287,7 @@ class ChroniclePostgresTables {
         val SECURABLE_OBJECTS = PostgresTableDefinition("securable_objects")
             .addColumns(ACL_KEY, SECURABLE_OBJECT_TYPE, SECURABLE_OBJECT_ID, SECURABLE_OBJECT_NAME)
             .primaryKey(ACL_KEY)
+            .overwriteOnConflict()
 
         @JvmField
         val USERS = PostgresTableDefinition("users")

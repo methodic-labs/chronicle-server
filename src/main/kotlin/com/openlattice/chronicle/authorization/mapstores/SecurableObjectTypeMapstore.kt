@@ -31,8 +31,8 @@ class SecurableObjectTypeMapstore(hds: HikariDataSource?) : AbstractBasePostgres
         const val SECURABLE_OBJECT_TYPE_INDEX = "this"
     }
 
-    override fun getInsertColumns(): MutableList<PostgresColumnDefinition> =
-        mutableListOf(ACL_KEY, SECURABLE_OBJECT_TYPE)
+    override fun initKeyColumns(): List<PostgresColumnDefinition> = listOf( ACL_KEY )
+    override fun initValueColumns(): List<PostgresColumnDefinition>  = listOf( SECURABLE_OBJECT_TYPE )
 
     @Throws(SQLException::class)
     override fun bind(
@@ -40,6 +40,7 @@ class SecurableObjectTypeMapstore(hds: HikariDataSource?) : AbstractBasePostgres
     ) {
         bind(ps, key, 1)
         ps.setString(2, value.name)
+
         ps.setString(3, value.name)
     }
 
