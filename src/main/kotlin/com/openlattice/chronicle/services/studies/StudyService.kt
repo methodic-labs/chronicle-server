@@ -583,8 +583,8 @@ class StudyService(
                     ps.setObject(++index, stats.tudFirstDate)
                     ps.setObject(++index, stats.tudLastDate)
                     ps.setObject(++index, tudDatesArr)
-                    ps.executeUpdate()
                 }
+                ps.executeUpdate()
             }
         }
     }

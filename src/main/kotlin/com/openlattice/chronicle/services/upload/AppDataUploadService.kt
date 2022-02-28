@@ -255,7 +255,13 @@ class AppDataUploadService(
             participantId = participantId,
             androidUniqueDates = uniqueDates,
             androidFirstDate = minDate,
-            androidLastDate = maxDate
+            androidLastDate = maxDate,
+            tudFirstDate = currentStats?.tudFirstDate,
+            tudLastDate = currentStats?.tudLastDate,
+            tudUniqueDates = currentStats?.tudUniqueDates ?: setOf(),
+            iosFirstDate = currentStats?.iosFirstDate,
+            iosLastDate = currentStats?.iosLastDate,
+            iosUniqueDates = currentStats?.iosUniqueDates ?: setOf()
         )
         studyManager.insertOrUpdateParticipantStats(participantStats)
     }
