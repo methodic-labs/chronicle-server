@@ -433,5 +433,9 @@ class ResultSetAdapters {
                 rs.getInt(IOS_DATES_COUNT.name)
             )
         }
+        @Throws
+        fun systemApp(rs: ResultSet): String {
+            return rs.getString(APP_PACKAGE_NAME.name)
+        }
     }
 }

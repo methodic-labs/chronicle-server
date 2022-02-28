@@ -93,9 +93,9 @@ class SurveysService(
          * 3) submission_date
          * 4) application_label
          * 5) package_name
-         * 6) users
-         * 7) timestamp
-         * 8) timezone
+         * 6) timestamp
+         * 7) timezone
+         * 8) users
          */
         val SUBMIT_APP_USAGE_SURVEY_SQL = """
             INSERT INTO ${APP_USAGE_SURVEY.name} ($APP_USAGE_SURVEY_COLS) VALUES ($APP_USAGE_SURVEY_PARAMS)
