@@ -55,63 +55,6 @@ class PermissionMapstore(
     hds: HikariDataSource,
     private val eventBus: EventBus
 ) : AbstractBasePostgresMapstore<AceKey, AceValue>(HazelcastMap.PERMISSIONS, PERMISSIONS, hds) {
-    override fun store(key: AceKey, value: AceValue) {
-        hds.connection.use { connection ->
-            try {
-                connection.autoCommit = false
-                connection.prepareStatement(UPDATE_SECURABLE_OBJECT_TYPE_SQL).use { ps ->
-                    ps.setObject(1, key.aclKey)
-                    ps.setString(2, value.securableObjectType.name)
-                    ps.executeUpdate()
-                }
-                prepareInsert(connection).use { insertRow ->
-                    bind(insertRow, key, value)
-                    logger.debug("Insert query: {}", insertRow)
-                    insertRow.execute()
-                    handleStoreSucceeded(key, value)
-                }
-                connection.commit()
-                connection.autoCommit = true
-
-            } catch (e: SQLException) {
-                val errMsg = "Error executing SQL during store for key $key in map $mapName."
-                logger.error(errMsg, e)
-                connection.rollback()
-                connection.autoCommit = false
-                handleStoreFailed(key, value)
-                throw IllegalStateException(errMsg, e)
-            }
-        }
-    }
-
-    override fun storeAll(map: MutableMap<AceKey, AceValue>) {
-        var currentKey: AceKey? = null
-        hds.connection.use { connection ->
-            connection.autoCommit = false
-            try {
-                prepareInsert(connection).use { insertRow ->
-                    connection.prepareStatement(UPDATE_SECURABLE_OBJECT_TYPE_SQL).use { updateSecObjectType ->
-                        map.forEach { (key, value) ->
-                            currentKey = key
-                            bind(insertRow, key, value)
-                            insertRow.addBatch()
-                            updateSecObjectType.setObject(1, key.aclKey)
-                            updateSecObjectType.setString(2, value.securableObjectType.name)
-                            updateSecObjectType.addBatch()
-                        }
-                        updateSecObjectType.executeBatch()
-                    }
-                    insertRow.executeBatch()
-                    handleStoreAllSucceeded(map)
-                }
-
-            } catch (e: SQLException) {
-                logger.error("Error executing SQL during store all for key {} in map {}", currentKey, mapName, e)
-                connection.rollback()
-            }
-            connection.autoCommit = true
-        }
-    }
 
     @Throws(SQLException::class)
     override fun bind(
@@ -225,8 +168,8 @@ class PermissionMapstore(
         return StringBuilder("SELECT * FROM ").append(PERMISSIONS.name)
             .append(" INNER JOIN ")
             .append(SECURABLE_OBJECTS.name).append(" ON ")
-            .append(getTableColumn(PERMISSIONS, PostgresColumns.ACL_KEY)).append(" = ")
-            .append(getTableColumn(SECURABLE_OBJECTS, PostgresColumns.ACL_KEY))
+            .append(getTableColumn(PERMISSIONS, ACL_KEY)).append(" = ")
+            .append(getTableColumn(SECURABLE_OBJECTS, ACL_KEY))
     }
 
     private fun getTableColumn(table: PostgresTableDefinition, column: PostgresColumnDefinition): String {
@@ -242,9 +185,5 @@ class PermissionMapstore(
         const val ROOT_OBJECT_INDEX = "__key.aclKey[0]"
         const val SECURABLE_OBJECT_TYPE_INDEX = "securableObjectType"
 
-        private val UPDATE_SECURABLE_OBJECT_TYPE_SQL = """
-            UPDATE ${SECURABLE_OBJECTS.name} SET ${SECURABLE_OBJECT_TYPE.name} = ? 
-                WHERE ${ACL_KEY.name} = ? AND ${SECURABLE_OBJECT_TYPE.name} != ? 
-        """
     }
 }

@@ -14,11 +14,13 @@ import com.openlattice.chronicle.storage.ChroniclePostgresTables
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_TYPE
 import com.zaxxer.hikari.HikariDataSource
+import org.springframework.stereotype.Component
 import java.sql.PreparedStatement
 import java.sql.ResultSet
 import java.sql.SQLException
 import java.util.*
 
+@Component
 class SecurableObjectTypeMapstore(hds: HikariDataSource?) : AbstractBasePostgresMapstore<AclKey, SecurableObjectType>(
     HazelcastMap.SECURABLE_OBJECT_TYPES,
     ChroniclePostgresTables.SECURABLE_OBJECTS,
@@ -32,22 +34,6 @@ class SecurableObjectTypeMapstore(hds: HikariDataSource?) : AbstractBasePostgres
     override fun getInsertColumns(): MutableList<PostgresColumnDefinition> =
         mutableListOf(ACL_KEY, SECURABLE_OBJECT_TYPE)
 
-    override fun store(key: AclKey, value: SecurableObjectType) {
-        throw UnsupportedOperationException("This mapstore is intended to be read only.")
-    }
-
-    override fun storeAll(map: MutableMap<AclKey, SecurableObjectType>) {
-        throw UnsupportedOperationException("This mapstore is intended to be read only.")
-    }
-
-    override fun delete(key: AclKey) {
-        throw UnsupportedOperationException("This mapstore is intended to be read only.")
-    }
-
-    override fun deleteAll(keys: MutableCollection<AclKey>) {
-        throw UnsupportedOperationException("This mapstore is intended to be read only.")
-    }
-    
     @Throws(SQLException::class)
     override fun bind(
         ps: PreparedStatement, key: AclKey, value: SecurableObjectType

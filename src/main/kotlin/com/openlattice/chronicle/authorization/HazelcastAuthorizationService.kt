@@ -71,7 +71,7 @@ class HazelcastAuthorizationService(
          *  4. securable object name
          */
         private val INSERT_SECURABLE_OBJECT_SQL = """
-            INSERT INTO ${SECURABLE_OBJECTS.name} VALUES (?,?,?,?)
+            INSERT INTO ${SECURABLE_OBJECTS.name} VALUES (?,?,?,?) ON CONFLICT DO NOTHING
         """.trimIndent()
 
         /**
@@ -151,14 +151,24 @@ class HazelcastAuthorizationService(
         expirationDate: OffsetDateTime
     ) {
         ensurePrincipalsExist(setOf(principal))
-
-        val insertSecObj = connection.prepareStatement(INSERT_SECURABLE_OBJECT_SQL)
         val aclKeyArray = PostgresArrays.createUuidArray(connection, aclKey)
-        insertSecObj.setArray(1, aclKeyArray)
-        insertSecObj.setString(2, objectType.name)
-        insertSecObj.setObject(3, aclKey.last())
-        insertSecObj.setString(4, aclKey.last().toString())
-        insertSecObj.executeUpdate()
+
+        /**
+         * Only create the securable object entry if it hasn't already been created. Currently named objects from
+         * [AbstractSecurableObject] get an entry here on registration, before the ACL is initialized.
+         *
+         * This is fine as in those cases we simply skip inserting the securable object and add permissions.
+         *
+         */
+        if (!securableObjectTypes.containsKey(aclKey)) {
+            val insertSecObj = connection.prepareStatement(INSERT_SECURABLE_OBJECT_SQL)
+
+            insertSecObj.setArray(1, aclKeyArray)
+            insertSecObj.setString(2, objectType.name)
+            insertSecObj.setObject(3, aclKey.last())
+            insertSecObj.setString(4, aclKey.last().toString())
+            insertSecObj.executeUpdate()
+        }
 
         val insertPermissions = connection.prepareStatement(INSERT_ACES)
         insertPermissions.setArray(1, aclKeyArray)
@@ -175,13 +185,13 @@ class HazelcastAuthorizationService(
     /** Set Securable Object Type **/
 
     override fun setSecurableObjectTypes(aclKeys: Set<AclKey>, objectType: SecurableObjectType) {
-        aces.executeOnEntries(SecurableObjectTypeUpdater(objectType), hasAnyAclKeys(aclKeys))
-        securableObjectTypes.loadAll(aclKeys, true)
+        securableObjectTypes.setAll(aclKeys.associateWith { objectType })
+        aces.loadAll(aces.keySet(hasAnyAclKeys(aclKeys)), true)
     }
 
     override fun setSecurableObjectType(aclKey: AclKey, objectType: SecurableObjectType) {
-        aces.executeOnEntries(SecurableObjectTypeUpdater(objectType), hasAclKey(aclKey))
-        securableObjectTypes.loadAll(setOf(aclKey), true)
+        securableObjectTypes.set(aclKey, objectType)
+        aces.loadAll(aces.keySet(hasAclKey(aclKey)), true)
     }
 
     /** Add Permissions **/
