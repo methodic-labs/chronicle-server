@@ -197,7 +197,6 @@ class ChronicleServerServicesPod {
             storageResolver,
             idGenerationService(),
             candidateService(),
-            auditingManager()
         )
     }
 

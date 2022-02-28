@@ -41,8 +41,7 @@ class EnrollmentService(
     private val storageResolver: StorageResolver,
     private val idGenerationService: HazelcastIdGenerationService,
     private val candidateManager: CandidateManager,
-    override val auditingManager: AuditingManager
-) : EnrollmentManager, AuditingComponent {
+) : EnrollmentManager {
 
     companion object {
         private val logger = LoggerFactory.getLogger(EnrollmentService::class.java)
@@ -167,20 +166,6 @@ class EnrollmentService(
             }
         }
         if (insertCount > 0) {
-            /**
-             * We don't record an enrollment event into each organization as the organization associated with a study
-             * can change.
-             */
-            recordEvent(
-                AuditableEvent(
-                    AclKey(deviceId),
-                    eventType = AuditEventType.ENROLL_DEVICE,
-                    description = "Enrolled ${sourceDevice.javaClass}",
-                    study = studyId,
-                    organization = IdConstants.UNINITIALIZED.id,
-                    data = mapOf("device" to sourceDevice)
-                )
-            )
             return deviceId
         }
         logger.info(
