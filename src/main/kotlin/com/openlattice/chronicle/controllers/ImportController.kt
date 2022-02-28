@@ -184,7 +184,7 @@ class ImportController(
         val hds = dataSourceManager.getDataSource(config.dataSourceName)
         val participantStats: List<ParticipantStats> = BasePostgresIterable(
             PreparedStatementHolderSupplier(hds, "SELECT * FROM ${config.participantStatsTable}") {}
-        ) { participantStat(it) }
+        ) { ResultSetAdapters.participantStats(it) }
             .toList()
         logger.info("Retrieved ${participantStats.size} legacy participant stats entities")
 
@@ -323,21 +323,6 @@ class ImportController(
             version = rs.getString(LEGACY_STUDY_VERSION) ?: "",
             contact = rs.getString(LEGACY_STUDY_CONTACT) ?: "",
             updatedAt = rs.getObject(LEGACY_UPDATE_AT, OffsetDateTime::class.java)
-        )
-    }
-
-    private fun participantStat(rs: ResultSet): ParticipantStats {
-        val androidDates: kotlin.Array<Date> = rs.getArray(ANDROID_UNIQUE_DATES).array as kotlin.Array<Date>
-        val tudDates: kotlin.Array<Date> = rs.getArray(TUD_UNIQUE_DATES).array as kotlin.Array<Date>
-        return ParticipantStats(
-            studyId = rs.getObject(LEGACY_STUDY_ID, UUID::class.java),
-            participantId = rs.getString(LEGACY_PARTICIPANT_ID),
-            androidFirstDate = rs.getObject(ANDROID_FIRST_DATE, OffsetDateTime::class.java),
-            androidLastDate = rs.getObject(ANDROID_LAST_DATE, OffsetDateTime::class.java),
-            androidUniqueDates = androidDates.map { it.toLocalDate() }.toSet(),
-            tudFirstDate = rs.getObject(TUD_FIRST_DATE, OffsetDateTime::class.java),
-            tudLastDate = rs.getObject(TUD_LAST_DATE, OffsetDateTime::class.java),
-            tudUniqueDates = tudDates.map { it.toLocalDate() }.toSet()
         )
     }
 
