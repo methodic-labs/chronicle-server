@@ -8,6 +8,7 @@ import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.services.ScheduledTasksManager
 import com.openlattice.chronicle.services.candidates.CandidateManager
+import com.openlattice.chronicle.services.studies.StudyService
 import com.openlattice.chronicle.sources.AndroidDevice
 import com.openlattice.chronicle.sources.IOSDevice
 import com.openlattice.chronicle.sources.SourceDevice
@@ -34,7 +35,8 @@ class EnrollmentService(
     private val storageResolver: StorageResolver,
     private val idGenerationService: HazelcastIdGenerationService,
     private val candidateManager: CandidateManager,
-    private val scheduledTasksManager: ScheduledTasksManager
+    private val scheduledTasksManager: ScheduledTasksManager,
+    private val studyService: StudyService
 ) : EnrollmentManager {
 
     companion object {
@@ -112,17 +114,23 @@ class EnrollmentService(
         sourceDeviceId: String,
         sourceDevice: SourceDevice
     ): UUID {
+        var maybeRealStudyId: UUID? = null
+        if (studyService.isLegacyStudyId(studyId)) {
+            maybeRealStudyId = studyService.getRealStudyIdForLegacyStudyId(studyId)
+        }
+        val realStudyId = maybeRealStudyId ?: studyId
+
         logger.info(
             "attempting to register data source" + ChronicleServerUtil.STUDY_PARTICIPANT_DATASOURCE,
-            studyId,
+            realStudyId,
             participantId,
             sourceDeviceId
         )
-        val isKnownParticipant = isKnownParticipant(studyId, participantId)
+        val isKnownParticipant = isKnownParticipant(realStudyId, participantId)
         if (!isKnownParticipant) {
             logger.error(
                 "unknown participant, unable to register datasource" + ChronicleServerUtil.STUDY_PARTICIPANT_DATASOURCE,
-                studyId,
+                realStudyId,
                 participantId,
                 sourceDeviceId
             )
@@ -132,7 +140,7 @@ class EnrollmentService(
 
         return when (sourceDevice) {
             is AndroidDevice, is IOSDevice -> registerDatasourceOrGetId(
-                studyId,
+                realStudyId,
                 participantId,
                 sourceDeviceId,
                 sourceDevice
