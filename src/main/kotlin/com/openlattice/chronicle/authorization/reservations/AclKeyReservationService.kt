@@ -102,6 +102,19 @@ class AclKeyReservationService(private val dsm: DataSourceManager) {
     }
 
 
+    fun tryGetId(name: String): UUID? {
+        dsm.getDefaultDataSource().connection.use { conn ->
+            conn.prepareStatement(SELECT_SQL).use { ps ->
+                ps.setString(1, name)
+                val rs = ps.executeQuery()
+                rs.use {
+                    return if(rs.next()) ResultSetAdapters.securableObjectId(rs)
+                    else null
+                }
+            }
+        }
+    }
+
     fun getId(name: String): UUID {
         dsm.getDefaultDataSource().connection.use { conn ->
             conn.prepareStatement(SELECT_SQL).use { ps ->
@@ -201,8 +214,13 @@ class AclKeyReservationService(private val dsm: DataSourceManager) {
                         obj.id = ResultSetAdapters.securableObjectId(rs)
                         return obj.id
                     } else {
-                        //Retry with a diffferent id
-                        obj.id = UUID.randomUUID()
+                        val maybeId = tryGetId(proposedName)
+
+                        obj.id =  maybeId ?: UUID.randomUUID()
+                        if( maybeId != null ) {
+                            return obj.id
+                        }
+                        //Retry with a different id
                     }
                 }
             }
