@@ -14,9 +14,11 @@ import com.openlattice.chronicle.candidates.Candidate
 import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.import.ImportApi
+import com.openlattice.chronicle.import.ImportApi.Companion.APP_USAGE_SURVEY
 import com.openlattice.chronicle.import.ImportApi.Companion.CONTROLLER
 import com.openlattice.chronicle.import.ImportApi.Companion.PARTICIPANT_STATS
 import com.openlattice.chronicle.import.ImportApi.Companion.STUDIES
+import com.openlattice.chronicle.import.ImportApi.Companion.SYSTEM_APPS
 import com.openlattice.chronicle.import.ImportStudiesConfiguration
 import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.participants.ParticipantStats
@@ -204,6 +206,22 @@ class ImportController(
             ps.executeBatch().sum()
         }
         logger.info("Inserted $inserts entities into participant_stats table")
+    }
+
+    @PostMapping(
+        path = [APP_USAGE_SURVEY],
+        consumes = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    override fun importAppUsageSurvey(config: ImportStudiesConfiguration) {
+        TODO("Not yet implemented")
+    }
+
+    @PostMapping(
+        path = [SYSTEM_APPS],
+        consumes = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    override fun importSystemApps(config: ImportStudiesConfiguration) {
+        TODO("Not yet implemented")
     }
 
     private fun participant(rs: ResultSet): Participant {
