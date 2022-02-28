@@ -19,8 +19,12 @@
  */
 package com.openlattice.chronicle.authorization.reservations
 
-import com.geekbeast.util.LinearBackoff
-import com.geekbeast.util.attempt
+import com.geekbeast.controllers.exceptions.TypeExistsException
+import com.geekbeast.controllers.exceptions.UniqueIdConflictException
+import com.geekbeast.jdbc.DataSourceManager
+import com.geekbeast.postgres.PostgresArrays
+import com.geekbeast.postgres.streams.BasePostgresIterable
+import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
 import com.google.common.base.Preconditions.checkState
 import com.openlattice.chronicle.authorization.AbstractSecurableObject
 import com.openlattice.chronicle.authorization.AclKey
@@ -30,14 +34,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_NAME
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_TYPE
-import com.geekbeast.controllers.exceptions.TypeExistsException
-import com.geekbeast.controllers.exceptions.UniqueIdConflictException
-import com.geekbeast.jdbc.DataSourceManager
-import com.geekbeast.postgres.PostgresArrays
-import com.geekbeast.postgres.streams.BasePostgresIterable
-import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
 import org.slf4j.LoggerFactory
-import java.rmi.AlreadyBoundException
 import java.sql.PreparedStatement
 import java.util.*
 
