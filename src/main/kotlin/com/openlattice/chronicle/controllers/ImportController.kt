@@ -22,13 +22,16 @@ import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.participants.ParticipantStats
 import com.openlattice.chronicle.services.candidates.CandidateService
 import com.openlattice.chronicle.services.studies.StudyService
+import com.openlattice.chronicle.services.surveys.SurveysService
 import com.openlattice.chronicle.services.timeusediary.TimeUseDiaryService
 import com.openlattice.chronicle.services.upload.AppDataUploadService
 import com.openlattice.chronicle.storage.ChroniclePostgresTables
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.LEGACY_STUDY_IDS
 import com.openlattice.chronicle.storage.PostgresColumns
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SETTINGS
+import com.openlattice.chronicle.storage.RedshiftColumns
 import com.openlattice.chronicle.study.Study
+import com.zaxxer.hikari.HikariDataSource
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
@@ -36,6 +39,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import java.sql.Array
 import java.sql.ResultSet
 import java.time.LocalDate
 import java.time.OffsetDateTime
@@ -206,6 +210,45 @@ class ImportController(
         logger.info("Inserted $inserts entities into participant_stats table")
     }
 
+    override fun importAppUsageSurvey(@RequestBody config: ImportStudiesConfiguration) {
+        ensureAdminAccess()
+        val hds = dataSourceManager.getDataSource(config.dataSourceName)
+        val entities: List<V2AppUsageEntity> = BasePostgresIterable(
+            PreparedStatementHolderSupplier(
+                hds,
+                "SELECT * FROM ${config.appUsageSurveyTable}"
+            ){}
+        ) {
+            appUsageSurvey(it)
+        }.toList()
+
+        val legacyStudyIdMapping = getLegacyStudyIdMapping(hds)
+
+        val inserts = hds.connection.use { connection ->
+            connection.prepareStatement(SurveysService.SUBMIT_APP_USAGE_SURVEY_SQL).use { ps ->
+                entities.forEach {
+                    val studyId = legacyStudyIdMapping[it.studyId]
+                    if (studyId == null) {
+                        logger.warn("Missing study with legacy studyId ${it.studyId}")
+                        return@forEach
+                    }
+                    var index = 0
+                    ps.setObject(++index, studyId)
+                    ps.setString(++index, it.participant_id)
+                    ps.setObject(++index, it.submissionDate)
+                    ps.setString(++index, it.applicationLabel)
+                    ps.setString(++index, it.appPackageName)
+                    ps.setObject(++index, it.timestamp)
+                    ps.setString(++index, it.timezone)
+                    ps.setArray(++index, it.users)
+                    ps.addBatch()
+                }
+                ps.executeBatch().sum()
+            }
+        }
+        logger.info("inserted $inserts into app usage survey table")
+    }
+
     private fun participant(rs: ResultSet): Participant {
         var status = rs.getString(LEGACY_PARTICIPATION_STATUS)
         if (status == null || status == "DELETE") {
@@ -262,6 +305,27 @@ class ImportController(
         )
     }
 
+    private fun appUsageSurvey(rs: ResultSet): V2AppUsageEntity {
+        return V2AppUsageEntity(
+            studyId = rs.getObject(V2_STUDY_ID, UUID::class.java),
+            participant_id = rs.getString(LEGACY_PARTICIPANT_ID),
+            submissionDate = rs.getObject(PostgresColumns.SUBMISSION_DATE.name, OffsetDateTime::class.java),
+            applicationLabel = rs.getString(RedshiftColumns.APPLICATION_LABEL.name),
+            appPackageName = rs.getString(RedshiftColumns.APP_PACKAGE_NAME.name),
+            timestamp = rs.getObject(RedshiftColumns.TIMESTAMP.name, OffsetDateTime::class.java),
+            timezone = rs.getString(RedshiftColumns.TIMEZONE.name),
+            users = rs.getArray(PostgresColumns.APP_USERS.name)
+        )
+    }
+
+    private fun getLegacyStudyIdMapping(hds: HikariDataSource): Map<UUID, UUID> {
+        return BasePostgresIterable(
+            PreparedStatementHolderSupplier(hds, "SELECT * FROM ${LEGACY_STUDY_IDS.name}") {}
+        ) { legacyStudyId(it) }
+            .flatMap { it.asSequence() }
+            .associate { it.key to it.value }
+    }
+
     private fun legacyStudyId(rs: ResultSet): Map<UUID, UUID> {
         return mapOf(
             rs.getObject(PostgresColumns.LEGACY_STUDY_ID.name, UUID::class.java) to rs.getObject(PostgresColumns.STUDY_ID.name, UUID::class.java)
@@ -313,3 +377,14 @@ private fun getStudySettingsSql(studySettingsTable: String): String {
         SELECT * FROM $studySettingsTable
     """.trimIndent()
 }
+
+private data class V2AppUsageEntity(
+    val studyId: UUID,
+    val participant_id: String,
+    val submissionDate: OffsetDateTime,
+    val applicationLabel: String?,
+    val appPackageName: String?,
+    val timestamp: OffsetDateTime,
+    val timezone: String,
+    val users: Array
+)
