@@ -64,13 +64,8 @@ class SurveyController @Inject constructor(
         @RequestParam(value = START_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) startDateTime: OffsetDateTime,
         @RequestParam(value = END_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) endDateTime: OffsetDateTime
     ): List<AppUsage> {
-
-        var maybeRealStudyId: UUID? = null
-        if (studyService.isLegacyStudyId(studyId)) {
-            maybeRealStudyId = studyService.getRealStudyIdForLegacyStudyId(studyId)
-        }
-        val realStudyId = maybeRealStudyId ?: studyId
-
+        val realStudyId = studyService.getStudyId(studyId)
+        checkNotNull(realStudyId) { "invalid study id" }
         return surveysService.getAppUsageData(realStudyId, participantId, startDateTime, endDateTime)
     }
 
@@ -84,13 +79,8 @@ class SurveyController @Inject constructor(
         @PathVariable(PARTICIPANT_ID) participantId: String,
         @RequestBody surveyResponses: List<AppUsage>
     ) {
-
-        var maybeRealStudyId: UUID? = null
-        if (studyService.isLegacyStudyId(studyId)) {
-            maybeRealStudyId = studyService.getRealStudyIdForLegacyStudyId(studyId)
-        }
-        val realStudyId = maybeRealStudyId ?: studyId
-
+        val realStudyId = studyService.getStudyId(studyId)
+        checkNotNull(realStudyId) { "invalid study id" }
         surveysService.submitAppUsageSurvey(realStudyId, participantId, surveyResponses)
     }
 
@@ -154,13 +144,8 @@ class SurveyController @Inject constructor(
         produces = [MediaType.APPLICATION_JSON_VALUE]
     )
     override fun getStudyQuestionnaires(@PathVariable(STUDY_ID) studyId: UUID): List<Questionnaire> {
-
-        var maybeRealStudyId: UUID? = null
-        if (studyService.isLegacyStudyId(studyId)) {
-            maybeRealStudyId = studyService.getRealStudyIdForLegacyStudyId(studyId)
-        }
-        val realStudyId = maybeRealStudyId ?: studyId
-
+        val realStudyId = studyService.getStudyId(studyId)
+        checkNotNull(realStudyId) { "invalid study id" }
         return surveysService.getStudyQuestionnaires(realStudyId)
     }
 
@@ -175,13 +160,8 @@ class SurveyController @Inject constructor(
         @PathVariable(QUESTIONNAIRE_ID) questionnaireId: UUID,
         @RequestBody responses: List<QuestionnaireResponse>
     ): OK {
-
-        var maybeRealStudyId: UUID? = null
-        if (studyService.isLegacyStudyId(studyId)) {
-            maybeRealStudyId = studyService.getRealStudyIdForLegacyStudyId(studyId)
-        }
-        val realStudyId = maybeRealStudyId ?: studyId
-
+        val realStudyId = studyService.getStudyId(studyId)
+        checkNotNull(realStudyId) { "invalid study id" }
         surveysService.submitQuestionnaireResponses(realStudyId, participantId, questionnaireId, responses)
         return OK()
     }
