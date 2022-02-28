@@ -6,6 +6,7 @@ import com.geekbeast.jdbc.DataSourceManager
 import com.geekbeast.mappers.mappers.ObjectMappers
 import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
+import com.geekbeast.util.log
 import com.hazelcast.core.HazelcastInstance
 import com.openlattice.chronicle.auditing.AuditingManager
 import com.openlattice.chronicle.authorization.AuthorizationManager
@@ -20,6 +21,7 @@ import com.openlattice.chronicle.import.ImportApi.Companion.STUDIES
 import com.openlattice.chronicle.import.ImportStudiesConfiguration
 import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.participants.ParticipantStats
+import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.services.candidates.CandidateService
 import com.openlattice.chronicle.services.studies.StudyService
 import com.openlattice.chronicle.services.surveys.SurveysService
@@ -246,7 +248,26 @@ class ImportController(
                 ps.executeBatch().sum()
             }
         }
-        logger.info("inserted $inserts into app usage survey table")
+        logger.info("inserted $inserts entities into app usage survey table")
+    }
+
+    override fun importSystemApps(config: ImportStudiesConfiguration) {
+        val hds = dataSourceManager.getDataSource(config.dataSourceName)
+        hds.connection.createStatement().use { statement ->
+            statement.execute("INSERT INTO ${ChroniclePostgresTables.SYSTEM_APPS.name} SELECT * FROM ${config.systemAppsTable} ON CONFLICT DO NOTHING")
+        }
+        
+        // check inserts
+        val inserted = BasePostgresIterable(
+            PreparedStatementHolderSupplier(
+                hds,
+                "SELECT * FROM ${ChroniclePostgresTables.SYSTEM_APPS.name}"
+            ){}
+        ){
+            ResultSetAdapters.systemApp(it)
+        }.toList()
+
+        logger.info("Inserted ${inserted.size} entities into system apps table")
     }
 
     private fun participant(rs: ResultSet): Participant {
