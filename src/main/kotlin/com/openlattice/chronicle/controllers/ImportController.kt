@@ -252,6 +252,7 @@ class ImportController(
     }
 
     override fun importSystemApps(config: ImportStudiesConfiguration) {
+        ensureAdminAccess()
         val hds = dataSourceManager.getDataSource(config.dataSourceName)
         hds.connection.createStatement().use { statement ->
             statement.execute("INSERT INTO ${ChroniclePostgresTables.SYSTEM_APPS.name} SELECT * FROM ${config.systemAppsTable} ON CONFLICT DO NOTHING")
