@@ -493,7 +493,7 @@ class StudyController @Inject constructor(
      *
      */
     private fun ensureValidStudy(studyId: UUID): Boolean {
-        return true
+        return studyService.isValidStudy(studyId)
     }
 
 }

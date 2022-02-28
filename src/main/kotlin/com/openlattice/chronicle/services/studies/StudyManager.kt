@@ -30,4 +30,5 @@ interface StudyManager {
     fun getStudySensors(studyId: UUID): Set<SensorType>
     fun registerParticipant(studyId: UUID, participant: Participant): UUID
     fun getStudyParticipantStats(studyId: UUID): Map<String, ParticipantStats>
+    fun isValidStudy(studyId: UUID): Boolean
 }

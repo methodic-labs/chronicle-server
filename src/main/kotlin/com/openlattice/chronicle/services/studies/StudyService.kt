@@ -563,4 +563,9 @@ class StudyService(
             }
         }
     }
+
+    override fun isValidStudy(studyId: UUID ) : Boolean {
+        val realStudyId = getRealStudyIdForLegacyStudyId(studyId)
+        return studies.containsKey(realStudyId)
+    }
 }

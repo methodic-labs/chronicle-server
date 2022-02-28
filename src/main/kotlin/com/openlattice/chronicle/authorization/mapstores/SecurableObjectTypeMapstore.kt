@@ -38,7 +38,7 @@ class SecurableObjectTypeMapstore(hds: HikariDataSource?) : AbstractBasePostgres
      * This mapstore can only update no insert. Inserts through mapstore will fail silently.
      */
     override fun buildInsertQuery(): String {
-        return table.updateQuery(keyColumns(), valueColumns(), true)
+        return table.updateQuery(keyColumns(), valueColumns(),false)
     }
 
     @Throws(SQLException::class)
