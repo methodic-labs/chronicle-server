@@ -32,10 +32,8 @@ import com.geekbeast.rhizome.jobs.PostgresJobsMapStore
 import com.google.common.eventbus.EventBus
 import com.geekbeast.auth0.Auth0TokenProvider
 import com.geekbeast.auth0.AwsAuth0TokenProvider
-import com.openlattice.chronicle.authorization.AceKey
-import com.openlattice.chronicle.authorization.AceValue
-import com.openlattice.chronicle.authorization.AclKey
-import com.openlattice.chronicle.authorization.SecurablePrincipal
+import com.openlattice.chronicle.authorization.*
+import com.openlattice.chronicle.authorization.mapstores.SecurableObjectTypeMapstore
 import com.openlattice.chronicle.authorization.mapstores.UserMapstore
 import com.openlattice.chronicle.authorization.principals.PrincipalMapstore
 import com.openlattice.chronicle.ids.mapstores.IdGenerationMapstore
@@ -62,7 +60,7 @@ class MapstoresPod {
 
     @Inject
     private lateinit var eventBus: EventBus
-    
+
     @Inject
     private lateinit var storageResolver: StorageResolver
 
@@ -75,7 +73,7 @@ class MapstoresPod {
     }
 
     @Bean
-    fun studyMapstore() : StudyMapstore {
+    fun studyMapstore(): StudyMapstore {
         return StudyMapstore(storageResolver.getPlatformStorage())
     }
 
@@ -84,10 +82,11 @@ class MapstoresPod {
         return PermissionMapstore(storageResolver.getPlatformStorage(), eventBus)
     }
 
-    //    @Bean
-    //    public SelfRegisteringMapStore<AclKey, SecurableObjectType> securableObjectTypeMapstore() {
-    //        return new SecurableObjectTypeMapstore( storageResolver.getPlatformStorage() );
-    //    }
+    @Bean
+    fun securableObjectTypeMapstore(): SelfRegisteringMapStore<AclKey, SecurableObjectType> {
+        return SecurableObjectTypeMapstore(storageResolver.getPlatformStorage());
+    }
+
     //    @Bean
     //    public SelfRegisteringMapStore<String, UUID> aclKeysMapstore() {
     //        return new AclKeysMapstore( storageResolver.getPlatformStorage() );

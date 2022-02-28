@@ -14,10 +14,6 @@ import com.hazelcast.query.Predicates
 import com.openlattice.chronicle.authorization.aggregators.AuthorizationSetAggregator
 import com.openlattice.chronicle.authorization.aggregators.PrincipalAggregator
 import com.openlattice.chronicle.authorization.principals.PrincipalsMapManager
-import com.openlattice.chronicle.authorization.processors.AuthorizationEntryProcessor
-import com.openlattice.chronicle.authorization.processors.PermissionMerger
-import com.openlattice.chronicle.authorization.processors.PermissionRemover
-import com.openlattice.chronicle.authorization.processors.SecurableObjectTypeUpdater
 import com.openlattice.chronicle.hazelcast.HazelcastMap
 import com.openlattice.chronicle.mapstores.authorization.PermissionMapstore.Companion.ACL_KEY_INDEX
 import com.openlattice.chronicle.mapstores.authorization.PermissionMapstore.Companion.PERMISSIONS_INDEX
@@ -32,6 +28,7 @@ import com.openlattice.chronicle.util.toAceKeys
 import com.geekbeast.postgres.PostgresArrays
 import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
+import com.openlattice.chronicle.authorization.processors.*
 import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_ID
@@ -54,14 +51,14 @@ class HazelcastAuthorizationService(
 ) : AuthorizationManager {
     private val authorizationStorage = storageResolver.getDefaultPlatformStorage()
 
-    private val securableObjectTypes = HazelcastMap.SECURABLE_OBJECT_TYPES.getMap(hazelcastInstance)
     private val aces: IMap<AceKey, AceValue> = HazelcastMap.PERMISSIONS.getMap(hazelcastInstance)
+    private val securableObjectTypes = HazelcastMap.SECURABLE_OBJECT_TYPES.getMap(hazelcastInstance)
 
     companion object {
         private val logger = LoggerFactory.getLogger(HazelcastAuthorizationService::class.java)
 
         private val SECURABLE_OBJECT_COLS = listOf(
-            PostgresColumns.ACL_KEY,
+            ACL_KEY,
             PostgresColumns.SECURABLE_OBJECT_TYPE,
             PostgresColumns.SECURABLE_OBJECT_ID,
             PostgresColumns.SECURABLE_OBJECT_NAME
@@ -170,26 +167,21 @@ class HazelcastAuthorizationService(
         insertPermissions.setArray(4, PostgresArrays.createTextArray(connection, permissions.map { it.name }))
         insertPermissions.setObject(5, expirationDate)
         insertPermissions.executeUpdate()
+
+        aces.loadAll(setOf(AceKey(aclKey, principal)), true)
+        securableObjectTypes.loadAll(setOf(aclKey), true)
     }
 
     /** Set Securable Object Type **/
 
     override fun setSecurableObjectTypes(aclKeys: Set<AclKey>, objectType: SecurableObjectType) {
-        securableObjectTypes.putAll(aclKeys.associateWith { objectType })
-        aces.executeOnEntries(
-            SecurableObjectTypeUpdater(
-                objectType
-            ), hasAnyAclKeys(aclKeys)
-        )
+        aces.executeOnEntries(SecurableObjectTypeUpdater(objectType), hasAnyAclKeys(aclKeys))
+        securableObjectTypes.loadAll(aclKeys, true)
     }
 
     override fun setSecurableObjectType(aclKey: AclKey, objectType: SecurableObjectType) {
-        securableObjectTypes[aclKey] = objectType
-        aces.executeOnEntries(
-            SecurableObjectTypeUpdater(
-                objectType
-            ), hasAclKey(aclKey)
-        )
+        aces.executeOnEntries(SecurableObjectTypeUpdater(objectType), hasAclKey(aclKey))
+        securableObjectTypes.loadAll(setOf(aclKey), true)
     }
 
     /** Add Permissions **/
@@ -312,6 +304,10 @@ class HazelcastAuthorizationService(
         }
 
         aces.putAll(updates)
+    }
+
+    private fun getSecurableObjectTypeMapForAcls(acls: Collection<Acl>): Map<AclKey, SecurableObjectType> {
+        return securableObjectTypes.getAll(acls.map { it.aclKey }.toSet())
     }
 
     override fun setPermission(
@@ -643,17 +639,14 @@ class HazelcastAuthorizationService(
     }
 
     private fun getAceValueToAceKeyMap(acls: List<Acl>): SetMultimap<AceValue, AceKey> {
-        val types = getSecurableObjectTypeMapForAcls(acls)
-
         val map: SetMultimap<AceValue, AceKey> = HashMultimap.create()
+        val types = getSecurableObjectTypeMapForAcls(acls)
         acls.forEach { acl: Acl ->
-
             val aclKey = AclKey(acl.aclKey)
-            val securableObjectType = getDefaultObjectType(types, aclKey)
 
             acl.aces.forEach {
                 map.put(
-                    AceValue(EnumSet.copyOf(it.permissions), securableObjectType, it.expirationDate),
+                    AceValue(EnumSet.copyOf(it.permissions), getDefaultObjectType(types, aclKey), it.expirationDate),
                     AceKey(aclKey, it.principal)
                 )
             }
@@ -673,13 +666,9 @@ class HazelcastAuthorizationService(
         return aces.aggregate(AuthorizationSetAggregator(authorizationsMap), matches(aclKeySet, principals))
     }
 
+    private fun getDefaultObjectType(map: Map<AclKey, SecurableObjectType>, aclKey: AclKey): SecurableObjectType {
+        val securableObjectType = map.getOrDefault(aclKey, SecurableObjectType.Unknown)
 
-    private fun getSecurableObjectTypeMapForAcls(acls: Collection<Acl>): Map<AclKey, SecurableObjectType> {
-        return securableObjectTypes.getAll(acls.map { AclKey(it.aclKey) }.toSet())
-    }
-
-    private fun getDefaultObjectType(types: Map<AclKey, SecurableObjectType>, aclKey: AclKey): SecurableObjectType {
-        val securableObjectType = types.getOrDefault(aclKey, SecurableObjectType.Unknown)
         if (securableObjectType == SecurableObjectType.Unknown) {
             logger.warn("Unrecognized object type for acl key {} key ", aclKey)
         }

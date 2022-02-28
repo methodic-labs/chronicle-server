@@ -20,7 +20,9 @@ import java.sql.SQLException
 import java.util.*
 
 class SecurableObjectTypeMapstore(hds: HikariDataSource?) : AbstractBasePostgresMapstore<AclKey, SecurableObjectType>(
-    HazelcastMap.SECURABLE_OBJECT_TYPES, ChroniclePostgresTables.SECURABLE_OBJECTS, hds
+    HazelcastMap.SECURABLE_OBJECT_TYPES,
+    ChroniclePostgresTables.SECURABLE_OBJECTS,
+    hds
 ) {
     companion object {
         const val ACL_KEY_INDEX = "__key.index"
