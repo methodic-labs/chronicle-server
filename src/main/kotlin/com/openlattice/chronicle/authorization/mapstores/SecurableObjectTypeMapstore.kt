@@ -29,9 +29,25 @@ class SecurableObjectTypeMapstore(hds: HikariDataSource?) : AbstractBasePostgres
         const val SECURABLE_OBJECT_TYPE_INDEX = "this"
     }
 
-    override fun getInsertColumns(): MutableList<PostgresColumnDefinition> = mutableListOf(ACL_KEY, SECURABLE_OBJECT_TYPE)
+    override fun getInsertColumns(): MutableList<PostgresColumnDefinition> =
+        mutableListOf(ACL_KEY, SECURABLE_OBJECT_TYPE)
 
+    override fun store(key: AclKey, value: SecurableObjectType) {
+        throw UnsupportedOperationException("This mapstore is intended to be read only.")
+    }
 
+    override fun storeAll(map: MutableMap<AclKey, SecurableObjectType>) {
+        throw UnsupportedOperationException("This mapstore is intended to be read only.")
+    }
+
+    override fun delete(key: AclKey) {
+        throw UnsupportedOperationException("This mapstore is intended to be read only.")
+    }
+
+    override fun deleteAll(keys: MutableCollection<AclKey>) {
+        throw UnsupportedOperationException("This mapstore is intended to be read only.")
+    }
+    
     @Throws(SQLException::class)
     override fun bind(
         ps: PreparedStatement, key: AclKey, value: SecurableObjectType
@@ -56,7 +72,7 @@ class SecurableObjectTypeMapstore(hds: HikariDataSource?) : AbstractBasePostgres
         return ResultSetAdapters.aclKey(rs)
     }
 
-    override fun getMapConfig() : MapConfig {
+    override fun getMapConfig(): MapConfig {
         return super.getMapConfig()
             .addIndexConfig(IndexConfig(IndexType.HASH, ACL_KEY_INDEX))
             .addIndexConfig(IndexConfig(IndexType.HASH, SECURABLE_OBJECT_TYPE_INDEX))

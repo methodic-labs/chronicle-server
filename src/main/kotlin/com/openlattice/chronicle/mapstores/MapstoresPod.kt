@@ -84,7 +84,7 @@ class MapstoresPod {
 
     @Bean
     fun securableObjectTypeMapstore(): SelfRegisteringMapStore<AclKey, SecurableObjectType> {
-        return SecurableObjectTypeMapstore(storageResolver.getPlatformStorage());
+        return SecurableObjectTypeMapstore(storageResolver.getPlatformStorage())
     }
 
     //    @Bean
