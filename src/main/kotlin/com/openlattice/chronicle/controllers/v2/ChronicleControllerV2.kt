@@ -85,7 +85,9 @@ class ChronicleControllerV2 : ChronicleApi {
             @PathVariable(ChronicleApi.ORGANIZATION_ID) organizationId: UUID,
             @PathVariable(ChronicleApi.STUDY_ID) studyId: UUID
     ): Boolean {
-        return studyService.isNotificationsEnabled(studyId)
+        val realStudyId = studyService.getStudyId(studyId)
+        checkNotNull(realStudyId) { "invalid study id" }
+        return studyService.isNotificationsEnabled(realStudyId)
     }
 
     @Timed
@@ -98,7 +100,9 @@ class ChronicleControllerV2 : ChronicleApi {
             @PathVariable(ChronicleApi.STUDY_ID) studyId: UUID,
             @PathVariable(ChronicleApi.PARTICIPANT_ID) participantId: String
     ): ParticipationStatus {
-        return enrollmentManager.getParticipationStatus(studyId, participantId)
+        val realStudyId = studyService.getStudyId(studyId)
+        checkNotNull(realStudyId) { "invalid study id"}
+        return enrollmentManager.getParticipationStatus(realStudyId, participantId)
     }
 
     @Timed
@@ -166,7 +170,9 @@ class ChronicleControllerV2 : ChronicleApi {
             @PathVariable(ChronicleApi.ORGANIZATION_ID) organizationId: UUID,
             @PathVariable(ChronicleApi.STUDY_ID) studyId: UUID
     ): Map<UUID, Map<FullQualifiedName, Set<Any>>> {
-        return surveysManager.getLegacyStudyQuestionnaires(organizationId, studyId)
+        val realStudyId = studyService.getStudyId(studyId)
+        checkNotNull(realStudyId) { "invalid study id" }
+        return surveysManager.getLegacyStudyQuestionnaires(organizationId, realStudyId)
     }
 
     @RequestMapping(
@@ -195,7 +201,9 @@ class ChronicleControllerV2 : ChronicleApi {
             @PathVariable(ChronicleApi.DATASOURCE_ID) datasourceId: String,
             @RequestBody data: List<SetMultimap<UUID, Any>>
     ): Int {
-        return dataUploadManager.upload(studyId, participantId, datasourceId, data)
+        val realStudyId = studyService.getStudyId(studyId)
+        checkNotNull(realStudyId) { "invalid study id" }
+        return dataUploadManager.upload(realStudyId, participantId, datasourceId, data)
     }
 
     @Timed
