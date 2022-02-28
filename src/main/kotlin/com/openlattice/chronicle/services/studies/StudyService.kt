@@ -259,13 +259,17 @@ class StudyService(
             SELECT * FROM ${STUDY_PARTICIPANTS.name} WHERE ${STUDY_ID.name} = ?
         """.trimIndent()
 
-        private val COUNT_LEGACY_STUDY_ID_SQL = """
-            SELECT count(*) FROM ${LEGACY_STUDY_IDS.name} WHERE ${LEGACY_STUDY_ID.name} = ?
-        """.trimIndent()
-
-        private val SELECT_REAL_STUDY_ID_SQL = """
-            SELECT ${STUDY_ID.name} FROM ${LEGACY_STUDY_IDS.name} WHERE ${LEGACY_STUDY_ID.name} = ?
-        """.trimIndent()
+        private fun selectStudyIdSql(table: String) :String {
+            return when (table) {
+                LEGACY_STUDY_IDS.name -> """
+                    SELECT ${STUDY_ID.name} FROM ${LEGACY_STUDY_IDS.name} WHERE ${LEGACY_STUDY_ID.name} = ?                    
+                """.trimIndent()
+                STUDY_ID.name -> """
+                    SELECT ${STUDY_ID.name} FROM ${STUDIES.name} WHERE ${STUDY_ID.name} = ?
+                """.trimIndent()
+                else -> ""
+            }
+        }
 
         private val PARTICIPANT_STATS_COLUMNS = PARTICIPANT_STATS.columns.joinToString { it.name }
         /**
@@ -534,33 +538,23 @@ class StudyService(
         ) { ResultSetAdapters.participant(it) }
     }
 
-    override fun isLegacyStudyId(studyId: UUID): Boolean {
-        return countLegacyStudyId(studyId) == 1L
-    }
-
-    private fun countLegacyStudyId(legacyStudyId: UUID): Long {
+    override fun getStudyId(maybeLegacyMaybeRealStudyId: UUID): UUID? {
         return storageResolver.getPlatformStorage().connection.use { connection ->
-            connection.prepareStatement(COUNT_LEGACY_STUDY_ID_SQL).use { ps ->
-                ps.setObject(1, legacyStudyId)
-                ps.executeQuery().use { rs ->
-                    if (rs.next()) ResultSetAdapters.count(rs) else 0
-                }
-            }
-        }
-    }
-
-    override fun getRealStudyIdForLegacyStudyId(legacyStudyId: UUID): UUID? {
-        return selectRealStudyId(legacyStudyId)
-    }
-
-    private fun selectRealStudyId(legacyStudyId: UUID): UUID? {
-        return storageResolver.getPlatformStorage().connection.use { connection ->
-            connection.prepareStatement(SELECT_REAL_STUDY_ID_SQL).use { ps ->
-                ps.setObject(1, legacyStudyId)
+            var maybeStudyId = connection.prepareStatement(selectStudyIdSql(LEGACY_STUDY_IDS.name)).use { ps ->
+                ps.setObject(1, maybeLegacyMaybeRealStudyId)
                 ps.executeQuery().use { rs ->
                     if (rs.next()) ResultSetAdapters.studyId(rs) else null
                 }
             }
+            if (maybeStudyId == null) {
+                maybeStudyId = connection.prepareStatement(selectStudyIdSql(STUDIES.name)).use { ps ->
+                    ps.setObject(1, maybeLegacyMaybeRealStudyId)
+                    ps.executeQuery().use { rs ->
+                        if (rs.next()) ResultSetAdapters.studyId(rs) else null
+                    }
+                }
+            }
+            maybeStudyId
         }
     }
 }
