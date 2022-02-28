@@ -54,7 +54,7 @@ class HazelcastPrincipalService(
 
     companion object {
         private val logger = LoggerFactory
-                .getLogger(HazelcastPrincipalService::class.java)
+            .getLogger(HazelcastPrincipalService::class.java)
 
         private fun findPrincipal(p: Principal): Predicate<AclKey, SecurablePrincipal> {
             return PrincipalsMapManager.findPrincipal(p)
@@ -76,13 +76,13 @@ class HazelcastPrincipalService(
             return Predicates.`in`(PrincipalTreesMapstore.INDEX, *aclKeys.map { it.index }.toTypedArray())
         }
 
-        fun getPrincipalReservationName(principalId:String )  : String {
+        fun getPrincipalReservationName(principalId: String): String {
             return "$principalId"
         }
     }
 
     override fun createSecurablePrincipalIfNotExists(owner: Principal, principal: SecurablePrincipal): Boolean {
-        if (reservations.isReserved(HazelcastPrincipalService.getPrincipalReservationName(principal.name))) {
+        if (reservations.isReserved(getPrincipalReservationName(principal.name))) {
             logger.warn("Securable Principal {} already exists", principal)
             return false
         }
@@ -102,10 +102,13 @@ class HazelcastPrincipalService(
     }
 
     private fun createSecurablePrincipal(owner: Principal, principal: SecurablePrincipal) {
-        var aclKey : AclKey? = null
+        var aclKey: AclKey? = null
         try {
             // Reserve securable object id
-            reservations.registerSecurableObject(principal) { getPrincipalReservationName(principal.name) }
+            reservations.registerSecurableObject(
+                principal,
+                AclKey(principal.aclKey.first())
+            ) { getPrincipalReservationName(principal.name) }
             aclKey = principal.aclKey
             // Initialize entries in principals and principalTrees mapstores
             principals[aclKey] = principal
@@ -117,7 +120,7 @@ class HazelcastPrincipalService(
 
         } catch (e: Exception) {
             logger.error("Unable to create principal {}", principal, e)
-            if( aclKey!= null ) {
+            if (aclKey != null) {
                 principals.delete(aclKey)
                 principalTrees.delete(aclKey)
                 authorizationManager.deletePermissions(aclKey)
@@ -169,13 +172,13 @@ class HazelcastPrincipalService(
     }
 
     override fun getAllRolesInOrganizations(
-            organizationIds: Collection<UUID>
+        organizationIds: Collection<UUID>
     ): Map<UUID, Collection<SecurablePrincipal>> {
         val rolesInOrganization = Predicates.and<AclKey, SecurablePrincipal>(
-                hasPrincipalType(PrincipalType.ROLE),
-                Predicates.`in`<AclKey, SecurablePrincipal>(
-                        PrincipalMapstore.ACL_KEY_ROOT_INDEX, *organizationIds.toTypedArray()
-                )
+            hasPrincipalType(PrincipalType.ROLE),
+            Predicates.`in`<AclKey, SecurablePrincipal>(
+                PrincipalMapstore.ACL_KEY_ROOT_INDEX, *organizationIds.toTypedArray()
+            )
         )
         return principals.values(rolesInOrganization).groupBy { it.aclKey[0] }
     }
@@ -186,7 +189,7 @@ class HazelcastPrincipalService(
         authorizationManager.deletePermissions(aclKey)
         principalTrees.executeOnEntries(NestedPrincipalRemover(setOf(aclKey)), hasSecurablePrincipal(aclKey))
         reservations.release(
-                aclKey.last()
+            aclKey.last()
         ) //TODO: At some point we will implement a release by acl key, but this is good enough fo rnow
         principalTrees.delete(aclKey)
         principals.delete(aclKey)
@@ -205,10 +208,10 @@ class HazelcastPrincipalService(
 
         logger.debug("about to add principal $source to each of ${targets.joinToString()}")
         val updatedKeys = principalTrees
-                .executeOnKeys(targets, AddPrincipalToPrincipalEntryProcessor(source))
-                .values
-                .filterNotNull()
-                .toSet()
+            .executeOnKeys(targets, AddPrincipalToPrincipalEntryProcessor(source))
+            .values
+            .filterNotNull()
+            .toSet()
 
         return updatedKeys
     }
@@ -236,7 +239,7 @@ class HazelcastPrincipalService(
     }
 
     override fun getSecurablePrincipals(
-            p: Predicate<AclKey, SecurablePrincipal>
+        p: Predicate<AclKey, SecurablePrincipal>
     ): MutableCollection<SecurablePrincipal> {
         return principals.values(p)
     }
@@ -268,19 +271,19 @@ class HazelcastPrincipalService(
         val orgAclKeys = organizationIds.map { AclKey(it) }.toSet()
         val orgMembers = getParentPrincipalsOfPrincipals(orgAclKeys)
         return orgAclKeys
-                .associate {
-                    it.first() to orgMembers.getOrDefault(
-                            it, setOf()
-                    ).filter { p -> p.principalType == PrincipalType.USER }.toMutableSet()
-                }
+            .associate {
+                it.first() to orgMembers.getOrDefault(
+                    it, setOf()
+                ).filter { p -> p.principalType == PrincipalType.USER }.toMutableSet()
+            }
     }
 
 
     override fun getOrganizationMemberPrincipals(organizationId: UUID): Set<Principal> {
         return getOrganizationMembers(mutableSetOf(organizationId))
-                .getValue(organizationId)
-                .map { it.principal }
-                .toSet()
+            .getValue(organizationId)
+            .map { it.principal }
+            .toSet()
     }
 
     override fun principalHasChildPrincipal(parent: AclKey, child: AclKey): Boolean {
@@ -318,10 +321,10 @@ class HazelcastPrincipalService(
 
         while (nextLayer.isNotEmpty()) {
             nextLayer = principalTrees.getAll(nextLayer)
-                    .values
-                    .flatten()
-                    .filter { !roles.contains(it) }
-                    .toSet()
+                .values
+                .flatten()
+                .filter { !roles.contains(it) }
+                .toSet()
             roles.addAll(nextLayer)
         }
         return principals.getAll(roles).values
@@ -357,7 +360,7 @@ class HazelcastPrincipalService(
             }
 
             val principals = childAclKeys.mapNotNullTo(
-                    Sets.newLinkedHashSetWithExpectedSize(childAclKeys.size)
+                Sets.newLinkedHashSetWithExpectedSize(childAclKeys.size)
             ) { aclKey ->
                 aclKeysToPrincipals[aclKey]?.principal
             }
@@ -375,8 +378,8 @@ class HazelcastPrincipalService(
         val nonexistentAclKeys = principalsMap.filterValues { !it }.keys
 
         Preconditions.checkState(
-                nonexistentAclKeys.isEmpty(),
-                "All principals must exist, but principals with aclKeys $nonexistentAclKeys do not exist."
+            nonexistentAclKeys.isEmpty(),
+            "All principals must exist, but principals with aclKeys $nonexistentAclKeys do not exist."
         )
     }
 
