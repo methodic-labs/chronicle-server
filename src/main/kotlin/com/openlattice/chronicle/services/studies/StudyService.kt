@@ -559,7 +559,6 @@ class StudyService(
     }
 
     override fun isValidStudy(studyId: UUID): Boolean {
-        val realStudyId = getStudyId(studyId)
-        return realStudyId != null && studies.containsKey(realStudyId)
+        return getStudyId(studyId) != null
     }
 }
