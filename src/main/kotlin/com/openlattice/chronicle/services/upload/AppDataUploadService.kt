@@ -246,7 +246,10 @@ class AppDataUploadService(
             dates + it
         }
         val uniqueDates: MutableSet<LocalDate> = dates.map { it.toLocalDate() }.toMutableSet()
-
+        currentStats?.androidUniqueDates?.let {
+            uniqueDates += it
+        }
+        
         val minDate = dates.stream().min(OffsetDateTime::compareTo).get()
         val maxDate = dates.stream().max(OffsetDateTime::compareTo).get()
 

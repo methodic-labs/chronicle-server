@@ -7,6 +7,7 @@ import com.geekbeast.postgres.PostgresColumnDefinition
 import com.geekbeast.postgres.PostgresDatatype
 import com.geekbeast.util.StopWatch
 import com.openlattice.chronicle.data.ParticipationStatus
+import com.openlattice.chronicle.participants.ParticipantStats
 import com.openlattice.chronicle.sensorkit.DeviceUsageData
 import com.openlattice.chronicle.sensorkit.KeyboardMetricsData
 import com.openlattice.chronicle.sensorkit.MessagesUsageData
@@ -15,6 +16,7 @@ import com.openlattice.chronicle.sensorkit.SensorDataSample
 import com.openlattice.chronicle.sensorkit.SensorSourceDevice
 import com.openlattice.chronicle.sensorkit.SensorType
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
+import com.openlattice.chronicle.services.studies.StudyService
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_CATEGORY
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_CATEGORY_WEB_DURATION
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_USAGE_TIME
@@ -81,6 +83,8 @@ import com.openlattice.chronicle.util.ChronicleServerUtil
 import com.zaxxer.hikari.HikariDataSource
 import org.slf4j.LoggerFactory
 import org.slf4j.event.Level
+import java.time.LocalDate
+import java.time.OffsetDateTime
 import java.util.*
 
 /**
@@ -88,7 +92,8 @@ import java.util.*
  */
 class SensorDataUploadService(
         private val storageResolver: StorageResolver,
-        private val enrollmentManager: EnrollmentManager
+        private val enrollmentManager: EnrollmentManager,
+        private val studyService: StudyService
 ) : SensorDataUploadManager {
 
     companion object {
@@ -387,9 +392,6 @@ class SensorDataUploadService(
         return hds.connection.use { connection ->
             try {
                 connection.autoCommit = false
-                // create table
-                connection.createStatement().use { stmt -> stmt.execute(IOS_SENSOR_DATA.createTableQuery()) }
-
                 val wc = connection.prepareStatement(INSERT_SENSOR_DATA_SQL).use { ps ->
                     ps.setString(RedshiftDataTables.getInsertSensorDataColumnIndex(STUDY_ID), studyId.toString())
                     ps.setString(RedshiftDataTables.getInsertSensorDataColumnIndex(PARTICIPANT_ID), participantId)
@@ -420,8 +422,7 @@ class SensorDataUploadService(
                     ps.executeBatch().sum()
                 }
 
-                // TODO: need to record metadata (lastDate recorded, firstDate recorded) - Android data upload endpoint also needs a similar update
-
+                updateParticipantStats(studyId, participantId, data)
                 connection.commit()
                 connection.autoCommit = true
                 return@use wc
@@ -430,6 +431,38 @@ class SensorDataUploadService(
                 throw ex
             }
         }
+    }
+
+    private fun updateParticipantStats(studyId: UUID, participantId: String, data: Map<SensorType, List<List<SensorDataColumn>>>) {
+        val currentStats = studyService.getParticipantStats(studyId, participantId)
+        val dates: MutableSet<OffsetDateTime> = data.values.asSequence().flatten().flatten().filter { it.col == RECORDED_DATE_TIME }.map { it.value as OffsetDateTime }.toMutableSet()
+        currentStats?.iosLastDate?.let {
+            dates += it
+        }
+        currentStats?.iosFirstDate?.let {
+            dates += it
+        }
+
+        val currentUniqueDates = currentStats?.iosUniqueDates ?: setOf()
+        val uniqueDates: Set<LocalDate> = dates.map { it.toLocalDate() }.toSet() + currentUniqueDates
+
+        val minDate = dates.stream().min(OffsetDateTime::compareTo).get()
+        val maxDate = dates.stream().max(OffsetDateTime::compareTo).get()
+
+        val statsUpdate = ParticipantStats(
+            studyId = studyId,
+            participantId = participantId,
+            androidFirstDate = currentStats?.androidFirstDate,
+            androidLastDate = currentStats?.androidLastDate,
+            androidUniqueDates = currentStats?.androidUniqueDates ?: setOf(),
+            iosUniqueDates = uniqueDates,
+            iosFirstDate = minDate,
+            iosLastDate = maxDate,
+            tudFirstDate = currentStats?.tudFirstDate,
+            tudLastDate = currentStats?.tudLastDate,
+            tudUniqueDates = currentStats?.tudUniqueDates ?: setOf()
+        )
+        studyService.insertOrUpdateParticipantStats(statsUpdate)
     }
 }
 
