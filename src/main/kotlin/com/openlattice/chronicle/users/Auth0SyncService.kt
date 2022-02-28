@@ -144,7 +144,7 @@ class Auth0SyncService(
         //basis and see if the user needs to be added.
         logger.info("Synchronizing enrollments and authentication cache for user ${user.id}")
         val principal = getPrincipal(user)
-
+        grantBuiltInRoles(mapOf(principal to user))
         syncAuthenticationCache(principal.id)
     }
 
