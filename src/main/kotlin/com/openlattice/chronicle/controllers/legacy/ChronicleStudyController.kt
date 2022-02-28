@@ -63,10 +63,9 @@ class ChronicleStudyController : ChronicleStudyApi {
         @PathVariable(ChronicleStudyApi.PARTICIPANT_ID) participantId: String,
         @PathVariable(ChronicleStudyApi.DATASOURCE_ID) datasourceId: String
     ): Boolean {
-        //  validate that this device belongs to this participant in this study
-        //  look up in association entitySet between device and participant, and device and study to see if it exists
-        //  DataApi.getEntity(entitySetId :UUID, entityKeyId :UUID)
-        return enrollmentManager.isKnownDatasource(studyId, participantId, datasourceId)
+        val realStudyId = studyService.getStudyId(studyId)
+        checkNotNull(realStudyId) { "invalid study id" }
+        return enrollmentManager.isKnownDatasource(realStudyId, participantId, datasourceId)
     }
 
     @Timed
@@ -91,7 +90,9 @@ class ChronicleStudyController : ChronicleStudyApi {
     override fun isNotificationsEnabled(
         @PathVariable(ChronicleStudyApi.STUDY_ID) studyId: UUID
     ): Boolean {
-        return studyService.isNotificationsEnabled(studyId)
+        val realStudyId = studyService.getStudyId(studyId)
+        checkNotNull(realStudyId) { "invalid study id" }
+        return studyService.isNotificationsEnabled(realStudyId)
     }
 
     @Timed
@@ -103,7 +104,9 @@ class ChronicleStudyController : ChronicleStudyApi {
         @PathVariable(ChronicleStudyApi.STUDY_ID) studyId: UUID,
         @PathVariable(ChronicleStudyApi.PARTICIPANT_ID) participantId: String
     ): ParticipationStatus {
-        return enrollmentManager.getParticipationStatus(studyId, participantId)
+        val realStudyId = studyService.getStudyId(studyId)
+        checkNotNull(realStudyId) { "invalid study id" }
+        return enrollmentManager.getParticipationStatus(realStudyId, participantId)
     }
 
     @RequestMapping(
@@ -156,7 +159,9 @@ class ChronicleStudyController : ChronicleStudyApi {
         @PathVariable(ChronicleStudyApi.STUDY_ID) studyId: UUID
     ): Map<UUID, Map<FullQualifiedName, Set<Any>>> {
         val organizationId = studyService.getOrganizationIdForLegacyStudy(studyId)
-        return surveysManager.getLegacyStudyQuestionnaires(organizationId, studyId)
+        val realStudyId = studyService.getStudyId(studyId)
+        checkNotNull(realStudyId) { "invalid study id" }
+        return surveysManager.getLegacyStudyQuestionnaires(organizationId, realStudyId)
     }
 
     @RequestMapping(

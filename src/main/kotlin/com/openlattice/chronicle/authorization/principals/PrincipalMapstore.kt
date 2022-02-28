@@ -68,10 +68,10 @@ class PrincipalMapstore(hds: HikariDataSource) : AbstractBasePostgresMapstore<Ac
         ps.setString(3, value.name)
         ps.setString(4, value.title)
         ps.setString(5, value.description)
-        ps.setString(6, value.principalType.name)
-        ps.setString(7, value.name)
-        ps.setString(8, value.title)
-        ps.setString(9, value.description)
+//        ps.setString(6, value.principalType.name)
+//        ps.setString(7, value.name)
+//        ps.setString(8, value.title)
+//        ps.setString(9, value.description)
     }
 
     @Throws(SQLException::class)

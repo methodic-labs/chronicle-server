@@ -260,6 +260,7 @@ class ChroniclePostgresTables {
             .addColumns(ACL_KEY, PRINCIPAL_TYPE, PRINCIPAL_ID, TITLE, DESCRIPTION)
             .primaryKey(ACL_KEY)
             .setUnique(PRINCIPAL_TYPE, PRINCIPAL_ID)
+            .overwriteOnConflict()
 
         @JvmField
         val PRINCIPAL_TREES = PostgresTableDefinition("principal_trees")
