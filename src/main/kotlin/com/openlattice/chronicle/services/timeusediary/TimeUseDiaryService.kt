@@ -7,6 +7,8 @@ import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
 import com.openlattice.chronicle.converters.PostgresDownloadWrapper
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
+import com.openlattice.chronicle.participants.ParticipantStats
+import com.openlattice.chronicle.services.studies.StudyService
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.TIME_USE_DIARY_SUBMISSIONS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_ID
@@ -33,6 +35,7 @@ import java.util.*
 class TimeUseDiaryService(
     private val storageResolver: StorageResolver,
     private val idGenerationService: HazelcastIdGenerationService,
+    private val studyService: StudyService
 ) : TimeUseDiaryManager {
 
     companion object {
@@ -50,15 +53,39 @@ class TimeUseDiaryService(
         responses: List<TimeUseDiaryResponse>
     ): UUID {
         val timeUseDiaryId = idGenerationService.getNextId()
+        val submissionDate = OffsetDateTime.now()
         executeInsertTimeUseDiarySql(
             connection,
             timeUseDiaryId,
             organizationId,
             studyId,
             participantId,
-            responses
+            responses,
+            submissionDate
         )
+        updateParticipantStats(studyId, participantId, submissionDate)
         return timeUseDiaryId
+    }
+
+    private fun updateParticipantStats(studyId: UUID, participantId: String, submissionDate: OffsetDateTime) {
+        val currentStats = studyService.getParticipantStats(studyId, participantId)
+        val uniqueDates: MutableSet<LocalDate> = (currentStats?.tudUniqueDates?.toMutableSet() ?: mutableSetOf())
+        uniqueDates += submissionDate.toLocalDate()
+
+        val participantStats = ParticipantStats(
+            studyId = studyId,
+            participantId = participantId,
+            tudUniqueDates = uniqueDates,
+            tudFirstDate = currentStats?.tudFirstDate,
+            tudLastDate = submissionDate,
+            androidFirstDate = currentStats?.androidFirstDate,
+            androidLastDate = currentStats?.androidLastDate,
+            androidUniqueDates = currentStats?.androidUniqueDates ?: setOf(),
+            iosFirstDate = currentStats?.iosFirstDate,
+            iosLastDate = currentStats?.iosLastDate,
+            iosUniqueDates = currentStats?.iosUniqueDates ?: setOf()
+        )
+        studyService.insertOrUpdateParticipantStats(participantStats)
     }
 
     override fun getParticipantTUDSubmissionsByDate(
@@ -201,7 +228,8 @@ class TimeUseDiaryService(
         organizationId: UUID,
         studyId: UUID,
         participantId: String,
-        responses: List<TimeUseDiaryResponse>
+        responses: List<TimeUseDiaryResponse>,
+        submissionDate: OffsetDateTime
     ) {
         connection.prepareStatement(insertTimeUseDiarySql).use { ps ->
             var index = 1
@@ -209,6 +237,7 @@ class TimeUseDiaryService(
             ps.setObject(index++, organizationId)
             ps.setObject(index++, studyId)
             ps.setString(index++, participantId)
+            ps.setObject(index++, submissionDate)
             ps.setObject(index, objectMapper.writeValueAsString(responses), Types.OTHER)
             ps.executeUpdate()
         }
@@ -273,7 +302,7 @@ class TimeUseDiaryService(
      */
     private val insertTimeUseDiarySql = """
         INSERT INTO ${TIME_USE_DIARY_SUBMISSIONS.name} 
-        VALUES ( ?, ?, ?, ?, now(), ? )
+        VALUES ( ?, ?, ?, ?, ?, ? )
     """.trimIndent()
 
     /**
