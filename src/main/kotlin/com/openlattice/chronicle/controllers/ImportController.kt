@@ -12,15 +12,19 @@ import com.openlattice.chronicle.auditing.AuditingManager
 import com.openlattice.chronicle.authorization.AuthorizationManager
 import com.openlattice.chronicle.authorization.AuthorizingComponent
 import com.openlattice.chronicle.candidates.Candidate
+import com.openlattice.chronicle.constants.OutputConstants
 import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.import.ImportApi
+import com.openlattice.chronicle.import.ImportApi.Companion.APP_USAGE_SURVEY
 import com.openlattice.chronicle.import.ImportApi.Companion.CONTROLLER
 import com.openlattice.chronicle.import.ImportApi.Companion.PARTICIPANT_STATS
 import com.openlattice.chronicle.import.ImportApi.Companion.STUDIES
+import com.openlattice.chronicle.import.ImportApi.Companion.SYSTEM_APPS
 import com.openlattice.chronicle.import.ImportStudiesConfiguration
 import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.participants.ParticipantStats
+import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.services.candidates.CandidateService
 import com.openlattice.chronicle.services.studies.StudyService
 import com.openlattice.chronicle.services.surveys.SurveysService
@@ -44,6 +48,7 @@ import java.sql.Array
 import java.sql.ResultSet
 import java.time.LocalDate
 import java.time.OffsetDateTime
+import java.time.ZoneId
 import java.util.UUID
 
 /**
@@ -96,7 +101,7 @@ class ImportController(
          * 8) tudDatesCount
          */
         private val INSERT_PARTICIPANT_STATS_SQL = """
-            INSERT INTO ${ChroniclePostgresTables.PARTICIPANT_STATS.name} (${PARTICIPANT_STATS_COLUMNS.joinToString { it.name }}) 
+            INSERT INTO ${ChroniclePostgresTables.PARTICIPANT_STATS.name} (${PARTICIPANT_STATS_COLUMNS.joinToString { it.name }})
             VALUES (${PARTICIPANT_STATS_COLUMNS.joinToString { "?" }})
         """.trimIndent()
     }
@@ -213,6 +218,10 @@ class ImportController(
         logger.info("Inserted $inserts entities into participant_stats table")
     }
 
+    @PostMapping(
+        path = [APP_USAGE_SURVEY],
+        consumes = [MediaType.APPLICATION_JSON_VALUE]
+    )
     override fun importAppUsageSurvey(@RequestBody config: ImportStudiesConfiguration) {
         ensureAdminAccess()
         val hds = dataSourceManager.getDataSource(config.dataSourceName)
@@ -249,7 +258,31 @@ class ImportController(
                 ps.executeBatch().sum()
             }
         }
-        logger.info("inserted $inserts into app usage survey table")
+        logger.info("inserted $inserts entities into app usage survey table")
+    }
+
+    @PostMapping(
+        path = [SYSTEM_APPS],
+        consumes = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    override fun importSystemApps(@RequestBody config: ImportStudiesConfiguration) {
+        ensureAdminAccess()
+        val hds = dataSourceManager.getDataSource(config.dataSourceName)
+        hds.connection.createStatement().use { statement ->
+            statement.execute("INSERT INTO ${ChroniclePostgresTables.SYSTEM_APPS.name} SELECT * FROM ${config.systemAppsTable} ON CONFLICT DO NOTHING")
+        }
+
+        // check inserts
+        val inserted = BasePostgresIterable(
+            PreparedStatementHolderSupplier(
+                hds,
+                "SELECT * FROM ${ChroniclePostgresTables.SYSTEM_APPS.name}"
+            ){}
+        ){
+            ResultSetAdapters.systemApp(it)
+        }.toList()
+
+        logger.info("Inserted ${inserted.size} entities into system apps table")
     }
 
     private fun participant(rs: ResultSet): Participant {
@@ -310,6 +343,13 @@ class ImportController(
         )
     }
 
+    private fun getAppUsageTimestamp(rs: ResultSet): OffsetDateTime {
+        val timezone: String = rs.getString(RedshiftColumns.TIMEZONE.name) ?: OutputConstants.DEFAULT_TIMEZONE
+        val timestamp = rs.getObject(RedshiftColumns.TIMESTAMP.name, OffsetDateTime::class.java)
+        val zoneId = ZoneId.of(timezone)
+        return timestamp.toInstant().atZone(zoneId).toOffsetDateTime()
+    }
+
     private fun appUsageSurvey(rs: ResultSet): V2AppUsageEntity {
         return V2AppUsageEntity(
             studyId = rs.getObject(V2_STUDY_ID, UUID::class.java),
@@ -317,7 +357,7 @@ class ImportController(
             submissionDate = rs.getObject(PostgresColumns.SUBMISSION_DATE.name, OffsetDateTime::class.java),
             applicationLabel = rs.getString(RedshiftColumns.APPLICATION_LABEL.name),
             appPackageName = rs.getString(RedshiftColumns.APP_PACKAGE_NAME.name),
-            timestamp = rs.getObject(RedshiftColumns.TIMESTAMP.name, OffsetDateTime::class.java),
+            timestamp = getAppUsageTimestamp(rs),
             timezone = rs.getString(RedshiftColumns.TIMEZONE.name),
             users = rs.getArray(PostgresColumns.APP_USERS.name)
         )
@@ -390,6 +430,6 @@ private data class V2AppUsageEntity(
     val applicationLabel: String?,
     val appPackageName: String?,
     val timestamp: OffsetDateTime,
-    val timezone: String,
+    val timezone: String?,
     val users: Array
 )

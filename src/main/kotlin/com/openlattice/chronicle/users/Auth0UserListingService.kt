@@ -77,7 +77,7 @@ class Auth0UserListingService(
         // https://auth0.com/docs/policies/rate-limits
         var exportJobResult = exportEntity.getJob(job.id)
         while (exportJobResult.status == JobStatus.PENDING || exportJobResult.status == JobStatus.PROCESSING) {
-            Thread.sleep(200) // wait before calling again for job status
+            Thread.sleep(5000) // wait before calling again for job status
             exportJobResult = exportEntity.getJob(job.id)
         }
 

@@ -72,12 +72,9 @@ class AppDataUploadService(
         sourceDeviceId: String,
         data: List<SetMultimap<UUID, Any>>
     ): Int {
-        // resolve legacy study id. This is necessary for backwards compatibility
-        var maybeRealStudyId: UUID? = null
-        if (studyService.isLegacyStudyId(studyId)) {
-            maybeRealStudyId = studyService.getRealStudyIdForLegacyStudyId(studyId)
-        }
-        val realStudyId = maybeRealStudyId ?: studyId
+
+        val realStudyId = studyService.getStudyId(studyId)
+        checkNotNull(realStudyId) { "invalid study id" }
 
         StopWatch(
             log = "logging ${data.size} entries for ${ChronicleServerUtil.STUDY_PARTICIPANT_DATASOURCE}",

@@ -11,16 +11,21 @@ import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import com.openlattice.chronicle.services.legacy.LegacyEdmResolver
 import com.openlattice.chronicle.services.legacy.LegacyUtil
 import com.openlattice.chronicle.services.settings.OrganizationSettingsManager
-import com.openlattice.chronicle.services.studies.StudyManager
+import com.openlattice.chronicle.services.studies.StudyService
 import com.openlattice.chronicle.services.surveys.SurveysManager
 import com.openlattice.chronicle.services.upload.AppDataUploadManager
 import com.openlattice.chronicle.settings.AppComponent
 import com.openlattice.chronicle.sources.SourceDevice
 import org.apache.olingo.commons.api.edm.FullQualifiedName
 import org.springframework.http.MediaType
-import org.springframework.web.bind.annotation.*
+import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestMethod
+import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.bind.annotation.RestController
 import java.security.InvalidParameterException
-import java.util.*
+import java.util.UUID
 import javax.inject.Inject
 
 /**
@@ -43,7 +48,7 @@ class ChronicleControllerV2 : ChronicleApi {
     private lateinit var organizationSettingsManager: OrganizationSettingsManager
 
     @Inject
-    private lateinit var studyManager: StudyManager
+    private lateinit var studyService: StudyService
 
     @Timed
     @RequestMapping(
@@ -57,9 +62,11 @@ class ChronicleControllerV2 : ChronicleApi {
             @PathVariable(ChronicleApi.DATASOURCE_ID) datasourceId: String,
             @RequestBody datasource: Optional<SourceDevice>
     ): UUID {
+        val realStudyId = studyService.getStudyId(studyId)
+        checkNotNull(realStudyId) { "invalid study id" }
         if (datasource.isPresent) {
             return enrollmentManager.registerDatasource(
-                    studyId,
+                    realStudyId,
                     participantId,
                     datasourceId,
                     datasource.get()
@@ -78,7 +85,7 @@ class ChronicleControllerV2 : ChronicleApi {
             @PathVariable(ChronicleApi.ORGANIZATION_ID) organizationId: UUID,
             @PathVariable(ChronicleApi.STUDY_ID) studyId: UUID
     ): Boolean {
-        return studyManager.isNotificationsEnabled(studyId)
+        return studyService.isNotificationsEnabled(studyId)
     }
 
     @Timed

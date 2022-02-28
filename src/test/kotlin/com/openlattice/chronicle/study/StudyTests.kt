@@ -51,6 +51,21 @@ class StudyTests : ChronicleServerTests() {
     }
 
     @Test
+    fun testGetAllStudies() {
+        val studyApi = chronicleClient.studyApi
+        val studies = (0 until 5).map {
+            Study(title = "This is a test study.", contact = "test@openlattice.com", version = it.toString())
+        }.toSet()
+
+        studies.forEach { it.id = studyApi.createStudy(it) }
+
+        val all = studyApi.getAllStudies().toSet()
+
+        Assert.assertTrue( ( studies - all ) .isEmpty() )
+    }
+
+
+    @Test
     fun updateStudy() {
         val studyApi = chronicleClient.studyApi
         val expected = Study(title = "This is a test study.", contact = "test@openlattice.com")
@@ -59,10 +74,12 @@ class StudyTests : ChronicleServerTests() {
         Assert.assertEquals(studyId, study.id)
 
         val desc = "Now it has a description"
-        studyApi.updateStudy(studyId, StudyUpdate(
-            description = desc,
-            notificationsEnabled = false
-        ))
+        studyApi.updateStudy(
+            studyId, StudyUpdate(
+                description = desc,
+                notificationsEnabled = false
+            )
+        )
 
         val updatedStudy1 = studyApi.getStudy(studyId)
 
@@ -70,9 +87,11 @@ class StudyTests : ChronicleServerTests() {
         Assert.assertEquals(desc, updatedStudy1.description)
         Assert.assertFalse(updatedStudy1.notificationsEnabled)
 
-        val updatedStudy2 = studyApi.updateStudy(studyId, StudyUpdate(
-            notificationsEnabled = true
-        ), true)!!
+        val updatedStudy2 = studyApi.updateStudy(
+            studyId, StudyUpdate(
+                notificationsEnabled = true
+            ), true
+        )!!
 
         Assert.assertEquals(studyId, study.id)
         Assert.assertEquals(desc, updatedStudy2.description)
@@ -133,7 +152,7 @@ class StudyTests : ChronicleServerTests() {
         // expect [study 2] from org 2
         val actualOrg2Studies = chronicleClient.studyApi.getOrgStudies(client1OrgId2)
         Assert.assertEquals(1, actualOrg2Studies.size)
-        Assert.assertEquals(listOf(study2Id), actualOrg2Studies.map { study -> study.id }, )
+        Assert.assertEquals(listOf(study2Id), actualOrg2Studies.map { study -> study.id })
         Assert.assertEquals(listOf(study2Title), actualOrg2Studies.map { study -> study.title })
         Assert.assertEquals(study2OrgIds, actualOrg2Studies[0].organizationIds)
 
@@ -141,7 +160,7 @@ class StudyTests : ChronicleServerTests() {
         val actualOrg3Studies = chronicleClient2.studyApi.getOrgStudies(client2OrgId3)
         Assert.assertEquals(1, actualOrg3Studies.size)
         Assert.assertEquals(listOf(study3Id), actualOrg3Studies.map { study -> study.id })
-        Assert.assertEquals(listOf(study3Title),actualOrg3Studies.map { study -> study.title })
+        Assert.assertEquals(listOf(study3Title), actualOrg3Studies.map { study -> study.title })
         Assert.assertEquals(study3OrgIds, actualOrg3Studies[0].organizationIds)
     }
 
@@ -172,8 +191,7 @@ class StudyTests : ChronicleServerTests() {
             val studyId = clientUser1.studyApi.createStudy(s1!!)
             clientUser1.studyApi.registerParticipant(studyId, p)
             Assert.fail()
-        }
-        catch (e: RhizomeRetrofitCallException) {
+        } catch (e: RhizomeRetrofitCallException) {
             Assert.assertTrue(
                 "should fail with expected error message",
                 e.body.contains("cannot register candidate with an invalid id")

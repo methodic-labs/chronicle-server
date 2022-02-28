@@ -32,7 +32,7 @@ class ScheduledTasksManager(
     companion object {
         private val logger = LoggerFactory.getLogger(ScheduledTasksManager::class.java)
     }
-    
+
     // orgId -> studyId -> participantId -> EKID
     val studyParticipantsByOrg: MutableMap<UUID, Map<UUID?, MutableMap<String, UUID>>> = Maps.newHashMap()
 
@@ -71,7 +71,7 @@ class ScheduledTasksManager(
             ResultSetAdapters.systemApp(it)
         }.toSet()
         systemAppPackageNames.addAll(apps)
-        logger.info("loaded $apps system apps into cache")
+        logger.info("loaded ${apps.size} system apps into cache")
     }
 //
 //    @Scheduled(fixedRate = USER_APPS_REFRESH_INTERVAL)

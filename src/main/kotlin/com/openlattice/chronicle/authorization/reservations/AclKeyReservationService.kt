@@ -19,8 +19,12 @@
  */
 package com.openlattice.chronicle.authorization.reservations
 
-import com.geekbeast.util.LinearBackoff
-import com.geekbeast.util.attempt
+import com.geekbeast.controllers.exceptions.TypeExistsException
+import com.geekbeast.controllers.exceptions.UniqueIdConflictException
+import com.geekbeast.jdbc.DataSourceManager
+import com.geekbeast.postgres.PostgresArrays
+import com.geekbeast.postgres.streams.BasePostgresIterable
+import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
 import com.google.common.base.Preconditions.checkState
 import com.openlattice.chronicle.authorization.AbstractSecurableObject
 import com.openlattice.chronicle.authorization.AclKey
@@ -30,14 +34,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_NAME
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_TYPE
-import com.geekbeast.controllers.exceptions.TypeExistsException
-import com.geekbeast.controllers.exceptions.UniqueIdConflictException
-import com.geekbeast.jdbc.DataSourceManager
-import com.geekbeast.postgres.PostgresArrays
-import com.geekbeast.postgres.streams.BasePostgresIterable
-import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
 import org.slf4j.LoggerFactory
-import java.rmi.AlreadyBoundException
 import java.sql.PreparedStatement
 import java.util.*
 
@@ -189,7 +186,7 @@ class AclKeyReservationService(private val dsm: DataSourceManager) {
             nameExtractor: (T) -> String = { it.title }
     ): UUID {
         val proposedName = nameExtractor(obj)
-        //Back off 50ms each attempt for a maximum of 10 attempts, waiting no more than a second.
+        //TODO: Back off 50ms each attempt for a maximum of 10 attempts, waiting no more than a second.
         for ( i in 0 until 10 ) {
             dsm.getDefaultDataSource().connection.use { conn ->
                 val aclKey = AclKey(prefix + obj.id)
