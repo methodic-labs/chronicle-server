@@ -45,7 +45,6 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import java.sql.Array
-import java.sql.Date
 import java.sql.ResultSet
 import java.time.LocalDate
 import java.time.OffsetDateTime
