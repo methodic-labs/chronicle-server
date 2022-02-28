@@ -45,6 +45,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.LON
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.NOTIFICATIONS_ENABLED
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_IDS
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SETTINGS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STARTED_AT
@@ -272,6 +273,8 @@ class StudyService(
         }
 
         private val PARTICIPANT_STATS_COLUMNS = PARTICIPANT_STATS.columns.joinToString { it.name }
+        private val PARTICIPANT_STATS_PARAMS = PARTICIPANT_STATS.columns.joinToString { "?" }
+        private val PARTICIPANT_STATS_UPDATE_PARAMS = PARTICIPANT_STATS.columns.joinToString { "${it.name} = ?" }
         /**
          * PreparedStatement bind order
          * 1) studyId
@@ -280,6 +283,25 @@ class StudyService(
             SELECT $PARTICIPANT_STATS_COLUMNS
             FROM ${PARTICIPANT_STATS.name}
             WHERE ${STUDY_ID.name} = ?
+        """.trimIndent()
+
+        /**
+         * PreparedStatement bind order
+         * 1) studyId
+         * 2) participant id
+         */
+        private val GET_PARTICIPANT_STATS = """
+            SELECT $PARTICIPANT_STATS_COLUMNS
+            FROM ${PARTICIPANT_STATS.name}
+            WHERE ${STUDY_ID.name} = ? 
+            AND ${PARTICIPANT_ID.name} = ?
+        """.trimIndent()
+
+        val INSERT_OR_UPDATE_PARTICIPANT_STATS = """
+            INSERT INTO ${PARTICIPANT_STATS.name}
+            VALUES ($PARTICIPANT_STATS_PARAMS)
+            ON CONFLICT (${STUDY_ID.name}, ${PARTICIPANT_ID.name}) 
+            DO UPDATE SET $PARTICIPANT_STATS_UPDATE_PARAMS
         """.trimIndent()
     }
 
@@ -522,6 +544,49 @@ class StudyService(
             }
         ) { ResultSetAdapters.participantStats(it)}
             .associateBy { it.participantId }
+    }
+
+    override fun getParticipantStats(studyId: UUID, participantId: String): ParticipantStats? {
+        val hds = storageResolver.getPlatformStorage()
+        return try {
+            BasePostgresIterable(
+                PreparedStatementHolderSupplier(
+                    hds, GET_PARTICIPANT_STATS
+                ) { ps ->
+                    ps.setObject(1, studyId)
+                    ps.setString(2, participantId)
+                }
+            ) { ResultSetAdapters.participantStats(it)}.first()
+        } catch (ex: Exception) {
+            return null
+        }
+    }
+
+    override fun insertOrUpdateParticipantStats(stats: ParticipantStats) {
+        storageResolver.getPlatformStorage().connection.use { connection ->
+            connection.prepareStatement(INSERT_OR_UPDATE_PARTICIPANT_STATS).use { ps ->
+                val androidDatesArr =  connection.createArrayOf(PostgresDatatype.DATE.sql(), stats.androidUniqueDates.toTypedArray())
+                val iosDatesArr = connection.createArrayOf(PostgresDatatype.DATE.sql(), stats.iosUniqueDates.toTypedArray())
+                val tudDatesArr = connection.createArrayOf(PostgresDatatype.DATE.sql(), stats.tudUniqueDates.toTypedArray())
+
+                var index = 0
+
+                for (i in 0..1) {
+                    ps.setObject(++index, stats.studyId)
+                    ps.setString(++index, stats.participantId)
+                    ps.setObject(++index, stats.androidFirstDate)
+                    ps.setObject(++index, stats.androidLastDate)
+                    ps.setArray(++index, androidDatesArr)
+                    ps.setObject(++index, stats.iosFirstDate)
+                    ps.setObject(++index, stats.iosLastDate)
+                    ps.setArray(++index, iosDatesArr)
+                    ps.setObject(++index, stats.tudFirstDate)
+                    ps.setObject(++index, stats.tudLastDate)
+                    ps.setObject(++index, tudDatesArr)
+                    ps.executeUpdate()
+                }
+            }
+        }
     }
 
     override fun getStudyParticipants(studyId: UUID): Iterable<Participant> {
