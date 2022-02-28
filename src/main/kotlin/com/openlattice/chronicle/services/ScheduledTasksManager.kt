@@ -32,7 +32,7 @@ class ScheduledTasksManager(
     companion object {
         private val logger = LoggerFactory.getLogger(ScheduledTasksManager::class.java)
     }
-    
+
     // orgId -> studyId -> participantId -> EKID
     val studyParticipantsByOrg: MutableMap<UUID, Map<UUID?, MutableMap<String, UUID>>> = Maps.newHashMap()
 
