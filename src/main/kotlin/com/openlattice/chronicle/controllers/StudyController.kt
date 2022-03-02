@@ -306,7 +306,7 @@ class StudyController @Inject constructor(
         consumes = [MediaType.APPLICATION_JSON_VALUE],
         produces = [MediaType.APPLICATION_JSON_VALUE],
     )
-    override fun deleteParticipantsFromStudy(
+    override fun deleteStudyParticipants(
         @PathVariable(STUDY_ID) studyId: UUID,
         @RequestBody participantIds: Set<String>
     ): Iterable<UUID> {
