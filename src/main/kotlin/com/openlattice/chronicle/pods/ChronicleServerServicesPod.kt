@@ -211,7 +211,6 @@ class ChronicleServerServicesPod {
     fun appDataUploadManager(): AppDataUploadManager {
         return AppDataUploadService(
             storageResolver,
-            scheduledTasksManager(),
             enrollmentManager(),
             studyService()
         )
