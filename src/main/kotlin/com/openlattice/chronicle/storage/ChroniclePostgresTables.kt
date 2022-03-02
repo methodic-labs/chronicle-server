@@ -3,6 +3,10 @@ package com.openlattice.chronicle.storage
 import com.geekbeast.postgres.PostgresColumnsIndexDefinition
 import com.geekbeast.postgres.PostgresTableDefinition
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACTIVE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.ANDROID_UNIQUE_DATES
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.ANDROID_FIRST_DATE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.ANDROID_LAST_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_USERS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.BASE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CANDIDATE_ID
@@ -18,10 +22,14 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.ENDED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.EXPIRATION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.EXPIRATION_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.FIRST_NAME
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.IOS_UNIQUE_DATES
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.IOS_FIRST_DATE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.IOS_LAST_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.JOB_DEFINITION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.JOB_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LAST_NAME
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LAT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.LEGACY_STUDY_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LON
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LSB
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.MESSAGE
@@ -36,6 +44,11 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.PHONE_NUMBER
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_OF_ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_TYPE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.QUESTIONNAIRE_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.QUESTIONS
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.QUESTION_TITLE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.RECURRENCE_RULE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.RESPONSES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SCOPE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_NAME
@@ -54,6 +67,9 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TITLE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_UNIQUE_DATES
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_FIRST_DATE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_LAST_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPDATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_DATA
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_ID
@@ -97,6 +113,11 @@ class ChroniclePostgresTables {
             )
             .primaryKey(STUDY_ID)
             .overwriteOnConflict()
+
+        @JvmField
+        val LEGACY_STUDY_IDS = PostgresTableDefinition("legacy_study_ids")
+            .addColumns(STUDY_ID, LEGACY_STUDY_ID)
+            .primaryKey(STUDY_ID, LEGACY_STUDY_ID)
 
         @JvmField
         val LEGACY_STUDY_SETTINGS = PostgresTableDefinition("legacy_study_settings")
@@ -180,6 +201,52 @@ class ChroniclePostgresTables {
             )
             .primaryKey(RedshiftColumns.APP_PACKAGE_NAME, RedshiftColumns.APP_PACKAGE_NAME, RedshiftColumns.TIMESTAMP)
 
+        @JvmField
+        val QUESTIONNAIRES: PostgresTableDefinition = PostgresTableDefinition("questionnaires")
+            .addColumns(
+                STUDY_ID,
+                QUESTIONNAIRE_ID,
+                TITLE,
+                DESCRIPTION,
+                QUESTIONS,
+                ACTIVE,
+                CREATED_AT,
+                RECURRENCE_RULE
+            ).primaryKey(QUESTIONNAIRE_ID)
+
+        @JvmField
+        val QUESTIONNAIRE_SUBMISSIONS = PostgresTableDefinition("questionnaire_submissions")
+            .addColumns(
+                SUBMISSION_ID,
+                STUDY_ID,
+                PARTICIPANT_ID,
+                QUESTIONNAIRE_ID,
+                COMPLETED_AT,
+                QUESTION_TITLE,
+                RESPONSES,
+            ).primaryKey(SUBMISSION_ID, QUESTION_TITLE)
+        // All the questions in a single submission are unique. A single submission can write multiple records in the table
+
+        @JvmField
+        val PARTICIPANT_STATS = PostgresTableDefinition("participant_stats")
+            .addColumns(
+                STUDY_ID,
+                PARTICIPANT_ID,
+                ANDROID_FIRST_DATE,
+                ANDROID_LAST_DATE,
+                ANDROID_UNIQUE_DATES,
+                IOS_FIRST_DATE,
+                IOS_LAST_DATE,
+                IOS_UNIQUE_DATES,
+                TUD_FIRST_DATE,
+                TUD_LAST_DATE,
+                TUD_UNIQUE_DATES
+            ).primaryKey(STUDY_ID, PARTICIPANT_ID)
+
+        @JvmField
+        val SYSTEM_APPS = PostgresTableDefinition("system_apps")
+            .addColumns(RedshiftColumns.APP_PACKAGE_NAME)
+            .primaryKey(RedshiftColumns.APP_PACKAGE_NAME)
         /**
          * Authorization tables
          *
@@ -193,6 +260,7 @@ class ChroniclePostgresTables {
             .addColumns(ACL_KEY, PRINCIPAL_TYPE, PRINCIPAL_ID, TITLE, DESCRIPTION)
             .primaryKey(ACL_KEY)
             .setUnique(PRINCIPAL_TYPE, PRINCIPAL_ID)
+            .overwriteOnConflict()
 
         @JvmField
         val PRINCIPAL_TREES = PostgresTableDefinition("principal_trees")

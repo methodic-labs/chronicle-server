@@ -8,7 +8,11 @@ import com.geekbeast.postgres.PostgresDatatype
 import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
 import com.hazelcast.core.HazelcastInstance
-import com.openlattice.chronicle.auditing.*
+import com.openlattice.chronicle.auditing.AuditEventType
+import com.openlattice.chronicle.auditing.AuditableEvent
+import com.openlattice.chronicle.auditing.AuditedOperationBuilder
+import com.openlattice.chronicle.auditing.AuditingComponent
+import com.openlattice.chronicle.auditing.AuditingManager
 import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.authorization.AuthorizationManager
 import com.openlattice.chronicle.authorization.Permission.READ
@@ -18,11 +22,14 @@ import com.openlattice.chronicle.hazelcast.HazelcastMap
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.ids.IdConstants
 import com.openlattice.chronicle.participants.Participant
+import com.openlattice.chronicle.participants.ParticipantStats
 import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.sensorkit.SensorType
 import com.openlattice.chronicle.services.candidates.CandidateManager
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
+import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.LEGACY_STUDY_IDS
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.ORGANIZATION_STUDIES
+import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.PARTICIPANT_STATS
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.PERMISSIONS
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.STUDIES
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.STUDY_PARTICIPANTS
@@ -33,6 +40,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.CREATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DESCRIPTION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ENDED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LAT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.LEGACY_STUDY_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LON
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.NOTIFICATIONS_ENABLED
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_ID
@@ -257,6 +265,50 @@ class StudyService(
         private val SELECT_STUDY_PARTICIPANTS_SQL = """
             SELECT * FROM ${STUDY_PARTICIPANTS.name} WHERE ${STUDY_ID.name} = ?
         """.trimIndent()
+
+        private fun selectStudyIdSql(table: String) :String {
+            return when (table) {
+                LEGACY_STUDY_IDS.name -> """
+                    SELECT ${STUDY_ID.name} FROM ${LEGACY_STUDY_IDS.name} WHERE ${LEGACY_STUDY_ID.name} = ?                    
+                """.trimIndent()
+                STUDIES.name -> """
+                    SELECT ${STUDY_ID.name} FROM ${STUDIES.name} WHERE ${STUDY_ID.name} = ?
+                """.trimIndent()
+                else -> ""
+            }
+        }
+
+        private val PARTICIPANT_STATS_COLUMNS = PARTICIPANT_STATS.columns.joinToString { it.name }
+        private val PARTICIPANT_STATS_PARAMS = PARTICIPANT_STATS.columns.joinToString { "?" }
+        private val PARTICIPANT_STATS_UPDATE_PARAMS = PARTICIPANT_STATS.columns.joinToString { "${it.name} = ?" }
+        /**
+         * PreparedStatement bind order
+         * 1) studyId
+         */
+        private val GET_STUDY_PARTICIPANT_STATS = """
+            SELECT $PARTICIPANT_STATS_COLUMNS
+            FROM ${PARTICIPANT_STATS.name}
+            WHERE ${STUDY_ID.name} = ?
+        """.trimIndent()
+
+        /**
+         * PreparedStatement bind order
+         * 1) studyId
+         * 2) participant id
+         */
+        private val GET_PARTICIPANT_STATS = """
+            SELECT $PARTICIPANT_STATS_COLUMNS
+            FROM ${PARTICIPANT_STATS.name}
+            WHERE ${STUDY_ID.name} = ? 
+            AND ${PARTICIPANT_ID.name} = ?
+        """.trimIndent()
+
+        val INSERT_OR_UPDATE_PARTICIPANT_STATS = """
+            INSERT INTO ${PARTICIPANT_STATS.name}
+            VALUES ($PARTICIPANT_STATS_PARAMS)
+            ON CONFLICT (${STUDY_ID.name}, ${PARTICIPANT_ID.name}) 
+            DO UPDATE SET $PARTICIPANT_STATS_UPDATE_PARAMS
+        """.trimIndent()
     }
 
     override fun createStudy( study: Study ) : UUID {
@@ -296,7 +348,7 @@ class StudyService(
     override fun createStudy(connection: Connection, study: Study) {
         insertStudy(connection, study)
         insertOrgStudy(connection, study)
-        authorizationService.createSecurableObject(
+        authorizationService.createUnnamedSecurableObject(
             connection = connection,
             aclKey = AclKey(study.id),
             principal = Principals.getCurrentUser(),
@@ -499,6 +551,59 @@ class StudyService(
         return setOf()
     }
 
+    override fun getStudyParticipantStats(studyId: UUID): Map<String, ParticipantStats> {
+        val hds = storageResolver.getPlatformStorage()
+        return BasePostgresIterable(
+            PreparedStatementHolderSupplier(hds, GET_STUDY_PARTICIPANT_STATS) { ps ->
+                ps.setObject(1, studyId)
+            }
+        ) { ResultSetAdapters.participantStats(it)}
+            .associateBy { it.participantId }
+    }
+
+    override fun getParticipantStats(studyId: UUID, participantId: String): ParticipantStats? {
+        val hds = storageResolver.getPlatformStorage()
+        return try {
+            BasePostgresIterable(
+                PreparedStatementHolderSupplier(
+                    hds, GET_PARTICIPANT_STATS
+                ) { ps ->
+                    ps.setObject(1, studyId)
+                    ps.setString(2, participantId)
+                }
+            ) { ResultSetAdapters.participantStats(it)}.first()
+        } catch (ex: Exception) {
+            return null
+        }
+    }
+
+    override fun insertOrUpdateParticipantStats(stats: ParticipantStats) {
+        storageResolver.getPlatformStorage().connection.use { connection ->
+            connection.prepareStatement(INSERT_OR_UPDATE_PARTICIPANT_STATS).use { ps ->
+                val androidDatesArr =  connection.createArrayOf(PostgresDatatype.DATE.sql(), stats.androidUniqueDates.toTypedArray())
+                val iosDatesArr = connection.createArrayOf(PostgresDatatype.DATE.sql(), stats.iosUniqueDates.toTypedArray())
+                val tudDatesArr = connection.createArrayOf(PostgresDatatype.DATE.sql(), stats.tudUniqueDates.toTypedArray())
+
+                var index = 0
+
+                for (i in 0..1) {
+                    ps.setObject(++index, stats.studyId)
+                    ps.setString(++index, stats.participantId)
+                    ps.setObject(++index, stats.androidFirstDate)
+                    ps.setObject(++index, stats.androidLastDate)
+                    ps.setArray(++index, androidDatesArr)
+                    ps.setObject(++index, stats.iosFirstDate)
+                    ps.setObject(++index, stats.iosLastDate)
+                    ps.setArray(++index, iosDatesArr)
+                    ps.setObject(++index, stats.tudFirstDate)
+                    ps.setObject(++index, stats.tudLastDate)
+                    ps.setObject(++index, tudDatesArr)
+                }
+                ps.executeUpdate()
+            }
+        }
+    }
+
     override fun getStudyParticipants(studyId: UUID): Iterable<Participant> {
         return selectStudyParticipants(studyId)
     }
@@ -513,5 +618,27 @@ class StudyService(
         ) { ResultSetAdapters.participant(it) }
     }
 
+    override fun getStudyId(maybeLegacyMaybeRealStudyId: UUID): UUID? {
+        return storageResolver.getPlatformStorage().connection.use { connection ->
+            var maybeStudyId = connection.prepareStatement(selectStudyIdSql(LEGACY_STUDY_IDS.name)).use { ps ->
+                ps.setObject(1, maybeLegacyMaybeRealStudyId)
+                ps.executeQuery().use { rs ->
+                    if (rs.next()) ResultSetAdapters.studyId(rs) else null
+                }
+            }
+            if (maybeStudyId == null) {
+                maybeStudyId = connection.prepareStatement(selectStudyIdSql(STUDIES.name)).use { ps ->
+                    ps.setObject(1, maybeLegacyMaybeRealStudyId)
+                    ps.executeQuery().use { rs ->
+                        if (rs.next()) ResultSetAdapters.studyId(rs) else null
+                    }
+                }
+            }
+            maybeStudyId
+        }
+    }
 
+    override fun isValidStudy(studyId: UUID): Boolean {
+        return getStudyId(studyId) != null
+    }
 }

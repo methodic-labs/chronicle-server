@@ -8,7 +8,9 @@ import com.openlattice.chronicle.constants.OutputConstants
 import com.openlattice.chronicle.constants.ParticipantDataType
 import com.openlattice.chronicle.converters.PostgresDownloadWrapper
 import com.openlattice.chronicle.sensorkit.SensorType
-import com.openlattice.chronicle.storage.RedshiftColumns
+import com.openlattice.chronicle.services.surveys.SurveysManager
+import com.openlattice.chronicle.services.surveys.SurveysService
+import com.openlattice.chronicle.storage.PostgresColumns
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APPLICATION_LABEL
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_PACKAGE_NAME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DEVICE_USAGE_SENSOR_COLS
@@ -27,7 +29,6 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.USERNAME
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.CHRONICLE_USAGE_EVENTS
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.IOS_SENSOR_DATA
 import com.openlattice.chronicle.storage.StorageResolver
-import com.openlattice.chronicle.util.ChronicleServerUtil
 import org.slf4j.LoggerFactory
 import java.sql.ResultSet
 import java.time.OffsetDateTime
@@ -38,7 +39,9 @@ import java.util.*
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
  * @author Matthew Tamayo-Rios &lt;matthew@openlattice.com&gt;
  */
-class DataDownloadService(private val storageResolver: StorageResolver) : DataDownloadManager {
+class DataDownloadService(
+    private val storageResolver: StorageResolver,
+) : DataDownloadManager {
     companion object {
         private val logger = LoggerFactory.getLogger(DataDownloadService::class.java)
         private val CHRONICLE_USAGE_EVENTS_DEFS = CHRONICLE_USAGE_EVENTS.columns.map { it.name }
@@ -48,14 +51,16 @@ class DataDownloadService(private val storageResolver: StorageResolver) : DataDo
              ${STUDY_ID.name} = ? AND ${PARTICIPANT_ID.name} = ?
         """.trimIndent()
 
+        private const val FETCH_SIZE = 32768
+
         fun associateString(rs: ResultSet, pcd: PostgresColumnDefinition) = pcd.name to rs.getString(pcd.name)
         fun associateOffsetDatetimeWithTimezone(
             rs: ResultSet,
             timezoneColumn: PostgresColumnDefinition,
             timestampColumn: PostgresColumnDefinition
         ): Pair<String, OffsetDateTime> {
-            val zoneId = ZoneId.of( rs.getString( timezoneColumn.name ) ?: OutputConstants.DEFAULT_TIMEZONE )
-            val odt = rs.getObject( timestampColumn.name , OffsetDateTime::class.java )
+            val zoneId = ZoneId.of(rs.getString(timezoneColumn.name) ?: OutputConstants.DEFAULT_TIMEZONE)
+            val odt = rs.getObject(timestampColumn.name, OffsetDateTime::class.java)
             return timestampColumn.name to odt.toInstant().atZone(zoneId).toOffsetDateTime()
         }
 
@@ -65,6 +70,7 @@ class DataDownloadService(private val storageResolver: StorageResolver) : DataDo
         private fun getSensorTypeFilterClause(sensors: Set<SensorType>): String {
             return sensors.joinToString(" OR ") { "${SENSOR_TYPE.name} = ?" }
         }
+
         fun getSensorDataColsAndSql(sensors: Set<SensorType>): Pair<Set<PostgresColumnDefinition>, String> {
             val mapping = mapOf(
                 SensorType.phoneUsage to PHONE_USAGE_SENSOR_COLS,
@@ -76,7 +82,7 @@ class DataDownloadService(private val storageResolver: StorageResolver) : DataDo
             val cols = SHARED_SENSOR_COLS - PARTICIPANT_ID - STUDY_ID + sensors.flatMap { mapping.getValue(it) }.toSet()
             val values = cols.joinToString(",") { it.name }
 
-            val sql =  """
+            val sql = """
                 SELECT $values FROM ${IOS_SENSOR_DATA.name}
                 WHERE ${STUDY_ID.name} = ? AND ${PARTICIPANT_ID.name} = ? AND (${getSensorTypeFilterClause(sensors)})
             """.trimIndent()
@@ -95,7 +101,7 @@ class DataDownloadService(private val storageResolver: StorageResolver) : DataDo
             PreparedStatementHolderSupplier(
                 hds,
                 CHRONICLE_USAGE_EVENT_SQL,
-                32768
+                FETCH_SIZE
             ) { ps ->
                 ps.setString(1, studyId.toString())
                 ps.setString(2, participantId)
@@ -126,11 +132,11 @@ class DataDownloadService(private val storageResolver: StorageResolver) : DataDo
         val cols = colsAndSql.first
         val sql = colsAndSql.second
 
-        val iterable =  BasePostgresIterable<Map<String, Any>>(
+        val iterable = BasePostgresIterable<Map<String, Any>>(
             PreparedStatementHolderSupplier(
                 hds,
                 sql,
-                32768
+                FETCH_SIZE
             ) { ps ->
                 var index = 0
                 ps.setString(++index, studyId.toString())
@@ -146,6 +152,34 @@ class DataDownloadService(private val storageResolver: StorageResolver) : DataDo
                     else -> associateString(rs, col)
                 }
             }
+        }
+
+        return PostgresDownloadWrapper(iterable).withColumnAdvice(cols.map { it.name })
+    }
+
+    private fun getQuestionnaireResponsesHelper(studyId: UUID, questionnaireId: UUID): Iterable<Map<String, Any>> {
+        val cols = listOf(
+            PostgresColumns.PARTICIPANT_ID,
+            PostgresColumns.COMPLETED_AT,
+            PostgresColumns.QUESTION_TITLE,
+            PostgresColumns.RESPONSES
+        )
+        val iterable = BasePostgresIterable<Map<String, Any>>(
+            PreparedStatementHolderSupplier(
+                hds = storageResolver.getPlatformStorage(),
+                SurveysService.GET_QUESTIONNAIRE_SUBMISSIONS_SQL,
+                FETCH_SIZE
+            ) { ps ->
+                ps.setObject(1, studyId)
+                ps.setObject(2, questionnaireId)
+            }
+        ) { rs ->
+            mapOf(
+                associateString(rs, PostgresColumns.PARTICIPANT_ID),
+                associateObject(rs, PostgresColumns.COMPLETED_AT, OffsetDateTime::class.java),
+                associateString(rs, PostgresColumns.QUESTION_TITLE),
+                associateString(rs, PostgresColumns.RESPONSES)
+            )
         }
 
         return PostgresDownloadWrapper(iterable).withColumnAdvice(cols.map { it.name })
@@ -170,5 +204,12 @@ class DataDownloadService(private val storageResolver: StorageResolver) : DataDo
         sensors: Set<SensorType>
     ): Iterable<Map<String, Any>> {
         return getSensorDataHelper(studyId, participantId, sensors)
+    }
+
+    override fun getQuestionnaireResponses(
+        studyId: UUID,
+        questionnaireId: UUID
+    ): Iterable<Map<String, Any>> {
+        return getQuestionnaireResponsesHelper(studyId, questionnaireId)
     }
 }

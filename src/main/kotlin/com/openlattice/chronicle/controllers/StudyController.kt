@@ -9,6 +9,8 @@ import com.openlattice.chronicle.auditing.AuditingManager
 import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.authorization.AuthorizationManager
 import com.openlattice.chronicle.authorization.AuthorizingComponent
+import com.openlattice.chronicle.authorization.Permission
+import com.openlattice.chronicle.authorization.SecurableObjectType
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.base.OK
 import com.openlattice.chronicle.data.FileType
@@ -23,6 +25,7 @@ import com.openlattice.chronicle.ids.IdConstants
 import com.openlattice.chronicle.jobs.ChronicleJob
 import com.openlattice.chronicle.organizations.ChronicleDataCollectionSettings
 import com.openlattice.chronicle.participants.Participant
+import com.openlattice.chronicle.participants.ParticipantStats
 import com.openlattice.chronicle.sensorkit.SensorDataSample
 import com.openlattice.chronicle.sensorkit.SensorType
 import com.openlattice.chronicle.services.download.DataDownloadService
@@ -54,8 +57,10 @@ import com.openlattice.chronicle.study.StudyApi.Companion.SENSORS_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.SETTINGS_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.SOURCE_DEVICE_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.SOURCE_DEVICE_ID_PATH
+import com.openlattice.chronicle.study.StudyApi.Companion.STATS_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.STUDY_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.STUDY_ID_PATH
+import com.openlattice.chronicle.study.StudyApi.Companion.VERIFY_PATH
 import com.openlattice.chronicle.study.StudyUpdate
 import com.openlattice.chronicle.util.ChronicleServerUtil
 import org.slf4j.LoggerFactory
@@ -70,6 +75,7 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import java.util.EnumSet
 import java.util.UUID
 import javax.inject.Inject
 import javax.servlet.http.HttpServletResponse
@@ -112,27 +118,9 @@ class StudyController @Inject constructor(
         @PathVariable(SOURCE_DEVICE_ID) datasourceId: String,
         @RequestBody sourceDevice: SourceDevice
     ): UUID {
-//        check( enrollmentService.isKnownParticipant(studyId, participantId)) { "Cannot enroll device for an unknown participant." }
-//        TODO: Move checks out from enrollment data source into the controller.
-        val deviceId = enrollmentService.registerDatasource(studyId, participantId, datasourceId, sourceDevice)
-        val organizationIds = studyService.getStudy(studyId).organizationIds
-
-        /**
-         * We don't record an enrollment event into each organization as the organization associated with a study
-         * can change.
-         */
-        recordEvent(
-            AuditableEvent(
-                AclKey(deviceId),
-                eventType = AuditEventType.ENROLL_DEVICE,
-                description = "Enrolled ${sourceDevice.javaClass}",
-                study = studyId,
-                organization = IdConstants.UNINITIALIZED.id,
-                data = mapOf("device" to sourceDevice)
-            )
-        )
-
-        return deviceId
+        val realStudyId = studyService.getStudyId(studyId)
+        checkNotNull(realStudyId) { "invalid study id" }
+        return enrollmentService.registerDatasource(realStudyId, participantId, datasourceId, sourceDevice)
     }
 
     @Timed
@@ -519,12 +507,59 @@ class StudyController @Inject constructor(
         return studyService.getStudyParticipants(studyId)
     }
 
+    @Timed
+    @GetMapping(
+        path = ["","/"],
+        produces = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    override fun getAllStudies(): Iterable<Study> {
+        ensureAuthenticated()
+        val studyAclKeys = authorizationManager.listAuthorizedObjectsOfType(
+            Principals.getCurrentPrincipals(),
+            SecurableObjectType.Study,
+            EnumSet.of(Permission.READ)
+        )
+        val studies = studyService.getStudies(studyAclKeys.mapTo(mutableSetOf()) { it.first() })
+
+        auditingManager.recordEvents(studies.map {
+            AuditableEvent(
+                aclKey = AclKey(it.id),
+                eventType = AuditEventType.GET_ALL_STUDIES,
+                study = it.id,
+                description = "Loaded all accessible studies."
+            )
+        })
+
+        return studies
+    }
+
+    @Timed
+    @GetMapping(
+        path = [STUDY_ID_PATH + PARTICIPANTS_PATH + STATS_PATH],
+        produces = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    override fun getParticipantStats(@PathVariable(STUDY_ID) studyId: UUID): Map<String, ParticipantStats> {
+        ensureReadAccess(AclKey(studyId))
+        return studyService.getStudyParticipantStats(studyId)
+    }
+
+    @Timed
+    @GetMapping(
+        path = [STUDY_ID_PATH + PARTICIPANT_PATH + PARTICIPANT_ID_PATH + VERIFY_PATH]
+    )
+    override fun isKnownParticipant(
+        @PathVariable(STUDY_ID) studyId: UUID,
+        @PathVariable(PARTICIPANT_ID) participantId: String
+    ): Boolean {
+       return enrollmentService.isKnownParticipant(studyId, participantId)
+    }
+
     /**
      * Ensures that study id provided is for a valid study.
      *
      */
     private fun ensureValidStudy(studyId: UUID): Boolean {
-        return true
+        return studyService.isValidStudy(studyId)
     }
 
 }

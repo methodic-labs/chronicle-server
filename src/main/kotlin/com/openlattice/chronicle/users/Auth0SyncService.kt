@@ -119,7 +119,7 @@ class Auth0SyncService(
     }
 
     private fun grantBuiltInRoles(allUsersByPrincipal: Map<Principal, User>) {
-        allUsersByPrincipal.forEach { principal, user ->
+        allUsersByPrincipal.forEach { (principal, user) ->
             val userSecPrincipal = spm.getSecurablePrincipal(principal.id)
             spm.getSecurablePrincipals(getRoles(user).mapNotNull { role ->
                 when (role) {
@@ -144,7 +144,7 @@ class Auth0SyncService(
         //basis and see if the user needs to be added.
         logger.info("Synchronizing enrollments and authentication cache for user ${user.id}")
         val principal = getPrincipal(user)
-
+        grantBuiltInRoles(mapOf(principal to user))
         syncAuthenticationCache(principal.id)
     }
 

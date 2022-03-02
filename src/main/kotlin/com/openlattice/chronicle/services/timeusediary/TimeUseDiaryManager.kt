@@ -12,22 +12,28 @@ import java.util.UUID
  * @author Andrew Carter andrew@openlattice.com
  */
 interface TimeUseDiaryManager {
+
     fun submitTimeUseDiary(
         connection: Connection,
-        timeUseDiaryId: UUID,
         organizationId: UUID,
         studyId: UUID,
         participantId: String,
         responses: List<TimeUseDiaryResponse>
-    )
+    ): UUID
 
-    fun getSubmissionByDate(
+    fun getParticipantTUDSubmissionsByDate(
         organizationId: UUID,
         studyId: UUID,
         participantId: String,
         startDate: OffsetDateTime,
         endDate: OffsetDateTime,
-    ): Map<LocalDate, Set<UUID>>
+    ): Map<OffsetDateTime, Set<UUID>>
+
+    fun getStudyTUDSubmissionsByDate(
+        studyId: UUID,
+        startDate: OffsetDateTime,
+        endDate: OffsetDateTime,
+    ): Map<OffsetDateTime, Set<UUID>>
 
     fun downloadTimeUseDiaryData(
         organizationId: UUID,

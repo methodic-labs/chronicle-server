@@ -4,16 +4,21 @@ import com.codahale.metrics.annotation.Timed
 import com.google.common.base.Optional
 import com.openlattice.chronicle.ChronicleStudyApi
 import com.openlattice.chronicle.data.ChronicleAppsUsageDetails
-import com.openlattice.chronicle.data.ChronicleQuestionnaire
+import com.openlattice.chronicle.data.LegacyChronicleQuestionnaire
 import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
-import com.openlattice.chronicle.services.studies.StudyManager
+import com.openlattice.chronicle.services.studies.StudyService
 import com.openlattice.chronicle.services.surveys.SurveysManager
 import com.openlattice.chronicle.sources.SourceDevice
 import org.apache.olingo.commons.api.edm.FullQualifiedName
 import org.springframework.http.MediaType
-import org.springframework.web.bind.annotation.*
-import java.util.*
+import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestMethod
+import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.bind.annotation.RestController
+import java.util.UUID
 import javax.inject.Inject
 
 /**
@@ -30,7 +35,7 @@ class ChronicleStudyController : ChronicleStudyApi {
     private lateinit var enrollmentManager: EnrollmentManager
 
     @Inject
-    private lateinit var studyManager: StudyManager
+    private lateinit var studyService: StudyService
 
     @Timed
     @RequestMapping(
@@ -43,7 +48,9 @@ class ChronicleStudyController : ChronicleStudyApi {
         @PathVariable(ChronicleStudyApi.DATASOURCE_ID) datasourceId: String,
         @RequestBody datasource: Optional<SourceDevice>
     ): UUID {
-        return enrollmentManager.registerDatasource(studyId, participantId, datasourceId, datasource.get())
+        val realStudyId = studyService.getStudyId(studyId)
+        checkNotNull(realStudyId) { "invalid study id" }
+        return enrollmentManager.registerDatasource(realStudyId, participantId, datasourceId, datasource.get())
     }
 
     @Timed
@@ -56,10 +63,9 @@ class ChronicleStudyController : ChronicleStudyApi {
         @PathVariable(ChronicleStudyApi.PARTICIPANT_ID) participantId: String,
         @PathVariable(ChronicleStudyApi.DATASOURCE_ID) datasourceId: String
     ): Boolean {
-        //  validate that this device belongs to this participant in this study
-        //  look up in association entitySet between device and participant, and device and study to see if it exists
-        //  DataApi.getEntity(entitySetId :UUID, entityKeyId :UUID)
-        return enrollmentManager.isKnownDatasource(studyId, participantId, datasourceId)
+        val realStudyId = studyService.getStudyId(studyId)
+        checkNotNull(realStudyId) { "invalid study id" }
+        return enrollmentManager.isKnownDatasource(realStudyId, participantId, datasourceId)
     }
 
     @Timed
@@ -84,7 +90,9 @@ class ChronicleStudyController : ChronicleStudyApi {
     override fun isNotificationsEnabled(
         @PathVariable(ChronicleStudyApi.STUDY_ID) studyId: UUID
     ): Boolean {
-        return studyManager.isNotificationsEnabled(studyId)
+        val realStudyId = studyService.getStudyId(studyId)
+        checkNotNull(realStudyId) { "invalid study id" }
+        return studyService.isNotificationsEnabled(realStudyId)
     }
 
     @Timed
@@ -96,7 +104,9 @@ class ChronicleStudyController : ChronicleStudyApi {
         @PathVariable(ChronicleStudyApi.STUDY_ID) studyId: UUID,
         @PathVariable(ChronicleStudyApi.PARTICIPANT_ID) participantId: String
     ): ParticipationStatus {
-        return enrollmentManager.getParticipationStatus(studyId, participantId)
+        val realStudyId = studyService.getStudyId(studyId)
+        checkNotNull(realStudyId) { "invalid study id" }
+        return enrollmentManager.getParticipationStatus(realStudyId, participantId)
     }
 
     @RequestMapping(
@@ -121,9 +131,9 @@ class ChronicleStudyController : ChronicleStudyApi {
     override fun getChronicleQuestionnaire(
         @PathVariable(ChronicleStudyApi.STUDY_ID) studyId: UUID,
         @PathVariable(ChronicleStudyApi.ENTITY_KEY_ID) questionnaireEKID: UUID
-    ): ChronicleQuestionnaire {
-        val organizationId = studyManager.getOrganizationIdForLegacyStudy(studyId)
-        return surveysManager.getQuestionnaire(organizationId, studyId, questionnaireEKID)
+    ): LegacyChronicleQuestionnaire {
+        val organizationId = studyService.getOrganizationIdForLegacyStudy(studyId)
+        return surveysManager.getLegacyQuestionnaire(organizationId, studyId, questionnaireEKID)
     }
 
     @Timed
@@ -136,8 +146,8 @@ class ChronicleStudyController : ChronicleStudyApi {
         @PathVariable(ChronicleStudyApi.PARTICIPANT_ID) participantId: String,
         @RequestBody questionnaireResponses: Map<UUID, Map<FullQualifiedName, Set<Any>>>
     ) {
-        val organizationId = studyManager.getOrganizationIdForLegacyStudy(studyId)
-        surveysManager.submitQuestionnaire(organizationId, studyId, participantId, questionnaireResponses)
+        val organizationId = studyService.getOrganizationIdForLegacyStudy(studyId)
+        surveysManager.submitLegacyQuestionnaire(organizationId, studyId, participantId, questionnaireResponses)
     }
 
     @Timed
@@ -148,8 +158,10 @@ class ChronicleStudyController : ChronicleStudyApi {
     override fun getStudyQuestionnaires(
         @PathVariable(ChronicleStudyApi.STUDY_ID) studyId: UUID
     ): Map<UUID, Map<FullQualifiedName, Set<Any>>> {
-        val organizationId = studyManager.getOrganizationIdForLegacyStudy(studyId)
-        return surveysManager.getStudyQuestionnaires(organizationId, studyId)
+        val organizationId = studyService.getOrganizationIdForLegacyStudy(studyId)
+        val realStudyId = studyService.getStudyId(studyId)
+        checkNotNull(realStudyId) { "invalid study id" }
+        return surveysManager.getLegacyStudyQuestionnaires(organizationId, realStudyId)
     }
 
     @RequestMapping(

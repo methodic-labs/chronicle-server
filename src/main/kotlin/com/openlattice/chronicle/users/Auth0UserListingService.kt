@@ -31,7 +31,6 @@ import com.openlattice.chronicle.users.export.JobStatus
 import com.openlattice.chronicle.users.export.UserExportJobRequest
 import com.openlattice.chronicle.users.export.UserExportJobResult
 import com.openlattice.users.AUTH0_USER_FIELDS
-import com.openlattice.users.UserListingService
 import com.openlattice.users.getUpdatedUsersPage
 import org.slf4j.LoggerFactory
 import java.io.BufferedReader
@@ -78,7 +77,7 @@ class Auth0UserListingService(
         // https://auth0.com/docs/policies/rate-limits
         var exportJobResult = exportEntity.getJob(job.id)
         while (exportJobResult.status == JobStatus.PENDING || exportJobResult.status == JobStatus.PROCESSING) {
-            Thread.sleep(200) // wait before calling again for job status
+            Thread.sleep(5000) // wait before calling again for job status
             exportJobResult = exportEntity.getJob(job.id)
         }
 
@@ -114,6 +113,10 @@ class Auth0UserListingService(
      */
     override fun getUpdatedUsers(from: Instant, to: Instant): Sequence<User> {
         return Auth0UserListingResult(managementApi, from, to).asSequence()
+    }
+
+    override fun getUser(userId: String): User {
+        return com.openlattice.chronicle.util.getUser( managementApi, userId)
     }
 }
 

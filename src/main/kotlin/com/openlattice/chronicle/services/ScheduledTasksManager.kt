@@ -5,10 +5,13 @@ import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
 import com.google.common.collect.Maps
 import com.google.common.collect.Sets
 import com.openlattice.chronicle.postgres.ResultSetAdapters
+import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.SYSTEM_APPS
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_PACKAGE_NAME
 //import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.SYSTEM_APPS
 import com.openlattice.chronicle.storage.StorageResolver
 import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.Scheduled
+import java.sql.ResultSet
 import java.util.*
 
 
@@ -28,13 +31,7 @@ class ScheduledTasksManager(
 
     companion object {
         private val logger = LoggerFactory.getLogger(ScheduledTasksManager::class.java)
-
-//        private val GET_SYSTEM_APPS_SQL = """
-//            SELECT * FROM ${SYSTEM_APPS.name}
-//        """.trimIndent()
     }
-
-
 
     // orgId -> studyId -> participantId -> EKID
     val studyParticipantsByOrg: MutableMap<UUID, Map<UUID?, MutableMap<String, UUID>>> = Maps.newHashMap()
@@ -63,12 +60,19 @@ class ScheduledTasksManager(
     // app fullnames in chronicle_application_dictionary entity set
     val systemAppPackageNames: MutableSet<String> = Sets.newHashSet()
 
-
-//    @Scheduled(fixedRate = SYSTEM_APPS_REFRESH_INTERVAL)
-//    fun refreshSystemApps() {
-//        logger.info("Refreshing system apps cache")
-//        TODO("Not yet implemented")
-//    }
+    @Scheduled(fixedRate = SYSTEM_APPS_REFRESH_INTERVAL)
+    fun refreshSystemApps() {
+        val apps = BasePostgresIterable(
+            PreparedStatementHolderSupplier(
+                hds = storageResolver.getPlatformStorage(),
+                sql = "SELECT ${APP_PACKAGE_NAME.name} from ${SYSTEM_APPS.name}"
+            ){}
+        ){
+            ResultSetAdapters.systemApp(it)
+        }.toSet()
+        systemAppPackageNames.addAll(apps)
+        logger.info("loaded ${apps.size} system apps into cache")
+    }
 //
 //    @Scheduled(fixedRate = USER_APPS_REFRESH_INTERVAL)
 //    @Deprecated("")

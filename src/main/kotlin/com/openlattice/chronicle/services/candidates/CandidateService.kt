@@ -67,7 +67,7 @@ class CandidateService(
         return if (candidate.id == IdConstants.UNINITIALIZED.id) {
             candidate.id = idGenerationService.getNextId()
             insertCandidate(connection, candidate)
-            authorizationService.createSecurableObject(
+            authorizationService.createUnnamedSecurableObject(
                 connection = connection,
                 aclKey = AclKey(candidate.id),
                 principal = Principals.getCurrentUser(),
