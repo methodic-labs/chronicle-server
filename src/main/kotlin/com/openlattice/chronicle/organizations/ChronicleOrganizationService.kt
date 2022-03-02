@@ -52,7 +52,7 @@ class ChronicleOrganizationService(
 
     fun createOrganization(connection: Connection, owner: Principal, organization: Organization) {
         insertOrganization(connection,organization)
-        authorizationManager.createSecurableObject(
+        authorizationManager.createUnnamedSecurableObject(
             connection,
             AclKey(organization.id),
             owner,
