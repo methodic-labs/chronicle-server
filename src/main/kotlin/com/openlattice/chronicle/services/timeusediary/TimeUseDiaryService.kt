@@ -6,7 +6,9 @@ import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
 import com.openlattice.chronicle.converters.PostgresDownloadWrapper
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
+import com.openlattice.chronicle.participants.ParticipantStats
 import com.openlattice.chronicle.postgres.ResultSetAdapters
+import com.openlattice.chronicle.services.studies.StudyService
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.TIME_USE_DIARY_SUBMISSIONS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_ID
@@ -17,12 +19,14 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION_ID
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryDownloadDataType
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryResponse
+import com.openlattice.chronicle.util.ChronicleServerUtil
 import org.postgresql.util.PGobject
 import org.slf4j.LoggerFactory
 import java.sql.Connection
 import java.sql.ResultSet
 import java.sql.SQLException
 import java.sql.Types
+import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.util.*
 
@@ -32,6 +36,7 @@ import java.util.*
 class TimeUseDiaryService(
     private val storageResolver: StorageResolver,
     private val idGenerationService: HazelcastIdGenerationService,
+    private val studyService: StudyService
 ) : TimeUseDiaryManager {
 
     companion object {
@@ -47,15 +52,40 @@ class TimeUseDiaryService(
         responses: List<TimeUseDiaryResponse>
     ): UUID {
         val timeUseDiaryId = idGenerationService.getNextId()
+        val submissionDate = OffsetDateTime.now()
         executeInsertTimeUseDiarySql(
             connection,
             timeUseDiaryId,
             organizationId,
             studyId,
             participantId,
-            responses
+            responses,
+            submissionDate
         )
+        updateParticipantStats(studyId, participantId, submissionDate)
+        logger.info("submitted time use diary responses ${ChronicleServerUtil.STUDY_PARTICIPANT}", studyId, participantId)
         return timeUseDiaryId
+    }
+
+    private fun updateParticipantStats(studyId: UUID, participantId: String, submissionDate: OffsetDateTime) {
+        val currentStats = studyService.getParticipantStats(studyId, participantId)
+        val uniqueDates: MutableSet<LocalDate> = (currentStats?.tudUniqueDates?.toMutableSet() ?: mutableSetOf())
+        uniqueDates += submissionDate.toLocalDate()
+
+        val participantStats = ParticipantStats(
+            studyId = studyId,
+            participantId = participantId,
+            tudUniqueDates = uniqueDates,
+            tudFirstDate = currentStats?.tudFirstDate,
+            tudLastDate = submissionDate,
+            androidFirstDate = currentStats?.androidFirstDate,
+            androidLastDate = currentStats?.androidLastDate,
+            androidUniqueDates = currentStats?.androidUniqueDates ?: setOf(),
+            iosFirstDate = currentStats?.iosFirstDate,
+            iosLastDate = currentStats?.iosLastDate,
+            iosUniqueDates = currentStats?.iosUniqueDates ?: setOf()
+        )
+        studyService.insertOrUpdateParticipantStats(participantStats)
     }
 
     override fun getParticipantTUDSubmissionsByDate(
@@ -194,7 +224,8 @@ class TimeUseDiaryService(
         organizationId: UUID,
         studyId: UUID,
         participantId: String,
-        responses: List<TimeUseDiaryResponse>
+        responses: List<TimeUseDiaryResponse>,
+        submissionDate: OffsetDateTime
     ) {
         connection.prepareStatement(insertTimeUseDiarySql).use { ps ->
             var index = 1
@@ -202,6 +233,7 @@ class TimeUseDiaryService(
             ps.setObject(index++, organizationId)
             ps.setObject(index++, studyId)
             ps.setString(index++, participantId)
+            ps.setObject(index++, submissionDate)
             ps.setObject(index, mapper.writeValueAsString(responses), Types.OTHER)
             ps.executeUpdate()
         }
@@ -265,8 +297,8 @@ class TimeUseDiaryService(
      * @param responses         List of survey responses for a Time Use Diary study
      */
     private val insertTimeUseDiarySql = """
-        INSERT INTO ${TIME_USE_DIARY_SUBMISSIONS.name} 
-        VALUES ( ?, ?, ?, ?, now(), ? )
+        INSERT INTO ${TIME_USE_DIARY_SUBMISSIONS.name}
+        VALUES ( ?, ?, ?, ?, ?, ? )
     """.trimIndent()
 
     /**

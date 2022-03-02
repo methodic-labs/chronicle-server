@@ -213,6 +213,7 @@ class ChronicleServerServicesPod {
             storageResolver,
             scheduledTasksManager(),
             enrollmentManager(),
+            studyService()
         )
     }
 
@@ -318,7 +319,7 @@ class ChronicleServerServicesPod {
 
     @Bean
     fun timeUseDiaryService(): TimeUseDiaryService {
-        return TimeUseDiaryService(storageResolver, idGenerationService())
+        return TimeUseDiaryService(storageResolver, idGenerationService(), studyService())
     }
 
     @Bean
@@ -373,7 +374,7 @@ class ChronicleServerServicesPod {
 
     @Bean
     fun sensorDataUploadService(): SensorDataUploadService {
-        return SensorDataUploadService(storageResolver, enrollmentManager())
+        return SensorDataUploadService(storageResolver, enrollmentManager(), studyService())
     }
 
     @Bean

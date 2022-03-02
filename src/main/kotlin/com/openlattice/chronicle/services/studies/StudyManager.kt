@@ -21,6 +21,8 @@ interface StudyManager {
     fun getStudy(studyId: UUID): Study
     fun getStudyId(maybeLegacyMaybeRealStudyId: UUID): UUID?
     fun getStudyParticipantStats(studyId: UUID): Map<String, ParticipantStats>
+    fun getParticipantStats(studyId: UUID, participantId: String): ParticipantStats?
+    fun insertOrUpdateParticipantStats(stats: ParticipantStats)
     fun getStudyParticipants(studyId: UUID): Iterable<Participant>
     fun getStudySensors(studyId: UUID): Set<SensorType>
     fun getStudySettings(studyId: UUID): Map<String, Any>

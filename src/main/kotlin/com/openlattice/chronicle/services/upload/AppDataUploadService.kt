@@ -9,10 +9,13 @@ import com.geekbeast.util.StopWatch
 import com.google.common.collect.SetMultimap
 import com.openlattice.chronicle.constants.EdmConstants.*
 import com.openlattice.chronicle.data.ParticipationStatus
+import com.openlattice.chronicle.participants.ParticipantStats
 import com.openlattice.chronicle.services.ScheduledTasksManager
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import com.openlattice.chronicle.services.legacy.LegacyEdmResolver
+import com.openlattice.chronicle.services.studies.StudyManager
 import com.openlattice.chronicle.storage.PostgresDataTables
+import com.openlattice.chronicle.storage.RedshiftColumns
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.FQNS_TO_COLUMNS
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.CHRONICLE_USAGE_EVENTS
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.getAppendTembTableSql
@@ -26,6 +29,7 @@ import org.apache.commons.lang3.RandomStringUtils
 import org.slf4j.LoggerFactory
 import org.slf4j.event.Level
 import java.security.InvalidParameterException
+import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.util.*
 
@@ -38,6 +42,7 @@ class AppDataUploadService(
     private val storageResolver: StorageResolver,
     private val scheduledTasksManager: ScheduledTasksManager,
     private val enrollmentManager: EnrollmentManager,
+    private val studyManager: StudyManager
 ) : AppDataUploadManager {
     private val logger = LoggerFactory.getLogger(AppDataUploadService::class.java)
 
@@ -216,6 +221,7 @@ class AppDataUploadService(
                     stmt.execute(getDeleteTempTableEntriesSql(tempMergeTable.name))
                     stmt.executeUpdate(getAppendTembTableSql(tempMergeTable.name))
                 }
+                updateParticipantStats(data, studyId, participantId)
 
                 connection.commit()
                 connection.autoCommit = true
@@ -226,6 +232,41 @@ class AppDataUploadService(
                 throw ex
             }
         }
+    }
+
+    private fun updateParticipantStats(data:  Sequence<Map<String, UsageEventColumn>>, studyId: UUID, participantId: String) {
+        // unique dates
+        val dates: MutableSet<OffsetDateTime> = data.map { OffsetDateTime.parse(it.getValue(RedshiftColumns.TIMESTAMP.name).value as String) }.toMutableSet()
+
+        val currentStats = studyManager.getParticipantStats(studyId, participantId)
+        currentStats?.androidFirstDate?.let {
+            dates += it
+        }
+        currentStats?.androidLastDate?.let {
+            dates + it
+        }
+        val uniqueDates: MutableSet<LocalDate> = dates.map { it.toLocalDate() }.toMutableSet()
+        currentStats?.androidUniqueDates?.let {
+            uniqueDates += it
+        }
+        
+        val minDate = dates.stream().min(OffsetDateTime::compareTo).get()
+        val maxDate = dates.stream().max(OffsetDateTime::compareTo).get()
+
+        val participantStats = ParticipantStats(
+            studyId = studyId,
+            participantId = participantId,
+            androidUniqueDates = uniqueDates,
+            androidFirstDate = minDate,
+            androidLastDate = maxDate,
+            tudFirstDate = currentStats?.tudFirstDate,
+            tudLastDate = currentStats?.tudLastDate,
+            tudUniqueDates = currentStats?.tudUniqueDates ?: setOf(),
+            iosFirstDate = currentStats?.iosFirstDate,
+            iosLastDate = currentStats?.iosLastDate,
+            iosUniqueDates = currentStats?.iosUniqueDates ?: setOf()
+        )
+        studyManager.insertOrUpdateParticipantStats(participantStats)
     }
 
     private fun writeToPostgres(
