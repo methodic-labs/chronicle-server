@@ -143,7 +143,7 @@ class HazelcastAuthorizationService(
         }
     }
 
-    override fun createSecurableObject(
+    override fun createUnnamedSecurableObject(
         connection: Connection,
         aclKey: AclKey,
         principal: Principal,
@@ -167,7 +167,7 @@ class HazelcastAuthorizationService(
             insertSecObj.setArray(1, aclKeyArray)
             insertSecObj.setString(2, objectType.name)
             insertSecObj.setObject(3, aclKey.last())
-            insertSecObj.setString(4, aclKey.last().toString())
+            insertSecObj.setString(4, aclKey.last().toString()) //Unnamed objects so just use id as name
             insertSecObj.executeUpdate()
         }
 
@@ -182,28 +182,6 @@ class HazelcastAuthorizationService(
         aces.loadAll(setOf(AceKey(aclKey, principal)), true)
         securableObjectTypes.loadAll(setOf(aclKey), true)
     }
-
-    /** Set Securable Object Type **/
-
-    override fun setSecurableObjectTypes(aclKeys: Set<AclKey>, objectType: SecurableObjectType) {
-        aclKeys.forEach {
-            if (!securableObjectTypes.containsKey(it)) {
-                throw InvalidParameterException("No securable object exists for aclkey $it")
-            }
-        }
-        securableObjectTypes.setAll(aclKeys.associateWith { objectType })
-        aces.loadAll(aces.keySet(hasAnyAclKeys(aclKeys)), true)
-    }
-
-    override fun setSecurableObjectType(aclKey: AclKey, objectType: SecurableObjectType) {
-        if (securableObjectTypes.containsKey(aclKey)) {
-            securableObjectTypes.set(aclKey, objectType)
-            aces.loadAll(aces.keySet(hasAclKey(aclKey)), true)
-        } else {
-            throw InvalidParameterException("No securable object exists for aclkey $aclKey")
-        }
-    }
-
 
     /** Add Permissions **/
 
