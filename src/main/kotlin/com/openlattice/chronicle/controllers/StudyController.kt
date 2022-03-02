@@ -347,7 +347,7 @@ class StudyController @Inject constructor(
                     listOf(
                         AuditableEvent(
                             AclKey(studyId),
-                            eventType = AuditEventType.DELETE_PARTICIPANT,
+                            eventType = AuditEventType.DELETE_PARTICIPANTS,
                             description ="Participants $participantIds were removed from study $studyId",
                             study = studyId
                         )
