@@ -36,7 +36,6 @@ import java.util.*
 
 class AppDataUploadService(
     private val storageResolver: StorageResolver,
-    private val scheduledTasksManager: ScheduledTasksManager,
     private val enrollmentManager: EnrollmentManager,
 ) : AppDataUploadManager {
     private val logger = LoggerFactory.getLogger(AppDataUploadService::class.java)
@@ -140,10 +139,9 @@ class AppDataUploadService(
         mappedData: Sequence<Map<String, UsageEventColumn>>
     ): Sequence<Map<String, UsageEventColumn>> {
         return mappedData.filter { mappedUsageEventCols ->
-            val appName = mappedUsageEventCols[FQNS_TO_COLUMNS.getValue(FULL_NAME_FQN).name]?.value as String
             val eventDate = mappedUsageEventCols[FQNS_TO_COLUMNS.getValue(DATE_LOGGED_FQN).name]?.value as String
             val dateLogged = parseDateTime(eventDate)
-            !scheduledTasksManager.systemAppPackageNames.contains(appName) && dateLogged != null
+            dateLogged != null
         }
     }
 
