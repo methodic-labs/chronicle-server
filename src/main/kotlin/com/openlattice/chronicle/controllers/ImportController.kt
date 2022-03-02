@@ -7,6 +7,7 @@ import com.geekbeast.mappers.mappers.ObjectMappers
 import com.geekbeast.postgres.PostgresDatatype
 import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
+import com.geekbeast.util.log
 import com.hazelcast.core.HazelcastInstance
 import com.openlattice.chronicle.auditing.AuditingManager
 import com.openlattice.chronicle.authorization.AuthorizationManager
@@ -21,6 +22,7 @@ import com.openlattice.chronicle.import.ImportApi.Companion.CONTROLLER
 import com.openlattice.chronicle.import.ImportApi.Companion.PARTICIPANT_STATS
 import com.openlattice.chronicle.import.ImportApi.Companion.STUDIES
 import com.openlattice.chronicle.import.ImportApi.Companion.SYSTEM_APPS
+import com.openlattice.chronicle.import.ImportApi.Companion.TIME_USE_DIARY
 import com.openlattice.chronicle.import.ImportStudiesConfiguration
 import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.participants.ParticipantStats
@@ -36,6 +38,7 @@ import com.openlattice.chronicle.storage.PostgresColumns
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SETTINGS
 import com.openlattice.chronicle.storage.RedshiftColumns
 import com.openlattice.chronicle.study.Study
+import com.openlattice.chronicle.timeusediary.TimeUseDiaryResponse
 import com.zaxxer.hikari.HikariDataSource
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
@@ -76,6 +79,19 @@ class ImportController(
         private val INSERT_LEGACY_STUDY_ID_SQL = """
             INSERT INTO ${LEGACY_STUDY_IDS.name}(${PostgresColumns.STUDY_ID.name}, ${PostgresColumns.LEGACY_STUDY_ID.name})
             VALUES (?, ?)
+        """.trimIndent()
+
+        /**
+         * PreparedStatement bind order
+         * 1) submission_id,
+         * 2) organization_id,
+         * 3) study_id,
+         * 4) participant_id
+         * 5) submission_date,
+         * 6) submission
+         */
+        private val INSERT_TUD_SUBMISSIONS_SQL = """
+            INSERT INTO ${ChroniclePostgresTables.TIME_USE_DIARY_SUBMISSIONS.name} values (?, ?, ?, ?, ?, ?::jsonb)
         """.trimIndent()
 
         private val PARTICIPANT_STATS_COLUMNS = linkedSetOf(
@@ -282,6 +298,54 @@ class ImportController(
         logger.info("Inserted ${inserted.size} entities into system apps table")
     }
 
+    @PostMapping(
+        path = [TIME_USE_DIARY],
+        consumes = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    override fun importTimeUseDiarySubmissions(@RequestBody config: ImportStudiesConfiguration) {
+        ensureAdminAccess()
+        val hds = dataSourceManager.getDataSource(config.dataSourceName)
+        val entities = BasePostgresIterable(
+            PreparedStatementHolderSupplier(
+                hds,
+                "SELECT * FROM ${config.timeUseDiaryTable}"
+            ) {}
+        ) {
+            tudSubmission(it)
+        }.toList()
+
+        val inserted = hds.connection.prepareStatement(INSERT_TUD_SUBMISSIONS_SQL).use { ps ->
+            entities.forEach {
+                val realStudyId = studyService.getStudyId(it.study_id)
+                if (realStudyId == null) {
+                    logger.error("invalid study id ${it.study_id}")
+                    return@forEach
+                }
+                var index = 0
+                ps.setObject(++index, idGenerationService.getNextId())
+                ps.setObject(++index, it.organization_id)
+                ps.setObject(++index, realStudyId)
+                ps.setString(++index, it.participant_id)
+                ps.setObject(++index, it.submission_date)
+                ps.setString(++index, mapper.writeValueAsString(it.submission))
+                ps.addBatch()
+            }
+            ps.executeBatch().sum()
+        }
+        logger.info("Imported $inserted time use diary submissions. Expected to import ${entities.size}")
+    }
+
+    private fun tudSubmission(rs: ResultSet): TudSubmission {
+        return TudSubmission(
+            study_id = rs.getObject(PostgresColumns.STUDY_ID.name, UUID::class.java),
+            organization_id = rs.getObject(PostgresColumns.ORGANIZATION_ID.name, UUID::class.java),
+            submission_id = rs.getObject(PostgresColumns.SUBMISSION_ID.name, UUID::class.java),
+            participant_id = rs.getString(PostgresColumns.PARTICIPANT_ID.name),
+            submission_date = rs.getObject(PostgresColumns.SUBMISSION_DATE.name, OffsetDateTime::class.java),
+            submission = mapper.readValue(rs.getString(PostgresColumns.SUBMISSION.name))
+        )
+    }
+
     private fun participant(rs: ResultSet): Participant {
         var status = rs.getString(LEGACY_PARTICIPATION_STATUS)
         if (status == null || status == "DELETE") {
@@ -414,4 +478,13 @@ private data class V2AppUsageEntity(
     val timestamp: OffsetDateTime,
     val timezone: String?,
     val users: Array
+)
+
+private data class TudSubmission(
+    val study_id: UUID,
+    val organization_id: UUID,
+    val participant_id: String,
+    val submission_id: UUID,
+    val submission: List<TimeUseDiaryResponse>,
+    val submission_date: OffsetDateTime
 )
