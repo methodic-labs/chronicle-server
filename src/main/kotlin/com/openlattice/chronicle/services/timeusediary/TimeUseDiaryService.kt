@@ -46,7 +46,6 @@ class TimeUseDiaryService(
 
     override fun submitTimeUseDiary(
         connection: Connection,
-        organizationId: UUID,
         studyId: UUID,
         participantId: String,
         responses: List<TimeUseDiaryResponse>
@@ -56,7 +55,6 @@ class TimeUseDiaryService(
         executeInsertTimeUseDiarySql(
             connection,
             timeUseDiaryId,
-            organizationId,
             studyId,
             participantId,
             responses,
@@ -89,7 +87,6 @@ class TimeUseDiaryService(
     }
 
     override fun getParticipantTUDSubmissionsByDate(
-        organizationId: UUID,
         studyId: UUID,
         participantId: String,
         startDate: OffsetDateTime,
@@ -101,7 +98,6 @@ class TimeUseDiaryService(
             val result = hds.connection.use { connection ->
                 executeGetSubmissionByDateSql(
                     connection,
-                    organizationId,
                     studyId,
                     participantId,
                     startDate,
@@ -123,7 +119,7 @@ class TimeUseDiaryService(
         return submissionsByDate
     }
 
-    override fun getStudyTUDSubmissionsByDate(
+    override fun getStudyTUDSubmissionIdsByDate(
         studyId: UUID,
         startDate: OffsetDateTime,
         endDate: OffsetDateTime,
@@ -154,12 +150,11 @@ class TimeUseDiaryService(
         return submissionsByDate
     }
 
-    override fun downloadTimeUseDiaryData(
-        organizationId: UUID,
+    override fun getStudyTUDSubmissions(
         studyId: UUID,
-        participantId: String,
         downloadType: TimeUseDiaryDownloadDataType,
-        submissionIds: Set<UUID>
+        startDate: OffsetDateTime,
+        endDate: OffsetDateTime,
     ): PostgresDownloadWrapper {
         try {
             val hds = storageResolver.getPlatformStorage(PostgresFlavor.VANILLA)
@@ -170,10 +165,9 @@ class TimeUseDiaryService(
                     1024
                 ) { ps ->
                     var index = 1
-                    ps.setObject(index++, organizationId)
                     ps.setObject(index++, studyId)
-                    ps.setString(index++, participantId)
-                    ps.setArray(index, hds.connection.createArrayOf("UUID", submissionIds.toTypedArray()))
+                    ps.setObject(index++, startDate)
+                    ps.setObject(index, endDate)
                 }) { rs ->
                 mapOf(
                     SUBMISSION_ID.name to setOf(rs.getString(SUBMISSION_ID.name)),
@@ -221,7 +215,6 @@ class TimeUseDiaryService(
     private fun executeInsertTimeUseDiarySql(
         connection: Connection,
         tudId: UUID,
-        organizationId: UUID,
         studyId: UUID,
         participantId: String,
         responses: List<TimeUseDiaryResponse>,
@@ -230,18 +223,16 @@ class TimeUseDiaryService(
         connection.prepareStatement(insertTimeUseDiarySql).use { ps ->
             var index = 1
             ps.setObject(index++, tudId)
-            ps.setObject(index++, organizationId)
             ps.setObject(index++, studyId)
             ps.setString(index++, participantId)
             ps.setObject(index++, submissionDate)
-            ps.setObject(index, mapper.writeValueAsString(responses), Types.OTHER)
+            ps.setString(index, mapper.writeValueAsString(responses))
             ps.executeUpdate()
         }
     }
 
     private fun executeGetSubmissionByDateSql(
         connection: Connection,
-        organizationId: UUID,
         studyId: UUID,
         participantId: String,
         startDate: OffsetDateTime,
@@ -249,7 +240,6 @@ class TimeUseDiaryService(
     ): ResultSet {
         val preparedStatement = connection.prepareStatement(getSubmissionsByDateSql)
         var index = 1
-        preparedStatement.setObject(index++, organizationId)
         preparedStatement.setObject(index++, studyId)
         preparedStatement.setString(index++, participantId)
         preparedStatement.setObject(index++, startDate)
@@ -298,13 +288,12 @@ class TimeUseDiaryService(
      */
     private val insertTimeUseDiarySql = """
         INSERT INTO ${TIME_USE_DIARY_SUBMISSIONS.name}
-        VALUES ( ?, ?, ?, ?, ?, ? )
+        VALUES ( ?, ?, ?, ?, ?::jsonb )
     """.trimIndent()
 
     /**
      * SQL String to create a [java.sql.PreparedStatement] to retrieve study submissions for a participant within a date range
      *
-     * @param organizationId    Identifies the organization from which to retrieve submissions
      * @param studyId           Identifies the study from which to retrieve submissions
      * @param participantId     Identifies the participant for whom to retrieve submissions
      * @param startDate         Date that submissions must be submitted after or on
@@ -313,8 +302,7 @@ class TimeUseDiaryService(
     private val getSubmissionsByDateSql = """
         SELECT ${SUBMISSION_ID.name}, ${SUBMISSION_DATE.name}
         FROM ${TIME_USE_DIARY_SUBMISSIONS.name}
-        WHERE ${ORGANIZATION_ID.name} = ?
-        AND ${STUDY_ID.name} = ?
+        WHERE ${STUDY_ID.name} = ?
         AND ${PARTICIPANT_ID.name} = ?
         AND ${SUBMISSION_DATE.name} BETWEEN ? AND ?
         ORDER BY ${SUBMISSION_DATE.name} ASC
@@ -323,7 +311,6 @@ class TimeUseDiaryService(
     /**
      * SQL String to create a [java.sql.PreparedStatement] to retrieve all study submissions within a date range
      *
-     * @param organizationId    Identifies the organization from which to retrieve submissions
      * @param studyId           Identifies the study from which to retrieve submissions
      * @param startDate         Date that submissions must be submitted after or on
      * @param endDate           Date that submissions must be submitted before or on
@@ -339,18 +326,14 @@ class TimeUseDiaryService(
     /**
      * SQL String to create a [java.sql.PreparedStatement] to retrieve time use diary responses for download
      *
-     * @param organizationId    Identifies the organization from which to retrieve submissions
      * @param studyId           Identifies the study from which to retrieve submissions
-     * @param participantId     Identifies the participant for whom to retrieve submissions
      * @param timeUseDiaryIds   Identifies the time use diaries from which to retrieve submissions
      */
     private val downloadTimeUseDiaryDataSql = """
         SELECT ${SUBMISSION_ID.name}, ${PARTICIPANT_ID.name}, ${SUBMISSION_DATE.name}, ${SUBMISSION.name}
         FROM ${TIME_USE_DIARY_SUBMISSIONS.name}
-        WHERE ${ORGANIZATION_ID.name} = ?
-        AND ${STUDY_ID.name} = ?
-        AND ${PARTICIPANT_ID.name} = ?
-        AND ${SUBMISSION_ID.name} = ANY (?)
+        WHERE ${STUDY_ID.name} = ?
+        AND ${SUBMISSION_DATE.name} BETWEEN ? AND ?
     """.trimIndent()
 
 }

@@ -84,14 +84,13 @@ class ImportController(
         /**
          * PreparedStatement bind order
          * 1) submission_id,
-         * 2) organization_id,
          * 3) study_id,
          * 4) participant_id
          * 5) submission_date,
          * 6) submission
          */
         private val INSERT_TUD_SUBMISSIONS_SQL = """
-            INSERT INTO ${ChroniclePostgresTables.TIME_USE_DIARY_SUBMISSIONS.name} values (?, ?, ?, ?, ?, ?::jsonb)
+            INSERT INTO ${ChroniclePostgresTables.TIME_USE_DIARY_SUBMISSIONS.name} values (?, ?, ?, ?, ?::jsonb)
         """.trimIndent()
 
         private val PARTICIPANT_STATS_COLUMNS = linkedSetOf(
@@ -323,7 +322,6 @@ class ImportController(
                 }
                 var index = 0
                 ps.setObject(++index, idGenerationService.getNextId())
-                ps.setObject(++index, it.organization_id)
                 ps.setObject(++index, realStudyId)
                 ps.setString(++index, it.participant_id)
                 ps.setObject(++index, it.submission_date)
