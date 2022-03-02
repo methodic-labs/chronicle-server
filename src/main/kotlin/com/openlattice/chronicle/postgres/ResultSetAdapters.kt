@@ -42,9 +42,9 @@ import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.participants.ParticipantStats
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACTIVE
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.ANDROID_UNIQUE_DATES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ANDROID_FIRST_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ANDROID_LAST_DATE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.ANDROID_UNIQUE_DATES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CANDIDATE_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CATEGORY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.COMPLETED_AT
@@ -58,9 +58,9 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.EMAIL
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ENDED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.EXPIRATION_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.FIRST_NAME
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.IOS_UNIQUE_DATES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.IOS_FIRST_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.IOS_LAST_DATE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.IOS_UNIQUE_DATES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.JOB_DEFINITION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.JOB_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LAST_NAME
@@ -95,6 +95,8 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.STORAGE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_GROUP
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_VERSION
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION_DATE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TITLE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_FIRST_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_LAST_DATE
@@ -418,7 +420,7 @@ class ResultSetAdapters {
             )
         }
 
-        @Throws
+        @Throws(SQLException::class)
         fun participantStats(rs: ResultSet): ParticipantStats {
             val androidDates: Array<Date> = rs.getArray(ANDROID_UNIQUE_DATES.name).array as Array<Date>
             val tudDates: Array<Date> = rs.getArray(TUD_UNIQUE_DATES.name).array as Array<Date>
@@ -438,9 +440,20 @@ class ResultSetAdapters {
                 tudDates.map { it.toLocalDate() }.toSet()
             )
         }
-        @Throws
+
+        @Throws(SQLException::class)
         fun systemApp(rs: ResultSet): String {
             return rs.getString(APP_PACKAGE_NAME.name)
+        }
+
+        @Throws(SQLException::class)
+        fun submissionDate(rs: ResultSet): OffsetDateTime {
+            return rs.getObject(SUBMISSION_DATE.name, OffsetDateTime::class.java)
+        }
+
+        @Throws(SQLException::class)
+        fun submissionId(rs: ResultSet): UUID {
+            return UUID.fromString(rs.getString(SUBMISSION_ID.name))
         }
     }
 }
