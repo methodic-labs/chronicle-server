@@ -14,6 +14,9 @@ import com.openlattice.chronicle.authorization.SecurableObjectType
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.base.OK
 import com.openlattice.chronicle.data.FileType
+import com.openlattice.chronicle.deletion.DeleteParticipantAppUsageSurveyData
+import com.openlattice.chronicle.deletion.DeleteParticipantUsageData
+import com.openlattice.chronicle.deletion.DeleteParticipantTUDSubmissionData
 import com.openlattice.chronicle.deletion.DeleteStudyAppUsageSurveyData
 import com.openlattice.chronicle.deletion.DeleteStudyTUDSubmissionData
 import com.openlattice.chronicle.deletion.DeleteStudyUsageData
@@ -204,7 +207,7 @@ class StudyController @Inject constructor(
         @RequestBody study: StudyUpdate,
         @RequestParam(value = RETRIEVE, required = false, defaultValue = "false") retrieve: Boolean
     ): Study? {
-        val studyAclKey = AclKey(studyId);
+        val studyAclKey = AclKey(studyId)
         ensureOwnerAccess(studyAclKey)
         val currentUser = Principals.getCurrentSecurablePrincipal()
         logger.info("Updating study with id $studyId on behalf of ${currentUser.principal.id}")
@@ -290,6 +293,69 @@ class StudyController @Inject constructor(
                             AuditEventType.CREATE_JOB,
                             "",
                             studyId
+                        )
+                    }
+                }
+                .buildAndRun()
+        }
+    }
+
+    @Timed
+    @DeleteMapping(
+        path = [STUDY_ID_PATH + PARTICIPANTS_PATH],
+        consumes = [MediaType.APPLICATION_JSON_VALUE],
+        produces = [MediaType.APPLICATION_JSON_VALUE],
+    )
+    override fun deleteStudyParticipants(
+        @PathVariable(STUDY_ID) studyId: UUID,
+        @RequestBody participantIds: Set<String>
+    ): Iterable<UUID> {
+        ensureValidStudy(studyId)
+        ensureWriteAccess(AclKey(studyId))
+
+        val deleteParticipantUsageDataJob = ChronicleJob(
+            id = idGenerationService.getNextId(),
+            contact = "test@openlattice.com",
+            definition = DeleteParticipantUsageData(studyId, participantIds)
+        )
+        val deleteParticipantTUDSubmissionsJob = ChronicleJob(
+            id = idGenerationService.getNextId(),
+            contact = "test@openlattice.com",
+            definition = DeleteParticipantTUDSubmissionData(studyId, participantIds)
+        )
+        val deleteParticipantAppUsageSurveysJob = ChronicleJob(
+            id = idGenerationService.getNextId(),
+            contact = "test@openlattice.com",
+            definition = DeleteParticipantAppUsageSurveyData(studyId, participantIds)
+        )
+
+        val jobList = listOf(
+            deleteParticipantUsageDataJob,
+            deleteParticipantTUDSubmissionsJob,
+            deleteParticipantAppUsageSurveysJob,
+        )
+
+        return storageResolver.getPlatformStorage().connection.use { conn ->
+            AuditedOperationBuilder<Iterable<UUID>>(conn, auditingManager)
+                .operation { connection ->
+                    val newJobIds = chronicleJobService.createJobs(connection, jobList)
+                    logger.info("Created jobs with ids = {}", newJobIds)
+                    studyService.removeParticipantsFromStudy(connection, studyId, participantIds)
+                    return@operation newJobIds
+                }
+                .audit { jobIds ->
+                    listOf(
+                        AuditableEvent(
+                            AclKey(studyId),
+                            eventType = AuditEventType.DELETE_PARTICIPANTS,
+                            description ="Participants $participantIds were removed from study $studyId",
+                            study = studyId
+                        )
+                    ) + jobIds.map {
+                        AuditableEvent(
+                            AclKey(it),
+                            eventType = AuditEventType.CREATE_JOB,
+                            study = studyId
                         )
                     }
                 }

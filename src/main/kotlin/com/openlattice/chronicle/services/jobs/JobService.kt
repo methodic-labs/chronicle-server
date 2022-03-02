@@ -84,7 +84,7 @@ class JobService(
     }
 
     override fun createJobs(connection: Connection, jobs: Iterable<ChronicleJob>): Iterable<UUID> {
-        var jobIds = mutableListOf<UUID>()
+        val jobIds = mutableListOf<UUID>()
         connection.prepareStatement(INSERT_JOB_SQL).use { ps ->
             jobs.forEach { job ->
                 jobIds.add(job.id)
