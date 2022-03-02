@@ -240,28 +240,28 @@ class ChronicleServerServicesPod {
 
     @Bean
     fun idGenerationService(): HazelcastIdGenerationService {
-        return HazelcastIdGenerationService(hazelcastClientProvider!!)
+        return HazelcastIdGenerationService(hazelcastClientProvider)
     }
 
     @Bean
     fun principalsMapManager(): PrincipalsMapManager {
-        return HazelcastPrincipalsMapManager(hazelcast!!, aclKeyReservationService())
+        return HazelcastPrincipalsMapManager(hazelcast, aclKeyReservationService())
     }
 
     @Bean
     fun aclKeyReservationService(): AclKeyReservationService {
-        return AclKeyReservationService(dataSourceManager!!)
+        return AclKeyReservationService(storageResolver)
     }
 
     @Bean
     fun authorizationService(): AuthorizationManager {
-        return HazelcastAuthorizationService(hazelcast!!, storageResolver, eventBus!!, principalsMapManager())
+        return HazelcastAuthorizationService(hazelcast, storageResolver, eventBus, principalsMapManager())
     }
 
     @Bean
     fun principalsManager(): SecurePrincipalsManager {
         return HazelcastPrincipalService(
-            hazelcast!!,
+            hazelcast,
             aclKeyReservationService(),
             authorizationService(),
             principalsMapManager(),
@@ -271,7 +271,7 @@ class ChronicleServerServicesPod {
 
     @Bean
     fun auth0SyncService(): Auth0SyncService {
-        return Auth0SyncService(hazelcast!!, principalsManager())
+        return Auth0SyncService(hazelcast, principalsManager())
     }
 
     @Bean

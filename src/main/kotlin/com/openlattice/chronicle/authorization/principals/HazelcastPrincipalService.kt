@@ -114,10 +114,7 @@ class HazelcastPrincipalService(
             principals[aclKey] = principal
             principalTrees[aclKey] = AclKeySet()
 
-            // Initialize permissions
-            authorizationManager.setSecurableObjectType(aclKey, principal.category)
             authorizationManager.addPermission(aclKey, owner, EnumSet.allOf(Permission::class.java))
-
         } catch (e: Exception) {
             logger.error("Unable to create principal {}", principal, e)
             if (aclKey != null) {

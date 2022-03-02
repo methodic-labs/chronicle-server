@@ -320,7 +320,7 @@ class StudyService(
     override fun createStudy(connection: Connection, study: Study) {
         insertStudy(connection, study)
         insertOrgStudy(connection, study)
-        authorizationService.createSecurableObject(
+        authorizationService.createUnnamedSecurableObject(
             connection = connection,
             aclKey = AclKey(study.id),
             principal = Principals.getCurrentUser(),
