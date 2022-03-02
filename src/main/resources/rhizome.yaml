@@ -9,16 +9,32 @@ session-clustering-enabled: false
 hazelcast:
     server: true
     group: "local"
-    password: "trellis"
+    password: "test"
     cp-member-count: 0
     seed-nodes:
         - "localhost"
     port: 5710
 
+hazelcast-clients:
+    IDS:
+        server: false
+        group: "local"
+        password: "test"
+        cp-member-count: 0
+        seed-nodes:
+            - "127.0.0.1:5710"
+
 postgres:
-    citus: false
     hikari:
-        jdbcUrl: "jdbc:postgresql://localhost:5432/openlattice"
-        username: "oltest"
+        jdbcUrl: "jdbc:postgresql://localhost:5432/chronicle"
+        username: "test"
         password: "test"
         maximumPoolSize: 10
+
+datasources:
+    chronicle:
+        hikari:
+            jdbcUrl: "jdbc:postgresql://localhost:5432/chronicle"
+            username: "test"
+            password: "test"
+            maximumPoolSize: 10
