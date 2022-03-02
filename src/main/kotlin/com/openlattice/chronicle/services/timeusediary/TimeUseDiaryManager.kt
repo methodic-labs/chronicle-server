@@ -27,13 +27,13 @@ interface TimeUseDiaryManager {
         participantId: String,
         startDate: OffsetDateTime,
         endDate: OffsetDateTime,
-    ): Map<LocalDate, Set<UUID>>
+    ): Map<OffsetDateTime, Set<UUID>>
 
     fun getStudyTUDSubmissionsByDate(
         studyId: UUID,
         startDate: OffsetDateTime,
         endDate: OffsetDateTime,
-    ): Map<LocalDate, Set<UUID>>
+    ): Map<OffsetDateTime, Set<UUID>>
 
     fun downloadTimeUseDiaryData(
         organizationId: UUID,

@@ -119,7 +119,7 @@ class TimeUseDiaryController(
         @PathVariable(PARTICIPANT_ID) participantId: String,
         @RequestParam(START_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) startDateTime: OffsetDateTime,
         @RequestParam(END_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) endDateTime: OffsetDateTime,
-    ): Map<LocalDate, Set<UUID>> {
+    ): Map<OffsetDateTime, Set<UUID>> {
         accessCheck(AclKey(studyId), EnumSet.of(Permission.READ))
         logger.info("Retrieving TimeUseDiary ids from study $studyId for $participantId")
         val submissionsIdsByDate = timeUseDiaryService.getParticipantTUDSubmissionsByDate(
@@ -156,7 +156,7 @@ class TimeUseDiaryController(
         @PathVariable(STUDY_ID) studyId: UUID,
         @RequestParam(START_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) startDateTime: OffsetDateTime,
         @RequestParam(END_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) endDateTime: OffsetDateTime,
-    ): Map<LocalDate, Set<UUID>> {
+    ): Map<OffsetDateTime, Set<UUID>> {
         ensureReadAccess(AclKey(studyId))
         logger.info("Retrieving TimeUseDiary ids from study $studyId")
         val submissionsIdsByDate = timeUseDiaryService.getStudyTUDSubmissionsByDate(
