@@ -10,7 +10,7 @@ import com.openlattice.chronicle.authorization.AuthorizationManager
 import com.openlattice.chronicle.authorization.AuthorizingComponent
 import com.openlattice.chronicle.authorization.Permission
 import com.openlattice.chronicle.authorization.principals.Principals
-import com.openlattice.chronicle.constants.CustomMediaType
+import com.openlattice.chronicle.data.FileType
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.services.studies.StudyService
 import com.openlattice.chronicle.services.timeusediary.TimeUseDiaryService
@@ -26,9 +26,9 @@ import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.PARTICIP
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.START_DATE
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.STUDY_ID
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.STUDY_ID_PATH
-import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.STUDY_PATH
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryDownloadDataType
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryResponse
+import com.openlattice.chronicle.util.ChronicleServerUtil
 import org.slf4j.LoggerFactory
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.MediaType
@@ -141,7 +141,7 @@ class TimeUseDiaryController(
         @PathVariable(STUDY_ID) studyId: UUID,
         @RequestParam(START_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) startDateTime: OffsetDateTime,
         @RequestParam(END_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) endDateTime: OffsetDateTime,
-    ): Map<OffsetDateTime, Set<UUID>> {
+    ): Map<LocalDate, Set<UUID>> {
         ensureReadAccess(AclKey(studyId))
         logger.info("Retrieving TimeUseDiary ids from study $studyId")
         val submissionsIdsByDate = timeUseDiaryService.getStudyTUDSubmissionIdsByDate(
@@ -166,7 +166,7 @@ class TimeUseDiaryController(
         @RequestParam(DATA_TYPE) dataType: TimeUseDiaryDownloadDataType,
         @RequestParam(START_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) startDateTime: OffsetDateTime,
         @RequestParam(END_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) endDateTime: OffsetDateTime,
-    ): Iterable<Map<String, Any>> {
+    ): Iterable<List<Map<String, Any>>> {
         ensureReadAccess(AclKey(studyId))
         return timeUseDiaryService.getStudyTUDSubmissions(
             studyId,
@@ -179,8 +179,7 @@ class TimeUseDiaryController(
     @Timed
     @GetMapping(
         path = [STUDY_ID_PATH],
-        consumes = [MediaType.APPLICATION_JSON_VALUE],
-        produces = [MediaType.APPLICATION_JSON_VALUE, CustomMediaType.TEXT_CSV_VALUE]
+        produces = [MediaType.APPLICATION_JSON_VALUE]
     )
     fun getStudyTUDSubmissions(
         @PathVariable(STUDY_ID) studyId: UUID,
@@ -188,7 +187,7 @@ class TimeUseDiaryController(
         @RequestParam(START_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) startDateTime: OffsetDateTime,
         @RequestParam(END_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) endDateTime: OffsetDateTime,
         response: HttpServletResponse
-    ): Iterable<Map<String, Any>> {
+    ): Iterable<List<Map<String, Any>>> {
         val data = getStudyTUDSubmissions(
             studyId,
             dataType,
@@ -197,8 +196,9 @@ class TimeUseDiaryController(
         )
 
         val filename = "TimeUseDiary_${dataType}_${LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE)}.csv"
-        response.contentType = CustomMediaType.TEXT_CSV_VALUE
-        response.setHeader("Content-Disposition", "attachment; filename=$filename")
+
+        ChronicleServerUtil.setDownloadContentType(response, FileType.csv)
+        ChronicleServerUtil.setContentDisposition(response, filename, FileType.csv)
 
         recordEvent(
             AuditableEvent(
