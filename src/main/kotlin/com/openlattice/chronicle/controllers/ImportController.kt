@@ -138,8 +138,8 @@ class ImportController(
         ensureAdminAccess()
         val hds = dataSourceManager.getDataSource(config.dataSourceName)
         val studiesByEkId = Maps.newConcurrentMap<UUID, Study>()
-        val studiesByLegacyStudyId = Maps.newConcurrentMap<UUID, UUID>()
-        val studiesByOrganizationId = Maps.newConcurrentMap<UUID, MutableSet<Study>>()
+        val studiesByLegacyStudyId = mutableMapOf<UUID, UUID>()
+        val studiesByOrganizationId = mutableMapOf<UUID, MutableSet<Study>>()
         val settingsByLegacyStudyId = Maps.newConcurrentMap<UUID, Map<String, Any>>()
 
         BasePostgresIterable(
