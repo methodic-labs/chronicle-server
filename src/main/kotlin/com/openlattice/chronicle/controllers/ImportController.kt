@@ -156,7 +156,7 @@ class ImportController(
             PreparedStatementHolderSupplier(hds, getStudiesSql(config.studiesTable)) {}
         ) {
             val v2StudyId: UUID? = v2StudyId(it)
-            val study = study(it, settingsByLegacyStudyId[v2StudyId])
+            val study = study(it, settingsByLegacyStudyId.getOrDefault(v2StudyId, mapOf()))
 
             val studyId = studyService.createStudy(study)
 
