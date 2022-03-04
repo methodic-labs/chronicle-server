@@ -229,7 +229,7 @@ class ImportController(
                     }
                 }
             }
-        }
+        }.count()
 
     }
 
