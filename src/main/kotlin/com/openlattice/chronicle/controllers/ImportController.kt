@@ -137,10 +137,10 @@ class ImportController(
     override fun importStudies(@RequestBody config: ImportStudiesConfiguration) {
         ensureAdminAccess()
         val hds = dataSourceManager.getDataSource(config.dataSourceName)
-        val studiesByEkId = Maps.newConcurrentMap<UUID,UUID>()
-        val studiesByLegacyStudyId = Maps.newConcurrentMap<UUID,UUID>()
-        val studiesByOrganizationId = Maps.newConcurrentMap<UUID,UUID>()
-        val settingsByLegacyStudyId = Maps.newConcurrentMap<UUID,UUID>()
+        val studiesByEkId = Maps.newConcurrentMap<UUID, Study>()
+        val studiesByLegacyStudyId = Maps.newConcurrentMap<UUID, UUID>()
+        val studiesByOrganizationId = Maps.newConcurrentMap<UUID, MutableSet<Study>>()
+        val settingsByLegacyStudyId = Maps.newConcurrentMap<UUID, Map<String, Any>>()
 
         BasePostgresIterable(
             PreparedStatementHolderSupplier(hds, getStudySettingsSql(config.studySettingsTable)) {}
