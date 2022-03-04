@@ -8,6 +8,7 @@ import com.geekbeast.postgres.PostgresDatatype
 import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
 import com.geekbeast.util.log
+import com.google.common.util.concurrent.MoreExecutors
 import com.hazelcast.core.HazelcastInstance
 import com.hazelcast.query.Predicates
 import com.openlattice.chronicle.auditing.AuditingManager
@@ -55,6 +56,7 @@ import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.util.*
+import java.util.concurrent.Executors
 
 /**
  *
@@ -77,6 +79,7 @@ class ImportController(
     companion object {
         private val logger = LoggerFactory.getLogger(ImportController::class.java)
         private val mapper: ObjectMapper = ObjectMappers.newJsonMapper()
+        private val executor = MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(8) )
 
         private val INSERT_LEGACY_STUDY_ID_SQL = """
             INSERT INTO ${LEGACY_STUDY_IDS.name}(${PostgresColumns.STUDY_ID.name}, ${PostgresColumns.LEGACY_STUDY_ID.name})
@@ -152,21 +155,23 @@ class ImportController(
         val studies = BasePostgresIterable(
             PreparedStatementHolderSupplier(hds, getStudiesSql(config.studiesTable)) {}
         ) {
-            val v2StudyId: UUID? = v2StudyId(it)
-            val study = study(it, settingsByLegacyStudyId[v2StudyId])
-            val studyId = studyService.createStudy(study)
+            executor.submit {
+                val v2StudyId: UUID? = v2StudyId(it)
+                val study = study(it, settingsByLegacyStudyId[v2StudyId])
+                val studyId = studyService.createStudy(study)
 
-            logger.info("Created study {}", study)
-            check(study.id == studyId) { "Safety check to make sure study id got set appropriately" }
+                logger.info("Created study {}", study)
+                check(study.id == studyId) { "Safety check to make sure study id got set appropriately" }
 
-            studiesByEkId[it.getObject(V2_STUDY_EK_ID, UUID::class.java)] = study
-            studiesByOrganizationId.getOrPut(it.getObject(V2_ORGANIZATION_ID, UUID::class.java)) { mutableSetOf() }
-                .add(study)
+                studiesByEkId[it.getObject(V2_STUDY_EK_ID, UUID::class.java)] = study
+                studiesByOrganizationId.getOrPut(it.getObject(V2_ORGANIZATION_ID, UUID::class.java)) { mutableSetOf() }
+                    .add(study)
 
-            if (v2StudyId != null) {
-                studiesByLegacyStudyId[v2StudyId] = study.id
+                if (v2StudyId != null) {
+                    studiesByLegacyStudyId[v2StudyId] = study.id
+                }
             }
-        }.count()
+        }.map { it.get() }
 
         val legacyInserts = hds.connection.use { connection ->
             connection.prepareStatement(INSERT_LEGACY_STUDY_ID_SQL).use { ps ->
@@ -184,16 +189,20 @@ class ImportController(
         val participants = BasePostgresIterable(
             PreparedStatementHolderSupplier(hds, getCandidatesSql(config.candidatesTable)) {}
         ) {
-            val participant = participant(it)
-            val studyEkId = it.getObject(V2_STUDY_EK_ID, UUID::class.java)
+            executor.submit {
+                val participant = participant(it)
+                val studyEkId = it.getObject(V2_STUDY_EK_ID, UUID::class.java)
 
-            val study = studiesByEkId[studyEkId] ?: throw StudyNotFoundException(
-                studyEkId,
-                "Missing study with legacy id $studyEkId"
-            )
-            studyService.registerParticipant(study.id, participant)
-            logger.info("Registered participant {} in study {}", participant.participantId, study)
-        }.count()
+                val study = studiesByEkId[studyEkId] ?: throw StudyNotFoundException(
+                    studyEkId,
+                    "Missing study with legacy id $studyEkId"
+                )
+                studyService.registerParticipant(study.id, participant)
+                logger.info("Registered participant {} in study {}", participant.participantId, study)
+            }
+        }.map { it.get() }
+
+        logger.info("Starting to grant permissions.")
 
         val legacy_users = BasePostgresIterable(
             PreparedStatementHolderSupplier(hds, getLegacyUserSql(config.usersTable!!)) {}
