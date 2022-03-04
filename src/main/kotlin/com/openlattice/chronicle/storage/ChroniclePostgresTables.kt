@@ -174,7 +174,6 @@ class ChroniclePostgresTables {
         val TIME_USE_DIARY_SUBMISSIONS = PostgresTableDefinition("time_use_diary_submissions")
             .addColumns(
                 SUBMISSION_ID,
-                ORGANIZATION_ID,
                 STUDY_ID,
                 PARTICIPANT_ID,
                 SUBMISSION_DATE,

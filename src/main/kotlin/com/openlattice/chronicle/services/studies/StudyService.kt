@@ -182,6 +182,12 @@ class StudyService(
             DELETE FROM ${STUDY_PARTICIPANTS.name} WHERE ${STUDY_ID.name} = ANY(?)
         """.trimIndent()
 
+        private val REMOVE_PARTICIPANTS_FROM_STUDY_SQL = """
+            DELETE FROM ${STUDY_PARTICIPANTS.name}
+            WHERE ${STUDY_ID.name} = ?
+            AND ${PARTICIPANT_ID.name} = ANY(?)
+        """.trimIndent()
+
         /**
          * 1. title,
          * 2. description,
@@ -499,7 +505,7 @@ class StudyService(
         }
     }
 
-    fun removeStudiesFromOrganizations(connection: Connection, studyIds: Collection<UUID>): Int {
+    override fun removeStudiesFromOrganizations(connection: Connection, studyIds: Collection<UUID>): Int {
         return connection.prepareStatement(REMOVE_STUDIES_FROM_ORGS_SQL).use { ps ->
             val pgStudyIds = PostgresArrays.createUuidArray(ps.connection, studyIds)
             ps.setArray(1, pgStudyIds)
@@ -507,10 +513,19 @@ class StudyService(
         }
     }
 
-    fun removeAllParticipantsFromStudies(connection: Connection, studyIds: Collection<UUID>): Int {
+    override fun removeAllParticipantsFromStudies(connection: Connection, studyIds: Collection<UUID>): Int {
         return connection.prepareStatement(REMOVE_ALL_PARTICIPANTS_FROM_STUDIES_SQL).use { ps ->
             val pgStudyIds = PostgresArrays.createUuidArray(ps.connection, studyIds)
             ps.setArray(1, pgStudyIds)
+            return ps.executeUpdate()
+        }
+    }
+
+    override fun removeParticipantsFromStudy(connection: Connection, studyId: UUID, participantIds: Collection<String>): Int {
+        return connection.prepareStatement(REMOVE_PARTICIPANTS_FROM_STUDY_SQL).use { ps ->
+            ps.setObject(1, studyId)
+            val pgParticipantIds = PostgresArrays.createTextArray(ps.connection, participantIds)
+            ps.setObject(2, pgParticipantIds)
             return ps.executeUpdate()
         }
     }

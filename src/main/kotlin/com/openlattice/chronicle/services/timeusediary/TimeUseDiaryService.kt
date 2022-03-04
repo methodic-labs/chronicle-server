@@ -1,33 +1,36 @@
 package com.openlattice.chronicle.services.timeusediary
 
+import com.fasterxml.jackson.module.kotlin.readValue
 import com.geekbeast.configuration.postgres.PostgresFlavor
 import com.geekbeast.mappers.mappers.ObjectMappers
 import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
-import com.openlattice.chronicle.converters.PostgresDownloadWrapper
+import com.openlattice.chronicle.converters.TimeUseDiaryPostgresDownloadWrapper
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.participants.ParticipantStats
 import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.services.studies.StudyService
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.TIME_USE_DIARY_SUBMISSIONS
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION_ID
 import com.openlattice.chronicle.storage.StorageResolver
+import com.openlattice.chronicle.timeusediary.TimeUseDiaryColumTitles
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryDownloadDataType
+import com.openlattice.chronicle.timeusediary.TimeUseDiaryQuestionCodes
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryResponse
 import com.openlattice.chronicle.util.ChronicleServerUtil
-import org.postgresql.util.PGobject
 import org.slf4j.LoggerFactory
 import java.sql.Connection
 import java.sql.ResultSet
 import java.sql.SQLException
-import java.sql.Types
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.OffsetDateTime
+import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import java.util.*
 
 /**
@@ -42,11 +45,11 @@ class TimeUseDiaryService(
     companion object {
         private val logger = LoggerFactory.getLogger(TimeUseDiaryService::class.java)
         private val mapper = ObjectMappers.getJsonMapper()
+        private val formatter = DateTimeFormatter.ofPattern("HH:mm") //24-hour format
     }
 
     override fun submitTimeUseDiary(
         connection: Connection,
-        organizationId: UUID,
         studyId: UUID,
         participantId: String,
         responses: List<TimeUseDiaryResponse>
@@ -56,7 +59,6 @@ class TimeUseDiaryService(
         executeInsertTimeUseDiarySql(
             connection,
             timeUseDiaryId,
-            organizationId,
             studyId,
             participantId,
             responses,
@@ -89,7 +91,6 @@ class TimeUseDiaryService(
     }
 
     override fun getParticipantTUDSubmissionsByDate(
-        organizationId: UUID,
         studyId: UUID,
         participantId: String,
         startDate: OffsetDateTime,
@@ -101,7 +102,6 @@ class TimeUseDiaryService(
             val result = hds.connection.use { connection ->
                 executeGetSubmissionByDateSql(
                     connection,
-                    organizationId,
                     studyId,
                     participantId,
                     startDate,
@@ -123,97 +123,158 @@ class TimeUseDiaryService(
         return submissionsByDate
     }
 
-    override fun getStudyTUDSubmissionsByDate(
+    override fun getStudyTUDSubmissionIdsByDate(
         studyId: UUID,
         startDate: OffsetDateTime,
         endDate: OffsetDateTime,
-    ): Map<OffsetDateTime, Set<UUID>> {
-        val submissionsByDate = mutableMapOf<OffsetDateTime, MutableSet<UUID>>()
+    ): Map<LocalDate, Set<UUID>> {
         try {
             val hds = storageResolver.getPlatformStorage(PostgresFlavor.VANILLA)
-            val result = hds.connection.use { connection ->
-                executeGetStudyTUDSubmissionsByDateSql(
-                    connection,
-                    studyId,
-                    startDate,
-                    endDate
-                )
-            }
-            while (result.next()) {
-                val date = ResultSetAdapters.submissionDate(result)
-                val id = ResultSetAdapters.submissionId(result)
-                if (submissionsByDate[date].isNullOrEmpty()) {
-                    submissionsByDate[date] = mutableSetOf(id)
-                } else {
-                    submissionsByDate[date]!!.add(id)
+            val submissions = BasePostgresIterable(
+                PreparedStatementHolderSupplier(
+                    hds,
+                    getStudyTUDSubmissionsByDateSql
+                ) { ps ->
+                    var index = 1
+                    ps.setObject(index++, studyId)
+                    ps.setObject(index++, startDate)
+                    ps.setObject(index, endDate)
                 }
+            ) {
+                val date = ResultSetAdapters.submissionDate(it)
+                val id = ResultSetAdapters.submissionId(it)
+                Pair(date.toLocalDate(), id)
+            }.toList()
+
+            val submissionsByDate: MutableMap<LocalDate, Set<UUID>> = mutableMapOf()
+            submissions.forEach {
+                submissionsByDate[it.first] = submissionsByDate.getOrDefault(it.first, setOf())  + setOf(it.second)
             }
+
+            return submissionsByDate
         } catch (ex: SQLException) {
-            logger.error("hds error: $ex")
+            logger.error("Error fetching submission ids by date: $ex")
+            return mapOf()
         }
-        return submissionsByDate
     }
 
-    override fun downloadTimeUseDiaryData(
-        organizationId: UUID,
+    override fun getStudyTUDSubmissions(
         studyId: UUID,
-        participantId: String,
         downloadType: TimeUseDiaryDownloadDataType,
-        submissionIds: Set<UUID>
-    ): PostgresDownloadWrapper {
+        startDate: OffsetDateTime,
+        endDate: OffsetDateTime,
+    ): Iterable<List<Map<String, Any>>> {
         try {
             val hds = storageResolver.getPlatformStorage(PostgresFlavor.VANILLA)
-            val postgresIterable = BasePostgresIterable<Map<String, Any>>(
+            val postgresIterable = BasePostgresIterable(
                 PreparedStatementHolderSupplier(
                     hds,
                     downloadTimeUseDiaryDataSql,
                     1024
                 ) { ps ->
                     var index = 1
-                    ps.setObject(index++, organizationId)
                     ps.setObject(index++, studyId)
-                    ps.setString(index++, participantId)
-                    ps.setArray(index, hds.connection.createArrayOf("UUID", submissionIds.toTypedArray()))
+                    ps.setObject(index++, startDate)
+                    ps.setObject(index, endDate)
                 }) { rs ->
-                mapOf(
-                    SUBMISSION_ID.name to setOf(rs.getString(SUBMISSION_ID.name)),
-                    PARTICIPANT_ID.name to setOf(rs.getString(PARTICIPANT_ID.name)),
-                    SUBMISSION_DATE.name to rs.getObject(SUBMISSION_DATE.name, OffsetDateTime::class.java)
-                ) + convertTudJsonbToMap(rs, downloadType)
+                    when(downloadType) {
+                        TimeUseDiaryDownloadDataType.DayTime -> getDayTimeDataColumnMapping(rs)
+                        TimeUseDiaryDownloadDataType.NightTime -> getNightTimeDataColumnMapping(rs)
+                        TimeUseDiaryDownloadDataType.Summarized -> listOf()
+                    }
             }
-            return PostgresDownloadWrapper(postgresIterable).withColumnAdvice(
-                listOf(
-                    SUBMISSION_ID.name,
-                    PARTICIPANT_ID.name,
-                    SUBMISSION_DATE.name
-                ) + downloadType.downloadColumnTitles
-            )
+            return TimeUseDiaryPostgresDownloadWrapper(postgresIterable).withColumnAdvice(downloadType.downloadColumnTitles.toList())
         } catch (ex: Exception) {
-            throw error("Error: $ex")
+            logger.error("Error downloading TUD data", ex)
+            return listOf()
         }
     }
 
     /* -------- Download Utils -------- */
 
-    private fun convertTudJsonbToMap(
-        rs: ResultSet,
-        type: TimeUseDiaryDownloadDataType,
-    ): Map<String, Set<String>> {
-        val responses = extractTudResponsesFromResult(rs)
-        return type.downloadColumnTitles.associateWith { kw ->
-            responses.firstOrNull { it.question == kw }?.response ?: setOf("")
-        }
+    private fun getDefaultColumnMapping(rs: ResultSet): Map<String, Any> {
+        return mapOf(
+            TimeUseDiaryColumTitles.PARTICIPANT_ID to rs.getString(PARTICIPANT_ID.name),
+            TimeUseDiaryColumTitles.TIMESTAMP to  rs.getObject(SUBMISSION_DATE.name, OffsetDateTime::class.java),
+            TimeUseDiaryColumTitles.STUDY_ID to rs.getObject(STUDY_ID.name)
+        )
     }
 
-    private fun extractTudResponsesFromResult(resultSet: ResultSet): List<TimeUseDiaryResponse> {
-        val submissionJson = resultSet.getObject(SUBMISSION.name, PGobject::class.java)
-        return mapper.readValue(
-            submissionJson.value,
-            mapper.typeFactory.constructCollectionType(
-                List::class.java,
-                TimeUseDiaryResponse::class.java
-            )
+    private fun getDayTimeDataColumnMapping(rs: ResultSet): List<Map<String, Any>> {
+        val result: MutableList<Map<String, Any>> = mutableListOf()
+
+        val defaultColumnMapping = getDefaultColumnMapping(rs)
+
+        val timeUseDiaryResponses: List<TimeUseDiaryResponse> = mapper.readValue(rs.getString(SUBMISSION.name))
+        val responsesByStartDateTime = timeUseDiaryResponses.groupBy { it.startDateTime }.filter { it.key != null }.toSortedMap(compareBy { it })
+        val responsesWithoutStartDateTime = timeUseDiaryResponses.filter { it.startDateTime == null }.associateBy { it.code }
+
+        var counter = 0
+        responsesByStartDateTime.forEach { (startDateTime, responses) ->
+            val endDateTime = responses.first().endDateTime
+
+            val responsesByCode: Map<String, TimeUseDiaryResponse> = responses.associateBy { it.code }
+
+            val mappedColumns = mapOf(
+                TimeUseDiaryColumTitles.ACTIVITY_DURATION to ChronoUnit.MINUTES.between(startDateTime, endDateTime),
+                TimeUseDiaryColumTitles.ACTIVITY_COUNTER to ++counter,
+                TimeUseDiaryColumTitles.ACTIVITY_START_TIME to startDateTime!!.toLocalTime().format(formatter),
+                TimeUseDiaryColumTitles.ACTIVITY_END_TIME to endDateTime!!.toLocalTime().format(formatter)
+            ) + defaultColumnMapping
+
+            val additionalColumTitles = TimeUseDiaryDownloadDataType.DayTime.downloadColumnTitles - mappedColumns.keys
+            val unmappedColumnTitles: MutableSet<String> = mutableSetOf()
+
+            val timeRangeColumnMapping = additionalColumTitles.associateWith { title ->
+                val questionCode = TimeUseDiaryColumTitles.columnTitleToQuestionCodeMap.getValue(title)
+                if (!responsesByCode.containsKey(questionCode)) {
+                    unmappedColumnTitles.add(title)
+                    setOf()
+                } else {
+                    responsesByCode.getValue(questionCode).response
+                }
+            }
+
+            val nonTimeRangeColumnMapping = unmappedColumnTitles.associateWith { title ->
+                val questionCode = TimeUseDiaryColumTitles.columnTitleToQuestionCodeMap.getValue(title)
+                responsesWithoutStartDateTime[questionCode]?.response ?: setOf()
+            }
+
+            result.add(mappedColumns + timeRangeColumnMapping + nonTimeRangeColumnMapping)
+        }
+        return result
+    }
+
+    private fun getNightTimeDataColumnMapping(rs: ResultSet): List<Map<String, Any>> {
+        val defaultColumnMapping = getDefaultColumnMapping(rs)
+
+
+        val responses: List<TimeUseDiaryResponse> = mapper.readValue(rs.getString(SUBMISSION.name))
+        val responsesByCode = responses.associateBy { it.code }
+
+        val prevDayStartTime = responsesByCode.getValue(TimeUseDiaryQuestionCodes.DAY_START_TIME).response.first() //HH:MM format
+        val prevDayEndTime= responsesByCode.getValue(TimeUseDiaryQuestionCodes.DAY_END_TIME).response.first()
+        val todayWakeUpTime = responsesByCode.getValue(TimeUseDiaryQuestionCodes.TODAY_WAKEUP_TIME).response.first()
+
+        val prevDayStartDateTime = LocalTime.parse(prevDayStartTime).atDate(LocalDate.now().minusDays(1))
+        val prevDayEndDateTime = LocalTime.parse(prevDayEndTime).atDate(LocalDate.now().minusDays(1))
+        val todayWakeUpDateTime = LocalTime.parse(todayWakeUpTime).atDate(LocalDate.now())
+
+        val timeRangeMapping = mapOf(
+            TimeUseDiaryColumTitles.WAKE_UP_YESTERDAY to prevDayStartDateTime.toLocalTime().format(formatter),
+            TimeUseDiaryColumTitles.BED_TIME_YESTERDAY to prevDayEndDateTime.toLocalTime().format(formatter),
+            TimeUseDiaryColumTitles.WAKE_UP_TODAY to todayWakeUpDateTime.toLocalTime().format(formatter),
+            TimeUseDiaryColumTitles.DAY_TIME_HOURS to ChronoUnit.HOURS.between(prevDayStartDateTime, prevDayEndDateTime),
+            TimeUseDiaryColumTitles.SLEEP_HOURS to ChronoUnit.HOURS.between(prevDayEndDateTime, todayWakeUpDateTime)
         )
+
+        val additionalColumTitles = TimeUseDiaryDownloadDataType.NightTime.downloadColumnTitles - defaultColumnMapping.keys - timeRangeMapping.keys
+        val additionalColumnMapping = additionalColumTitles.associateWith { title ->
+            val code = TimeUseDiaryColumTitles.columnTitleToQuestionCodeMap.getValue(title)
+            responsesByCode[code]?.response ?: setOf()
+        }
+
+        return listOf(defaultColumnMapping + additionalColumnMapping  + timeRangeMapping)
     }
 
     /* -------- SQL helpers -------- */
@@ -221,7 +282,6 @@ class TimeUseDiaryService(
     private fun executeInsertTimeUseDiarySql(
         connection: Connection,
         tudId: UUID,
-        organizationId: UUID,
         studyId: UUID,
         participantId: String,
         responses: List<TimeUseDiaryResponse>,
@@ -230,18 +290,16 @@ class TimeUseDiaryService(
         connection.prepareStatement(insertTimeUseDiarySql).use { ps ->
             var index = 1
             ps.setObject(index++, tudId)
-            ps.setObject(index++, organizationId)
             ps.setObject(index++, studyId)
             ps.setString(index++, participantId)
             ps.setObject(index++, submissionDate)
-            ps.setObject(index, mapper.writeValueAsString(responses), Types.OTHER)
+            ps.setString(index, mapper.writeValueAsString(responses))
             ps.executeUpdate()
         }
     }
 
     private fun executeGetSubmissionByDateSql(
         connection: Connection,
-        organizationId: UUID,
         studyId: UUID,
         participantId: String,
         startDate: OffsetDateTime,
@@ -249,41 +307,10 @@ class TimeUseDiaryService(
     ): ResultSet {
         val preparedStatement = connection.prepareStatement(getSubmissionsByDateSql)
         var index = 1
-        preparedStatement.setObject(index++, organizationId)
         preparedStatement.setObject(index++, studyId)
         preparedStatement.setString(index++, participantId)
         preparedStatement.setObject(index++, startDate)
         preparedStatement.setObject(index, endDate)
-        return preparedStatement.executeQuery()
-    }
-
-    private fun executeGetStudyTUDSubmissionsByDateSql(
-        connection: Connection,
-        studyId: UUID,
-        startDate: OffsetDateTime,
-        endDate: OffsetDateTime
-    ): ResultSet {
-        val preparedStatement = connection.prepareStatement(getStudyTUDSubmissionsByDateSql)
-        var index = 1
-        preparedStatement.setObject(index++, studyId)
-        preparedStatement.setObject(index++, startDate)
-        preparedStatement.setObject(index, endDate)
-        return preparedStatement.executeQuery()
-    }
-
-    private fun executeDownloadTimeUseDiaryData(
-        connection: Connection,
-        organizationId: UUID,
-        studyId: UUID,
-        participantId: String,
-        timeUseDiaryIds: Set<UUID>
-    ): ResultSet {
-        val preparedStatement = connection.prepareStatement(downloadTimeUseDiaryDataSql)
-        var index = 1
-        preparedStatement.setObject(index++, organizationId)
-        preparedStatement.setObject(index++, studyId)
-        preparedStatement.setString(index++, participantId)
-        preparedStatement.setArray(index, connection.createArrayOf("UUID", timeUseDiaryIds.toTypedArray()))
         return preparedStatement.executeQuery()
     }
 
@@ -298,13 +325,12 @@ class TimeUseDiaryService(
      */
     private val insertTimeUseDiarySql = """
         INSERT INTO ${TIME_USE_DIARY_SUBMISSIONS.name}
-        VALUES ( ?, ?, ?, ?, ?, ? )
+        VALUES ( ?, ?, ?, ?, ?::jsonb )
     """.trimIndent()
 
     /**
      * SQL String to create a [java.sql.PreparedStatement] to retrieve study submissions for a participant within a date range
      *
-     * @param organizationId    Identifies the organization from which to retrieve submissions
      * @param studyId           Identifies the study from which to retrieve submissions
      * @param participantId     Identifies the participant for whom to retrieve submissions
      * @param startDate         Date that submissions must be submitted after or on
@@ -313,8 +339,7 @@ class TimeUseDiaryService(
     private val getSubmissionsByDateSql = """
         SELECT ${SUBMISSION_ID.name}, ${SUBMISSION_DATE.name}
         FROM ${TIME_USE_DIARY_SUBMISSIONS.name}
-        WHERE ${ORGANIZATION_ID.name} = ?
-        AND ${STUDY_ID.name} = ?
+        WHERE ${STUDY_ID.name} = ?
         AND ${PARTICIPANT_ID.name} = ?
         AND ${SUBMISSION_DATE.name} BETWEEN ? AND ?
         ORDER BY ${SUBMISSION_DATE.name} ASC
@@ -323,7 +348,6 @@ class TimeUseDiaryService(
     /**
      * SQL String to create a [java.sql.PreparedStatement] to retrieve all study submissions within a date range
      *
-     * @param organizationId    Identifies the organization from which to retrieve submissions
      * @param studyId           Identifies the study from which to retrieve submissions
      * @param startDate         Date that submissions must be submitted after or on
      * @param endDate           Date that submissions must be submitted before or on
@@ -339,18 +363,14 @@ class TimeUseDiaryService(
     /**
      * SQL String to create a [java.sql.PreparedStatement] to retrieve time use diary responses for download
      *
-     * @param organizationId    Identifies the organization from which to retrieve submissions
      * @param studyId           Identifies the study from which to retrieve submissions
-     * @param participantId     Identifies the participant for whom to retrieve submissions
      * @param timeUseDiaryIds   Identifies the time use diaries from which to retrieve submissions
      */
     private val downloadTimeUseDiaryDataSql = """
-        SELECT ${SUBMISSION_ID.name}, ${PARTICIPANT_ID.name}, ${SUBMISSION_DATE.name}, ${SUBMISSION.name}
+        SELECT ${STUDY_ID.name}, ${SUBMISSION_ID.name}, ${PARTICIPANT_ID.name}, ${SUBMISSION_DATE.name}, ${SUBMISSION.name}
         FROM ${TIME_USE_DIARY_SUBMISSIONS.name}
-        WHERE ${ORGANIZATION_ID.name} = ?
-        AND ${STUDY_ID.name} = ?
-        AND ${PARTICIPANT_ID.name} = ?
-        AND ${SUBMISSION_ID.name} = ANY (?)
+        WHERE ${STUDY_ID.name} = ?
+        AND ${SUBMISSION_DATE.name} BETWEEN ? AND ?
     """.trimIndent()
 
 }

@@ -17,19 +17,22 @@ interface StudyManager {
     fun deleteStudies(connection: Connection, studyIds: Collection<UUID>): Int
     fun getOrgStudies(organizationId: UUID): List<Study>
     fun getOrganizationIdForLegacyStudy(studyId: UUID): UUID
+    fun getParticipantStats(studyId: UUID, participantId: String): ParticipantStats?
     fun getStudies(studyIds: Collection<UUID>): Iterable<Study>
     fun getStudy(studyId: UUID): Study
     fun getStudyId(maybeLegacyMaybeRealStudyId: UUID): UUID?
     fun getStudyParticipantStats(studyId: UUID): Map<String, ParticipantStats>
-    fun getParticipantStats(studyId: UUID, participantId: String): ParticipantStats?
-    fun insertOrUpdateParticipantStats(stats: ParticipantStats)
     fun getStudyParticipants(studyId: UUID): Iterable<Participant>
     fun getStudySensors(studyId: UUID): Set<SensorType>
     fun getStudySettings(studyId: UUID): Map<String, Any>
+    fun insertOrUpdateParticipantStats(stats: ParticipantStats)
     fun isNotificationsEnabled(studyId: UUID): Boolean
     fun isValidStudy(studyId: UUID): Boolean
     fun refreshStudyCache(studyIds: Set<UUID>)
     fun registerParticipant(connection: Connection, studyId: UUID, participant: Participant): UUID
     fun registerParticipant(studyId: UUID, participant: Participant): UUID
+    fun removeAllParticipantsFromStudies(connection: Connection, studyIds: Collection<UUID>): Int
+    fun removeParticipantsFromStudy(connection: Connection, studyId: UUID, participantIds: Collection<String>): Int
+    fun removeStudiesFromOrganizations(connection: Connection, studyIds: Collection<UUID>): Int
     fun updateStudy(connection: Connection, studyId: UUID, study: StudyUpdate)
 }

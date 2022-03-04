@@ -9,5 +9,5 @@ import java.util.*
 @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, include = JsonTypeInfo.As.PROPERTY, property = "@type")
 interface ChronicleParticipantJobDefinition : ChronicleJobDefinition {
     val studyId: UUID
-    val participantId: UUID
+    val participantIds: Collection<String>
 }

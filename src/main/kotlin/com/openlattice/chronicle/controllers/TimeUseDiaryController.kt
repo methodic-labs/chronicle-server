@@ -10,42 +10,33 @@ import com.openlattice.chronicle.authorization.AuthorizationManager
 import com.openlattice.chronicle.authorization.AuthorizingComponent
 import com.openlattice.chronicle.authorization.Permission
 import com.openlattice.chronicle.authorization.principals.Principals
-import com.openlattice.chronicle.constants.CustomMediaType
+import com.openlattice.chronicle.data.FileType
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.services.studies.StudyService
 import com.openlattice.chronicle.services.timeusediary.TimeUseDiaryService
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.CONTROLLER
-import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.DOWNLOAD_TYPE
+import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.DATA_TYPE
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.END_DATE
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.IDS_PATH
-import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.ORGANIZATION_ID
-import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.ORGANIZATION_ID_PATH
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.PARTICIPANT_ID_PATH
+import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.PARTICIPANT_PATH
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.START_DATE
-import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.STATUS_PATH
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.STUDY_ID
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.STUDY_ID_PATH
-import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.STUDY_PATH
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryDownloadDataType
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryResponse
+import com.openlattice.chronicle.util.ChronicleServerUtil
 import org.slf4j.LoggerFactory
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.MediaType
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PathVariable
-import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RequestParam
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.*
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
-import java.util.EnumSet
-import java.util.UUID
+import java.util.*
 import javax.servlet.http.HttpServletResponse
 
 /**
@@ -69,12 +60,11 @@ class TimeUseDiaryController(
 
     @Timed
     @PostMapping(
-        path = [ORGANIZATION_ID_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH],
+        path = [STUDY_ID_PATH + PARTICIPANT_PATH + PARTICIPANT_ID_PATH],
         consumes = [MediaType.APPLICATION_JSON_VALUE],
         produces = [MediaType.APPLICATION_JSON_VALUE]
     )
     override fun submitTimeUseDiary(
-        @PathVariable(ORGANIZATION_ID) organizationId: UUID,
         @PathVariable(STUDY_ID) studyId: UUID,
         @PathVariable(PARTICIPANT_ID) participantId: String,
         @RequestBody responses: List<TimeUseDiaryResponse>
@@ -86,7 +76,6 @@ class TimeUseDiaryController(
                 .operation { connection ->
                     timeUseDiaryService.submitTimeUseDiary(
                         connection,
-                        organizationId,
                         realStudyId,
                         participantId,
                         responses
@@ -110,11 +99,10 @@ class TimeUseDiaryController(
 
     @Timed
     @GetMapping(
-        path = [IDS_PATH + ORGANIZATION_ID_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH],
+        path = [STUDY_ID_PATH + PARTICIPANT_PATH + PARTICIPANT_ID_PATH],
         produces = [MediaType.APPLICATION_JSON_VALUE]
     )
-    override fun getParticipantTUDSubmissionsByDate(
-        @PathVariable(ORGANIZATION_ID) organizationId: UUID,
+    override fun getParticipantTUDSubmissionIdsByDate(
         @PathVariable(STUDY_ID) studyId: UUID,
         @PathVariable(PARTICIPANT_ID) participantId: String,
         @RequestParam(START_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) startDateTime: OffsetDateTime,
@@ -123,7 +111,6 @@ class TimeUseDiaryController(
         accessCheck(AclKey(studyId), EnumSet.of(Permission.READ))
         logger.info("Retrieving TimeUseDiary ids from study $studyId for $participantId")
         val submissionsIdsByDate = timeUseDiaryService.getParticipantTUDSubmissionsByDate(
-            organizationId,
             studyId,
             participantId,
             startDateTime,
@@ -137,9 +124,7 @@ class TimeUseDiaryController(
                 AuditEventType.GET_TIME_USE_DIARY_SUBMISSION,
                 "[$participantId]: $startDateTime - $endDateTime",
                 studyId,
-                organizationId,
-                mapOf()
-                )
+            )
         )
         submissionsIdsByDate.values.flatten().forEach {
             accessCheck(AclKey(it), EnumSet.of(Permission.READ))
@@ -149,17 +134,17 @@ class TimeUseDiaryController(
 
     @Timed
     @GetMapping(
-        path = [STUDY_PATH + STUDY_ID_PATH],
+        path = [STUDY_ID_PATH + IDS_PATH],
         produces = [MediaType.APPLICATION_JSON_VALUE]
     )
-    override fun getStudyTUDSubmissionsByDate(
+    override fun getStudyTUDSubmissionIdsByDate(
         @PathVariable(STUDY_ID) studyId: UUID,
         @RequestParam(START_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) startDateTime: OffsetDateTime,
         @RequestParam(END_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) endDateTime: OffsetDateTime,
-    ): Map<OffsetDateTime, Set<UUID>> {
+    ): Map<LocalDate, Set<UUID>> {
         ensureReadAccess(AclKey(studyId))
         logger.info("Retrieving TimeUseDiary ids from study $studyId")
-        val submissionsIdsByDate = timeUseDiaryService.getStudyTUDSubmissionsByDate(
+        val submissionsIdsByDate = timeUseDiaryService.getStudyTUDSubmissionIdsByDate(
             studyId,
             startDateTime,
             endDateTime
@@ -176,67 +161,56 @@ class TimeUseDiaryController(
     }
 
     @Override
-    override fun downloadTimeUseDiaryData(
-        @PathVariable(ORGANIZATION_ID) organizationId: UUID,
+    override fun getStudyTUDSubmissions(
         @PathVariable(STUDY_ID) studyId: UUID,
-        @PathVariable(PARTICIPANT_ID) participantId: String,
-        @RequestParam(DOWNLOAD_TYPE) downloadType: TimeUseDiaryDownloadDataType,
-        @RequestBody submissionIds: Set<UUID>
-    ): Iterable<Map<String,Any>> {
-        throw TimeUseDiaryDownloadExcpetion(studyId,
-            "This implementation of the overloaded downloadTimeUseDiaryData method should not be used. " +
-                    "Instead use the implementation that includes an HttpServletResponse parameter.")
+        @RequestParam(DATA_TYPE) dataType: TimeUseDiaryDownloadDataType,
+        @RequestParam(START_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) startDateTime: OffsetDateTime,
+        @RequestParam(END_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) endDateTime: OffsetDateTime,
+    ): Iterable<List<Map<String, Any>>> {
+        ensureReadAccess(AclKey(studyId))
+        return timeUseDiaryService.getStudyTUDSubmissions(
+            studyId,
+            dataType,
+            startDateTime,
+            endDateTime
+        )
     }
 
     @Timed
     @GetMapping(
-        path = [ORGANIZATION_ID_PATH + STUDY_ID_PATH + PARTICIPANT_ID_PATH],
-        consumes = [MediaType.APPLICATION_JSON_VALUE],
-        produces = [MediaType.APPLICATION_JSON_VALUE, CustomMediaType.TEXT_CSV_VALUE]
+        path = [STUDY_ID_PATH],
+        produces = [MediaType.APPLICATION_JSON_VALUE]
     )
-    fun downloadTimeUseDiaryData(
-        @PathVariable(ORGANIZATION_ID) organizationId: UUID,
+    fun getStudyTUDSubmissions(
         @PathVariable(STUDY_ID) studyId: UUID,
-        @PathVariable(PARTICIPANT_ID) participantId: String,
-        @RequestParam(DOWNLOAD_TYPE) downloadType: TimeUseDiaryDownloadDataType,
-        @RequestBody submissionIds: Set<UUID>,
+        @RequestParam(DATA_TYPE) dataType: TimeUseDiaryDownloadDataType,
+        @RequestParam(START_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) startDateTime: OffsetDateTime,
+        @RequestParam(END_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) endDateTime: OffsetDateTime,
         response: HttpServletResponse
-    ): Iterable<Map<String,Any>> {
-        accessCheck(AclKey(studyId), EnumSet.of(Permission.READ))
-        val data = timeUseDiaryService.downloadTimeUseDiaryData(
-            organizationId,
+    ): Iterable<List<Map<String, Any>>> {
+        val data = getStudyTUDSubmissions(
             studyId,
-            participantId,
-            downloadType,
-            submissionIds
+            dataType,
+            startDateTime,
+            endDateTime
         )
 
-        val filename = "$participantId-$downloadType-${LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE)}.csv"
-        response.contentType = CustomMediaType.TEXT_CSV_VALUE
-        response.setHeader("Content-Disposition","attachment; filename=$filename")
+        val filename = "TimeUseDiary_${dataType}_${LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE)}.csv"
+
+        ChronicleServerUtil.setDownloadContentType(response, FileType.csv)
+        ChronicleServerUtil.setContentDisposition(response, filename, FileType.csv)
 
         recordEvent(
             AuditableEvent(
-                AclKey(studyId),
-                Principals.getCurrentSecurablePrincipal().id,
-                Principals.getCurrentUser(),
-                AuditEventType.DOWNLOAD_TIME_USE_DIARY_SUBMISSIONS,
-                downloadType.toString(),
-                studyId,
-                organizationId,
-                mapOf()
+                aclKey = AclKey(studyId),
+                securablePrincipalId = Principals.getCurrentSecurablePrincipal().id,
+                principal = Principals.getCurrentUser(),
+                eventType = AuditEventType.DOWNLOAD_TIME_USE_DIARY_SUBMISSIONS,
+                description = dataType.toString(),
+                study = studyId
             )
         )
 
         return data
-    }
-
-    @Timed
-    @GetMapping(
-        path = [STATUS_PATH]
-    )
-    override fun isRunning(): Boolean {
-        logger.info("Time Use Diary API is running...")
-        return true
     }
 }

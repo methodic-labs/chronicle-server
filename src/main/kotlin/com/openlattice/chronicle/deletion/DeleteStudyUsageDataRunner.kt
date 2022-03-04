@@ -30,7 +30,6 @@ class DeleteStudyUsageDataRunner(
     }
 
     override fun runJob(connection: Connection, job: ChronicleJob): List<AuditableEvent> {
-        logger.info("Running delete study usage events task.")
         // delete usage data from redshift with separate connection
         val (flavor, eventHds) = storageResolver.getDefaultEventStorage()
         val deletedRows = eventHds.connection.use { eventConnection ->
@@ -61,10 +60,10 @@ class DeleteStudyUsageDataRunner(
 
 
     // Delete chronicle study usage data from event storage and return count of deleted rows
-    private fun deleteChronicleStudyUsageData(connection: Connection, jobData: DeleteStudyUsageData): Long {
-        logger.info("Deleting usage data with studyId = {}", jobData.studyId)
+    private fun deleteChronicleStudyUsageData(connection: Connection, jobDefinition: DeleteStudyUsageData): Long {
+        logger.info("Deleting usage data with studyId = {}", jobDefinition.studyId)
         return connection.prepareStatement(DELETE_CHRONICLE_STUDY_USAGE_DATA_SQL).use { ps ->
-            ps.setObject(1, jobData.studyId)
+            ps.setObject(1, jobDefinition.studyId)
             ps.executeUpdate().toLong()
         }
     }
