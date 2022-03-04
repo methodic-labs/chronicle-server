@@ -8,6 +8,7 @@ import com.geekbeast.postgres.PostgresDatatype
 import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
 import com.geekbeast.util.log
+import com.google.common.collect.Maps
 import com.google.common.util.concurrent.MoreExecutors
 import com.hazelcast.core.HazelcastInstance
 import com.hazelcast.query.Predicates
@@ -136,11 +137,10 @@ class ImportController(
     override fun importStudies(@RequestBody config: ImportStudiesConfiguration) {
         ensureAdminAccess()
         val hds = dataSourceManager.getDataSource(config.dataSourceName)
-        val studiesByEkId = mutableMapOf<UUID, Study>()
-        val studiesByLegacyStudyId = mutableMapOf<UUID, UUID>()
-        val studiesByOrganizationId = mutableMapOf<UUID, MutableSet<Study>>()
-        val usersByOrganizationId = mutableMapOf<UUID, MutableSet<UUID>>()
-        val settingsByLegacyStudyId = mutableMapOf<UUID, Map<String, Any>>()
+        val studiesByEkId = Maps.newConcurrentMap<UUID,UUID>()
+        val studiesByLegacyStudyId = Maps.newConcurrentMap<UUID,UUID>()
+        val studiesByOrganizationId = Maps.newConcurrentMap<UUID,UUID>()
+        val settingsByLegacyStudyId = Maps.newConcurrentMap<UUID,UUID>()
 
         BasePostgresIterable(
             PreparedStatementHolderSupplier(hds, getStudySettingsSql(config.studySettingsTable)) {}
