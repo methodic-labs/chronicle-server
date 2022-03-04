@@ -180,7 +180,6 @@ class HazelcastAuthorizationService(
         insertPermissions.executeUpdate()
 
         aces.loadAll(setOf(AceKey(aclKey, principal)), true)
-        securableObjectTypes.loadAll(setOf(aclKey), true)
     }
 
     /** Add Permissions **/

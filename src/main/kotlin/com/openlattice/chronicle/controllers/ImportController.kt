@@ -8,12 +8,14 @@ import com.geekbeast.postgres.PostgresDatatype
 import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
 import com.hazelcast.core.HazelcastInstance
+import com.hazelcast.query.Predicates
 import com.openlattice.chronicle.auditing.AuditingManager
-import com.openlattice.chronicle.authorization.AuthorizationManager
-import com.openlattice.chronicle.authorization.AuthorizingComponent
+import com.openlattice.chronicle.authorization.*
+import com.openlattice.chronicle.authorization.mapstores.UserMapstore
 import com.openlattice.chronicle.candidates.Candidate
 import com.openlattice.chronicle.constants.OutputConstants
 import com.openlattice.chronicle.data.ParticipationStatus
+import com.openlattice.chronicle.hazelcast.HazelcastMap
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.import.ImportApi
 import com.openlattice.chronicle.import.ImportApi.Companion.APP_USAGE_SURVEY
@@ -49,7 +51,7 @@ import java.sql.ResultSet
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.ZoneId
-import java.util.UUID
+import java.util.*
 
 /**
  *
@@ -106,6 +108,8 @@ class ImportController(
         """.trimIndent()
     }
 
+    private val usersMap = HazelcastMap.USERS.getMap(hazelcast)
+
     @PostMapping(
         path = [STUDIES],
         produces = [MediaType.APPLICATION_JSON_VALUE],
@@ -116,6 +120,8 @@ class ImportController(
         val hds = dataSourceManager.getDataSource(config.dataSourceName)
         val studiesByEkId = mutableMapOf<UUID, Study>()
         val studiesByLegacyStudyId = mutableMapOf<UUID, UUID>()
+        val studiesByOrganizationId = mutableMapOf<UUID, MutableSet<Study>>()
+        val usersByOrganizationId = mutableMapOf<UUID, MutableSet<UUID>>()
         val settingsByLegacyStudyId = mutableMapOf<UUID, Map<String, Any>>()
 
         BasePostgresIterable(
@@ -124,7 +130,7 @@ class ImportController(
             val v2StudyId: UUID? = v2StudyId(it)
             val studySettings = mapper.readValue<Map<String, Any>>(it.getString(SETTINGS.name))
             if (v2StudyId != null) {
-                settingsByLegacyStudyId[v2StudyId] = studySettings ?: mapOf()
+                settingsByLegacyStudyId[v2StudyId] = studySettings
             }
         }.count()
 
@@ -139,6 +145,8 @@ class ImportController(
             check(study.id == studyId) { "Safety check to make sure study id got set appropriately" }
 
             studiesByEkId[it.getObject(V2_STUDY_EK_ID, UUID::class.java)] = study
+            studiesByOrganizationId.getOrPut(it.getObject(V2_ORGANIZATION_ID, UUID::class.java)) { mutableSetOf() }
+                .add(study)
 
             if (v2StudyId != null) {
                 studiesByLegacyStudyId[v2StudyId] = study.id
@@ -171,6 +179,80 @@ class ImportController(
             studyService.registerParticipant(study.id, participant)
             logger.info("Registered participant {} in study {}", participant.participantId, study)
         }.count()
+
+        val legacy_users = BasePostgresIterable(
+            PreparedStatementHolderSupplier(hds, getLegacyUserSql(config.usersTable!!)) {}
+        ) {
+            LegacyUser(
+                it.getObject("participant_es_id", UUID::class.java),
+                it.getString("principal_id"),
+                it.getString("name"),
+                it.getString("email")
+            )
+        }
+            .filter { it.legacyEsName.startsWith("chronicle_participants_") }
+            .forEach {
+                it.legacyEsId = UUID.fromString(StringUtils.removeStart(it.legacyEsName, "chronicle_participants_"))
+                val userStudyId = studiesByLegacyStudyId[it.legacyEsId]
+                val p = tryGetPrincipal(it.principalId, it.email)
+                if (userStudyId != null && p != null) {
+                    val userStudy = studyService.getStudy(userStudyId)
+                    authorizationManager.addPermission(
+                        AclKey(userStudy.id),
+                        p,
+                        EnumSet.allOf(Permission::class.java)
+                    )
+                } else {
+                    logger.warn("Unable to resolve legacy study $it")
+                }
+            }
+
+        val users = BasePostgresIterable(
+            PreparedStatementHolderSupplier(hds, getUserSql(config.usersTable!!)) {}
+        ) {
+            val organizationId = it.getObject("organization_id", UUID::class.java)
+            val principalId = it.getString("principal_id")
+            val principalEmail = it.getString("principal_email")
+
+            //Except for legacy org, lookup users and grant permission on studies in that org.
+            //For legacy org we will rely on granting users permissions based off of what is in permissions table
+            val orgStudies = studiesByOrganizationId[organizationId] ?: setOf()
+            if (organizationId != LEGACY_ORG_ID) {
+                val principal = tryGetPrincipal(principalId, principalEmail)
+                if (principal != null) {
+                    orgStudies.forEach { orgStudy ->
+                        authorizationManager.addPermission(
+                            AclKey(orgStudy.id),
+                            principal,
+                            EnumSet.allOf(Permission::class.java)
+                        )
+                    }
+                }
+            }
+        }
+
+    }
+
+    private fun tryGetPrincipal(principalId: String, principalEmail: String): Principal? {
+        if (usersMap.containsKey(principalId)) {
+            val user = usersMap.getValue(principalId)
+            if (user.email == principalEmail) {
+                return Principal(PrincipalType.USER, principalId)
+            }
+        }
+
+        val maybeUsers = usersMap.values(Predicates.equal(UserMapstore.EMAIL_INDEX, principalEmail))
+
+        if (maybeUsers.size > 1) {
+            logger.warn("Found more than 1 user with e-mail: $principalEmail, using the first")
+        }
+
+        return if (maybeUsers.isNotEmpty()) {
+            Principal(PrincipalType.USER, maybeUsers.first().id)
+        } else {
+            logger.warn("Didn't find any users with e-mail $principalEmail... skipping")
+            null
+        }
     }
 
     @PostMapping(
@@ -196,8 +278,10 @@ class ImportController(
                         return@forEach
                     }
                     var index = 0
-                    val androidUniqueDates = connection.createArrayOf(PostgresDatatype.DATE.sql(), it.androidUniqueDates.toTypedArray())
-                    val tudUniqueDates = connection.createArrayOf(PostgresDatatype.DATE.sql(), it.tudUniqueDates.toTypedArray())
+                    val androidUniqueDates =
+                        connection.createArrayOf(PostgresDatatype.DATE.sql(), it.androidUniqueDates.toTypedArray())
+                    val tudUniqueDates =
+                        connection.createArrayOf(PostgresDatatype.DATE.sql(), it.tudUniqueDates.toTypedArray())
 
                     ps.setObject(++index, studyId)
                     ps.setString(++index, it.participantId)
@@ -226,7 +310,7 @@ class ImportController(
             PreparedStatementHolderSupplier(
                 hds,
                 "SELECT * FROM ${config.appUsageSurveyTable}"
-            ){}
+            ) {}
         ) {
             appUsageSurvey(it)
         }.toList()
@@ -274,8 +358,8 @@ class ImportController(
             PreparedStatementHolderSupplier(
                 hds,
                 "SELECT * FROM ${ChroniclePostgresTables.SYSTEM_APPS.name}"
-            ){}
-        ){
+            ) {}
+        ) {
             ResultSetAdapters.systemApp(it)
         }.toList()
 
@@ -355,9 +439,13 @@ class ImportController(
 
     private fun legacyStudyId(rs: ResultSet): Map<UUID, UUID> {
         return mapOf(
-            rs.getObject(PostgresColumns.LEGACY_STUDY_ID.name, UUID::class.java) to rs.getObject(PostgresColumns.STUDY_ID.name, UUID::class.java)
+            rs.getObject(
+                PostgresColumns.LEGACY_STUDY_ID.name,
+                UUID::class.java
+            ) to rs.getObject(PostgresColumns.STUDY_ID.name, UUID::class.java)
         )
     }
+
     private fun v2StudyId(rs: ResultSet): UUID? {
         val v2StudyIdStr = rs.getString(V2_STUDY_ID)
         return if (StringUtils.isNotBlank(v2StudyIdStr)) UUID.fromString(v2StudyIdStr) else null
@@ -386,6 +474,8 @@ private const val TUD_FIRST_DATE = "tud_first_date"
 private const val TUD_LAST_DATE = "tud_last_date"
 private const val V2_STUDY_EK_ID = "v2_study_ekid"
 private const val V2_STUDY_ID = "v2_study_id"
+private const val V2_ORGANIZATION_ID = "v2_organization_id"
+private val LEGACY_ORG_ID = UUID.fromString("7349c446-2acc-4d14-b2a9-a13be39cff93")
 
 private fun getStudiesSql(studiesTable: String): String {
     return """
@@ -403,6 +493,27 @@ private fun getStudySettingsSql(studySettingsTable: String): String {
     return """
         SELECT * FROM $studySettingsTable
     """.trimIndent()
+}
+
+private fun getUserSql(usersTable: String): String {
+    return """
+        SELECT * FROM $usersTable
+    """.trimIndent()
+}
+
+private fun getLegacyUserSql(legacyUsersTable: String): String {
+    return """
+        SELECT * FROM $legacyUsersTable
+    """.trimIndent()
+}
+
+private data class LegacyUser(
+    val participantEsId: UUID,
+    val principalId: String,
+    val legacyEsName: String,
+    val email: String
+) {
+    var legacyEsId: UUID = UUID(0, 0)
 }
 
 private data class V2AppUsageEntity(
