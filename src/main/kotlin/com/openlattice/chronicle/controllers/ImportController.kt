@@ -47,6 +47,7 @@ import com.zaxxer.hikari.HikariDataSource
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
+import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
@@ -190,8 +191,9 @@ class ImportController(
         ) {
             val participant = participant(it)
             val studyEkId = it.getObject(V2_STUDY_EK_ID, UUID::class.java)
+            val context = SecurityContextHolder.getContext()
             executor.submit {
-
+                SecurityContextHolder.setContext(context)
                 val study = studiesByEkId[studyEkId] ?: throw StudyNotFoundException(
                     studyEkId,
                     "Missing study with legacy id $studyEkId"
