@@ -79,7 +79,7 @@ class ImportController(
     companion object {
         private val logger = LoggerFactory.getLogger(ImportController::class.java)
         private val mapper: ObjectMapper = ObjectMappers.newJsonMapper()
-        private val executor = MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(8) )
+        private val executor = MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(8))
 
         private val INSERT_LEGACY_STUDY_ID_SQL = """
             INSERT INTO ${LEGACY_STUDY_IDS.name}(${PostgresColumns.STUDY_ID.name}, ${PostgresColumns.LEGACY_STUDY_ID.name})
@@ -155,23 +155,22 @@ class ImportController(
         val studies = BasePostgresIterable(
             PreparedStatementHolderSupplier(hds, getStudiesSql(config.studiesTable)) {}
         ) {
-            executor.submit {
-                val v2StudyId: UUID? = v2StudyId(it)
-                val study = study(it, settingsByLegacyStudyId[v2StudyId])
-                val studyId = studyService.createStudy(study)
+            val v2StudyId: UUID? = v2StudyId(it)
+            val study = study(it, settingsByLegacyStudyId[v2StudyId])
 
-                logger.info("Created study {}", study)
-                check(study.id == studyId) { "Safety check to make sure study id got set appropriately" }
+            val studyId = studyService.createStudy(study)
 
-                studiesByEkId[it.getObject(V2_STUDY_EK_ID, UUID::class.java)] = study
-                studiesByOrganizationId.getOrPut(it.getObject(V2_ORGANIZATION_ID, UUID::class.java)) { mutableSetOf() }
-                    .add(study)
+            logger.info("Created study {}", study)
+            check(study.id == studyId) { "Safety check to make sure study id got set appropriately" }
 
-                if (v2StudyId != null) {
-                    studiesByLegacyStudyId[v2StudyId] = study.id
-                }
+            studiesByEkId[it.getObject(V2_STUDY_EK_ID, UUID::class.java)] = study
+            studiesByOrganizationId.getOrPut(it.getObject(V2_ORGANIZATION_ID, UUID::class.java)) { mutableSetOf() }
+                .add(study)
+
+            if (v2StudyId != null) {
+                studiesByLegacyStudyId[v2StudyId] = study.id
             }
-        }.map { it.get() }
+        }.count()
 
         val legacyInserts = hds.connection.use { connection ->
             connection.prepareStatement(INSERT_LEGACY_STUDY_ID_SQL).use { ps ->
@@ -189,9 +188,9 @@ class ImportController(
         val participants = BasePostgresIterable(
             PreparedStatementHolderSupplier(hds, getCandidatesSql(config.candidatesTable)) {}
         ) {
+            val participant = participant(it)
+            val studyEkId = it.getObject(V2_STUDY_EK_ID, UUID::class.java)
             executor.submit {
-                val participant = participant(it)
-                val studyEkId = it.getObject(V2_STUDY_EK_ID, UUID::class.java)
 
                 val study = studiesByEkId[studyEkId] ?: throw StudyNotFoundException(
                     studyEkId,
