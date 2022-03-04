@@ -44,7 +44,8 @@ import java.util.stream.Stream
 interface AuthorizationManager {
     /**
      * Creates a securable object, registers it's type, and ensures that the creating principal at least has at least
-     * owner permissions so they can manage the ACL via the API.
+     * owner permissions so they can manage the ACL via the API. This version of the API is designed to be used in
+     * transactions.
      *
      * NOTE: There is still a failure mode here if the principal is a role that is not assigned to anyone.
      *
@@ -57,6 +58,25 @@ interface AuthorizationManager {
     @Timed
     fun createUnnamedSecurableObject(
         connection: Connection,
+        aclKey: AclKey,
+        principal: Principal,
+        permissions: EnumSet<Permission> = EnumSet.allOf(Permission::class.java),
+        objectType: SecurableObjectType,
+        expirationDate: OffsetDateTime =  OffsetDateTime.MAX
+    )
+
+    /**
+     * Creates a securable object, registers it's type, and ensures that the creating principal at least has at least
+     * owner permissions so they can manage the ACL via the API.
+     *
+     * NOTE: There is still a failure mode here if the principal is a role that is not assigned to anyone.
+     *
+     * @param aclKey The unique acl key for the object.
+     * @param principal The creating principal.
+     * @param permissions The permissions to grant to that principal.
+     */
+    @Timed
+    fun createUnnamedSecurableObject(
         aclKey: AclKey,
         principal: Principal,
         permissions: EnumSet<Permission> = EnumSet.allOf(Permission::class.java),
