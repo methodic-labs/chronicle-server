@@ -140,7 +140,7 @@ class ImportController(
         val studiesByEkId = Maps.newConcurrentMap<UUID, Study>()
         val studiesByLegacyStudyId = mutableMapOf<UUID, UUID>()
         val studiesByOrganizationId = mutableMapOf<UUID, MutableSet<Study>>()
-        val settingsByLegacyStudyId = Maps.newConcurrentMap<UUID, Map<String, Any>>()
+        val settingsByLegacyStudyId = mutableMapOf<UUID, Map<String, Any>>()
 
         BasePostgresIterable(
             PreparedStatementHolderSupplier(hds, getStudySettingsSql(config.studySettingsTable)) {}
