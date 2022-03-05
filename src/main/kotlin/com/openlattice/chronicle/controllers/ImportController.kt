@@ -7,7 +7,6 @@ import com.geekbeast.mappers.mappers.ObjectMappers
 import com.geekbeast.postgres.PostgresDatatype
 import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
-import com.geekbeast.util.log
 import com.google.common.collect.Maps
 import com.google.common.util.concurrent.MoreExecutors
 import com.hazelcast.core.HazelcastInstance
@@ -15,6 +14,7 @@ import com.hazelcast.query.Predicates
 import com.openlattice.chronicle.auditing.AuditingManager
 import com.openlattice.chronicle.authorization.*
 import com.openlattice.chronicle.authorization.mapstores.UserMapstore
+import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.candidates.Candidate
 import com.openlattice.chronicle.constants.OutputConstants
 import com.openlattice.chronicle.data.ParticipationStatus
@@ -41,6 +41,8 @@ import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.LEGAC
 import com.openlattice.chronicle.storage.PostgresColumns
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SETTINGS
 import com.openlattice.chronicle.storage.RedshiftColumns
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PARTICIPANT_ID
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.study.Study
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryResponse
 import com.zaxxer.hikari.HikariDataSource
@@ -82,7 +84,16 @@ class ImportController(
         private val logger = LoggerFactory.getLogger(ImportController::class.java)
         private val mapper: ObjectMapper = ObjectMappers.newJsonMapper()
         private val executor = MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(8))
-//        const val CREATE_LEGACY
+
+        /**
+         * 1. study id the new id
+         * 2. legacy_study_id the old legacy_study_id
+         */
+        private val UPDATE_STUDY_ID = """
+            UPDATE particpant_export SET study_id = ? WHERE legacy_study_id = ? 
+        """
+
+
         private val INSERT_LEGACY_STUDY_ID_SQL = """
             INSERT INTO ${LEGACY_STUDY_IDS.name}(${PostgresColumns.STUDY_ID.name}, ${PostgresColumns.LEGACY_STUDY_ID.name})
             VALUES (?, ?)
@@ -171,7 +182,24 @@ class ImportController(
             if (v2StudyId != null) {
                 studiesByLegacyStudyId[v2StudyId] = study.id
             }
-        }.count()
+            v2StudyId to studyId
+        }.forEach { (v2StudyId, studyId) ->
+            hds.connection.use { connection ->
+                val partcipantsUpdated = connection.prepareStatement(UPDATE_STUDY_ID).use { ps ->
+                    ps.setObject(1, studyId)
+                    ps.setObject(2, v2StudyId)
+                    ps.executeUpdate()
+                }
+                logger.info("Updated $partcipantsUpdated participant for legacy study $v2StudyId with new id $studyId")
+            }
+
+            //Let's make sure admins have full access.
+            authorizationManager.addPermission(
+                AclKey(studyId),
+                Principals.getAdminRole(),
+                EnumSet.allOf(Permission::class.java)
+            )
+        }
 
         val legacyInserts = hds.connection.use { connection ->
             connection.prepareStatement(INSERT_LEGACY_STUDY_ID_SQL).use { ps ->
@@ -198,7 +226,15 @@ class ImportController(
                     studyEkId,
                     "Missing study with legacy id $studyEkId"
                 )
-                studyService.registerParticipant(study.id, participant)
+                val candidateId = studyService.registerParticipant(study.id, participant)
+
+                //Let's make sure admins have full access.
+                authorizationManager.addPermission(
+                    AclKey(candidateId),
+                    Principals.getAdminRole(),
+                    EnumSet.allOf(Permission::class.java)
+                )
+                
                 logger.info("Registered participant {} in study {}", participant.participantId, study)
             }
         }.map { it.get() }
