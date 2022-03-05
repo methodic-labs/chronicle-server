@@ -132,9 +132,9 @@ interface AuthorizingComponent : AuditingComponent {
     fun isAuthenticated(): Boolean = Principals.getCurrentSecurablePrincipal().principal.type == PrincipalType.USER
 
     fun ensureAdminAccess() {
-//        if (!isAdmin()) {
-//            throw ForbiddenException("Only admins are allowed to perform this action.")
-//        }
+        if (!isAdmin()) {
+            throw ForbiddenException("Only admins are allowed to perform this action.")
+        }
     }
 
     fun authorize(
