@@ -229,7 +229,7 @@ class StudyService(
          * sort by most recently created
          * 1. current user principal id
          * 2. organization id
-        */
+         */
         private val GET_ORG_STUDIES_SQL = """
             SELECT ${STUDIES.name}.*, org_studies.${ORGANIZATION_IDS.name}
             FROM ${STUDIES.name}
@@ -266,7 +266,7 @@ class StudyService(
             SELECT * FROM ${STUDY_PARTICIPANTS.name} WHERE ${STUDY_ID.name} = ?
         """.trimIndent()
 
-        private fun selectStudyIdSql(table: String) :String {
+        private fun selectStudyIdSql(table: String): String {
             return when (table) {
                 LEGACY_STUDY_IDS.name -> """
                     SELECT ${STUDY_ID.name} FROM ${LEGACY_STUDY_IDS.name} WHERE ${LEGACY_STUDY_ID.name} = ?                    
@@ -281,6 +281,7 @@ class StudyService(
         private val PARTICIPANT_STATS_COLUMNS = PARTICIPANT_STATS.columns.joinToString { it.name }
         private val PARTICIPANT_STATS_PARAMS = PARTICIPANT_STATS.columns.joinToString { "?" }
         private val PARTICIPANT_STATS_UPDATE_PARAMS = PARTICIPANT_STATS.columns.joinToString { "${it.name} = ?" }
+
         /**
          * PreparedStatement bind order
          * 1) studyId
@@ -311,7 +312,7 @@ class StudyService(
         """.trimIndent()
     }
 
-    override fun createStudy( study: Study ) : UUID {
+    override fun createStudy(study: Study): UUID {
         val (flavor, hds) = storageResolver.getDefaultPlatformStorage()
         check(flavor == PostgresFlavor.VANILLA) { "Only vanilla postgres supported for studies." }
         study.id = idGenerationService.getNextId()
@@ -395,16 +396,18 @@ class StudyService(
     }
 
     override fun getStudies(studyIds: Collection<UUID>): Iterable<Study> {
-        return BasePostgresIterable(
-            PreparedStatementHolderSupplier(storageResolver.getPlatformStorage(), GET_STUDIES_SQL, 256) { ps ->
-                val pgStudyIds = PostgresArrays.createUuidArray(ps.connection, studyIds)
-                ps.setArray(1, pgStudyIds)
-                ps.executeQuery()
-            }
-        ) { ResultSetAdapters.study(it) }
+        return studies.getAll(studyIds.toSet()).values
+//        return BasePostgresIterable(
+//            PreparedStatementHolderSupplier(storageResolver.getPlatformStorage(), GET_STUDIES_SQL, 256) { ps ->
+//                val pgStudyIds = PostgresArrays.createUuidArray(ps.connection, studyIds)
+//                ps.setArray(1, pgStudyIds)
+//                ps.executeQuery()
+//            }
+//        ) { ResultSetAdapters.study(it) }
     }
 
     override fun getOrgStudies(organizationId: UUID): List<Study> {
+        //TODO: Retrieve studies from the cache.
         return BasePostgresIterable(
             PreparedStatementHolderSupplier(storageResolver.getPlatformStorage(), GET_ORG_STUDIES_SQL, 256) { ps ->
                 ps.setObject(1, Principals.getCurrentUser().id)
@@ -436,9 +439,10 @@ class StudyService(
             ps.setObject(14, studyId)
             ps.executeUpdate()
         }
+        studies.loadAll(setOf(studyId), true)
     }
 
-    override fun registerParticipant( studyId: UUID, participant: Participant) : UUID {
+    override fun registerParticipant(studyId: UUID, participant: Participant): UUID {
         return storageResolver.getPlatformStorage().connection.use { conn ->
             AuditedOperationBuilder<UUID>(conn, auditingManager)
                 .operation { connection -> registerParticipant(connection, studyId, participant) }
@@ -454,6 +458,7 @@ class StudyService(
                 .buildAndRun()
         }
     }
+
     override fun registerParticipant(connection: Connection, studyId: UUID, participant: Participant): UUID {
         val candidateId = candidateService.registerCandidate(connection, participant.candidate)
         enrollmentService.registerParticipant(
@@ -521,7 +526,11 @@ class StudyService(
         }
     }
 
-    override fun removeParticipantsFromStudy(connection: Connection, studyId: UUID, participantIds: Collection<String>): Int {
+    override fun removeParticipantsFromStudy(
+        connection: Connection,
+        studyId: UUID,
+        participantIds: Collection<String>
+    ): Int {
         return connection.prepareStatement(REMOVE_PARTICIPANTS_FROM_STUDY_SQL).use { ps ->
             ps.setObject(1, studyId)
             val pgParticipantIds = PostgresArrays.createTextArray(ps.connection, participantIds)
@@ -530,7 +539,7 @@ class StudyService(
         }
     }
 
-    override fun getStudySettings(studyId: UUID): Map<String, Any>{
+    override fun getStudySettings(studyId: UUID): Map<String, Any> {
         return storageResolver.getPlatformStorage().connection.use { connection ->
             connection.prepareStatement(GET_STUDY_SETTINGS_SQL).use { ps ->
                 ps.setObject(1, studyId)
@@ -557,7 +566,7 @@ class StudyService(
             PreparedStatementHolderSupplier(hds, GET_STUDY_PARTICIPANT_STATS) { ps ->
                 ps.setObject(1, studyId)
             }
-        ) { ResultSetAdapters.participantStats(it)}
+        ) { ResultSetAdapters.participantStats(it) }
             .associateBy { it.participantId }
     }
 
@@ -571,7 +580,7 @@ class StudyService(
                     ps.setObject(1, studyId)
                     ps.setString(2, participantId)
                 }
-            ) { ResultSetAdapters.participantStats(it)}.first()
+            ) { ResultSetAdapters.participantStats(it) }.first()
         } catch (ex: Exception) {
             return null
         }
@@ -580,9 +589,12 @@ class StudyService(
     override fun insertOrUpdateParticipantStats(stats: ParticipantStats) {
         storageResolver.getPlatformStorage().connection.use { connection ->
             connection.prepareStatement(INSERT_OR_UPDATE_PARTICIPANT_STATS).use { ps ->
-                val androidDatesArr =  connection.createArrayOf(PostgresDatatype.DATE.sql(), stats.androidUniqueDates.toTypedArray())
-                val iosDatesArr = connection.createArrayOf(PostgresDatatype.DATE.sql(), stats.iosUniqueDates.toTypedArray())
-                val tudDatesArr = connection.createArrayOf(PostgresDatatype.DATE.sql(), stats.tudUniqueDates.toTypedArray())
+                val androidDatesArr =
+                    connection.createArrayOf(PostgresDatatype.DATE.sql(), stats.androidUniqueDates.toTypedArray())
+                val iosDatesArr =
+                    connection.createArrayOf(PostgresDatatype.DATE.sql(), stats.iosUniqueDates.toTypedArray())
+                val tudDatesArr =
+                    connection.createArrayOf(PostgresDatatype.DATE.sql(), stats.tudUniqueDates.toTypedArray())
 
                 var index = 0
 

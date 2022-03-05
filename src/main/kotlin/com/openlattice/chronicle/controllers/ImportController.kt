@@ -234,7 +234,7 @@ class ImportController(
                     Principals.getAdminRole(),
                     EnumSet.allOf(Permission::class.java)
                 )
-                
+
                 logger.info("Registered participant {} in study {}", participant.participantId, study)
             }
         }.map { it.get() }
