@@ -7,7 +7,6 @@ import com.geekbeast.mappers.mappers.ObjectMappers
 import com.geekbeast.postgres.PostgresDatatype
 import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
-import com.geekbeast.util.log
 import com.hazelcast.core.HazelcastInstance
 import com.openlattice.chronicle.auditing.AuditingManager
 import com.openlattice.chronicle.authorization.AuthorizationManager
@@ -91,6 +90,18 @@ class ImportController(
          */
         private val INSERT_TUD_SUBMISSIONS_SQL = """
             INSERT INTO ${ChroniclePostgresTables.TIME_USE_DIARY_SUBMISSIONS.name} values (?, ?, ?, ?, ?::jsonb)
+        """.trimIndent()
+
+        /**
+         * PreparedStatement bind order
+         * 1) studyId
+         * 2) participantId
+         * 3) submissionId
+         * 4) date
+         * 5) data
+         */
+        private val INSERT_INTO_TUD_SUMMARIZED_SQL = """
+            "INSERT INTO ${ChroniclePostgresTables.TIME_USE_DIARY_SUMMARIZED.name} values (?, ?, ?, ?, ?::jsonb)"
         """.trimIndent()
 
         private val PARTICIPANT_STATS_COLUMNS = linkedSetOf(
@@ -304,7 +315,7 @@ class ImportController(
     override fun importTimeUseDiarySubmissions(@RequestBody config: ImportStudiesConfiguration) {
         ensureAdminAccess()
         val hds = dataSourceManager.getDataSource(config.dataSourceName)
-        val entities = BasePostgresIterable(
+        val tudEntities = BasePostgresIterable(
             PreparedStatementHolderSupplier(
                 hds,
                 "SELECT * FROM ${config.timeUseDiaryTable}"
@@ -313,15 +324,19 @@ class ImportController(
             tudSubmission(it)
         }.toList()
 
+        val legacySubmissionIdMapping: MutableMap<UUID, UUID> = mutableMapOf()
+
         val inserted = hds.connection.prepareStatement(INSERT_TUD_SUBMISSIONS_SQL).use { ps ->
-            entities.forEach {
+            tudEntities.forEach {
                 val realStudyId = studyService.getStudyId(it.study_id)
                 if (realStudyId == null) {
                     logger.error("invalid study id ${it.study_id}")
                     return@forEach
                 }
                 var index = 0
-                ps.setObject(++index, idGenerationService.getNextId())
+                val submissionId = idGenerationService.getNextId()
+                legacySubmissionIdMapping[submissionId] = it.submission_id
+                ps.setObject(++index, submissionId)
                 ps.setObject(++index, realStudyId)
                 ps.setString(++index, it.participant_id)
                 ps.setObject(++index, it.submission_date)
@@ -330,7 +345,43 @@ class ImportController(
             }
             ps.executeBatch().sum()
         }
-        logger.info("Imported $inserted time use diary submissions. Expected to import ${entities.size}")
+        logger.info("Imported $inserted time use diary submissions. Expected to import ${tudEntities.size}")
+
+        val tudSubmissionById: Map<UUID, TudSubmission> = tudEntities.associateBy { it.submission_id }
+
+        val summarizedData = BasePostgresIterable(
+            PreparedStatementHolderSupplier(hds, "SELECT * FROM ${config.timeUseDiarySummarizedTable}") {}
+        ) {
+            tudSummarized(it)
+        }.toList()
+
+        val summaryInserts = hds.connection.prepareStatement(INSERT_INTO_TUD_SUMMARIZED_SQL).use { ps ->
+            summarizedData.forEach {
+                val submissionId = legacySubmissionIdMapping[it.submissionId] ?: return@forEach
+                val tudSubmission = tudSubmissionById.getValue(it.submissionId)
+                val realStudyId = studyService.getStudyId(tudSubmission.study_id)
+                if (realStudyId == null) {
+                    logger.error("invalid study id ${tudSubmission.study_id}")
+                    return@forEach
+                }
+                var index = 0
+                ps.setObject(++index, realStudyId)
+                ps.setObject(++index, submissionId)
+                ps.setObject(++index, tudSubmission.participant_id)
+                ps.setObject(++index, tudSubmission.submission_date)
+                ps.setString(++index, mapper.writeValueAsString(it.entities))
+                ps.addBatch()
+            }
+            ps.executeBatch().sum()
+        }
+        logger.info("inserted $summaryInserts entities into time use diary summary table")
+    }
+
+    private fun tudSummarized(rs: ResultSet): TudSummarizedEntity{
+        return TudSummarizedEntity(
+            submissionId = rs.getObject(PostgresColumns.SUBMISSION_ID.name, UUID::class.java),
+            entities = mapper.readValue(rs.getString("data"))
+        )
     }
 
     private fun tudSubmission(rs: ResultSet): TudSubmission {
@@ -343,6 +394,7 @@ class ImportController(
             submission = mapper.readValue(rs.getString(PostgresColumns.SUBMISSION.name))
         )
     }
+
 
     private fun participant(rs: ResultSet): Participant {
         var status = rs.getString(LEGACY_PARTICIPATION_STATUS)
@@ -485,4 +537,14 @@ private data class TudSubmission(
     val submission_id: UUID,
     val submission: List<TimeUseDiaryResponse>,
     val submission_date: OffsetDateTime
+)
+
+private data class QuestionAnswer(
+    val variable: String,
+    val value: String
+)
+
+private data class TudSummarizedEntity(
+    val submissionId: UUID,
+    val entities: Set<QuestionAnswer>,
 )

@@ -66,6 +66,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_VERSION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUMMARY_DATA
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TITLE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_UNIQUE_DATES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_FIRST_DATE
@@ -241,6 +242,17 @@ class ChroniclePostgresTables {
                 TUD_LAST_DATE,
                 TUD_UNIQUE_DATES
             ).primaryKey(STUDY_ID, PARTICIPANT_ID)
+
+        @JvmField
+        val TIME_USE_DIARY_SUMMARIZED = PostgresTableDefinition("time_use_diary_summarized")
+            .addColumns(
+                STUDY_ID,
+                PARTICIPANT_ID,
+                SUBMISSION_ID,
+                SUBMISSION_DATE,
+                SUMMARY_DATA
+            )
+            .primaryKey(SUBMISSION_ID)
 
         @JvmField
         val SYSTEM_APPS = PostgresTableDefinition("system_apps")
