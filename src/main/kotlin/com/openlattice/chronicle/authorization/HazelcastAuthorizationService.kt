@@ -144,6 +144,24 @@ class HazelcastAuthorizationService(
     }
 
     override fun createUnnamedSecurableObject(
+        aclKey: AclKey,
+        principal: Principal,
+        permissions: EnumSet<Permission>,
+        objectType: SecurableObjectType,
+        expirationDate: OffsetDateTime
+    ) {
+        authorizationStorage.second.connection.use { connection ->
+            createUnnamedSecurableObject(
+                connection,
+                aclKey,
+                principal,
+                permissions,
+                objectType,
+                expirationDate
+            )
+        }
+    }
+    override fun createUnnamedSecurableObject(
         connection: Connection,
         aclKey: AclKey,
         principal: Principal,
@@ -180,7 +198,6 @@ class HazelcastAuthorizationService(
         insertPermissions.executeUpdate()
 
         aces.loadAll(setOf(AceKey(aclKey, principal)), true)
-        securableObjectTypes.loadAll(setOf(aclKey), true)
     }
 
     /** Add Permissions **/
