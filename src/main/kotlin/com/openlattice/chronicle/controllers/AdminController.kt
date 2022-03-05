@@ -73,7 +73,7 @@ class AdminController(
     }
 
     @Timed
-    @GetMapping(value = [PRINCIPALS + ID_PATH])
+    @GetMapping(value = [PRINCIPALS])
     override fun getCurrentUserPrincipals(): Set<Principal> {
         ensureAuthenticated()
         return Principals.getCurrentPrincipals()
