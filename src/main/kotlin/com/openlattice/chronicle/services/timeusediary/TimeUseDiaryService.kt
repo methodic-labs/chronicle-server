@@ -196,7 +196,8 @@ class TimeUseDiaryService(
         return mapOf(
             TimeUseDiaryColumTitles.PARTICIPANT_ID to rs.getString(PARTICIPANT_ID.name),
             TimeUseDiaryColumTitles.TIMESTAMP to  rs.getObject(SUBMISSION_DATE.name, OffsetDateTime::class.java),
-            TimeUseDiaryColumTitles.STUDY_ID to rs.getObject(STUDY_ID.name)
+            TimeUseDiaryColumTitles.STUDY_ID to rs.getObject(STUDY_ID.name),
+            TimeUseDiaryColumTitles.SUBMISSION_ID to rs.getObject(SUBMISSION_ID.name)
         )
     }
 
