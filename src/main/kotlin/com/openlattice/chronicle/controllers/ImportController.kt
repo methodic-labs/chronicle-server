@@ -101,7 +101,7 @@ class ImportController(
          * 5) data
          */
         private val INSERT_INTO_TUD_SUMMARIZED_SQL = """
-            "INSERT INTO ${ChroniclePostgresTables.TIME_USE_DIARY_SUMMARIZED.name} values (?, ?, ?, ?, ?::jsonb)"
+            INSERT INTO ${ChroniclePostgresTables.TIME_USE_DIARY_SUMMARIZED.name} values (?, ?, ?, ?, ?::jsonb)
         """.trimIndent()
 
         private val PARTICIPANT_STATS_COLUMNS = linkedSetOf(
@@ -335,7 +335,7 @@ class ImportController(
                 }
                 var index = 0
                 val submissionId = idGenerationService.getNextId()
-                legacySubmissionIdMapping[submissionId] = it.submission_id
+                legacySubmissionIdMapping[it.submission_id] = submissionId
                 ps.setObject(++index, submissionId)
                 ps.setObject(++index, realStudyId)
                 ps.setString(++index, it.participant_id)
@@ -366,8 +366,8 @@ class ImportController(
                 }
                 var index = 0
                 ps.setObject(++index, realStudyId)
+                ps.setString(++index, tudSubmission.participant_id)
                 ps.setObject(++index, submissionId)
-                ps.setObject(++index, tudSubmission.participant_id)
                 ps.setObject(++index, tudSubmission.submission_date)
                 ps.setString(++index, mapper.writeValueAsString(it.entities))
                 ps.addBatch()
