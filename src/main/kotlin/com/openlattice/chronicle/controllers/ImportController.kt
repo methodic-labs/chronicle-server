@@ -82,7 +82,7 @@ class ImportController(
         private val logger = LoggerFactory.getLogger(ImportController::class.java)
         private val mapper: ObjectMapper = ObjectMappers.newJsonMapper()
         private val executor = MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(8))
-
+        const val CREATE_LEGACY
         private val INSERT_LEGACY_STUDY_ID_SQL = """
             INSERT INTO ${LEGACY_STUDY_IDS.name}(${PostgresColumns.STUDY_ID.name}, ${PostgresColumns.LEGACY_STUDY_ID.name})
             VALUES (?, ?)
@@ -242,7 +242,7 @@ class ImportController(
             //Except for legacy org, lookup users and grant permission on studies in that org.
             //For legacy org we will rely on granting users permissions based off of what is in permissions table
             val orgStudies = studiesByOrganizationId[organizationId] ?: setOf()
-            if (organizationId != LEGACY_ORG_ID) {
+            if (organizationId != LEGACY_ORG_ID && principalEmail != null) {
                 val principal = tryGetPrincipal(principalId, principalEmail)
                 if (principal != null) {
                     orgStudies.forEach { orgStudy ->
@@ -252,6 +252,10 @@ class ImportController(
                             EnumSet.allOf(Permission::class.java)
                         )
                     }
+                }
+            } else {
+                if (principalEmail == null) {
+                    logger.warn("Encountered missing e-mail for principal with id $principalId in org $organizationId")
                 }
             }
         }.count()
