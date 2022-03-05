@@ -90,7 +90,7 @@ class ImportController(
          * 2. legacy_study_id the old legacy_study_id
          */
         private val UPDATE_STUDY_ID = """
-            UPDATE particpant_export SET study_id = ? WHERE legacy_study_id = ? 
+            UPDATE participant_export SET study_id = ? WHERE legacy_study_id = ? 
         """
 
 
