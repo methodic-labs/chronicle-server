@@ -82,7 +82,7 @@ class ImportController(
         private val logger = LoggerFactory.getLogger(ImportController::class.java)
         private val mapper: ObjectMapper = ObjectMappers.newJsonMapper()
         private val executor = MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(8))
-        const val CREATE_LEGACY
+//        const val CREATE_LEGACY
         private val INSERT_LEGACY_STUDY_ID_SQL = """
             INSERT INTO ${LEGACY_STUDY_IDS.name}(${PostgresColumns.STUDY_ID.name}, ${PostgresColumns.LEGACY_STUDY_ID.name})
             VALUES (?, ?)
