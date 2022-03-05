@@ -206,7 +206,7 @@ class ImportController(
         logger.info("Starting to grant permissions.")
 
         val legacy_users = BasePostgresIterable(
-            PreparedStatementHolderSupplier(hds, getLegacyUserSql(config.usersTable!!)) {}
+            PreparedStatementHolderSupplier(hds, getLegacyUserSql(config.legacyUsersTable!!)) {}
         ) {
             LegacyUser(
                 it.getObject("participant_es_id", UUID::class.java),
