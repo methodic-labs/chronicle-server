@@ -11,18 +11,18 @@ import com.openlattice.chronicle.participants.ParticipantStats
 import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.services.studies.StudyService
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.TIME_USE_DIARY_SUBMISSIONS
+import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.TIME_USE_DIARY_SUMMARIZED
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUMMARY_DATA
 import com.openlattice.chronicle.storage.StorageResolver
-import com.openlattice.chronicle.timeusediary.TimeUseDiaryColumTitles
-import com.openlattice.chronicle.timeusediary.TimeUseDiaryDownloadDataType
-import com.openlattice.chronicle.timeusediary.TimeUseDiaryQuestionCodes
-import com.openlattice.chronicle.timeusediary.TimeUseDiaryResponse
+import com.openlattice.chronicle.timeusediary.*
 import com.openlattice.chronicle.util.ChronicleServerUtil
 import org.slf4j.LoggerFactory
+import java.lang.IllegalArgumentException
 import java.sql.Connection
 import java.sql.ResultSet
 import java.sql.SQLException
@@ -164,6 +164,9 @@ class TimeUseDiaryService(
         startDate: OffsetDateTime,
         endDate: OffsetDateTime,
     ): Iterable<List<Map<String, Any>>> {
+        if (downloadType == TimeUseDiaryDownloadDataType.Summarized) {
+            return getTimeUseDiarySummarizedData(studyId, startDate, endDate)
+        }
         try {
             val hds = storageResolver.getPlatformStorage(PostgresFlavor.VANILLA)
             val postgresIterable = BasePostgresIterable(
@@ -180,12 +183,39 @@ class TimeUseDiaryService(
                     when(downloadType) {
                         TimeUseDiaryDownloadDataType.DayTime -> getDayTimeDataColumnMapping(rs)
                         TimeUseDiaryDownloadDataType.NightTime -> getNightTimeDataColumnMapping(rs)
-                        TimeUseDiaryDownloadDataType.Summarized -> listOf()
+                        else -> {throw IllegalArgumentException("Unexpected data type: $downloadType")}
                     }
             }
             return TimeUseDiaryPostgresDownloadWrapper(postgresIterable).withColumnAdvice(downloadType.downloadColumnTitles.toList())
         } catch (ex: Exception) {
             logger.error("Error downloading TUD data", ex)
+            return listOf()
+        }
+    }
+
+    private fun getTimeUseDiarySummarizedData(
+        studyId: UUID,
+        startDate: OffsetDateTime,
+        endDate: OffsetDateTime
+    ): Iterable<List<Map<String, Any>>> {
+        try {
+            val hds = storageResolver.getPlatformStorage()
+            val iterable = BasePostgresIterable(
+                PreparedStatementHolderSupplier(
+                    hds,
+                    downloadSummarizedTimeUseDiaryDataSql,
+                    1024
+                ) { ps ->
+                    var index = 0
+                    ps.setObject(++index, studyId)
+                    ps.setObject(++index,startDate)
+                    ps.setObject(++index, endDate)
+                }
+            ) { getSummarizedDataColumnMapping(it)}
+
+            return TimeUseDiaryPostgresDownloadWrapper(iterable).withColumnAdvice(TimeUseDiaryDownloadDataType.Summarized.downloadColumnTitles.toList())
+        } catch (ex: Exception) {
+            logger.info("Exception when downloading summarized data for study $studyId", ex)
             return listOf()
         }
     }
@@ -199,6 +229,20 @@ class TimeUseDiaryService(
             TimeUseDiaryColumTitles.STUDY_ID to rs.getObject(STUDY_ID.name),
             TimeUseDiaryColumTitles.SUBMISSION_ID to rs.getObject(SUBMISSION_ID.name)
         )
+    }
+
+    private fun getSummarizedDataColumnMapping(rs: ResultSet): List<Map<String, Any>> {
+        val defaultColumnMapping = getDefaultColumnMapping(rs)
+
+        val values: List<TimeUseDiarySummarizedEntity> = mapper.readValue(rs.getString(SUMMARY_DATA.name))
+        val valuesByVariableNames = values.associateBy { it.variable }
+
+        val unmappedTitles = TimeUseDiaryDownloadDataType.Summarized.downloadColumnTitles - defaultColumnMapping.keys
+        val summarizedValuesMapping = unmappedTitles.associateWith {
+            valuesByVariableNames[it]?.value ?: ""
+        }
+
+        return listOf(defaultColumnMapping + summarizedValuesMapping)
     }
 
     private fun getDayTimeDataColumnMapping(rs: ResultSet): List<Map<String, Any>> {
@@ -374,4 +418,17 @@ class TimeUseDiaryService(
         AND ${SUBMISSION_DATE.name} BETWEEN ? AND ?
     """.trimIndent()
 
+    /**
+     * PreparedStatement bind order
+     * 1) studyId
+     * 2) startDate
+     * 3) endDate
+     */
+    private val downloadSummarizedTimeUseDiaryDataSql = """
+        SELECT ${STUDY_ID.name}, ${SUBMISSION_ID.name}, ${PARTICIPANT_ID.name}, ${SUBMISSION_DATE.name}, ${SUMMARY_DATA.name}
+        FROM ${TIME_USE_DIARY_SUMMARIZED.name}
+        WHERE ${STUDY_ID.name} = ?
+        AND ${SUBMISSION_DATE.name} >= ?
+        AND ${SUBMISSION_DATE.name} < ?
+    """.trimIndent()
 }
