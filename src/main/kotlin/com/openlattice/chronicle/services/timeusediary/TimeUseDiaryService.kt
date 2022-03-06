@@ -233,9 +233,12 @@ class TimeUseDiaryService(
 
     private fun getSummarizedDataColumnMapping(rs: ResultSet): List<Map<String, Any>> {
         val defaultColumnMapping = getDefaultColumnMapping(rs)
+
         val values: List<TimeUseDiarySummarizedEntity> = mapper.readValue(rs.getString(SUMMARY_DATA.name))
         val valuesByVariableNames = values.associateBy { it.variable }
-        val summarizedValuesMapping = TimeUseDiaryDownloadDataType.Summarized.downloadColumnTitles.associateWith {
+
+        val unmappedTitles = TimeUseDiaryDownloadDataType.Summarized.downloadColumnTitles - defaultColumnMapping.keys
+        val summarizedValuesMapping = unmappedTitles.associateWith {
             valuesByVariableNames[it]?.value ?: ""
         }
 
