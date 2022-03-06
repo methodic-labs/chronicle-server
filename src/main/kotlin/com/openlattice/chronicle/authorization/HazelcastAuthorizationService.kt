@@ -1,10 +1,6 @@
 package com.openlattice.chronicle.authorization
 
 import com.codahale.metrics.annotation.Timed
-import com.google.common.collect.HashMultimap
-import com.google.common.collect.ImmutableSet
-import com.google.common.collect.Maps
-import com.google.common.collect.SetMultimap
 import com.google.common.eventbus.EventBus
 import com.hazelcast.aggregation.Aggregators
 import com.hazelcast.core.HazelcastInstance
@@ -28,6 +24,8 @@ import com.openlattice.chronicle.util.toAceKeys
 import com.geekbeast.postgres.PostgresArrays
 import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
+import com.google.common.collect.*
+import com.google.common.util.concurrent.MoreExecutors
 import com.openlattice.chronicle.authorization.processors.*
 import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
@@ -35,10 +33,10 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_TYPE
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
-import java.security.InvalidParameterException
 import java.sql.Connection
 import java.time.OffsetDateTime
 import java.util.*
+import java.util.concurrent.Executors
 import java.util.function.Function
 import java.util.stream.Collectors
 import java.util.stream.Stream
@@ -51,7 +49,6 @@ class HazelcastAuthorizationService(
     private val principalsMapManager: PrincipalsMapManager
 ) : AuthorizationManager {
     private val authorizationStorage = storageResolver.getDefaultPlatformStorage()
-
     private val aces: IMap<AceKey, AceValue> = HazelcastMap.PERMISSIONS.getMap(hazelcastInstance)
     private val securableObjectTypes = HazelcastMap.SECURABLE_OBJECT_TYPES.getMap(hazelcastInstance)
 
@@ -160,7 +157,13 @@ class HazelcastAuthorizationService(
                 expirationDate
             )
         }
+        ensureAceIsLoaded(aclKey, principal)
     }
+
+    override fun ensureAceIsLoaded(aclKey: AclKey, principal: Principal) {
+        aces.loadAll(setOf(AceKey(aclKey, principal)), true)
+    }
+
     override fun createUnnamedSecurableObject(
         connection: Connection,
         aclKey: AclKey,
@@ -196,8 +199,6 @@ class HazelcastAuthorizationService(
         insertPermissions.setArray(4, PostgresArrays.createTextArray(connection, permissions.map { it.name }))
         insertPermissions.setObject(5, expirationDate)
         insertPermissions.executeUpdate()
-
-        aces.loadAll(setOf(AceKey(aclKey, principal)), true)
     }
 
     /** Add Permissions **/

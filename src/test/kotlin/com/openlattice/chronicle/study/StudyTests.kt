@@ -201,6 +201,14 @@ class StudyTests : ChronicleServerTests() {
 
     @Test
     fun testStudyParticipants() {
-        TODO("add test after implementing functionality to update table")
+        val p1 = Participant("p1", c1!!, ParticipationStatus.ENROLLED)
+        val p2 = Participant("p1", c2!!, ParticipationStatus.PAUSED)
+        val studyId = clientUser1.studyApi.createStudy(s1!!)
+        val candidateId1 = clientUser1.studyApi.registerParticipant(studyId, p1)
+        val candidateId2 = clientUser1.studyApi.registerParticipant(studyId, p2)
+        c1!!.id = candidateId1
+        c2!!.id = candidateId2
+        val actual = clientUser1.studyApi.getStudyParticipants(studyId).toSet()
+        Assert.assertTrue(setOf(p1,p1).containsAll(actual))
     }
 }

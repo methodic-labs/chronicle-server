@@ -23,7 +23,7 @@ class RetrofitClientFactory{
         const val LOCAL_BASE_URL = "http://localhost:8080/"
         const val STAGING_BASE_URL = "https://api.staging.openlattice.com/"
         const val TESTING_BASE_URL = "http://localhost:8080/"
-        const val TESTING_CHRONICLE_URL = "http://localhost:8090/"
+        const val TESTING_CHRONICLE_URL = "http://localhost:8080/"
 
         private val jsonMapper = ObjectMappers.getJsonMapper()
         /**

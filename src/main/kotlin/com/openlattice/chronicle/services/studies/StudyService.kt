@@ -316,14 +316,14 @@ class StudyService(
         val (flavor, hds) = storageResolver.getDefaultPlatformStorage()
         check(flavor == PostgresFlavor.VANILLA) { "Only vanilla postgres supported for studies." }
         study.id = idGenerationService.getNextId()
-
+        val aclKey = AclKey(study.id)
         hds.connection.use { connection ->
             AuditedOperationBuilder<Unit>(connection, auditingManager)
-                .operation { connection -> createStudy(connection, study) }
+                .operation { createStudy(it, study) }
                 .audit {
                     listOf(
                         AuditableEvent(
-                            AclKey(study.id),
+                            aclKey,
                             eventType = AuditEventType.CREATE_STUDY,
                             description = "",
                             study = study.id,
@@ -332,7 +332,7 @@ class StudyService(
                         )
                     ) + study.organizationIds.map { organizationId ->
                         AuditableEvent(
-                            AclKey(study.id),
+                            aclKey,
                             eventType = AuditEventType.ASSOCIATE_STUDY,
                             description = "",
                             study = study.id,
@@ -343,6 +343,7 @@ class StudyService(
                 }
                 .buildAndRun()
         }
+        authorizationService.ensureAceIsLoaded(aclKey, Principals.getCurrentUser())
         return study.id
     }
 
@@ -468,6 +469,7 @@ class StudyService(
             candidateId,
             participant.participationStatus
         )
+        authorizationService.ensureAceIsLoaded(AclKey(candidateId), Principals.getCurrentUser() )
         return candidateId
     }
 

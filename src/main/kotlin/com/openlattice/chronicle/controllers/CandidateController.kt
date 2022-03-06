@@ -8,6 +8,7 @@ import com.openlattice.chronicle.auditing.AuditingManager
 import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.authorization.AuthorizationManager
 import com.openlattice.chronicle.authorization.AuthorizingComponent
+import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.candidates.Candidate
 import com.openlattice.chronicle.candidates.CandidateApi
 import com.openlattice.chronicle.candidates.CandidateApi.Companion.BULK_PATH
@@ -77,7 +78,7 @@ class CandidateController @Inject constructor(
     override fun registerCandidate(@RequestBody candidate: Candidate): UUID {
         ensureAuthenticated()
         ensureUninitializedId(candidate.id) { "cannot register candidate with the given id" }
-        return storageResolver.getPlatformStorage().connection.use { conn ->
+        val candidateId = storageResolver.getPlatformStorage().connection.use { conn ->
             AuditedOperationBuilder<UUID>(conn, auditingManager)
                 .operation { connection -> candidateService.registerCandidate(connection, candidate) }
                 .audit { candidateId ->
@@ -90,5 +91,7 @@ class CandidateController @Inject constructor(
                 }
                 .buildAndRun()
         }
+        authorizationManager.ensureAceIsLoaded(AclKey(candidateId), Principals.getCurrentUser() )
+        return candidateId
     }
 }
