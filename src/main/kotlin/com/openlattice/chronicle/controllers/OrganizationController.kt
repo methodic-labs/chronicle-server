@@ -91,6 +91,7 @@ class OrganizationController @Inject constructor(
                 }
                 .buildAndRun()
         }
+            authorizationManager.refreshCache(AclKey(organization.id), Principals.getCurrentUser() )
         return organization.id
     }
 
