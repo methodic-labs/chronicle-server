@@ -27,7 +27,7 @@ hazelcast-clients:
 postgres:
     hikari:
         jdbcUrl: "jdbc:postgresql://localhost:5432/chronicle"
-        username: "test"
+        username: "oltest"
         password: "test"
         maximumPoolSize: 10
 
@@ -35,6 +35,6 @@ datasources:
     chronicle:
         hikari:
             jdbcUrl: "jdbc:postgresql://localhost:5432/chronicle"
-            username: "test"
+            username: "oltest"
             password: "test"
             maximumPoolSize: 10
