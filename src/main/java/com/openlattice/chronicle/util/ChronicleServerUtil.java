@@ -2,10 +2,13 @@ package com.openlattice.chronicle.util;
 
 import com.auth0.spring.security.api.authentication.JwtAuthentication;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Maps;
 import com.openlattice.chronicle.constants.*;
 import com.openlattice.chronicle.data.FileType;
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager;
+import com.openlattice.chronicle.study.ParticipantDataType;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
+import org.springframework.cglib.core.Local;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -29,6 +32,7 @@ public class ChronicleServerUtil {
     public static String ORG_STUDY_PARTICIPANT_DATASOURCE = " - orgId = {}, studyId = {}, participantId = {}, dataSourceId = {}";
     public static String STUDY_PARTICIPANT_DATASOURCE = " - studyId = {}, participantId = {}, dataSourceId = {}";
     public static String STUDY_PARTICIPANT = " - studyId = {}, participantId = {}";
+    public static String STUDY_PARTICIPANTS = " - studyId = {}, participantIds = {}";
 
     public static String getFirstValueOrNull( Map<FullQualifiedName, Set<Object>> entity, FullQualifiedName fqn ) {
         if ( entity.getOrDefault( fqn, Set.of() ).isEmpty() ) {
@@ -56,6 +60,22 @@ public class ChronicleServerUtil {
     }
 
     /* --------------------------------DATA DOWNLOAD UTILS ------------------------------------ */
+
+    public static String getDataDownloadFileName(
+            UUID studyId,
+            ParticipantDataType participantDataType
+    ) {
+        return getDataTypeToNameMapping().get(participantDataType) + "_" + studyId.toString() + LocalDate.now().format(DateTimeFormatter.ISO_DATE);
+    }
+
+    private static Map<ParticipantDataType, String> getDataTypeToNameMapping() {
+        return Map.of(
+                ParticipantDataType.appUsageSurvey, "AppUsage",
+                ParticipantDataType.iosSensor, "SensorData",
+                ParticipantDataType.preprocessed, "AndroidPreprocessed",
+                ParticipantDataType.usageEvents, "AndroidUsageEvents"
+        );
+    }
 
     public static String getSensorDataFileName(
             String participantId

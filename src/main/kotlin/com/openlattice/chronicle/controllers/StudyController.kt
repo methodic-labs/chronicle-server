@@ -37,12 +37,15 @@ import com.openlattice.chronicle.services.upload.AppDataUploadService
 import com.openlattice.chronicle.services.upload.SensorDataUploadService
 import com.openlattice.chronicle.sources.SourceDevice
 import com.openlattice.chronicle.storage.StorageResolver
+import com.openlattice.chronicle.study.ParticipantDataType
 import com.openlattice.chronicle.study.Study
 import com.openlattice.chronicle.study.StudyApi
 import com.openlattice.chronicle.study.StudyApi.Companion.ANDROID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.CONTROLLER
 import com.openlattice.chronicle.study.StudyApi.Companion.DATA_COLLECTION
 import com.openlattice.chronicle.study.StudyApi.Companion.DATA_PATH
+import com.openlattice.chronicle.study.StudyApi.Companion.DATA_TYPE
+import com.openlattice.chronicle.study.StudyApi.Companion.END_DATE
 import com.openlattice.chronicle.study.StudyApi.Companion.ENROLL_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.IOS_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.ORGANIZATION_ID
@@ -57,6 +60,7 @@ import com.openlattice.chronicle.study.StudyApi.Companion.SENSORS_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.SETTINGS_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.SOURCE_DEVICE_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.SOURCE_DEVICE_ID_PATH
+import com.openlattice.chronicle.study.StudyApi.Companion.START_DATE
 import com.openlattice.chronicle.study.StudyApi.Companion.STATS_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.STUDY_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.STUDY_ID_PATH
@@ -64,6 +68,7 @@ import com.openlattice.chronicle.study.StudyApi.Companion.VERIFY_PATH
 import com.openlattice.chronicle.study.StudyUpdate
 import com.openlattice.chronicle.util.ChronicleServerUtil
 import org.slf4j.LoggerFactory
+import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
@@ -75,6 +80,8 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import java.lang.IllegalArgumentException
+import java.time.OffsetDateTime
 import java.util.EnumSet
 import java.util.UUID
 import javax.inject.Inject
@@ -464,37 +471,37 @@ class StudyController @Inject constructor(
         return studyService.getStudySensors(studyId)
     }
 
-    @Timed
-    @GetMapping(
-        path = [STUDY_ID_PATH + PARTICIPANT_PATH + PARTICIPANT_ID_PATH + DATA_PATH + IOS_PATH],
-        produces = [MediaType.APPLICATION_JSON_VALUE]
-    )
-    fun downloadSensorData(
-        @PathVariable(STUDY_ID) studyId: UUID,
-        @PathVariable(PARTICIPANT_ID) participantId: String,
-        response: HttpServletResponse
-    ): Iterable<Map<String, Any>> {
-
-        val study = getStudy(studyId)
-        val sensors = study.retrieveConfiguredSensors()
-
-        if (sensors.isEmpty()) {
-            logger.warn(
-                "study does not have any configured sensors, exiting download" + ChronicleServerUtil.STUDY_PARTICIPANT,
-                studyId,
-                participantId
-            )
-            return listOf()
-        }
-
-        val data = downloadService.getParticipantSensorData(studyId, participantId, sensors)
-        val fileName = ChronicleServerUtil.getSensorDataFileName(participantId)
-
-        ChronicleServerUtil.setContentDisposition(response, fileName, FileType.csv)
-        ChronicleServerUtil.setDownloadContentType(response, FileType.csv)
-
-        return data
-    }
+//    @Timed
+//    @GetMapping(
+//        path = [STUDY_ID_PATH + PARTICIPANT_PATH + PARTICIPANT_ID_PATH + DATA_PATH + IOS_PATH],
+//        produces = [MediaType.APPLICATION_JSON_VALUE]
+//    )
+//    fun downloadSensorData(
+//        @PathVariable(STUDY_ID) studyId: UUID,
+//        @PathVariable(PARTICIPANT_ID) participantId: String,
+//        response: HttpServletResponse
+//    ): Iterable<Map<String, Any>> {
+//
+//        val study = getStudy(studyId)
+//        val sensors = study.retrieveConfiguredSensors()
+//
+//        if (sensors.isEmpty()) {
+//            logger.warn(
+//                "study does not have any configured sensors, exiting download" + ChronicleServerUtil.STUDY_PARTICIPANT,
+//                studyId,
+//                participantId
+//            )
+//            return listOf()
+//        }
+//
+//        val data = downloadService.getParticipantsSensorData(studyId, participantId, sensors)
+//        val fileName = ChronicleServerUtil.getSensorDataFileName(participantId)
+//
+//        ChronicleServerUtil.setContentDisposition(response, fileName, FileType.csv)
+//        ChronicleServerUtil.setDownloadContentType(response, FileType.csv)
+//
+//        return data
+//    }
 
     @Timed
     @GetMapping(
@@ -541,6 +548,71 @@ class StudyController @Inject constructor(
     override fun getParticipantStats(@PathVariable(STUDY_ID) studyId: UUID): Map<String, ParticipantStats> {
         ensureReadAccess(AclKey(studyId))
         return studyService.getStudyParticipantStats(studyId)
+    }
+
+    override fun getParticipantsData(
+        studyId: UUID,
+        dataType: ParticipantDataType,
+        participantIds: Set<String>,
+        startDateTime: OffsetDateTime?,
+        endDateTime: OffsetDateTime?
+    ): Iterable<Map<String, Any>> {
+        ensureReadAccess(AclKey(studyId))
+        if (participantIds.isEmpty()) {
+            throw IllegalArgumentException("Participants list cannot be empty")
+        }
+
+        return when(dataType) {
+            ParticipantDataType.preprocessed -> TODO("Not implemented")
+            ParticipantDataType.appUsageSurvey -> downloadService.getParticipantsAppUsageSurveyData(studyId, participantIds, startDateTime, endDateTime)
+            ParticipantDataType.iosSensor -> {
+                val sensors = getStudySensors(studyId)
+                downloadService.getParticipantsSensorData(studyId, participantIds, sensors, startDateTime, endDateTime)
+            }
+            ParticipantDataType.usageEvents -> {
+                downloadService.getParticipantsUsageEventsData(studyId, participantIds, startDateTime, endDateTime)
+            }
+        }
+    }
+
+    @Timed
+    @GetMapping(
+        path = [STUDY_ID_PATH + PARTICIPANTS_PATH + DATA_PATH],
+        produces = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    fun getParticipantsData(
+        @PathVariable(STUDY_ID) studyId: UUID,
+        @RequestParam(value = DATA_TYPE) dataType: ParticipantDataType,
+        @RequestParam(value = PARTICIPANT_ID) participantIds: Set<String>,
+        @RequestParam(value = START_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) startDateTime: OffsetDateTime?,
+        @RequestParam(value = END_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) endDateTime: OffsetDateTime?,
+        response: HttpServletResponse
+    ): Iterable<Map<String, Any>> {
+        val data = getParticipantsData(
+            studyId,
+            dataType,
+            participantIds,
+            startDateTime,
+            endDateTime
+        )
+
+        val fileName = "${ChronicleServerUtil.getDataDownloadFileName(studyId, dataType)}.csv"
+
+        ChronicleServerUtil.setDownloadContentType(response, FileType.csv)
+        ChronicleServerUtil.setContentDisposition(response, fileName, FileType.csv)
+
+        recordEvent(
+            AuditableEvent(
+                aclKey = AclKey(studyId),
+                securablePrincipalId = Principals.getCurrentSecurablePrincipal().id,
+                principal = Principals.getCurrentUser(),
+                eventType = AuditEventType.DOWNLOAD_PARTICIPANTS_DATA,
+                description = dataType.toString(),
+                study = studyId
+            )
+        )
+
+        return data
     }
 
     @Timed
