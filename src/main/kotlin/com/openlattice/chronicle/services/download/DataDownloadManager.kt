@@ -22,22 +22,22 @@ interface DataDownloadManager {
         studyId: UUID,
         participantIds: Set<String>,
         sensors: Set<SensorType>,
-        startDateTime: OffsetDateTime?,
-        endDateTime: OffsetDateTime?
+        startDateTime: OffsetDateTime,
+        endDateTime: OffsetDateTime
     ): Iterable<Map<String, Any>>
 
     fun getParticipantsAppUsageSurveyData(
         studyId: UUID,
         participantIds: Set<String>,
-        startDateTime: OffsetDateTime?,
-        endDateTime: OffsetDateTime?
+        startDateTime: OffsetDateTime,
+        endDateTime: OffsetDateTime
     ): Iterable<Map<String, Any>>
 
     fun getParticipantsUsageEventsData(
         studyId: UUID,
         participantIds: Set<String>,
-        startDateTime: OffsetDateTime?,
-        endDateTime: OffsetDateTime?
+        startDateTime: OffsetDateTime,
+        endDateTime: OffsetDateTime
     ): Iterable<Map<String, Any>>
 
     fun getQuestionnaireResponses(

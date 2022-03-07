@@ -1,6 +1,7 @@
 package com.openlattice.chronicle.controllers
 
 import com.codahale.metrics.annotation.Timed
+import com.google.common.base.MoreObjects
 import com.openlattice.chronicle.auditing.AuditEventType
 import com.openlattice.chronicle.auditing.AuditableEvent
 import com.openlattice.chronicle.auditing.AuditedOperationBuilder
@@ -20,6 +21,7 @@ import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.CONTROLL
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.DATA_PATH
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.DATA_TYPE
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.END_DATE
+import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.FILE_NAME
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.IDS_PATH
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.PARTICIPANTS_PATH
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.PARTICIPANT_ID
@@ -35,7 +37,6 @@ import org.slf4j.LoggerFactory
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.*
-import java.lang.IllegalArgumentException
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
@@ -222,8 +223,8 @@ class TimeUseDiaryController(
         studyId: UUID,
         participantIds: Set<String>,
         dataType: TimeUseDiaryDownloadDataType,
-        startDateTime: OffsetDateTime?,
-        endDateTime: OffsetDateTime?
+        startDateTime: OffsetDateTime,
+        endDateTime: OffsetDateTime
     ): Iterable<List<Map<String, Any>>> {
         ensureReadAccess(AclKey(studyId))
         return timeUseDiaryService.getStudyTUDSubmissions(
@@ -246,19 +247,21 @@ class TimeUseDiaryController(
         @RequestParam(DATA_TYPE) dataType: TimeUseDiaryDownloadDataType,
         @RequestParam(START_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) startDateTime: OffsetDateTime?,
         @RequestParam(END_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) endDateTime: OffsetDateTime?,
+        @RequestParam(FILE_NAME) fileName: String?,
         response: HttpServletResponse
     ): Iterable<List<Map<String, Any>>> {
         val data = getParticipantsTudSubmissions(
             studyId,
             participantIds,
             dataType,
-            startDateTime,
-            endDateTime
+            MoreObjects.firstNonNull(startDateTime, OffsetDateTime.MIN),
+            MoreObjects.firstNonNull(endDateTime, OffsetDateTime.MAX)
         )
-        val filename = "TimeUseDiary_${dataType}_${LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE)}.csv"
 
         ChronicleServerUtil.setDownloadContentType(response, FileType.csv)
-        ChronicleServerUtil.setContentDisposition(response, filename, FileType.csv)
+        ChronicleServerUtil.setContentDisposition(
+            response,
+            MoreObjects.firstNonNull(fileName, "TimeUseDiary_${dataType}_${LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE)}"), FileType.csv)
 
         recordEvent(
             AuditableEvent(

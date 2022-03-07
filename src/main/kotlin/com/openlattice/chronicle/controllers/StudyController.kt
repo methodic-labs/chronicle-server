@@ -1,6 +1,7 @@
 package com.openlattice.chronicle.controllers
 
 import com.codahale.metrics.annotation.Timed
+import com.google.common.base.MoreObjects
 import com.google.common.collect.SetMultimap
 import com.openlattice.chronicle.auditing.AuditEventType
 import com.openlattice.chronicle.auditing.AuditableEvent
@@ -47,6 +48,7 @@ import com.openlattice.chronicle.study.StudyApi.Companion.DATA_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.DATA_TYPE
 import com.openlattice.chronicle.study.StudyApi.Companion.END_DATE
 import com.openlattice.chronicle.study.StudyApi.Companion.ENROLL_PATH
+import com.openlattice.chronicle.study.StudyApi.Companion.FILE_NAME
 import com.openlattice.chronicle.study.StudyApi.Companion.IOS_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.ORGANIZATION_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.ORGANIZATION_ID_PATH
@@ -83,10 +85,12 @@ import org.springframework.web.bind.annotation.RestController
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
-import java.util.EnumSet
-import java.util.UUID
+import java.util.*
 import javax.inject.Inject
 import javax.servlet.http.HttpServletResponse
+import javax.validation.constraints.Max
+import javax.validation.constraints.Size
+import kotlin.NoSuchElementException
 
 
 /**
@@ -523,8 +527,8 @@ class StudyController @Inject constructor(
         studyId: UUID,
         dataType: ParticipantDataType,
         participantIds: Set<String>,
-        startDateTime: OffsetDateTime?,
-        endDateTime: OffsetDateTime?
+        startDateTime: OffsetDateTime,
+        endDateTime: OffsetDateTime
     ): Iterable<Map<String, Any>> {
         ensureReadAccess(AclKey(studyId))
         return when(dataType) {
@@ -551,20 +555,19 @@ class StudyController @Inject constructor(
         @RequestParam(value = PARTICIPANT_ID) participantIds: Set<String>,
         @RequestParam(value = START_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) startDateTime: OffsetDateTime?,
         @RequestParam(value = END_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) endDateTime: OffsetDateTime?,
+        @RequestParam(value = FILE_NAME) @Size(max = 64) fileName: String?,
         response: HttpServletResponse
     ): Iterable<Map<String, Any>> {
         val data = getParticipantsData(
             studyId,
             dataType,
             participantIds,
-            startDateTime,
-            endDateTime
+            MoreObjects.firstNonNull(startDateTime, OffsetDateTime.MIN),
+            MoreObjects.firstNonNull(endDateTime, OffsetDateTime.MAX)
         )
 
-        val fileName = "${dataType}_${LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE)}.csv"
-
         ChronicleServerUtil.setDownloadContentType(response, FileType.csv)
-        ChronicleServerUtil.setContentDisposition(response, fileName, FileType.csv)
+        ChronicleServerUtil.setContentDisposition(response, MoreObjects.firstNonNull(fileName, "${dataType}_${LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE)}"), FileType.csv)
 
         recordEvent(
             AuditableEvent(

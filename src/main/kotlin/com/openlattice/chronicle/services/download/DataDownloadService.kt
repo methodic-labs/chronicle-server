@@ -10,7 +10,6 @@ import com.openlattice.chronicle.constants.ParticipantDataType
 import com.openlattice.chronicle.converters.PostgresDownloadWrapper
 import com.openlattice.chronicle.sensorkit.SensorType
 import com.openlattice.chronicle.services.surveys.SurveysService
-import com.openlattice.chronicle.storage.ChroniclePostgresTables
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.APP_USAGE_SURVEY
 import com.openlattice.chronicle.storage.PostgresColumns
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_USERS
@@ -20,10 +19,8 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DEVICE_USAGE_
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.INTERACTION_TYPE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.KEYBOARD_METRICS_SENSOR_COLS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.MESSAGES_USAGE_SENSOR_COLS
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.ORGANIZATION_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PHONE_USAGE_SENSOR_COLS
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.RECORDED_DATE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.RECORDED_DATE_TIME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.SENSOR_TYPE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.SHARED_SENSOR_COLS
@@ -53,11 +50,24 @@ class DataDownloadService(
         private val CHRONICLE_USAGE_EVENTS_DEFS = CHRONICLE_USAGE_EVENTS.columns.map { it.name }
         private val CHRONICLE_USAGE_EVENTS_COLS = CHRONICLE_USAGE_EVENTS_DEFS.joinToString(",")
         private val CHRONICLE_USAGE_EVENT_SQL = """
-            SELECT $CHRONICLE_USAGE_EVENTS_COLS FROM ${CHRONICLE_USAGE_EVENTS.name} WHERE 
-             ${STUDY_ID.name} = ? AND ${PARTICIPANT_ID.name} = ?
+            SELECT $CHRONICLE_USAGE_EVENTS_COLS 
+            FROM ${CHRONICLE_USAGE_EVENTS.name} 
+            WHERE ${STUDY_ID.name} = ?
+            AND ${PARTICIPANT_ID.name} = ANY(?)
+            AND ${TIMESTAMP.name} >= ?
+            AND ${TIMESTAMP.name} < ?
         """.trimIndent()
 
         private val APP_USAGE_SURVEY_COLS = APP_USAGE_SURVEY.columns.joinToString { it.name }
+
+        val APP_USAGE_SURVEY_SQL = """
+             SELECT $APP_USAGE_SURVEY_COLS
+             FROM ${APP_USAGE_SURVEY.name}
+             WHERE ${STUDY_ID.name} = ?
+             AND ${PARTICIPANT_ID.name} = ANY(?)
+             AND ${TIMESTAMP.name} >= ?
+             AND ${TIMESTAMP.name} < ?
+        """.trimIndent()
 
         private const val FETCH_SIZE = 32768
 
@@ -75,21 +85,8 @@ class DataDownloadService(
         fun associateObject(rs: ResultSet, pcd: PostgresColumnDefinition, clazz: Class<*>) =
             pcd.name to rs.getObject(pcd.name, clazz)
 
-        private fun getSensorDateTimeFilterClause(startDateTime: OffsetDateTime?, endDateTime: OffsetDateTime?): String {
-            var result = ""
-            startDateTime?.let {
-                result += " AND ${RECORDED_DATE_TIME.name} >= ?"
-            }
-            endDateTime?.let {
-                result += " AND ${RECORDED_DATE_TIME.name} < ?"
-            }
-            return result
-        }
-
         private fun getSensorDataColsAndSql(
             sensors: Set<SensorType>,
-            startDateTime: OffsetDateTime?,
-            endDateTime: OffsetDateTime?
         ): Pair<Set<PostgresColumnDefinition>, String> {
             val mapping = mapOf(
                 SensorType.phoneUsage to PHONE_USAGE_SENSOR_COLS,
@@ -106,53 +103,13 @@ class DataDownloadService(
                 WHERE ${STUDY_ID.name} = ? 
                 AND ${PARTICIPANT_ID.name} = Any(?) 
                 AND ${SENSOR_TYPE.name} = Any(?) 
-                ${getSensorDateTimeFilterClause(startDateTime, endDateTime)}
+                AND ${RECORDED_DATE_TIME.name} >= ?
+                AND ${RECORDED_DATE_TIME.name} < ?
             """.trimIndent()
 
             return Pair(cols, sql)
         }
 
-        private fun getUsageEventsDateTimeFilterClause(startDateTime: OffsetDateTime?, endDateTime: OffsetDateTime?): String{
-            var result = ""
-            startDateTime?.let {
-                result += " AND ${TIMESTAMP.name} >= ?"
-            }
-            endDateTime?.let {
-                result += " AND ${TIMESTAMP.name} < ?"
-            }
-
-            return result
-        }
-
-        private fun getAppUsageDateTimeFilterClause(startDateTime: OffsetDateTime?, endDateTime: OffsetDateTime?): String {
-            var result = ""
-            startDateTime?.let {
-                result += " AND ${TIMESTAMP.name} >= ?"
-            }
-            endDateTime?.let {
-                result += " AND ${TIMESTAMP.name} < ?"
-            }
-            return result
-        }
-
-        private fun getUsageEventsSql(startDateTime: OffsetDateTime?, endDateTime: OffsetDateTime?): String {
-            return """
-                SELECT $CHRONICLE_USAGE_EVENTS_COLS 
-                FROM ${CHRONICLE_USAGE_EVENTS.name} 
-                WHERE ${STUDY_ID.name} = ? AND ${PARTICIPANT_ID.name} = Any (?)
-                ${getUsageEventsDateTimeFilterClause(startDateTime, endDateTime)}
-            """.trimIndent()
-        }
-
-        private fun getAppUsageSurveyDataSql(startDateTime: OffsetDateTime?, endDateTime: OffsetDateTime?): String {
-            return """
-                SELECT $APP_USAGE_SURVEY_COLS
-                FROM ${APP_USAGE_SURVEY.name}
-                WHERE ${STUDY_ID.name} = ?
-                AND ${PARTICIPANT_ID.name} = Any (?)
-                ${getAppUsageDateTimeFilterClause(startDateTime, endDateTime)}
-            """.trimIndent()
-        }
     }
 
     private fun getParticipantDataHelper(
@@ -202,8 +159,8 @@ class DataDownloadService(
         studyId: UUID,
         participantIds: Set<String>,
         sensors: Set<SensorType>,
-        startDateTime: OffsetDateTime?,
-        endDateTime: OffsetDateTime?
+        startDateTime: OffsetDateTime,
+        endDateTime: OffsetDateTime
     ): Iterable<Map<String, Any>> {
         if (sensors.isEmpty()) {
             logger.warn(
@@ -215,7 +172,7 @@ class DataDownloadService(
         }
 
         val (_, hds) = storageResolver.resolveAndGetFlavor(studyId)
-        val colsAndSql = getSensorDataColsAndSql(sensors, startDateTime, endDateTime)
+        val colsAndSql = getSensorDataColsAndSql(sensors)
         val cols = colsAndSql.first
         val sql = colsAndSql.second
 
@@ -229,12 +186,8 @@ class DataDownloadService(
                 ps.setString(++index, studyId.toString())
                 ps.setArray(++index, PostgresArrays.createTextArray(hds.connection, participantIds))
                 ps.setArray(++index, PostgresArrays.createTextArray(hds.connection, sensors.map { it.name }))
-                startDateTime?.let {
-                    ps.setObject(++index, it)
-                }
-                endDateTime?.let {
-                    ps.setObject(++index, it)
-                }
+                ps.setObject(++index, startDateTime)
+                ps.setObject(++index, endDateTime)
             }
         ) { rs ->
             cols.associate { col ->
@@ -251,26 +204,22 @@ class DataDownloadService(
     override fun getParticipantsAppUsageSurveyData(
         studyId: UUID,
         participantIds: Set<String>,
-        startDateTime: OffsetDateTime?,
-        endDateTime: OffsetDateTime?
+        startDateTime: OffsetDateTime,
+        endDateTime: OffsetDateTime
     ): Iterable<Map<String, Any>> {
 
         val hds = storageResolver.getPlatformStorage()
         val iterable = BasePostgresIterable<Map<String, Any>>(
             PreparedStatementHolderSupplier(
                 hds,
-                getAppUsageSurveyDataSql(startDateTime, endDateTime),
+                APP_USAGE_SURVEY_SQL,
                 FETCH_SIZE
             ) { ps ->
                 var index = 0
                 ps.setObject(++index, studyId)
                 ps.setArray(++index, PostgresArrays.createTextArray(hds.connection, participantIds))
-                startDateTime?.let {
-                    ps.setObject(++index, it)
-                }
-                endDateTime?.let {
-                    ps.setObject(++index, it)
-                }
+                ps.setObject(++index, startDateTime)
+                ps.setObject(++index, endDateTime)
             }
         ) { rs ->
             mapOf(
@@ -290,25 +239,21 @@ class DataDownloadService(
     override fun getParticipantsUsageEventsData(
         studyId: UUID,
         participantIds: Set<String>,
-        startDateTime: OffsetDateTime?,
-        endDateTime: OffsetDateTime?
+        startDateTime: OffsetDateTime,
+        endDateTime: OffsetDateTime
     ): Iterable<Map<String, Any>> {
         val (_, hds) = storageResolver.resolveAndGetFlavor(studyId)
         val pgIter = BasePostgresIterable<Map<String, Any>>(
             PreparedStatementHolderSupplier(
                 hds,
-                getUsageEventsSql(startDateTime, endDateTime),
+                CHRONICLE_USAGE_EVENT_SQL,
                 FETCH_SIZE
             ) { ps ->
                 var index = 0
                 ps.setString(++index, studyId.toString())
                 ps.setArray(++index, PostgresArrays.createTextArray(hds.connection, participantIds))
-                startDateTime?.let {
-                    ps.setObject(++index, it)
-                }
-                endDateTime?.let {
-                    ps.setObject(++index, it)
-                }
+                ps.setObject(++index, startDateTime)
+                ps.setObject(++index, endDateTime)
             }) { rs ->
             mapOf(
                 associateString(rs, STUDY_ID),

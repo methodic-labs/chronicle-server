@@ -163,8 +163,8 @@ class TimeUseDiaryService(
         studyId: UUID,
         participantIds: Set<String>?,
         downloadType: TimeUseDiaryDownloadDataType,
-        startDate: OffsetDateTime?,
-        endDate: OffsetDateTime?,
+        startDate: OffsetDateTime,
+        endDate: OffsetDateTime,
     ): Iterable<List<Map<String, Any>>> {
         if (downloadType == TimeUseDiaryDownloadDataType.Summarized) {
             return getTimeUseDiarySummarizedData(studyId, participantIds, startDate, endDate)
@@ -174,19 +174,15 @@ class TimeUseDiaryService(
             val postgresIterable = BasePostgresIterable(
                 PreparedStatementHolderSupplier(
                     hds,
-                    getTimeUseDiaryDayOrNightTimeDataSql(participantIds, startDate, endDate),
+                    getTimeUseDiaryDayOrNightTimeDataSql(participantIds),
                     1024
                 ) { ps ->
                     var index = 0
                     ps.setObject(++index, studyId)
+                    ps.setObject(++index, startDate)
+                    ps.setObject(++index, endDate)
                     participantIds?.let {
                         ps.setArray(++index, PostgresArrays.createTextArray(hds.connection, it))
-                    }
-                    startDate?.let {
-                        ps.setObject(++index, startDate)
-                    }
-                    endDate?.let {
-                        ps.setObject(++index, endDate)
                     }
                 }) { rs ->
                     when(downloadType) {
@@ -205,27 +201,23 @@ class TimeUseDiaryService(
     private fun getTimeUseDiarySummarizedData(
         studyId: UUID,
         participantIds: Set<String>?,
-        startDate: OffsetDateTime?,
-        endDate: OffsetDateTime?
+        startDate: OffsetDateTime,
+        endDate: OffsetDateTime
     ): Iterable<List<Map<String, Any>>> {
         try {
             val hds = storageResolver.getPlatformStorage()
             val iterable = BasePostgresIterable(
                 PreparedStatementHolderSupplier(
                     hds,
-                    getSummarizedTimeUseDiarySql(participantIds, startDate, endDate),
+                    getSummarizedTimeUseDiarySql(participantIds),
                     1024
                 ) { ps ->
                     var index = 0
                     ps.setObject(++index, studyId)
+                    ps.setObject(++index, startDate)
+                    ps.setObject(++index, endDate)
                     participantIds?.let {
                         ps.setArray(++index, PostgresArrays.createTextArray(hds.connection, it))
-                    }
-                    startDate?.let {
-                        ps.setObject(++index, startDate)
-                    }
-                    endDate?.let {
-                        ps.setObject(++index, endDate)
                     }
                 }
             ) { getSummarizedDataColumnMapping(it)}
@@ -377,47 +369,34 @@ class TimeUseDiaryService(
     }
 
     private fun getTimeUseDiaryDayOrNightTimeDataSql(
-        participantIds: Set<String>?,
-        startDate: OffsetDateTime?,
-        endDate: OffsetDateTime?
+        participantIds: Set<String>?
     ): String {
         var sql = """
              SELECT ${STUDY_ID.name}, ${SUBMISSION_ID.name}, ${PARTICIPANT_ID.name}, ${SUBMISSION_DATE.name}, ${SUBMISSION.name}
              FROM ${TIME_USE_DIARY_SUBMISSIONS.name}
              WHERE ${STUDY_ID.name} = ?
+             AND ${SUBMISSION_DATE.name} >= ?
+             AND ${SUBMISSION_DATE.name} < ?
         """.trimIndent()
-
         participantIds?.let {
             sql += " AND ${PARTICIPANT_ID.name} = ANY(?)"
-        }
-        startDate?.let {
-            sql += " AND ${SUBMISSION_DATE.name} >= ?"
-        }
-        endDate?.let {
-            sql += " AND ${SUBMISSION_DATE.name} < ?"
         }
         return sql
     }
 
     private fun getSummarizedTimeUseDiarySql(
         participantIds: Set<String>?,
-        startDate: OffsetDateTime?,
-        endDate: OffsetDateTime?
     ): String {
         var sql = """
             SELECT ${STUDY_ID.name}, ${SUBMISSION_ID.name}, ${PARTICIPANT_ID.name}, ${SUBMISSION_DATE.name}, ${SUMMARY_DATA.name}
             FROM ${TIME_USE_DIARY_SUMMARIZED.name}
             WHERE ${STUDY_ID.name} = ?
+            AND ${SUBMISSION_DATE.name} >= ?
+            AND ${SUBMISSION_DATE.name} < ?
         """.trimIndent()
 
         participantIds?.let {
             sql += " AND ${PARTICIPANT_ID.name} = ANY(?)"
-        }
-        startDate?.let {
-            sql += " AND ${SUBMISSION_DATE.name} >= ?"
-        }
-        endDate?.let {
-            sql += " AND ${SUBMISSION_DATE.name} < ?"
         }
 
         return sql
