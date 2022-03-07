@@ -394,11 +394,9 @@ class TimeUseDiaryService(
             AND ${SUBMISSION_DATE.name} >= ?
             AND ${SUBMISSION_DATE.name} < ?
         """.trimIndent()
-
         participantIds?.let {
             sql += " AND ${PARTICIPANT_ID.name} = ANY(?)"
         }
-
         return sql
     }
 
