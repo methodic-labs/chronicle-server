@@ -24,6 +24,7 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.ORGANIZATION_
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PHONE_USAGE_SENSOR_COLS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.RECORDED_DATE
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.RECORDED_DATE_TIME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.SENSOR_TYPE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.SHARED_SENSOR_COLS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.STUDY_ID
@@ -77,10 +78,10 @@ class DataDownloadService(
         private fun getSensorDateTimeFilterClause(startDateTime: OffsetDateTime?, endDateTime: OffsetDateTime?): String {
             var result = ""
             startDateTime?.let {
-                result += " AND ${RECORDED_DATE.name} >= ?"
+                result += " AND ${RECORDED_DATE_TIME.name} >= ?"
             }
             endDateTime?.let {
-                result += " AND ${RECORDED_DATE.name} < ?"
+                result += " AND ${RECORDED_DATE_TIME.name} < ?"
             }
             return result
         }
