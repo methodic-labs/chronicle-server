@@ -81,7 +81,9 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import java.lang.IllegalArgumentException
+import java.time.LocalDate
 import java.time.OffsetDateTime
+import java.time.format.DateTimeFormatter
 import java.util.EnumSet
 import java.util.UUID
 import javax.inject.Inject
@@ -563,13 +565,13 @@ class StudyController @Inject constructor(
         }
 
         return when(dataType) {
-            ParticipantDataType.preprocessed -> TODO("Not implemented")
-            ParticipantDataType.appUsageSurvey -> downloadService.getParticipantsAppUsageSurveyData(studyId, participantIds, startDateTime, endDateTime)
-            ParticipantDataType.iosSensor -> {
+            ParticipantDataType.Preprocessed -> TODO("Not implemented")
+            ParticipantDataType.AppUsageSurvey -> downloadService.getParticipantsAppUsageSurveyData(studyId, participantIds, startDateTime, endDateTime)
+            ParticipantDataType.IOSSensor -> {
                 val sensors = getStudySensors(studyId)
                 downloadService.getParticipantsSensorData(studyId, participantIds, sensors, startDateTime, endDateTime)
             }
-            ParticipantDataType.usageEvents -> {
+            ParticipantDataType.UsageEvents -> {
                 downloadService.getParticipantsUsageEventsData(studyId, participantIds, startDateTime, endDateTime)
             }
         }
@@ -596,7 +598,7 @@ class StudyController @Inject constructor(
             endDateTime
         )
 
-        val fileName = "${ChronicleServerUtil.getDataDownloadFileName(studyId, dataType)}.csv"
+        val fileName = "${dataType}_${LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE)}.csv"
 
         ChronicleServerUtil.setDownloadContentType(response, FileType.csv)
         ChronicleServerUtil.setContentDisposition(response, fileName, FileType.csv)
