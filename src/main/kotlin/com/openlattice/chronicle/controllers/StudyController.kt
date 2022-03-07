@@ -80,7 +80,6 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
-import java.lang.IllegalArgumentException
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
@@ -473,38 +472,6 @@ class StudyController @Inject constructor(
         return studyService.getStudySensors(studyId)
     }
 
-//    @Timed
-//    @GetMapping(
-//        path = [STUDY_ID_PATH + PARTICIPANT_PATH + PARTICIPANT_ID_PATH + DATA_PATH + IOS_PATH],
-//        produces = [MediaType.APPLICATION_JSON_VALUE]
-//    )
-//    fun downloadSensorData(
-//        @PathVariable(STUDY_ID) studyId: UUID,
-//        @PathVariable(PARTICIPANT_ID) participantId: String,
-//        response: HttpServletResponse
-//    ): Iterable<Map<String, Any>> {
-//
-//        val study = getStudy(studyId)
-//        val sensors = study.retrieveConfiguredSensors()
-//
-//        if (sensors.isEmpty()) {
-//            logger.warn(
-//                "study does not have any configured sensors, exiting download" + ChronicleServerUtil.STUDY_PARTICIPANT,
-//                studyId,
-//                participantId
-//            )
-//            return listOf()
-//        }
-//
-//        val data = downloadService.getParticipantsSensorData(studyId, participantId, sensors)
-//        val fileName = ChronicleServerUtil.getSensorDataFileName(participantId)
-//
-//        ChronicleServerUtil.setContentDisposition(response, fileName, FileType.csv)
-//        ChronicleServerUtil.setDownloadContentType(response, FileType.csv)
-//
-//        return data
-//    }
-
     @Timed
     @GetMapping(
         path = [STUDY_ID_PATH + PARTICIPANTS_PATH],
@@ -560,10 +527,6 @@ class StudyController @Inject constructor(
         endDateTime: OffsetDateTime?
     ): Iterable<Map<String, Any>> {
         ensureReadAccess(AclKey(studyId))
-        if (participantIds.isEmpty()) {
-            throw IllegalArgumentException("Participants list cannot be empty")
-        }
-
         return when(dataType) {
             ParticipantDataType.Preprocessed -> TODO("Not implemented")
             ParticipantDataType.AppUsageSurvey -> downloadService.getParticipantsAppUsageSurveyData(studyId, participantIds, startDateTime, endDateTime)

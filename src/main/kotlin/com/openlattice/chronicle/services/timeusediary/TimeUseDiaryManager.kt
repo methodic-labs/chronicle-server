@@ -36,8 +36,9 @@ interface TimeUseDiaryManager {
 
     fun getStudyTUDSubmissions(
         studyId: UUID,
+        participantIds: Set<String>? = null,
         downloadType: TimeUseDiaryDownloadDataType,
-        startDate: OffsetDateTime,
-        endDate: OffsetDateTime
+        startDate: OffsetDateTime?,
+        endDate: OffsetDateTime?
     ): Iterable<List<Map<String, Any>>>
 }
