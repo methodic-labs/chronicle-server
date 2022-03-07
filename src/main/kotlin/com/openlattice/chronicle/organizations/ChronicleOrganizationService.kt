@@ -17,6 +17,7 @@ import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.ORGAN
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_ID
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.util.ensureVanilla
+import org.springframework.stereotype.Service
 import java.sql.Connection
 import java.util.EnumSet
 import java.util.Optional
@@ -26,6 +27,7 @@ import java.util.UUID
  *
  * @author Matthew Tamayo-Rios &lt;matthew@openlattice.com&gt;
  */
+@Service
 class ChronicleOrganizationService(
     private val storageResolver: StorageResolver,
     private val authorizationManager: AuthorizationManager,

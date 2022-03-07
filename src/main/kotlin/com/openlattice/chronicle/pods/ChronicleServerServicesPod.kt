@@ -338,7 +338,12 @@ class ChronicleServerServicesPod {
 
     @Bean
     fun organizationsService(): ChronicleOrganizationService {
-        return ChronicleOrganizationService(storageResolver, authorizationService())
+        return ChronicleOrganizationService(
+            storageResolver,
+            authorizationService(),
+            idGenerationService(),
+            auditingManager()
+        )
     }
 
     @Bean
