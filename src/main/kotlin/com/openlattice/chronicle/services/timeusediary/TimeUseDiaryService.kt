@@ -78,7 +78,7 @@ class TimeUseDiaryService(
             studyId = studyId,
             participantId = participantId,
             tudUniqueDates = uniqueDates,
-            tudFirstDate = currentStats?.tudFirstDate,
+            tudFirstDate = currentStats?.tudFirstDate ?: submissionDate,
             tudLastDate = submissionDate,
             androidFirstDate = currentStats?.androidFirstDate,
             androidLastDate = currentStats?.androidLastDate,
