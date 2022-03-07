@@ -97,7 +97,7 @@ class DataDownloadService(
                 SensorType.messagesUsage to MESSAGES_USAGE_SENSOR_COLS
             )
 
-            val cols = SHARED_SENSOR_COLS - PARTICIPANT_ID - STUDY_ID + sensors.flatMap { mapping.getValue(it) }.toSet()
+            val cols = SHARED_SENSOR_COLS + sensors.flatMap { mapping.getValue(it) }.toSet()
             val values = cols.joinToString(",") { it.name }
 
             val sql = """
@@ -105,7 +105,7 @@ class DataDownloadService(
                 WHERE ${STUDY_ID.name} = ? 
                 AND ${PARTICIPANT_ID.name} = Any(?) 
                 AND ${SENSOR_TYPE.name} = Any(?) 
-                ${getSensorDateTimeFilterClause(startDateTime, endDateTime)})
+                ${getSensorDateTimeFilterClause(startDateTime, endDateTime)}
             """.trimIndent()
 
             return Pair(cols, sql)
@@ -229,10 +229,10 @@ class DataDownloadService(
                 ps.setArray(++index, PostgresArrays.createTextArray(hds.connection, participantIds))
                 ps.setArray(++index, PostgresArrays.createTextArray(hds.connection, sensors.map { it.name }))
                 startDateTime?.let {
-                    ps.setObject(++index, startDateTime)
+                    ps.setObject(++index, it)
                 }
                 endDateTime?.let {
-                    ps.setObject(++index, endDateTime)
+                    ps.setObject(++index, it)
                 }
             }
         ) { rs ->
