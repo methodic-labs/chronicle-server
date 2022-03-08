@@ -3,6 +3,7 @@ package com.openlattice.chronicle.services.timeusediary
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.geekbeast.configuration.postgres.PostgresFlavor
 import com.geekbeast.mappers.mappers.ObjectMappers
+import com.geekbeast.postgres.PostgresArrays
 import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
 import com.openlattice.chronicle.converters.TimeUseDiaryPostgresDownloadWrapper
@@ -160,25 +161,29 @@ class TimeUseDiaryService(
 
     override fun getStudyTUDSubmissions(
         studyId: UUID,
+        participantIds: Set<String>?,
         downloadType: TimeUseDiaryDownloadDataType,
         startDate: OffsetDateTime,
         endDate: OffsetDateTime,
     ): Iterable<List<Map<String, Any>>> {
         if (downloadType == TimeUseDiaryDownloadDataType.Summarized) {
-            return getTimeUseDiarySummarizedData(studyId, startDate, endDate)
+            return getTimeUseDiarySummarizedData(studyId, participantIds, startDate, endDate)
         }
         try {
             val hds = storageResolver.getPlatformStorage(PostgresFlavor.VANILLA)
             val postgresIterable = BasePostgresIterable(
                 PreparedStatementHolderSupplier(
                     hds,
-                    downloadTimeUseDiaryDataSql,
+                    getTimeUseDiaryDayOrNightTimeDataSql(participantIds),
                     1024
                 ) { ps ->
-                    var index = 1
-                    ps.setObject(index++, studyId)
-                    ps.setObject(index++, startDate)
-                    ps.setObject(index, endDate)
+                    var index = 0
+                    ps.setObject(++index, studyId)
+                    ps.setObject(++index, startDate)
+                    ps.setObject(++index, endDate)
+                    participantIds?.let {
+                        ps.setArray(++index, PostgresArrays.createTextArray(hds.connection, it))
+                    }
                 }) { rs ->
                     when(downloadType) {
                         TimeUseDiaryDownloadDataType.DayTime -> getDayTimeDataColumnMapping(rs)
@@ -195,6 +200,7 @@ class TimeUseDiaryService(
 
     private fun getTimeUseDiarySummarizedData(
         studyId: UUID,
+        participantIds: Set<String>?,
         startDate: OffsetDateTime,
         endDate: OffsetDateTime
     ): Iterable<List<Map<String, Any>>> {
@@ -203,13 +209,16 @@ class TimeUseDiaryService(
             val iterable = BasePostgresIterable(
                 PreparedStatementHolderSupplier(
                     hds,
-                    downloadSummarizedTimeUseDiaryDataSql,
+                    getSummarizedTimeUseDiarySql(participantIds),
                     1024
                 ) { ps ->
                     var index = 0
                     ps.setObject(++index, studyId)
-                    ps.setObject(++index,startDate)
+                    ps.setObject(++index, startDate)
                     ps.setObject(++index, endDate)
+                    participantIds?.let {
+                        ps.setArray(++index, PostgresArrays.createTextArray(hds.connection, it))
+                    }
                 }
             ) { getSummarizedDataColumnMapping(it)}
 
@@ -357,6 +366,38 @@ class TimeUseDiaryService(
         preparedStatement.setObject(index++, startDate)
         preparedStatement.setObject(index, endDate)
         return preparedStatement.executeQuery()
+    }
+
+    private fun getTimeUseDiaryDayOrNightTimeDataSql(
+        participantIds: Set<String>?
+    ): String {
+        var sql = """
+             SELECT ${STUDY_ID.name}, ${SUBMISSION_ID.name}, ${PARTICIPANT_ID.name}, ${SUBMISSION_DATE.name}, ${SUBMISSION.name}
+             FROM ${TIME_USE_DIARY_SUBMISSIONS.name}
+             WHERE ${STUDY_ID.name} = ?
+             AND ${SUBMISSION_DATE.name} >= ?
+             AND ${SUBMISSION_DATE.name} < ?
+        """.trimIndent()
+        participantIds?.let {
+            sql += " AND ${PARTICIPANT_ID.name} = ANY(?)"
+        }
+        return sql
+    }
+
+    private fun getSummarizedTimeUseDiarySql(
+        participantIds: Set<String>?,
+    ): String {
+        var sql = """
+            SELECT ${STUDY_ID.name}, ${SUBMISSION_ID.name}, ${PARTICIPANT_ID.name}, ${SUBMISSION_DATE.name}, ${SUMMARY_DATA.name}
+            FROM ${TIME_USE_DIARY_SUMMARIZED.name}
+            WHERE ${STUDY_ID.name} = ?
+            AND ${SUBMISSION_DATE.name} >= ?
+            AND ${SUBMISSION_DATE.name} < ?
+        """.trimIndent()
+        participantIds?.let {
+            sql += " AND ${PARTICIPANT_ID.name} = ANY(?)"
+        }
+        return sql
     }
 
     /**

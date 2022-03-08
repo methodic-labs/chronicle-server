@@ -1,6 +1,7 @@
 package com.openlattice.chronicle.controllers
 
 import com.codahale.metrics.annotation.Timed
+import com.google.common.base.MoreObjects
 import com.google.common.collect.SetMultimap
 import com.openlattice.chronicle.auditing.AuditEventType
 import com.openlattice.chronicle.auditing.AuditableEvent
@@ -37,13 +38,17 @@ import com.openlattice.chronicle.services.upload.AppDataUploadService
 import com.openlattice.chronicle.services.upload.SensorDataUploadService
 import com.openlattice.chronicle.sources.SourceDevice
 import com.openlattice.chronicle.storage.StorageResolver
+import com.openlattice.chronicle.study.ParticipantDataType
 import com.openlattice.chronicle.study.Study
 import com.openlattice.chronicle.study.StudyApi
 import com.openlattice.chronicle.study.StudyApi.Companion.ANDROID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.CONTROLLER
 import com.openlattice.chronicle.study.StudyApi.Companion.DATA_COLLECTION
 import com.openlattice.chronicle.study.StudyApi.Companion.DATA_PATH
+import com.openlattice.chronicle.study.StudyApi.Companion.DATA_TYPE
+import com.openlattice.chronicle.study.StudyApi.Companion.END_DATE
 import com.openlattice.chronicle.study.StudyApi.Companion.ENROLL_PATH
+import com.openlattice.chronicle.study.StudyApi.Companion.FILE_NAME
 import com.openlattice.chronicle.study.StudyApi.Companion.IOS_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.ORGANIZATION_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.ORGANIZATION_ID_PATH
@@ -57,6 +62,7 @@ import com.openlattice.chronicle.study.StudyApi.Companion.SENSORS_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.SETTINGS_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.SOURCE_DEVICE_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.SOURCE_DEVICE_ID_PATH
+import com.openlattice.chronicle.study.StudyApi.Companion.START_DATE
 import com.openlattice.chronicle.study.StudyApi.Companion.STATS_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.STUDY_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.STUDY_ID_PATH
@@ -64,6 +70,7 @@ import com.openlattice.chronicle.study.StudyApi.Companion.VERIFY_PATH
 import com.openlattice.chronicle.study.StudyUpdate
 import com.openlattice.chronicle.util.ChronicleServerUtil
 import org.slf4j.LoggerFactory
+import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
@@ -75,10 +82,15 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
-import java.util.EnumSet
-import java.util.UUID
+import java.time.LocalDate
+import java.time.OffsetDateTime
+import java.time.format.DateTimeFormatter
+import java.util.*
 import javax.inject.Inject
 import javax.servlet.http.HttpServletResponse
+import javax.validation.constraints.Max
+import javax.validation.constraints.Size
+import kotlin.NoSuchElementException
 
 
 /**
@@ -466,38 +478,6 @@ class StudyController @Inject constructor(
 
     @Timed
     @GetMapping(
-        path = [STUDY_ID_PATH + PARTICIPANT_PATH + PARTICIPANT_ID_PATH + DATA_PATH + IOS_PATH],
-        produces = [MediaType.APPLICATION_JSON_VALUE]
-    )
-    fun downloadSensorData(
-        @PathVariable(STUDY_ID) studyId: UUID,
-        @PathVariable(PARTICIPANT_ID) participantId: String,
-        response: HttpServletResponse
-    ): Iterable<Map<String, Any>> {
-
-        val study = getStudy(studyId)
-        val sensors = study.retrieveConfiguredSensors()
-
-        if (sensors.isEmpty()) {
-            logger.warn(
-                "study does not have any configured sensors, exiting download" + ChronicleServerUtil.STUDY_PARTICIPANT,
-                studyId,
-                participantId
-            )
-            return listOf()
-        }
-
-        val data = downloadService.getParticipantSensorData(studyId, participantId, sensors)
-        val fileName = ChronicleServerUtil.getSensorDataFileName(participantId)
-
-        ChronicleServerUtil.setContentDisposition(response, fileName, FileType.csv)
-        ChronicleServerUtil.setDownloadContentType(response, FileType.csv)
-
-        return data
-    }
-
-    @Timed
-    @GetMapping(
         path = [STUDY_ID_PATH + PARTICIPANTS_PATH],
         produces = [MediaType.APPLICATION_JSON_VALUE]
     )
@@ -541,6 +521,66 @@ class StudyController @Inject constructor(
     override fun getParticipantStats(@PathVariable(STUDY_ID) studyId: UUID): Map<String, ParticipantStats> {
         ensureReadAccess(AclKey(studyId))
         return studyService.getStudyParticipantStats(studyId)
+    }
+
+    override fun getParticipantsData(
+        studyId: UUID,
+        dataType: ParticipantDataType,
+        participantIds: Set<String>,
+        startDateTime: OffsetDateTime,
+        endDateTime: OffsetDateTime
+    ): Iterable<Map<String, Any>> {
+        ensureReadAccess(AclKey(studyId))
+        return when(dataType) {
+            ParticipantDataType.Preprocessed -> TODO("Not implemented")
+            ParticipantDataType.AppUsageSurvey -> downloadService.getParticipantsAppUsageSurveyData(studyId, participantIds, startDateTime, endDateTime)
+            ParticipantDataType.IOSSensor -> {
+                val sensors = getStudySensors(studyId)
+                downloadService.getParticipantsSensorData(studyId, participantIds, sensors, startDateTime, endDateTime)
+            }
+            ParticipantDataType.UsageEvents -> {
+                downloadService.getParticipantsUsageEventsData(studyId, participantIds, startDateTime, endDateTime)
+            }
+        }
+    }
+
+    @Timed
+    @GetMapping(
+        path = [STUDY_ID_PATH + PARTICIPANTS_PATH + DATA_PATH],
+        produces = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    fun getParticipantsData(
+        @PathVariable(STUDY_ID) studyId: UUID,
+        @RequestParam(value = DATA_TYPE) dataType: ParticipantDataType,
+        @RequestParam(value = PARTICIPANT_ID) participantIds: Set<String>,
+        @RequestParam(value = START_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) startDateTime: OffsetDateTime?,
+        @RequestParam(value = END_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) endDateTime: OffsetDateTime?,
+        @RequestParam(value = FILE_NAME) @Size(max = 64) fileName: String?,
+        response: HttpServletResponse
+    ): Iterable<Map<String, Any>> {
+        val data = getParticipantsData(
+            studyId,
+            dataType,
+            participantIds,
+            MoreObjects.firstNonNull(startDateTime, OffsetDateTime.MIN),
+            MoreObjects.firstNonNull(endDateTime, OffsetDateTime.MAX)
+        )
+
+        ChronicleServerUtil.setDownloadContentType(response, FileType.csv)
+        ChronicleServerUtil.setContentDisposition(response, MoreObjects.firstNonNull(fileName, "${dataType}_${LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE)}"), FileType.csv)
+
+        recordEvent(
+            AuditableEvent(
+                aclKey = AclKey(studyId),
+                securablePrincipalId = Principals.getCurrentSecurablePrincipal().id,
+                principal = Principals.getCurrentUser(),
+                eventType = AuditEventType.DOWNLOAD_PARTICIPANTS_DATA,
+                description = dataType.toString(),
+                study = studyId
+            )
+        )
+
+        return data
     }
 
     @Timed
