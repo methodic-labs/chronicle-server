@@ -15,6 +15,7 @@ import com.openlattice.chronicle.authorization.SecurableObjectType
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.base.OK
 import com.openlattice.chronicle.data.FileType
+import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.deletion.DeleteParticipantAppUsageSurveyData
 import com.openlattice.chronicle.deletion.DeleteParticipantUsageData
 import com.openlattice.chronicle.deletion.DeleteParticipantTUDSubmissionData
@@ -57,6 +58,7 @@ import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANTS_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_ID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_PATH
+import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPATION_STATUS
 import com.openlattice.chronicle.study.StudyApi.Companion.RETRIEVE
 import com.openlattice.chronicle.study.StudyApi.Companion.SENSORS_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.SETTINGS_PATH
@@ -64,6 +66,7 @@ import com.openlattice.chronicle.study.StudyApi.Companion.SOURCE_DEVICE_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.SOURCE_DEVICE_ID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.START_DATE
 import com.openlattice.chronicle.study.StudyApi.Companion.STATS_PATH
+import com.openlattice.chronicle.study.StudyApi.Companion.STATUS_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.STUDY_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.STUDY_ID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.VERIFY_PATH
@@ -542,6 +545,19 @@ class StudyController @Inject constructor(
                 downloadService.getParticipantsUsageEventsData(studyId, participantIds, startDateTime, endDateTime)
             }
         }
+    }
+
+    @PatchMapping(
+        path= [STUDY_ID_PATH + PARTICIPANT_PATH + PARTICIPANT_ID_PATH + STATUS_PATH]
+    )
+    override fun updateParticipationStatus(
+        @PathVariable(STUDY_ID) studyId: UUID,
+        @PathVariable(PARTICIPANT_ID) participantId: String,
+        @RequestParam(PARTICIPATION_STATUS) participationStatus: ParticipationStatus
+    ): OK {
+        ensureWriteAccess(AclKey(studyId))
+        studyService.updateParticipationStatus(studyId, participantId, participationStatus)
+        return OK("Successfully updated participation status ${ChronicleServerUtil.STUDY_PARTICIPANT}")
     }
 
     @Timed
