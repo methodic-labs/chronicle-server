@@ -9,6 +9,7 @@ import com.openlattice.chronicle.base.OK
 import com.openlattice.chronicle.data.FileType
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.services.download.DataDownloadService
+import com.openlattice.chronicle.services.studies.StudyService
 import com.openlattice.chronicle.services.surveys.SurveysService
 import com.openlattice.chronicle.survey.*
 import com.openlattice.chronicle.survey.SurveyApi.Companion.APP_USAGE_PATH
@@ -45,6 +46,7 @@ import javax.servlet.http.HttpServletResponse
 @RequestMapping(CONTROLLER)
 class SurveyController @Inject constructor(
     val surveysService: SurveysService,
+    val studyService: StudyService,
     val downloadService: DataDownloadService,
     val idGenerationService: HazelcastIdGenerationService,
     override val authorizationManager: AuthorizationManager,
@@ -62,7 +64,9 @@ class SurveyController @Inject constructor(
         @RequestParam(value = START_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) startDateTime: OffsetDateTime,
         @RequestParam(value = END_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) endDateTime: OffsetDateTime
     ): List<AppUsage> {
-        return surveysService.getAppUsageData(studyId, participantId, startDateTime, endDateTime)
+        val realStudyId = studyService.getStudyId(studyId)
+        checkNotNull(realStudyId) { "invalid study id" }
+        return surveysService.getAppUsageData(realStudyId, participantId, startDateTime, endDateTime)
     }
 
     @Timed
@@ -75,7 +79,9 @@ class SurveyController @Inject constructor(
         @PathVariable(PARTICIPANT_ID) participantId: String,
         @RequestBody surveyResponses: List<AppUsage>
     ) {
-        surveysService.submitAppUsageSurvey(studyId, participantId, surveyResponses)
+        val realStudyId = studyService.getStudyId(studyId)
+        checkNotNull(realStudyId) { "invalid study id" }
+        surveysService.submitAppUsageSurvey(realStudyId, participantId, surveyResponses)
     }
 
     @Timed
@@ -138,7 +144,9 @@ class SurveyController @Inject constructor(
         produces = [MediaType.APPLICATION_JSON_VALUE]
     )
     override fun getStudyQuestionnaires(@PathVariable(STUDY_ID) studyId: UUID): List<Questionnaire> {
-        return surveysService.getStudyQuestionnaires(studyId)
+        val realStudyId = studyService.getStudyId(studyId)
+        checkNotNull(realStudyId) { "invalid study id" }
+        return surveysService.getStudyQuestionnaires(realStudyId)
     }
 
     @Timed
@@ -152,7 +160,9 @@ class SurveyController @Inject constructor(
         @PathVariable(QUESTIONNAIRE_ID) questionnaireId: UUID,
         @RequestBody responses: List<QuestionnaireResponse>
     ): OK {
-        surveysService.submitQuestionnaireResponses(studyId, participantId, questionnaireId, responses)
+        val realStudyId = studyService.getStudyId(studyId)
+        checkNotNull(realStudyId) { "invalid study id" }
+        surveysService.submitQuestionnaireResponses(realStudyId, participantId, questionnaireId, responses)
         return OK()
     }
 

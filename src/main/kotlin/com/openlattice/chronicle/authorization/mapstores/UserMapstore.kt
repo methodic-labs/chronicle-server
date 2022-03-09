@@ -25,14 +25,12 @@ import com.fasterxml.jackson.core.JsonProcessingException
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.google.common.collect.ImmutableList
 import com.google.common.collect.ImmutableMap
-import com.hazelcast.config.InMemoryFormat
-import com.hazelcast.config.MapConfig
-import com.hazelcast.config.MapStoreConfig
 import com.openlattice.chronicle.hazelcast.HazelcastMap
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.USERS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_DATA
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_ID
 import com.geekbeast.postgres.mapstores.AbstractBasePostgresMapstore
+import com.hazelcast.config.*
 import com.zaxxer.hikari.HikariDataSource
 import org.apache.commons.lang3.RandomStringUtils
 import org.apache.commons.lang3.RandomUtils
@@ -51,8 +49,12 @@ import java.sql.SQLException
  */
 @Component
 class UserMapstore(hds: HikariDataSource) : AbstractBasePostgresMapstore<String, User>(
-        HazelcastMap.USERS, USERS, hds
+    HazelcastMap.USERS, USERS, hds
 ) {
+    companion object {
+        const val EMAIL_INDEX = "email"
+    }
+
     private val mapper: ObjectMapper = ObjectMappers.newJsonMapper()
 
     @Throws(SQLException::class)
@@ -68,9 +70,9 @@ class UserMapstore(hds: HikariDataSource) : AbstractBasePostgresMapstore<String,
     override fun generateTestValue(): User {
         val user = User("conn")
         user.appMetadata = ImmutableMap.of<String, Any>(
-                "foo", ImmutableList.of(
+            "foo", ImmutableList.of(
                 "1", "2", "3"
-        )
+            )
         )
         user.setClientId(RandomStringUtils.random(8))
         user.isBlocked = RandomUtils.nextBoolean()
@@ -88,24 +90,25 @@ class UserMapstore(hds: HikariDataSource) : AbstractBasePostgresMapstore<String,
         user.setVerifyPhoneNumber(RandomUtils.nextBoolean())
         user.phoneNumber = RandomStringUtils.random(8)
         user.userMetadata = ImmutableMap.of<String, Any>(
-                "bar", ImmutableList.of(
+            "bar", ImmutableList.of(
                 "4", "5", "6"
-        )
+            )
         )
         return user
     }
 
     override fun getMapConfig(): MapConfig {
         return super.getMapConfig()
-                .setInMemoryFormat(InMemoryFormat.BINARY)
-                .setMapStoreConfig(getMapStoreConfig())
+            .setInMemoryFormat(InMemoryFormat.BINARY)
+            .addIndexConfig(IndexConfig(IndexType.HASH, EMAIL_INDEX))
+            .setMapStoreConfig(mapStoreConfig)
     }
 
     override fun getMapStoreConfig(): MapStoreConfig {
         return super.getMapStoreConfig()
-                .setImplementation(this)
-                .setEnabled(true)
-                .setInitialLoadMode(MapStoreConfig.InitialLoadMode.EAGER)
+            .setImplementation(this)
+            .setEnabled(true)
+            .setInitialLoadMode(MapStoreConfig.InitialLoadMode.EAGER)
     }
 
 

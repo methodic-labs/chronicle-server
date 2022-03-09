@@ -16,8 +16,8 @@ import com.openlattice.chronicle.hazelcast.HazelcastMap
  * @author Drew Bailey (drew@openlattice.com)
  */
 class HazelcastPrincipalsMapManager(
-        hazelcastInstance: HazelcastInstance,
-        private val reservations: AclKeyReservationService
+    hazelcastInstance: HazelcastInstance,
+    private val reservations: AclKeyReservationService
 ) : PrincipalsMapManager {
 
     private val principals = HazelcastMap.PRINCIPALS.getMap(hazelcastInstance)
@@ -37,11 +37,12 @@ class HazelcastPrincipalsMapManager(
     }
 
     override fun getSecurablePrincipal(principalId: String): SecurablePrincipal {
-        val id = Preconditions.checkNotNull(reservations.getId(principalId),
-                "AclKey not found for Principal %s", principalId
+        val id = Preconditions.checkNotNull(
+            reservations.getId(HazelcastPrincipalService.getPrincipalReservationName(principalId)),
+            "AclKey not found for Principal %s", principalId
         )
         return principals.values(
-                Predicates.equal(PrincipalMapstore.PRINCIPAL_ID_INDEX, id)
+            Predicates.equal(PrincipalMapstore.PRINCIPAL_ID_INDEX, id)
         ).first()
     }
 

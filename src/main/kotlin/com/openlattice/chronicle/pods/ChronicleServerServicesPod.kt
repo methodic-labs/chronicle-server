@@ -39,7 +39,11 @@ import com.openlattice.chronicle.authorization.AuthorizationManager
 import com.openlattice.chronicle.authorization.HazelcastAuthorizationService
 import com.openlattice.chronicle.authorization.initializers.AuthorizationInitializationDependencies
 import com.openlattice.chronicle.authorization.initializers.AuthorizationInitializationTask
-import com.openlattice.chronicle.authorization.principals.*
+import com.openlattice.chronicle.authorization.principals.HazelcastPrincipalService
+import com.openlattice.chronicle.authorization.principals.HazelcastPrincipalsMapManager
+import com.openlattice.chronicle.authorization.principals.Principals
+import com.openlattice.chronicle.authorization.principals.PrincipalsMapManager
+import com.openlattice.chronicle.authorization.principals.SecurePrincipalsManager
 import com.openlattice.chronicle.authorization.reservations.AclKeyReservationService
 import com.openlattice.chronicle.configuration.ChronicleConfiguration
 import com.openlattice.chronicle.configuration.TwilioConfiguration
@@ -67,7 +71,6 @@ import com.openlattice.chronicle.services.settings.OrganizationSettingsService
 import com.openlattice.chronicle.services.studies.StudyService
 import com.openlattice.chronicle.services.surveys.SurveysManager
 import com.openlattice.chronicle.services.surveys.SurveysService
-import com.openlattice.chronicle.services.timeusediary.TimeUseDiaryManager
 import com.openlattice.chronicle.services.timeusediary.TimeUseDiaryService
 import com.openlattice.chronicle.services.twilio.TwilioService
 import com.openlattice.chronicle.services.upload.AppDataUploadManager
@@ -75,7 +78,15 @@ import com.openlattice.chronicle.services.upload.AppDataUploadService
 import com.openlattice.chronicle.services.upload.SensorDataUploadService
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.tasks.PostConstructInitializerTaskDependencies
-import com.openlattice.chronicle.users.*
+import com.openlattice.chronicle.users.Auth0SyncInitializationTask
+import com.openlattice.chronicle.users.Auth0SyncService
+import com.openlattice.chronicle.users.Auth0SyncTask
+import com.openlattice.chronicle.users.Auth0SyncTaskDependencies
+import com.openlattice.chronicle.users.Auth0UserListingService
+import com.openlattice.chronicle.users.DefaultAuth0SyncTask
+import com.openlattice.chronicle.users.LocalAuth0SyncTask
+import com.openlattice.chronicle.users.LocalUserListingService
+import com.openlattice.chronicle.users.UserListingService
 import com.openlattice.users.export.Auth0ApiExtension
 import org.slf4j.LoggerFactory
 import org.springframework.context.annotation.Bean
@@ -189,7 +200,11 @@ class ChronicleServerServicesPod {
     @Bean
     @Throws(IOException::class, ExecutionException::class)
     fun enrollmentManager(): EnrollmentManager {
-        return EnrollmentService(storageResolver, idGenerationService(), candidateService(), scheduledTasksManager())
+        return EnrollmentService(
+            storageResolver,
+            idGenerationService(),
+            candidateService(),
+        )
     }
 
 
@@ -203,8 +218,8 @@ class ChronicleServerServicesPod {
     fun appDataUploadManager(): AppDataUploadManager {
         return AppDataUploadService(
             storageResolver,
-            scheduledTasksManager(),
             enrollmentManager(),
+            studyService()
         )
     }
 
@@ -232,28 +247,28 @@ class ChronicleServerServicesPod {
 
     @Bean
     fun idGenerationService(): HazelcastIdGenerationService {
-        return HazelcastIdGenerationService(hazelcastClientProvider!!)
+        return HazelcastIdGenerationService(hazelcastClientProvider)
     }
 
     @Bean
     fun principalsMapManager(): PrincipalsMapManager {
-        return HazelcastPrincipalsMapManager(hazelcast!!, aclKeyReservationService())
+        return HazelcastPrincipalsMapManager(hazelcast, aclKeyReservationService())
     }
 
     @Bean
     fun aclKeyReservationService(): AclKeyReservationService {
-        return AclKeyReservationService(dataSourceManager!!)
+        return AclKeyReservationService(storageResolver)
     }
 
     @Bean
     fun authorizationService(): AuthorizationManager {
-        return HazelcastAuthorizationService(hazelcast!!, storageResolver, eventBus!!, principalsMapManager())
+        return HazelcastAuthorizationService(hazelcast, storageResolver, eventBus, principalsMapManager())
     }
 
     @Bean
     fun principalsManager(): SecurePrincipalsManager {
         return HazelcastPrincipalService(
-            hazelcast!!,
+            hazelcast,
             aclKeyReservationService(),
             authorizationService(),
             principalsMapManager(),
@@ -263,7 +278,7 @@ class ChronicleServerServicesPod {
 
     @Bean
     fun auth0SyncService(): Auth0SyncService {
-        return Auth0SyncService(hazelcast!!, principalsManager())
+        return Auth0SyncService(hazelcast, principalsManager())
     }
 
     @Bean
@@ -333,11 +348,8 @@ class ChronicleServerServicesPod {
     }
 
     @Bean
-    fun timeUseDiaryManager(): TimeUseDiaryManager {
-        return TimeUseDiaryService(
-            storageResolver,
-            authorizationService()
-        )
+    fun timeUseDiaryService(): TimeUseDiaryService {
+        return TimeUseDiaryService(storageResolver, idGenerationService(), studyService())
     }
 
     @Bean
@@ -392,7 +404,7 @@ class ChronicleServerServicesPod {
 
     @Bean
     fun sensorDataUploadService(): SensorDataUploadService {
-        return SensorDataUploadService(storageResolver, enrollmentManager())
+        return SensorDataUploadService(storageResolver, enrollmentManager(), studyService())
     }
 
     @Bean

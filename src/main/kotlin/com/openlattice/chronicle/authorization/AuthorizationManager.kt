@@ -44,7 +44,8 @@ import java.util.stream.Stream
 interface AuthorizationManager {
     /**
      * Creates a securable object, registers it's type, and ensures that the creating principal at least has at least
-     * owner permissions so they can manage the ACL via the API.
+     * owner permissions so they can manage the ACL via the API. This version of the API is designed to be used in
+     * transactions.
      *
      * NOTE: There is still a failure mode here if the principal is a role that is not assigned to anyone.
      *
@@ -55,7 +56,7 @@ interface AuthorizationManager {
      * @param permissions The permissions to grant to that principal.
      */
     @Timed
-    fun createSecurableObject(
+    fun createUnnamedSecurableObject(
         connection: Connection,
         aclKey: AclKey,
         principal: Principal,
@@ -65,23 +66,25 @@ interface AuthorizationManager {
     )
 
     /**
-     * Bulk function for setting or initializing securable object types.
+     * Creates a securable object, registers it's type, and ensures that the creating principal at least has at least
+     * owner permissions so they can manage the ACL via the API.
      *
-     * @param aclKeys    The acl keys to set to a specific object type.
-     * @param objectType The securable object type to be set for the aclKeys
+     * NOTE: There is still a failure mode here if the principal is a role that is not assigned to anyone.
+     *
+     * @param aclKey The unique acl key for the object.
+     * @param principal The creating principal.
+     * @param permissions The permissions to grant to that principal.
      */
     @Timed
-    fun setSecurableObjectTypes(aclKeys: Set<AclKey>, objectType: SecurableObjectType)
+    fun createUnnamedSecurableObject(
+        aclKey: AclKey,
+        principal: Principal,
+        permissions: EnumSet<Permission> = EnumSet.allOf(Permission::class.java),
+        objectType: SecurableObjectType,
+        expirationDate: OffsetDateTime =  OffsetDateTime.MAX
+    )
 
-    /**
-     * Creates an empty acl.
-     *
-     * @param aclKey     The key for the object whose acl is being created.
-     * @param objectType The type of the object for lookup purposes.
-     */
-    fun setSecurableObjectType(aclKey: AclKey, objectType: SecurableObjectType)
-
-    @Timed
+     @Timed
     fun addPermission(
         aclKeys: AclKey,
         principal: Principal,

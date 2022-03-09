@@ -19,8 +19,11 @@
  */
 package com.openlattice.chronicle.authorization.reservations
 
-import com.geekbeast.util.LinearBackoff
-import com.geekbeast.util.attempt
+import com.geekbeast.controllers.exceptions.TypeExistsException
+import com.geekbeast.controllers.exceptions.UniqueIdConflictException
+import com.geekbeast.postgres.PostgresArrays
+import com.geekbeast.postgres.streams.BasePostgresIterable
+import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
 import com.google.common.base.Preconditions.checkState
 import com.openlattice.chronicle.authorization.AbstractSecurableObject
 import com.openlattice.chronicle.authorization.AclKey
@@ -30,18 +33,12 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_NAME
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_TYPE
-import com.geekbeast.controllers.exceptions.TypeExistsException
-import com.geekbeast.controllers.exceptions.UniqueIdConflictException
-import com.geekbeast.jdbc.DataSourceManager
-import com.geekbeast.postgres.PostgresArrays
-import com.geekbeast.postgres.streams.BasePostgresIterable
-import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
+import com.openlattice.chronicle.storage.StorageResolver
 import org.slf4j.LoggerFactory
-import java.rmi.AlreadyBoundException
 import java.sql.PreparedStatement
 import java.util.*
 
-class AclKeyReservationService(private val dsm: DataSourceManager) {
+class AclKeyReservationService(private val resolver: StorageResolver) {
     companion object {
         private val logger = LoggerFactory.getLogger(AclKeyReservationService::class.java)
         private val INSERT_COLS = listOf(ACL_KEY, SECURABLE_OBJECT_TYPE, SECURABLE_OBJECT_ID, SECURABLE_OBJECT_NAME)
@@ -105,15 +102,26 @@ class AclKeyReservationService(private val dsm: DataSourceManager) {
     }
 
 
-    fun getId(name: String): UUID {
-        dsm.getDefaultDataSource().connection.use { conn ->
+    fun tryGetId(name: String): UUID? {
+        resolver.getPlatformStorage().connection.use { conn ->
             conn.prepareStatement(SELECT_SQL).use { ps ->
                 ps.setString(1, name)
                 val rs = ps.executeQuery()
                 rs.use {
-                    checkState(rs.next()) {
-                        "No id found for $name"
-                    }
+                    return if(rs.next()) ResultSetAdapters.securableObjectId(rs)
+                    else null
+                }
+            }
+        }
+    }
+
+    fun getId(name: String): UUID {
+        resolver.getPlatformStorage().connection.use { conn ->
+            conn.prepareStatement(SELECT_SQL).use { ps ->
+                ps.setString(1, name)
+                val rs = ps.executeQuery()
+                rs.use {
+                    check(rs.next()) { "No id found for $name" }
                     return ResultSetAdapters.securableObjectId(rs)
                 }
             }
@@ -123,17 +131,17 @@ class AclKeyReservationService(private val dsm: DataSourceManager) {
     fun getIds(names: Set<String>): Map<String, UUID> {
         return BasePostgresIterable(
                 PreparedStatementHolderSupplier(
-                        hds = dsm.getDefaultDataSource(),
-                        sql = SELECT_MULTIPLE_SQL,
-                        statementTimeoutMillis = 0L,
-                        bind = { ps: PreparedStatement ->
+                    hds = resolver.getPlatformStorage(),
+                    sql = SELECT_MULTIPLE_SQL,
+                    statementTimeoutMillis = 0L,
+                    bind = { ps: PreparedStatement ->
                             ps.setArray(1, PostgresArrays.createTextArray(ps.connection, names))
                         })
         ) { ResultSetAdapters.securableObjectName(it) to ResultSetAdapters.securableObjectId(it) }.toMap()
     }
 
     fun isReserved(name: String): Boolean {
-        dsm.getDefaultDataSource().connection.use { conn ->
+        resolver.getPlatformStorage().connection.use { conn ->
             conn.prepareStatement(SELECT_COUNT_SQL).use { ps ->
                 ps.setString(1, name)
                 val rs = ps.executeQuery()
@@ -148,7 +156,7 @@ class AclKeyReservationService(private val dsm: DataSourceManager) {
     }
 
     fun renameReservation(oldName: String, newName: String) {
-        dsm.getDefaultDataSource().connection.use { conn ->
+        resolver.getPlatformStorage().connection.use { conn ->
             conn.prepareStatement(UPDATE_BY_NAME_SQL).use { ps ->
                 ps.setString(1, newName)
                 ps.setString(2, oldName)
@@ -161,7 +169,7 @@ class AclKeyReservationService(private val dsm: DataSourceManager) {
     }
 
     fun renameReservation(id: UUID, newName: String) {
-        dsm.getDefaultDataSource().connection.use { conn ->
+        resolver.getPlatformStorage().connection.use { conn ->
             conn.prepareStatement(UPDATE_BY_ID_SQL).use { ps ->
                 ps.setString(1, newName)
                 ps.setObject(2, id)
@@ -189,9 +197,9 @@ class AclKeyReservationService(private val dsm: DataSourceManager) {
             nameExtractor: (T) -> String = { it.title }
     ): UUID {
         val proposedName = nameExtractor(obj)
-        //Back off 50ms each attempt for a maximum of 10 attempts, waiting no more than a second.
+        //TODO: Back off 50ms each attempt for a maximum of 10 attempts, waiting no more than a second.
         for ( i in 0 until 10 ) {
-            dsm.getDefaultDataSource().connection.use { conn ->
+            resolver.getPlatformStorage().connection.use { conn ->
                 val aclKey = AclKey(prefix + obj.id)
                 conn.prepareStatement(INSERT_SQL).use { ps ->
                     ps.setArray(1, PostgresArrays.createUuidArray(conn, aclKey))
@@ -204,8 +212,13 @@ class AclKeyReservationService(private val dsm: DataSourceManager) {
                         obj.id = ResultSetAdapters.securableObjectId(rs)
                         return obj.id
                     } else {
-                        //Retry with a diffferent id
-                        obj.id = UUID.randomUUID()
+                        val maybeId = tryGetId(proposedName)
+
+                        obj.id =  maybeId ?: UUID.randomUUID()
+                        if( maybeId != null ) {
+                            return obj.id
+                        }
+                        //Retry with a different id
                     }
                 }
             }
@@ -228,7 +241,7 @@ class AclKeyReservationService(private val dsm: DataSourceManager) {
      * @param id The id to release.
      */
     fun releaseByIds(ids: Collection<UUID>) {
-        dsm.getDefaultDataSource().connection.use { conn ->
+        resolver.getPlatformStorage().connection.use { conn ->
             conn.prepareStatement(DELETE_BY_ID_SQL).use { ps ->
                 ps.setArray(1, PostgresArrays.createUuidArray(conn, ids))
                 if (ps.executeUpdate() == 0) {
@@ -253,7 +266,7 @@ class AclKeyReservationService(private val dsm: DataSourceManager) {
      * @param ids A collection of ids to release.
      */
     fun releaseByNames(names: Collection<String>) {
-        dsm.getDefaultDataSource().connection.use { conn ->
+        resolver.getPlatformStorage().connection.use { conn ->
             conn.prepareStatement(DELETE_BY_NAME_SQL).use { ps ->
                 ps.setArray(1, PostgresArrays.createTextArray(conn, names))
                 if (ps.executeUpdate() == 0) {

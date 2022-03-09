@@ -4,6 +4,7 @@ package com.openlattice.chronicle.deletion
  * @author Solomon Tang <solomon@openlattice.com>
  */
 
+import com.geekbeast.postgres.PostgresArrays
 import com.geekbeast.rhizome.jobs.JobStatus
 import com.openlattice.chronicle.auditing.AuditEventType
 import com.openlattice.chronicle.auditing.AuditableEvent
@@ -12,6 +13,7 @@ import com.openlattice.chronicle.jobs.AbstractChronicleDeleteJobRunner
 import java.sql.Connection
 import java.time.OffsetDateTime
 import com.openlattice.chronicle.jobs.ChronicleJob
+import com.openlattice.chronicle.storage.PostgresDataTables.Companion.CHRONICLE_USAGE_EVENTS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.StorageResolver
@@ -25,17 +27,16 @@ class DeleteParticipantUsageDataRunner(
 ) : AbstractChronicleDeleteJobRunner<DeleteParticipantUsageData>() {
 
     companion object {
-        private val logger = LoggerFactory.getLogger(DeleteStudyUsageDataRunner::class.java)!!
+        private val logger = LoggerFactory.getLogger(DeleteParticipantUsageDataRunner::class.java)!!
 
         private val DELETE_PARTICIPANT_USAGE_DATA_SQL = """
-            DELETE FROM ${DeleteParticipantUsageData.table}
+            DELETE FROM ${CHRONICLE_USAGE_EVENTS.name}
             WHERE ${STUDY_ID.name} = ?
-            AND ${PARTICIPANT_ID.name} = ?
+            AND ${PARTICIPANT_ID.name} = ANY(?)
         """.trimIndent()
     }
 
     override fun runJob(connection: Connection, job: ChronicleJob): List<AuditableEvent> {
-        logger.info("Running delete participant usage events task.")
         // delete usage data from redshift with separate connection
         val (_, eventHds) = storageResolver.getDefaultEventStorage()
 
@@ -55,7 +56,7 @@ class DeleteParticipantUsageDataRunner(
 
         return listOf(
             AuditableEvent(
-                AclKey(job.definition.participantId),
+                AclKey(job.definition.studyId),
                 job.securablePrincipalId,
                 job.principal,
                 eventType = AuditEventType.BACKGROUND_USAGE_DATA_DELETION,
@@ -66,11 +67,12 @@ class DeleteParticipantUsageDataRunner(
     }
 
     // Delete participant usage data from event storage and return count of deleted rows
-    private fun deleteParticipantUsageData(connection: Connection, jobData: DeleteParticipantUsageData): Long {
-        logger.info("Deleting usage data with studyId = {}, participantId = {}", jobData.studyId, jobData.participantId)
+    private fun deleteParticipantUsageData(connection: Connection, jobDefinition: DeleteParticipantUsageData): Long {
+        logger.info("Deleting usage data with studyId = {} for participantIds = {}", jobDefinition.studyId, jobDefinition.participantIds)
         return connection.prepareStatement(DELETE_PARTICIPANT_USAGE_DATA_SQL).use { ps ->
-            ps.setObject(1, jobData.studyId)
-            ps.setObject(2, jobData.participantId)
+            ps.setObject(1, jobDefinition.studyId.toString())
+            val pgParticipantIds = PostgresArrays.createTextArray(ps.connection, jobDefinition.participantIds)
+            ps.setArray(2, pgParticipantIds)
             ps.executeUpdate().toLong()
         }
     }

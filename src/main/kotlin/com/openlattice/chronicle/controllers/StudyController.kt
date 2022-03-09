@@ -1,16 +1,22 @@
 package com.openlattice.chronicle.controllers
 
 import com.codahale.metrics.annotation.Timed
-import com.geekbeast.configuration.postgres.PostgresFlavor
 import com.google.common.collect.SetMultimap
 import com.openlattice.chronicle.auditing.AuditEventType
 import com.openlattice.chronicle.auditing.AuditableEvent
 import com.openlattice.chronicle.auditing.AuditedOperationBuilder
 import com.openlattice.chronicle.auditing.AuditingManager
-import com.openlattice.chronicle.authorization.*
+import com.openlattice.chronicle.authorization.AclKey
+import com.openlattice.chronicle.authorization.AuthorizationManager
+import com.openlattice.chronicle.authorization.AuthorizingComponent
+import com.openlattice.chronicle.authorization.Permission
+import com.openlattice.chronicle.authorization.SecurableObjectType
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.base.OK
 import com.openlattice.chronicle.data.FileType
+import com.openlattice.chronicle.deletion.DeleteParticipantAppUsageSurveyData
+import com.openlattice.chronicle.deletion.DeleteParticipantUsageData
+import com.openlattice.chronicle.deletion.DeleteParticipantTUDSubmissionData
 import com.openlattice.chronicle.deletion.DeleteStudyAppUsageSurveyData
 import com.openlattice.chronicle.deletion.DeleteStudyTUDSubmissionData
 import com.openlattice.chronicle.deletion.DeleteStudyUsageData
@@ -19,6 +25,7 @@ import com.openlattice.chronicle.ids.IdConstants
 import com.openlattice.chronicle.jobs.ChronicleJob
 import com.openlattice.chronicle.organizations.ChronicleDataCollectionSettings
 import com.openlattice.chronicle.participants.Participant
+import com.openlattice.chronicle.participants.ParticipantStats
 import com.openlattice.chronicle.sensorkit.SensorDataSample
 import com.openlattice.chronicle.sensorkit.SensorType
 import com.openlattice.chronicle.services.download.DataDownloadService
@@ -50,6 +57,7 @@ import com.openlattice.chronicle.study.StudyApi.Companion.SENSORS_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.SETTINGS_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.SOURCE_DEVICE_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.SOURCE_DEVICE_ID_PATH
+import com.openlattice.chronicle.study.StudyApi.Companion.STATS_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.STUDY_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.STUDY_ID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.VERIFY_PATH
@@ -67,11 +75,10 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
-import java.util.*
+import java.util.EnumSet
+import java.util.UUID
 import javax.inject.Inject
 import javax.servlet.http.HttpServletResponse
-import kotlin.NoSuchElementException
-import kotlin.streams.asSequence
 
 
 /**
@@ -111,27 +118,9 @@ class StudyController @Inject constructor(
         @PathVariable(SOURCE_DEVICE_ID) datasourceId: String,
         @RequestBody sourceDevice: SourceDevice
     ): UUID {
-//        check( enrollmentService.isKnownParticipant(studyId, participantId)) { "Cannot enroll device for an unknown participant." }
-//        TODO: Move checks out from enrollment data source into the controller.
-        val deviceId = enrollmentService.registerDatasource(studyId, participantId, datasourceId, sourceDevice)
-        val organizationIds = studyService.getStudy(studyId).organizationIds
-
-        /**
-         * We don't record an enrollment event into each organization as the organization associated with a study
-         * can change.
-         */
-        recordEvent(
-            AuditableEvent(
-                AclKey(deviceId),
-                eventType = AuditEventType.ENROLL_DEVICE,
-                description = "Enrolled ${sourceDevice.javaClass}",
-                study = studyId,
-                organization = IdConstants.UNINITIALIZED.id,
-                data = mapOf("device" to sourceDevice)
-            )
-        )
-
-        return deviceId
+        val realStudyId = studyService.getStudyId(studyId)
+        checkNotNull(realStudyId) { "invalid study id" }
+        return enrollmentService.registerDatasource(realStudyId, participantId, datasourceId, sourceDevice)
     }
 
     @Timed
@@ -218,7 +207,7 @@ class StudyController @Inject constructor(
         @RequestBody study: StudyUpdate,
         @RequestParam(value = RETRIEVE, required = false, defaultValue = "false") retrieve: Boolean
     ): Study? {
-        val studyAclKey = AclKey(studyId);
+        val studyAclKey = AclKey(studyId)
         ensureOwnerAccess(studyAclKey)
         val currentUser = Principals.getCurrentSecurablePrincipal()
         logger.info("Updating study with id $studyId on behalf of ${currentUser.principal.id}")
@@ -304,6 +293,69 @@ class StudyController @Inject constructor(
                             AuditEventType.CREATE_JOB,
                             "",
                             studyId
+                        )
+                    }
+                }
+                .buildAndRun()
+        }
+    }
+
+    @Timed
+    @DeleteMapping(
+        path = [STUDY_ID_PATH + PARTICIPANTS_PATH],
+        consumes = [MediaType.APPLICATION_JSON_VALUE],
+        produces = [MediaType.APPLICATION_JSON_VALUE],
+    )
+    override fun deleteStudyParticipants(
+        @PathVariable(STUDY_ID) studyId: UUID,
+        @RequestBody participantIds: Set<String>
+    ): Iterable<UUID> {
+        ensureValidStudy(studyId)
+        ensureWriteAccess(AclKey(studyId))
+
+        val deleteParticipantUsageDataJob = ChronicleJob(
+            id = idGenerationService.getNextId(),
+            contact = "test@openlattice.com",
+            definition = DeleteParticipantUsageData(studyId, participantIds)
+        )
+        val deleteParticipantTUDSubmissionsJob = ChronicleJob(
+            id = idGenerationService.getNextId(),
+            contact = "test@openlattice.com",
+            definition = DeleteParticipantTUDSubmissionData(studyId, participantIds)
+        )
+        val deleteParticipantAppUsageSurveysJob = ChronicleJob(
+            id = idGenerationService.getNextId(),
+            contact = "test@openlattice.com",
+            definition = DeleteParticipantAppUsageSurveyData(studyId, participantIds)
+        )
+
+        val jobList = listOf(
+            deleteParticipantUsageDataJob,
+            deleteParticipantTUDSubmissionsJob,
+            deleteParticipantAppUsageSurveysJob,
+        )
+
+        return storageResolver.getPlatformStorage().connection.use { conn ->
+            AuditedOperationBuilder<Iterable<UUID>>(conn, auditingManager)
+                .operation { connection ->
+                    val newJobIds = chronicleJobService.createJobs(connection, jobList)
+                    logger.info("Created jobs with ids = {}", newJobIds)
+                    studyService.removeParticipantsFromStudy(connection, studyId, participantIds)
+                    return@operation newJobIds
+                }
+                .audit { jobIds ->
+                    listOf(
+                        AuditableEvent(
+                            AclKey(studyId),
+                            eventType = AuditEventType.DELETE_PARTICIPANTS,
+                            description ="Participants $participantIds were removed from study $studyId",
+                            study = studyId
+                        )
+                    ) + jobIds.map {
+                        AuditableEvent(
+                            AclKey(it),
+                            eventType = AuditEventType.CREATE_JOB,
+                            study = studyId
                         )
                     }
                 }
@@ -480,6 +532,17 @@ class StudyController @Inject constructor(
 
         return studies
     }
+
+    @Timed
+    @GetMapping(
+        path = [STUDY_ID_PATH + PARTICIPANTS_PATH + STATS_PATH],
+        produces = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    override fun getParticipantStats(@PathVariable(STUDY_ID) studyId: UUID): Map<String, ParticipantStats> {
+        ensureReadAccess(AclKey(studyId))
+        return studyService.getStudyParticipantStats(studyId)
+    }
+
     @Timed
     @GetMapping(
         path = [STUDY_ID_PATH + PARTICIPANT_PATH + PARTICIPANT_ID_PATH + VERIFY_PATH]
@@ -496,7 +559,7 @@ class StudyController @Inject constructor(
      *
      */
     private fun ensureValidStudy(studyId: UUID): Boolean {
-        return true
+        return studyService.isValidStudy(studyId)
     }
 
 }

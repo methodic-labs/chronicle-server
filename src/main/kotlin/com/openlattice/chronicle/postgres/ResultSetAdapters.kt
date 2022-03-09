@@ -33,8 +33,12 @@ import com.openlattice.chronicle.mapstores.ids.Range
 import com.openlattice.chronicle.notifications.Notification
 import com.openlattice.chronicle.organizations.Organization
 import com.openlattice.chronicle.participants.Participant
+import com.openlattice.chronicle.participants.ParticipantStats
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACTIVE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.ANDROID_FIRST_DATE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.ANDROID_LAST_DATE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.ANDROID_UNIQUE_DATES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.BODY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CANDIDATE_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CATEGORY
@@ -49,6 +53,9 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.EMAIL
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ENDED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.EXPIRATION_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.FIRST_NAME
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.IOS_FIRST_DATE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.IOS_LAST_DATE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.IOS_UNIQUE_DATES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.JOB_DEFINITION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.JOB_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LAST_NAME
@@ -86,7 +93,12 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.STORAGE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_GROUP
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_VERSION
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION_DATE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TITLE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_FIRST_DATE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_LAST_DATE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_UNIQUE_DATES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TYPE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPDATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.URL
@@ -100,6 +112,7 @@ import com.openlattice.chronicle.study.Study
 import com.openlattice.chronicle.survey.AppUsage
 import com.openlattice.chronicle.survey.Questionnaire
 import org.slf4j.LoggerFactory
+import java.sql.Date
 import java.sql.ResultSet
 import java.sql.SQLException
 import java.time.LocalDate
@@ -107,7 +120,6 @@ import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.util.*
 import java.util.UUID
-import kotlin.collections.LinkedHashSet
 
 /**
  * Use for reading count field when performing an aggregation.
@@ -421,6 +433,42 @@ class ResultSetAdapters {
                 mapper.readValue(rs.getString(QUESTIONS.name)),
                 rs.getString(RECURRENCE_RULE.name)
             )
+        }
+
+        @Throws(SQLException::class)
+        fun participantStats(rs: ResultSet): ParticipantStats {
+            val androidDates: Array<Date> = rs.getArray(ANDROID_UNIQUE_DATES.name).array as Array<Date>
+            val tudDates: Array<Date> = rs.getArray(TUD_UNIQUE_DATES.name).array as Array<Date>
+            val iosDates: Array<Date> = rs.getArray(IOS_UNIQUE_DATES.name).array as Array<Date>
+
+            return ParticipantStats(
+                rs.getObject(STUDY_ID.name, UUID::class.java),
+                rs.getString(PARTICIPANT_ID.name),
+                rs.getObject(ANDROID_FIRST_DATE.name, OffsetDateTime::class.java),
+                rs.getObject(ANDROID_LAST_DATE.name, OffsetDateTime::class.java),
+                androidDates.map { it.toLocalDate() }.toSet(),
+                rs.getObject(IOS_FIRST_DATE.name, OffsetDateTime::class.java),
+                rs.getObject(IOS_LAST_DATE.name, OffsetDateTime::class.java),
+                iosDates.map { it.toLocalDate() }.toSet(),
+                rs.getObject(TUD_FIRST_DATE.name, OffsetDateTime::class.java),
+                rs.getObject(TUD_LAST_DATE.name, OffsetDateTime::class.java),
+                tudDates.map { it.toLocalDate() }.toSet()
+            )
+        }
+
+        @Throws(SQLException::class)
+        fun systemApp(rs: ResultSet): String {
+            return rs.getString(APP_PACKAGE_NAME.name)
+        }
+
+        @Throws(SQLException::class)
+        fun submissionDate(rs: ResultSet): OffsetDateTime {
+            return rs.getObject(SUBMISSION_DATE.name, OffsetDateTime::class.java)
+        }
+
+        @Throws(SQLException::class)
+        fun submissionId(rs: ResultSet): UUID {
+            return UUID.fromString(rs.getString(SUBMISSION_ID.name))
         }
     }
 }

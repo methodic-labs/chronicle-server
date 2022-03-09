@@ -25,6 +25,7 @@ import com.openlattice.chronicle.controllers.legacy.ChronicleController
 import com.openlattice.chronicle.controllers.v2.ChronicleControllerV2
 import com.openlattice.chronicle.converters.LegacyPostgresDownloadCsvHttpMessageConverter
 import com.openlattice.chronicle.converters.PostgresDownloadCsvHttpMessageConverter
+import com.openlattice.chronicle.converters.TimeUseDiaryDownloadCsvHttpMessageConverter
 import com.openlattice.chronicle.converters.YamlHttpMessageConverter
 import com.openlattice.chronicle.services.twilio.TwilioService
 import com.ryantenney.metrics.spring.config.annotation.EnableMetrics
@@ -78,6 +79,7 @@ class ChronicleServerMvcPod : WebMvcConfigurationSupport() {
         }
         converters.add(PostgresDownloadCsvHttpMessageConverter())
         converters.add(LegacyPostgresDownloadCsvHttpMessageConverter())
+        converters.add(TimeUseDiaryDownloadCsvHttpMessageConverter())
         converters.add(YamlHttpMessageConverter())
     }
 
