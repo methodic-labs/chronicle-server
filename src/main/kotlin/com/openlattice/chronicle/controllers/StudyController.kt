@@ -467,7 +467,9 @@ class StudyController @Inject constructor(
         @PathVariable(STUDY_ID) studyId: UUID
     ): Map<String, Any> {
         // No permissions check since this is assumed to be invoked from a non-authenticated context
-        return studyService.getStudySettings(studyId)
+        val realStudyId = studyService.getStudyId(studyId)
+        checkNotNull(realStudyId) { "invalid study id" }
+        return studyService.getStudySettings(realStudyId)
     }
 
     @Timed
