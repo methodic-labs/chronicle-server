@@ -455,7 +455,9 @@ class StudyController @Inject constructor(
         @PathVariable(SOURCE_DEVICE_ID) datasourceId: String,
         @RequestBody data: List<SetMultimap<UUID, Any>>
     ): Int {
-        return appDataUploadService.upload(studyId, participantId, datasourceId, data)
+        val realStudyId = studyService.getStudyId(studyId)
+        checkNotNull(realStudyId) { "invalid study id" }
+        return appDataUploadService.upload(realStudyId, participantId, datasourceId, data)
     }
 
     @Timed
