@@ -24,6 +24,7 @@ import com.openlattice.chronicle.import.ImportApi
 import com.openlattice.chronicle.import.ImportApi.Companion.APP_USAGE_SURVEY
 import com.openlattice.chronicle.import.ImportApi.Companion.CONTROLLER
 import com.openlattice.chronicle.import.ImportApi.Companion.PARTICIPANT_STATS
+import com.openlattice.chronicle.import.ImportApi.Companion.PERMISSIONS
 import com.openlattice.chronicle.import.ImportApi.Companion.STUDIES
 import com.openlattice.chronicle.import.ImportApi.Companion.SYSTEM_APPS
 import com.openlattice.chronicle.import.ImportApi.Companion.TIME_USE_DIARY
@@ -251,8 +252,51 @@ class ImportController(
 
             }
         }.mapNotNull { it.get() }
+    }
+
+    private fun tryGetPrincipal(principalId: String, principalEmail: String): Principal? {
+        if (usersMap.containsKey(principalId)) {
+            val user = usersMap.getValue(principalId)
+            if (user.email == principalEmail) {
+                return Principal(PrincipalType.USER, principalId)
+            }
+        }
+
+        val maybeUsers = usersMap.values(Predicates.equal(UserMapstore.EMAIL_INDEX, principalEmail))
+
+        if (maybeUsers.size > 1) {
+            logger.warn("Found more than 1 user with e-mail: $principalEmail, using the first")
+        }
+
+        return if (maybeUsers.isNotEmpty()) {
+            Principal(PrincipalType.USER, maybeUsers.first().id)
+        } else {
+            logger.warn("Didn't find any users with e-mail $principalEmail... skipping")
+            null
+        }
+    }
+
+    @PostMapping(
+        path = [PERMISSIONS],
+        produces = [MediaType.APPLICATION_JSON_VALUE],
+        consumes = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    override fun importUserPermissions(@RequestBody config: ImportStudiesConfiguration) {
+        ensureAdminAccess()
+        val hds = dataSourceManager.getDataSource(config.dataSourceName)
 
         logger.info("Starting to grant permissions.")
+        val studiesByLegacyStudyId = BasePostgresIterable(
+            PreparedStatementHolderSupplier(hds, getStudiesByLegacyStudyIdSql(config.candidatesTable!!)) {}
+        ) {
+            it.getObject("organization_id", UUID::class.java) to it.getObject( "study_id", UUID::class.java)
+        }.toMap()
+
+        val studiesByOrganizationId = BasePostgresIterable(
+            PreparedStatementHolderSupplier(hds, getStudiesByOrganizationIdSql(config.candidatesTable!!)) {}
+        ) {
+            it.getObject("legacy_study_id", UUID::class.java) to it.getObject( "study_id", UUID::class.java)
+        }.groupBy({ it.first }, { it.second }).mapValues { it.value.toSet() }
 
         val legacy_users = BasePostgresIterable(
             PreparedStatementHolderSupplier(hds, getLegacyUserSql(config.legacyUsersTable!!)) {}
@@ -294,9 +338,9 @@ class ImportController(
             if (organizationId != LEGACY_ORG_ID && principalEmail != null) {
                 val principal = tryGetPrincipal(principalId, principalEmail)
                 if (principal != null) {
-                    orgStudies.forEach { orgStudy ->
+                    orgStudies.forEach { orgStudyId ->
                         authorizationManager.addPermission(
-                            AclKey(orgStudy.id),
+                            AclKey(orgStudyId),
                             principal,
                             EnumSet.allOf(Permission::class.java)
                         )
@@ -311,26 +355,16 @@ class ImportController(
 
     }
 
-    private fun tryGetPrincipal(principalId: String, principalEmail: String): Principal? {
-        if (usersMap.containsKey(principalId)) {
-            val user = usersMap.getValue(principalId)
-            if (user.email == principalEmail) {
-                return Principal(PrincipalType.USER, principalId)
-            }
-        }
+    private fun getStudiesByOrganizationIdSql(candidatesTable: String): String {
+        return """
+            SELECT distinct organization_id, study_id  FROM $candidatesTable
+        """.trimIndent()
+    }
 
-        val maybeUsers = usersMap.values(Predicates.equal(UserMapstore.EMAIL_INDEX, principalEmail))
-
-        if (maybeUsers.size > 1) {
-            logger.warn("Found more than 1 user with e-mail: $principalEmail, using the first")
-        }
-
-        return if (maybeUsers.isNotEmpty()) {
-            Principal(PrincipalType.USER, maybeUsers.first().id)
-        } else {
-            logger.warn("Didn't find any users with e-mail $principalEmail... skipping")
-            null
-        }
+    private fun getStudiesByLegacyStudyIdSql(candidateTable: String): String {
+        return """
+            SELECT distinct study_id, legacy_study_id  FROM $candidateTable
+        """.trimIndent()
     }
 
     @PostMapping(
