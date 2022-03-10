@@ -87,9 +87,11 @@ class ImportController(
          * 1. study id the new id
          * 2. legacy_study_id the old legacy_study_id
          */
-        private val UPDATE_STUDY_ID = """
-            UPDATE participant_export SET study_id = ? WHERE legacy_study_id = ? 
-        """
+        private fun getUpdateParticipantExportSql(config: ImportStudiesConfiguration): String {
+            return """
+                 UPDATE ${config.candidatesTable} SET study_id = ? WHERE legacy_study_id = ? 
+            """.trimIndent()
+        }
 
 
         private val INSERT_LEGACY_STUDY_ID_SQL = """
@@ -195,7 +197,7 @@ class ImportController(
             v2StudyId to studyId
         }.forEach { (v2StudyId, studyId) ->
             hds.connection.use { connection ->
-                val partcipantsUpdated = connection.prepareStatement(UPDATE_STUDY_ID).use { ps ->
+                val partcipantsUpdated = connection.prepareStatement(getUpdateParticipantExportSql(config)).use { ps ->
                     ps.setObject(1, studyId)
                     ps.setObject(2, v2StudyId)
                     ps.executeUpdate()
