@@ -31,7 +31,7 @@ class TwilioService(
         protected val logger: Logger = LoggerFactory.getLogger(TwilioService::class.java)
     }
 
-    protected val callbackURL: String = "${twilioConfiguration.baseCallbackUrl}$BASE$STATUS_PATH"
+    protected val callbackURL: String = "${twilioConfiguration.callbackBaseUrl}$BASE$STATUS_PATH"
     protected val defaultPhoneNumber = PhoneNumber(twilioConfiguration.defaultFromPhone)
     //"https://api.openlattice.com$BASE$STATUS_PATH"
     //protected val testingCallbackURL :String = "http://da67-75-26-16-62.ngrok.io$BASE$STATUS_PATH"

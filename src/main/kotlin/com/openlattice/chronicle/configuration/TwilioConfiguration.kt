@@ -12,7 +12,7 @@ data class TwilioConfiguration(
     val sid: String,
     val token: String,
     val defaultFromPhone: String,
-    val baseCallbackUrl: String = "https://api.getmethodic.com"
+    val callbackBaseUrl: String = "https://api.getmethodic.com"
 ) : Configuration {
 
     companion object {
