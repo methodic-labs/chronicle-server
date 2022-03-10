@@ -254,11 +254,11 @@ class ImportController(
         }.mapNotNull { it.get() }
     }
 
-    private fun tryGetPrincipal(principalId: String, principalEmail: String): Principal? {
+    private fun tryGetPrincipal(principalId: String, principalEmail: String): List<Principal>? {
         if (usersMap.containsKey(principalId)) {
             val user = usersMap.getValue(principalId)
             if (user.email == principalEmail) {
-                return Principal(PrincipalType.USER, principalId)
+                return listOf(Principal(PrincipalType.USER, principalId))
             }
         }
 
@@ -269,7 +269,7 @@ class ImportController(
         }
 
         return if (maybeUsers.isNotEmpty()) {
-            Principal(PrincipalType.USER, maybeUsers.first().id)
+            maybeUsers.map { Principal(PrincipalType.USER, it.id) }
         } else {
             logger.warn("Didn't find any users with e-mail $principalEmail... skipping")
             null
@@ -312,14 +312,16 @@ class ImportController(
             .forEach {
                 it.legacyEsId = UUID.fromString(StringUtils.removeStart(it.legacyEsName, "chronicle_participants_"))
                 val userStudyId = studiesByLegacyStudyId[it.legacyEsId]
-                val p = tryGetPrincipal(it.principalId, it.email)
-                if (userStudyId != null && p != null) {
+                val principals = tryGetPrincipal(it.principalId, it.email)
+                if (userStudyId != null && principals != null) {
                     val userStudy = studyService.getStudy(userStudyId)
-                    authorizationManager.addPermission(
-                        AclKey(userStudy.id),
-                        p,
-                        EnumSet.allOf(Permission::class.java)
-                    )
+                    principals.forEach { p ->
+                        authorizationManager.addPermission(
+                            AclKey(userStudy.id),
+                            p,
+                            EnumSet.allOf(Permission::class.java)
+                        )
+                    }
                 } else {
                     logger.warn("Unable to resolve legacy study $it")
                 }
@@ -336,14 +338,16 @@ class ImportController(
             //For legacy org we will rely on granting users permissions based off of what is in permissions table
             val orgStudies = studiesByOrganizationId[organizationId] ?: setOf()
             if (organizationId != LEGACY_ORG_ID && principalEmail != null) {
-                val principal = tryGetPrincipal(principalId, principalEmail)
-                if (principal != null) {
+                val principals = tryGetPrincipal(principalId, principalEmail)
+                if (principals != null) {
                     orgStudies.forEach { orgStudyId ->
-                        authorizationManager.addPermission(
-                            AclKey(orgStudyId),
-                            principal,
-                            EnumSet.allOf(Permission::class.java)
-                        )
+                        principals.forEach { principal ->
+                            authorizationManager.addPermission(
+                                AclKey(orgStudyId),
+                                principal,
+                                EnumSet.allOf(Permission::class.java)
+                            )
+                        }
                     }
                 }
             } else {
@@ -352,6 +356,8 @@ class ImportController(
                 }
             }
         }.count()
+
+        logger.info("Finished granting permissions!")
 
     }
 
