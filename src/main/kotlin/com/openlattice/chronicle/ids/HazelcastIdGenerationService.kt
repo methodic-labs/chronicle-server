@@ -88,6 +88,11 @@ class HazelcastIdGenerationService(clients: IHazelcastClientProvider) {
     }
 
     fun getNextId(): UUID {
-        return localQueue.poll() ?: idsQueue.take()
+        var id = localQueue.poll() ?: idsQueue.take()
+        //This will make sure that reserved ids are skipped
+        while ((id.mostSignificantBits == 0L) && (id.leastSignificantBits > 0L) && (id.leastSignificantBits < IdConstants.RESERVED_IDS_BASE)) {
+            id = localQueue.poll() ?: idsQueue.take()
+        }
+        return id
     }
 }
