@@ -31,5 +31,5 @@ datasources:
     hikari:
       jdbcUrl: "jdbc:postgresql://localhost:5432/chronicle"
       username: "oltest"
-      password: "test
+      password: "test"
       maximumPoolSize: 20
