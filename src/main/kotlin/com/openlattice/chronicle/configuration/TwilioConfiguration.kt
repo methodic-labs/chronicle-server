@@ -11,7 +11,8 @@ private const val CONFIG_FILE_NAME = "twilio.yaml"
 data class TwilioConfiguration(
     val sid: String,
     val token: String,
-    val fromPhone: String
+    val defaultFromPhone: String,
+    val baseCallbackUrl: String = "https://api.getmethodic.com"
 ) : Configuration {
 
     companion object {

@@ -327,4 +327,5 @@ enum class StreamSerializerTypeIds {
     STUDY_STORAGE_UPDATE,
     STUDY_STORAGE_READ,
     STUDY,
+    STUDY_PHONE_NUMBER_GETTER
 }

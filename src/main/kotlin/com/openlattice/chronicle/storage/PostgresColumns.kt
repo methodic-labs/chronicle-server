@@ -57,6 +57,7 @@ class PostgresColumns {
         @JvmField val PERMISSION = PostgresColumnDefinition("permission", PostgresDatatype.TEXT)
         @JvmField val PERMISSIONS = PostgresColumnDefinition("permissions", PostgresDatatype.TEXT_ARRAY)
         @JvmField val PHONE_NUMBER = PostgresColumnDefinition("phone_number", PostgresDatatype.TEXT).unique()
+        @JvmField val STUDY_PHONE_NUMBER = PostgresColumnDefinition("study_phone_number", PostgresDatatype.TEXT)
         @JvmField val PHONE_NUMBER_NOT_UNIQUE = PostgresColumnDefinition("phone_number", PostgresDatatype.TEXT)
         @JvmField val PRINCIPAL_ID = PostgresColumnDefinition("principal_id", PostgresDatatype.TEXT)
         @JvmField val PRINCIPAL_OF_ACL_KEY = PostgresColumnDefinition("principal_of_acl_key", PostgresDatatype.UUID_ARRAY)

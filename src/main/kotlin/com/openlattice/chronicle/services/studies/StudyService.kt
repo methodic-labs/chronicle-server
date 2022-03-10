@@ -27,6 +27,7 @@ import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.sensorkit.SensorType
 import com.openlattice.chronicle.services.candidates.CandidateManager
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
+import com.openlattice.chronicle.services.studies.processors.StudyPhoneNumberGetter
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.LEGACY_STUDY_IDS
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.ORGANIZATION_STUDIES
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.PARTICIPANT_STATS
@@ -46,6 +47,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.NOTIFICATIONS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_IDS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.PHONE_NUMBER
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SETTINGS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STARTED_AT
@@ -84,6 +86,7 @@ class StudyService(
     companion object {
         private val logger = LoggerFactory.getLogger(StudyService::class.java)
         private val mapper = ObjectMappers.newJsonMapper()
+        private val STUDY_PHONE_NUMBER_GETTER = StudyPhoneNumberGetter()
         private val STUDY_COLUMNS_LIST = listOf(
             STUDY_ID,
             TITLE,
@@ -95,7 +98,8 @@ class StudyService(
             CONTACT,
             NOTIFICATIONS_ENABLED,
             STORAGE,
-            SETTINGS
+            SETTINGS,
+            PHONE_NUMBER
         )
         private val STUDY_COLUMNS = STUDY_COLUMNS_LIST.joinToString(",") { it.name }
         private val STUDY_COLUMNS_BIND = STUDY_COLUMNS_LIST.joinToString(",") {
@@ -229,7 +233,7 @@ class StudyService(
          * sort by most recently created
          * 1. current user principal id
          * 2. organization id
-        */
+         */
         private val GET_ORG_STUDIES_SQL = """
             SELECT ${STUDIES.name}.*, org_studies.${ORGANIZATION_IDS.name}
             FROM ${STUDIES.name}
@@ -266,7 +270,7 @@ class StudyService(
             SELECT * FROM ${STUDY_PARTICIPANTS.name} WHERE ${STUDY_ID.name} = ?
         """.trimIndent()
 
-        private fun selectStudyIdSql(table: String) :String {
+        private fun selectStudyIdSql(table: String): String {
             return when (table) {
                 LEGACY_STUDY_IDS.name -> """
                     SELECT ${STUDY_ID.name} FROM ${LEGACY_STUDY_IDS.name} WHERE ${LEGACY_STUDY_ID.name} = ?                    
@@ -281,6 +285,7 @@ class StudyService(
         private val PARTICIPANT_STATS_COLUMNS = PARTICIPANT_STATS.columns.joinToString { it.name }
         private val PARTICIPANT_STATS_PARAMS = PARTICIPANT_STATS.columns.joinToString { "?" }
         private val PARTICIPANT_STATS_UPDATE_PARAMS = PARTICIPANT_STATS.columns.joinToString { "${it.name} = ?" }
+
         /**
          * PreparedStatement bind order
          * 1) studyId
@@ -311,7 +316,7 @@ class StudyService(
         """.trimIndent()
     }
 
-    override fun createStudy( study: Study ) : UUID {
+    override fun createStudy(study: Study): UUID {
         val (flavor, hds) = storageResolver.getDefaultPlatformStorage()
         check(flavor == PostgresFlavor.VANILLA) { "Only vanilla postgres supported for studies." }
         study.id = idGenerationService.getNextId()
@@ -369,6 +374,7 @@ class StudyService(
             ps.setObject(9, study.notificationsEnabled)
             ps.setObject(10, study.storage)
             ps.setString(11, mapper.writeValueAsString(study.settings))
+            ps.setString(12, study.phoneNumber)
             return ps.executeUpdate()
         }
     }
@@ -438,7 +444,13 @@ class StudyService(
         }
     }
 
-    override fun registerParticipant( studyId: UUID, participant: Participant) : UUID {
+    override fun getStudyPhoneNumber(studyId: UUID): String? {
+        val realStudyId = getStudyId(studyId)
+        checkNotNull(realStudyId) { "invalid study id" }
+        return checkNotNull( studies.executeOnKey(realStudyId, STUDY_PHONE_NUMBER_GETTER) )
+    }
+
+    override fun registerParticipant(studyId: UUID, participant: Participant): UUID {
         return storageResolver.getPlatformStorage().connection.use { conn ->
             AuditedOperationBuilder<UUID>(conn, auditingManager)
                 .operation { connection -> registerParticipant(connection, studyId, participant) }
@@ -454,6 +466,7 @@ class StudyService(
                 .buildAndRun()
         }
     }
+
     override fun registerParticipant(connection: Connection, studyId: UUID, participant: Participant): UUID {
         val candidateId = candidateService.registerCandidate(connection, participant.candidate)
         enrollmentService.registerParticipant(
@@ -521,7 +534,11 @@ class StudyService(
         }
     }
 
-    override fun removeParticipantsFromStudy(connection: Connection, studyId: UUID, participantIds: Collection<String>): Int {
+    override fun removeParticipantsFromStudy(
+        connection: Connection,
+        studyId: UUID,
+        participantIds: Collection<String>
+    ): Int {
         return connection.prepareStatement(REMOVE_PARTICIPANTS_FROM_STUDY_SQL).use { ps ->
             ps.setObject(1, studyId)
             val pgParticipantIds = PostgresArrays.createTextArray(ps.connection, participantIds)
@@ -530,7 +547,7 @@ class StudyService(
         }
     }
 
-    override fun getStudySettings(studyId: UUID): Map<String, Any>{
+    override fun getStudySettings(studyId: UUID): Map<String, Any> {
         return storageResolver.getPlatformStorage().connection.use { connection ->
             connection.prepareStatement(GET_STUDY_SETTINGS_SQL).use { ps ->
                 ps.setObject(1, studyId)
@@ -557,7 +574,7 @@ class StudyService(
             PreparedStatementHolderSupplier(hds, GET_STUDY_PARTICIPANT_STATS) { ps ->
                 ps.setObject(1, studyId)
             }
-        ) { ResultSetAdapters.participantStats(it)}
+        ) { ResultSetAdapters.participantStats(it) }
             .associateBy { it.participantId }
     }
 
@@ -571,7 +588,7 @@ class StudyService(
                     ps.setObject(1, studyId)
                     ps.setString(2, participantId)
                 }
-            ) { ResultSetAdapters.participantStats(it)}.first()
+            ) { ResultSetAdapters.participantStats(it) }.first()
         } catch (ex: Exception) {
             return null
         }
@@ -580,9 +597,12 @@ class StudyService(
     override fun insertOrUpdateParticipantStats(stats: ParticipantStats) {
         storageResolver.getPlatformStorage().connection.use { connection ->
             connection.prepareStatement(INSERT_OR_UPDATE_PARTICIPANT_STATS).use { ps ->
-                val androidDatesArr =  connection.createArrayOf(PostgresDatatype.DATE.sql(), stats.androidUniqueDates.toTypedArray())
-                val iosDatesArr = connection.createArrayOf(PostgresDatatype.DATE.sql(), stats.iosUniqueDates.toTypedArray())
-                val tudDatesArr = connection.createArrayOf(PostgresDatatype.DATE.sql(), stats.tudUniqueDates.toTypedArray())
+                val androidDatesArr =
+                    connection.createArrayOf(PostgresDatatype.DATE.sql(), stats.androidUniqueDates.toTypedArray())
+                val iosDatesArr =
+                    connection.createArrayOf(PostgresDatatype.DATE.sql(), stats.iosUniqueDates.toTypedArray())
+                val tudDatesArr =
+                    connection.createArrayOf(PostgresDatatype.DATE.sql(), stats.tudUniqueDates.toTypedArray())
 
                 var index = 0
 

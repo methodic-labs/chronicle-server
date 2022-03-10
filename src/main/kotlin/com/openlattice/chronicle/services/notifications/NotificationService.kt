@@ -77,7 +77,7 @@ class NotificationService(
             ps.setObject(11, notification.email)
             ps.setObject(12, notification.phone)
             ps.addBatch()
-            authorizationService.createSecurableObject(
+            authorizationService.createUnnamedSecurableObject(
                 connection = connection,
                 aclKey = AclKey(notification.id),
                 principal = Principals.getCurrentUser(),

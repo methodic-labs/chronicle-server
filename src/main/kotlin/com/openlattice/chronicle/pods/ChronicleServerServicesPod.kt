@@ -129,6 +129,9 @@ class ChronicleServerServicesPod {
     @Inject
     private lateinit var storageResolver: StorageResolver
 
+    @Inject
+    private lateinit var twilioConfiguration: TwilioConfiguration
+
     @Bean
     fun defaultObjectMapper(): ObjectMapper {
         val mapper = ObjectMappers.getJsonMapper()
@@ -323,16 +326,11 @@ class ChronicleServerServicesPod {
         )
     }
 
-    @Bean(name = ["twilioConfiguration"])
-    @Throws(IOException::class)
-    fun getTwilioConfiguration(): TwilioConfiguration? {
-        return configurationService.getConfiguration( TwilioConfiguration::class.java )
-    }
-
     @Bean
     fun twilioService(): TwilioService {
         return TwilioService(
-            getTwilioConfiguration()
+            twilioConfiguration,
+            studyService()
         )
     }
 
