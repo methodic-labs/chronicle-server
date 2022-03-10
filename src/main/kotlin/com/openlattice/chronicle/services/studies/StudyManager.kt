@@ -1,5 +1,6 @@
 package com.openlattice.chronicle.services.studies
 
+import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.participants.ParticipantStats
 import com.openlattice.chronicle.sensorkit.SensorType
@@ -36,4 +37,5 @@ interface StudyManager {
     fun removeStudiesFromOrganizations(connection: Connection, studyIds: Collection<UUID>): Int
     fun updateStudy(connection: Connection, studyId: UUID, study: StudyUpdate)
     fun getStudyPhoneNumber(studyId: UUID): String?
+    fun updateParticipationStatus(studyId: UUID, participantId: String, participationStatus: ParticipationStatus)
 }

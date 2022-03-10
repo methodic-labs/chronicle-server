@@ -26,6 +26,7 @@ import com.geekbeast.tasks.Task
 import com.google.common.base.Stopwatch
 import com.openlattice.chronicle.authorization.initializers.AuthorizationInitializationTask
 import com.openlattice.chronicle.authorization.initializers.AuthorizationInitializationTask.Companion.GLOBAL_ADMIN_ROLE
+import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.ids.IdConstants
 import com.openlattice.chronicle.organizations.Organization
 import com.openlattice.chronicle.tasks.PostConstructInitializerTaskDependencies

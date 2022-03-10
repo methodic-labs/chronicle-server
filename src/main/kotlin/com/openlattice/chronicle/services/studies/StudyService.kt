@@ -8,16 +8,13 @@ import com.geekbeast.postgres.PostgresDatatype
 import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
 import com.hazelcast.core.HazelcastInstance
-import com.openlattice.chronicle.auditing.AuditEventType
-import com.openlattice.chronicle.auditing.AuditableEvent
-import com.openlattice.chronicle.auditing.AuditedOperationBuilder
-import com.openlattice.chronicle.auditing.AuditingComponent
-import com.openlattice.chronicle.auditing.AuditingManager
+import com.openlattice.chronicle.auditing.*
 import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.authorization.AuthorizationManager
 import com.openlattice.chronicle.authorization.Permission.READ
 import com.openlattice.chronicle.authorization.SecurableObjectType
 import com.openlattice.chronicle.authorization.principals.Principals
+import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.hazelcast.HazelcastMap
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.ids.IdConstants
@@ -47,6 +44,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.NOTIFICATIONS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_IDS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPATION_STATUS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PHONE_NUMBER
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SETTINGS
@@ -61,12 +59,13 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_ID
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.study.Study
 import com.openlattice.chronicle.study.StudyUpdate
+import com.openlattice.chronicle.util.ChronicleServerUtil
 import com.openlattice.chronicle.util.ensureVanilla
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.sql.Connection
 import java.time.OffsetDateTime
-import java.util.UUID
+import java.util.*
 
 /**
  * @author Solomon Tang <solomon@openlattice.com>
@@ -314,20 +313,32 @@ class StudyService(
             ON CONFLICT (${STUDY_ID.name}, ${PARTICIPANT_ID.name}) 
             DO UPDATE SET $PARTICIPANT_STATS_UPDATE_PARAMS
         """.trimIndent()
+
+        /**
+         * PreparedStatement bind order
+         * 1) participationStatus
+         * 2) studyId
+         * 3) particpantId
+         */
+        val SET_PARTICIPATION_STATUS_SQL = """
+            UPDATE ${STUDY_PARTICIPANTS.name}
+            SET ${PARTICIPATION_STATUS.name} = ? 
+            WHERE ${STUDY_ID.name} = ? AND ${PARTICIPANT_ID.name} = ?
+        """.trimIndent()
     }
 
     override fun createStudy(study: Study): UUID {
         val (flavor, hds) = storageResolver.getDefaultPlatformStorage()
         check(flavor == PostgresFlavor.VANILLA) { "Only vanilla postgres supported for studies." }
         study.id = idGenerationService.getNextId()
-
+        val aclKey = AclKey(study.id)
         hds.connection.use { connection ->
             AuditedOperationBuilder<Unit>(connection, auditingManager)
-                .operation { connection -> createStudy(connection, study) }
+                .operation { createStudy(it, study) }
                 .audit {
                     listOf(
                         AuditableEvent(
-                            AclKey(study.id),
+                            aclKey,
                             eventType = AuditEventType.CREATE_STUDY,
                             description = "",
                             study = study.id,
@@ -336,7 +347,7 @@ class StudyService(
                         )
                     ) + study.organizationIds.map { organizationId ->
                         AuditableEvent(
-                            AclKey(study.id),
+                            aclKey,
                             eventType = AuditEventType.ASSOCIATE_STUDY,
                             description = "",
                             study = study.id,
@@ -347,6 +358,7 @@ class StudyService(
                 }
                 .buildAndRun()
         }
+        authorizationService.ensureAceIsLoaded(aclKey, Principals.getCurrentUser())
         return study.id
     }
 
@@ -401,16 +413,18 @@ class StudyService(
     }
 
     override fun getStudies(studyIds: Collection<UUID>): Iterable<Study> {
-        return BasePostgresIterable(
-            PreparedStatementHolderSupplier(storageResolver.getPlatformStorage(), GET_STUDIES_SQL, 256) { ps ->
-                val pgStudyIds = PostgresArrays.createUuidArray(ps.connection, studyIds)
-                ps.setArray(1, pgStudyIds)
-                ps.executeQuery()
-            }
-        ) { ResultSetAdapters.study(it) }
+        return studies.getAll(studyIds.toSet()).values
+//        return BasePostgresIterable(
+//            PreparedStatementHolderSupplier(storageResolver.getPlatformStorage(), GET_STUDIES_SQL, 256) { ps ->
+//                val pgStudyIds = PostgresArrays.createUuidArray(ps.connection, studyIds)
+//                ps.setArray(1, pgStudyIds)
+//                ps.executeQuery()
+//            }
+//        ) { ResultSetAdapters.study(it) }
     }
 
     override fun getOrgStudies(organizationId: UUID): List<Study> {
+        //TODO: Retrieve studies from the cache.
         return BasePostgresIterable(
             PreparedStatementHolderSupplier(storageResolver.getPlatformStorage(), GET_ORG_STUDIES_SQL, 256) { ps ->
                 ps.setObject(1, Principals.getCurrentUser().id)
@@ -442,12 +456,40 @@ class StudyService(
             ps.setObject(14, studyId)
             ps.executeUpdate()
         }
+        studies.loadAll(setOf(studyId), true)
     }
 
     override fun getStudyPhoneNumber(studyId: UUID): String? {
         val realStudyId = getStudyId(studyId)
         checkNotNull(realStudyId) { "invalid study id" }
-        return checkNotNull( studies.executeOnKey(realStudyId, STUDY_PHONE_NUMBER_GETTER) )
+        return checkNotNull(studies.executeOnKey(realStudyId, STUDY_PHONE_NUMBER_GETTER))
+    }
+
+    override fun updateParticipationStatus(
+        studyId: UUID,
+        participantId: String,
+        participationStatus: ParticipationStatus
+    ) {
+        logger.info("Updating participation status: ${ChronicleServerUtil.STUDY_PARTICIPANT}", studyId, participantId)
+        storageResolver.getPlatformStorage().connection.use { connection ->
+            AuditedOperationBuilder<Unit>(connection, auditingManager)
+                .operation { conn ->
+                    conn.prepareStatement(SET_PARTICIPATION_STATUS_SQL).use { ps ->
+                        ps.setString(1, participationStatus.name)
+                        ps.setObject(2, studyId)
+                        ps.setString(3, participantId)
+                        ps.executeUpdate()
+                    }
+                }.audit {
+                    listOf(
+                        AuditableEvent(
+                            aclKey = AclKey(studyId),
+                            eventType = AuditEventType.UPDATE_PARTICIPATION_STATUS,
+                            description = "Set participation status of participant $participantId in study $studyId to $participationStatus"
+                        )
+                    )
+                }.buildAndRun()
+        }
     }
 
     override fun registerParticipant(studyId: UUID, participant: Participant): UUID {
@@ -476,6 +518,7 @@ class StudyService(
             candidateId,
             participant.participationStatus
         )
+        authorizationService.ensureAceIsLoaded(AclKey(candidateId), Principals.getCurrentUser())
         return candidateId
     }
 

@@ -25,7 +25,7 @@ hazelcast-clients:
 postgres:
     citus: false
     hikari:
-        jdbcUrl: "jdbc:postgresql://localhost:5432/chronicle"
+        jdbcUrl: "jdbc:postgresql://localhost:5432/chronicle_test"
         username: "oltest"
         password: "test"
         maximumPoolSize: 10
@@ -34,7 +34,7 @@ datasources:
         citus: false
         initialize-tables: true
         hikari:
-            jdbcUrl: "jdbc:postgresql://localhost:5432/chronicle"
+            jdbcUrl: "jdbc:postgresql://localhost:5432/chronicle_test"
             username: "oltest"
             password: "test"
             maximumPoolSize: 10

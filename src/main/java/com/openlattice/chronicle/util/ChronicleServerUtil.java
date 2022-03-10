@@ -1,10 +1,10 @@
 package com.openlattice.chronicle.util;
 
 import com.auth0.spring.security.api.authentication.JwtAuthentication;
-import com.google.common.base.Preconditions;
 import com.openlattice.chronicle.constants.*;
 import com.openlattice.chronicle.data.FileType;
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager;
+import com.openlattice.chronicle.study.ParticipantDataType;
 import org.apache.olingo.commons.api.edm.FullQualifiedName;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
@@ -18,7 +18,6 @@ import java.util.Set;
 import java.util.UUID;
 
 import static com.openlattice.chronicle.constants.EdmConstants.PARTICIPANTS_PREFIX;
-import static com.openlattice.chronicle.constants.EdmConstants.PERSON_ID_FQN;
 
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
@@ -29,6 +28,7 @@ public class ChronicleServerUtil {
     public static String ORG_STUDY_PARTICIPANT_DATASOURCE = " - orgId = {}, studyId = {}, participantId = {}, dataSourceId = {}";
     public static String STUDY_PARTICIPANT_DATASOURCE = " - studyId = {}, participantId = {}, dataSourceId = {}";
     public static String STUDY_PARTICIPANT = " - studyId = {}, participantId = {}";
+    public static String STUDY_PARTICIPANTS = " - studyId = {}, participantIds = {}";
 
     public static String getFirstValueOrNull( Map<FullQualifiedName, Set<Object>> entity, FullQualifiedName fqn ) {
         if ( entity.getOrDefault( fqn, Set.of() ).isEmpty() ) {

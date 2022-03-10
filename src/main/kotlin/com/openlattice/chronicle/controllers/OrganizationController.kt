@@ -5,11 +5,7 @@ import com.openlattice.chronicle.auditing.AuditEventType
 import com.openlattice.chronicle.auditing.AuditableEvent
 import com.openlattice.chronicle.auditing.AuditedOperationBuilder
 import com.openlattice.chronicle.auditing.AuditingManager
-import com.openlattice.chronicle.authorization.AclKey
-import com.openlattice.chronicle.authorization.AuthorizationManager
-import com.openlattice.chronicle.authorization.AuthorizingComponent
-import com.openlattice.chronicle.authorization.READ_PERMISSION
-import com.openlattice.chronicle.authorization.SecurableObjectType
+import com.openlattice.chronicle.authorization.*
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.ids.IdConstants
@@ -23,7 +19,6 @@ import com.openlattice.chronicle.organizations.OrganizationApi.Companion.ORGANIZ
 import com.openlattice.chronicle.organizations.OrganizationSettings
 import com.openlattice.chronicle.settings.AppComponent
 import com.openlattice.chronicle.storage.StorageResolver
-import com.openlattice.chronicle.util.getLastAclKeySafely
 import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.GetMapping
@@ -65,33 +60,7 @@ class OrganizationController @Inject constructor(
     override fun createOrganization(@RequestBody organization: Organization): UUID {
         ensureAuthenticated()
         logger.info("Creating organization with title ${organization.title}")
-        organization.id = idGenerationService.getNextId()
-        storageResolver.getPlatformStorage().connection.use { conn ->
-            AuditedOperationBuilder<Unit>(conn, auditingManager)
-                .operation { connection ->
-                    chronicleOrganizationService.createOrganization(
-                        connection,
-                        Principals.getCurrentUser(),
-                        organization
-                    )
-                }
-                .audit {
-                    listOf(
-                        AuditableEvent(
-                            AclKey(organization.id),
-                            Principals.getCurrentSecurablePrincipal().id,
-                            Principals.getCurrentUser(),
-                            AuditEventType.CREATE_ORGANIZATION,
-                            "",
-                            organization.id,
-                            UUID(0, 0),
-                            mapOf()
-                        )
-                    )
-                }
-                .buildAndRun()
-        }
-        return organization.id
+        return chronicleOrganizationService.createOrganization(Principals.getCurrentUser(),organization)
     }
 
     @Timed

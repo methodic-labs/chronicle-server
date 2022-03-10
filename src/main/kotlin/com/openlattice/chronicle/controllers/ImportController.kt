@@ -7,7 +7,6 @@ import com.geekbeast.mappers.mappers.ObjectMappers
 import com.geekbeast.postgres.PostgresDatatype
 import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
-import com.geekbeast.util.log
 import com.google.common.collect.Maps
 import com.google.common.util.concurrent.MoreExecutors
 import com.hazelcast.core.HazelcastInstance
@@ -15,6 +14,7 @@ import com.hazelcast.query.Predicates
 import com.openlattice.chronicle.auditing.AuditingManager
 import com.openlattice.chronicle.authorization.*
 import com.openlattice.chronicle.authorization.mapstores.UserMapstore
+import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.candidates.Candidate
 import com.openlattice.chronicle.constants.OutputConstants
 import com.openlattice.chronicle.data.ParticipationStatus
@@ -41,6 +41,8 @@ import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.LEGAC
 import com.openlattice.chronicle.storage.PostgresColumns
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SETTINGS
 import com.openlattice.chronicle.storage.RedshiftColumns
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PARTICIPANT_ID
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.study.Study
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryResponse
 import com.zaxxer.hikari.HikariDataSource
@@ -83,6 +85,15 @@ class ImportController(
         private val mapper: ObjectMapper = ObjectMappers.newJsonMapper()
         private val executor = MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(8))
 
+        /**
+         * 1. study id the new id
+         * 2. legacy_study_id the old legacy_study_id
+         */
+        private val UPDATE_STUDY_ID = """
+            UPDATE participant_export SET study_id = ? WHERE legacy_study_id = ? 
+        """
+
+
         private val INSERT_LEGACY_STUDY_ID_SQL = """
             INSERT INTO ${LEGACY_STUDY_IDS.name}(${PostgresColumns.STUDY_ID.name}, ${PostgresColumns.LEGACY_STUDY_ID.name})
             VALUES (?, ?)
@@ -98,6 +109,18 @@ class ImportController(
          */
         private val INSERT_TUD_SUBMISSIONS_SQL = """
             INSERT INTO ${ChroniclePostgresTables.TIME_USE_DIARY_SUBMISSIONS.name} values (?, ?, ?, ?, ?::jsonb)
+        """.trimIndent()
+
+        /**
+         * PreparedStatement bind order
+         * 1) studyId
+         * 2) participantId
+         * 3) submissionId
+         * 4) date
+         * 5) data
+         */
+        private val INSERT_INTO_TUD_SUMMARIZED_SQL = """
+            INSERT INTO ${ChroniclePostgresTables.TIME_USE_DIARY_SUMMARIZED.name} values (?, ?, ?, ?, ?::jsonb)
         """.trimIndent()
 
         private val PARTICIPANT_STATS_COLUMNS = linkedSetOf(
@@ -171,7 +194,24 @@ class ImportController(
             if (v2StudyId != null) {
                 studiesByLegacyStudyId[v2StudyId] = study.id
             }
-        }.count()
+            v2StudyId to studyId
+        }.forEach { (v2StudyId, studyId) ->
+            hds.connection.use { connection ->
+                val partcipantsUpdated = connection.prepareStatement(UPDATE_STUDY_ID).use { ps ->
+                    ps.setObject(1, studyId)
+                    ps.setObject(2, v2StudyId)
+                    ps.executeUpdate()
+                }
+                logger.info("Updated $partcipantsUpdated participant for legacy study $v2StudyId with new id $studyId")
+            }
+
+            //Let's make sure admins have full access.
+            authorizationManager.addPermission(
+                AclKey(studyId),
+                Principals.getAdminRole(),
+                EnumSet.allOf(Permission::class.java)
+            )
+        }
 
         val legacyInserts = hds.connection.use { connection ->
             connection.prepareStatement(INSERT_LEGACY_STUDY_ID_SQL).use { ps ->
@@ -198,7 +238,15 @@ class ImportController(
                     studyEkId,
                     "Missing study with legacy id $studyEkId"
                 )
-                studyService.registerParticipant(study.id, participant)
+                val candidateId = studyService.registerParticipant(study.id, participant)
+
+                //Let's make sure admins have full access.
+                authorizationManager.addPermission(
+                    AclKey(candidateId),
+                    Principals.getAdminRole(),
+                    EnumSet.allOf(Permission::class.java)
+                )
+
                 logger.info("Registered participant {} in study {}", participant.participantId, study)
             }
         }.map { it.get() }
@@ -206,7 +254,7 @@ class ImportController(
         logger.info("Starting to grant permissions.")
 
         val legacy_users = BasePostgresIterable(
-            PreparedStatementHolderSupplier(hds, getLegacyUserSql(config.usersTable!!)) {}
+            PreparedStatementHolderSupplier(hds, getLegacyUserSql(config.legacyUsersTable!!)) {}
         ) {
             LegacyUser(
                 it.getObject("participant_es_id", UUID::class.java),
@@ -242,7 +290,7 @@ class ImportController(
             //Except for legacy org, lookup users and grant permission on studies in that org.
             //For legacy org we will rely on granting users permissions based off of what is in permissions table
             val orgStudies = studiesByOrganizationId[organizationId] ?: setOf()
-            if (organizationId != LEGACY_ORG_ID) {
+            if (organizationId != LEGACY_ORG_ID && principalEmail != null) {
                 val principal = tryGetPrincipal(principalId, principalEmail)
                 if (principal != null) {
                     orgStudies.forEach { orgStudy ->
@@ -252,6 +300,10 @@ class ImportController(
                             EnumSet.allOf(Permission::class.java)
                         )
                     }
+                }
+            } else {
+                if (principalEmail == null) {
+                    logger.warn("Encountered missing e-mail for principal with id $principalId in org $organizationId")
                 }
             }
         }.count()
@@ -398,7 +450,7 @@ class ImportController(
     override fun importTimeUseDiarySubmissions(@RequestBody config: ImportStudiesConfiguration) {
         ensureAdminAccess()
         val hds = dataSourceManager.getDataSource(config.dataSourceName)
-        val entities = BasePostgresIterable(
+        val tudEntities = BasePostgresIterable(
             PreparedStatementHolderSupplier(
                 hds,
                 "SELECT * FROM ${config.timeUseDiaryTable}"
@@ -407,15 +459,19 @@ class ImportController(
             tudSubmission(it)
         }.toList()
 
+        val legacySubmissionIdMapping: MutableMap<UUID, UUID> = mutableMapOf()
+
         val inserted = hds.connection.prepareStatement(INSERT_TUD_SUBMISSIONS_SQL).use { ps ->
-            entities.forEach {
+            tudEntities.forEach {
                 val realStudyId = studyService.getStudyId(it.study_id)
                 if (realStudyId == null) {
                     logger.error("invalid study id ${it.study_id}")
                     return@forEach
                 }
                 var index = 0
-                ps.setObject(++index, idGenerationService.getNextId())
+                val submissionId = idGenerationService.getNextId()
+                legacySubmissionIdMapping[it.submission_id] = submissionId
+                ps.setObject(++index, submissionId)
                 ps.setObject(++index, realStudyId)
                 ps.setString(++index, it.participant_id)
                 ps.setObject(++index, it.submission_date)
@@ -424,7 +480,43 @@ class ImportController(
             }
             ps.executeBatch().sum()
         }
-        logger.info("Imported $inserted time use diary submissions. Expected to import ${entities.size}")
+        logger.info("Imported $inserted time use diary submissions. Expected to import ${tudEntities.size}")
+
+        val tudSubmissionById: Map<UUID, TudSubmission> = tudEntities.associateBy { it.submission_id }
+
+        val summarizedData = BasePostgresIterable(
+            PreparedStatementHolderSupplier(hds, "SELECT * FROM ${config.timeUseDiarySummarizedTable}") {}
+        ) {
+            tudSummarized(it)
+        }.toList()
+
+        val summaryInserts = hds.connection.prepareStatement(INSERT_INTO_TUD_SUMMARIZED_SQL).use { ps ->
+            summarizedData.forEach {
+                val submissionId = legacySubmissionIdMapping[it.submissionId] ?: return@forEach
+                val tudSubmission = tudSubmissionById.getValue(it.submissionId)
+                val realStudyId = studyService.getStudyId(tudSubmission.study_id)
+                if (realStudyId == null) {
+                    logger.error("invalid study id ${tudSubmission.study_id}")
+                    return@forEach
+                }
+                var index = 0
+                ps.setObject(++index, realStudyId)
+                ps.setString(++index, tudSubmission.participant_id)
+                ps.setObject(++index, submissionId)
+                ps.setObject(++index, tudSubmission.submission_date)
+                ps.setString(++index, mapper.writeValueAsString(it.entities))
+                ps.addBatch()
+            }
+            ps.executeBatch().sum()
+        }
+        logger.info("inserted $summaryInserts entities into time use diary summary table")
+    }
+
+    private fun tudSummarized(rs: ResultSet): TudSummarizedEntity{
+        return TudSummarizedEntity(
+            submissionId = rs.getObject(PostgresColumns.SUBMISSION_ID.name, UUID::class.java),
+            entities = mapper.readValue(rs.getString("data"))
+        )
     }
 
     private fun tudSubmission(rs: ResultSet): TudSubmission {
@@ -437,6 +529,7 @@ class ImportController(
             submission = mapper.readValue(rs.getString(PostgresColumns.SUBMISSION.name))
         )
     }
+
 
     private fun participant(rs: ResultSet): Participant {
         var status = rs.getString(LEGACY_PARTICIPATION_STATUS)
@@ -606,4 +699,14 @@ private data class TudSubmission(
     val submission_id: UUID,
     val submission: List<TimeUseDiaryResponse>,
     val submission_date: OffsetDateTime
+)
+
+private data class QuestionAnswer(
+    val variable: String,
+    val value: String
+)
+
+private data class TudSummarizedEntity(
+    val submissionId: UUID,
+    val entities: Set<QuestionAnswer>,
 )

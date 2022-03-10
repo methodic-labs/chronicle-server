@@ -45,7 +45,8 @@ interface AuthorizationManager {
     /**
      * Creates a securable object, registers it's type, and ensures that the creating principal at least has at least
      * owner permissions so they can manage the ACL via the API. This version of the API is designed to be used in
-     * transactions.
+     * transactions and requires the caller to ensure that in memory map is refreshed after the transactions commits
+     * as the mapstore cannot read uncommited changes.
      *
      * NOTE: There is still a failure mode here if the principal is a role that is not assigned to anyone.
      *
@@ -67,7 +68,8 @@ interface AuthorizationManager {
 
     /**
      * Creates a securable object, registers it's type, and ensures that the creating principal at least has at least
-     * owner permissions so they can manage the ACL via the API.
+     * owner permissions so they can manage the ACL via the API. This will take care of updating the cache once the
+     * object is inserted into the database.
      *
      * NOTE: There is still a failure mode here if the principal is a role that is not assigned to anyone.
      *
@@ -270,4 +272,6 @@ interface AuthorizationManager {
         objectType: SecurableObjectType,
         permissions: EnumSet<Permission>
     ): List<AclKey>
+
+    fun ensureAceIsLoaded(aclKey: AclKey, principal: Principal)
 }

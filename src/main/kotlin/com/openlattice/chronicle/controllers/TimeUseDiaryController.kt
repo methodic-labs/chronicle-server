@@ -1,6 +1,7 @@
 package com.openlattice.chronicle.controllers
 
 import com.codahale.metrics.annotation.Timed
+import com.google.common.base.MoreObjects
 import com.openlattice.chronicle.auditing.AuditEventType
 import com.openlattice.chronicle.auditing.AuditableEvent
 import com.openlattice.chronicle.auditing.AuditedOperationBuilder
@@ -17,9 +18,12 @@ import com.openlattice.chronicle.services.timeusediary.TimeUseDiaryService
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.CONTROLLER
+import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.DATA_PATH
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.DATA_TYPE
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.END_DATE
+import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.FILE_NAME
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.IDS_PATH
+import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.PARTICIPANTS_PATH
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.PARTICIPANT_ID_PATH
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryApi.Companion.PARTICIPANT_PATH
@@ -170,6 +174,7 @@ class TimeUseDiaryController(
         ensureReadAccess(AclKey(studyId))
         return timeUseDiaryService.getStudyTUDSubmissions(
             studyId,
+            participantIds = null,
             dataType,
             startDateTime,
             endDateTime
@@ -178,7 +183,7 @@ class TimeUseDiaryController(
 
     @Timed
     @GetMapping(
-        path = [STUDY_ID_PATH],
+        path = [STUDY_ID_PATH + DATA_PATH],
         produces = [MediaType.APPLICATION_JSON_VALUE]
     )
     fun getStudyTUDSubmissions(
@@ -205,8 +210,66 @@ class TimeUseDiaryController(
                 aclKey = AclKey(studyId),
                 securablePrincipalId = Principals.getCurrentSecurablePrincipal().id,
                 principal = Principals.getCurrentUser(),
-                eventType = AuditEventType.DOWNLOAD_TIME_USE_DIARY_SUBMISSIONS,
+                eventType = AuditEventType.DOWNLOAD_TIME_USE_DIARY_DATA,
                 description = dataType.toString(),
+                study = studyId
+            )
+        )
+
+        return data
+    }
+
+    override fun getParticipantsTudSubmissions(
+        studyId: UUID,
+        participantIds: Set<String>,
+        dataType: TimeUseDiaryDownloadDataType,
+        startDateTime: OffsetDateTime,
+        endDateTime: OffsetDateTime
+    ): Iterable<List<Map<String, Any>>> {
+        ensureReadAccess(AclKey(studyId))
+        return timeUseDiaryService.getStudyTUDSubmissions(
+            studyId,
+            participantIds,
+            dataType,
+            startDateTime,
+            endDateTime
+        )
+    }
+
+    @Timed
+    @GetMapping(
+        path = [STUDY_ID_PATH + PARTICIPANTS_PATH + DATA_PATH],
+        produces = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    fun getParticipantsTudSubmissions(
+        @PathVariable(STUDY_ID) studyId: UUID,
+        @RequestParam(PARTICIPANT_ID) participantIds: Set<String>,
+        @RequestParam(DATA_TYPE) dataType: TimeUseDiaryDownloadDataType,
+        @RequestParam(START_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) startDateTime: OffsetDateTime?,
+        @RequestParam(END_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) endDateTime: OffsetDateTime?,
+        @RequestParam(FILE_NAME) fileName: String?,
+        response: HttpServletResponse
+    ): Iterable<List<Map<String, Any>>> {
+        val data = getParticipantsTudSubmissions(
+            studyId,
+            participantIds,
+            dataType,
+            MoreObjects.firstNonNull(startDateTime, OffsetDateTime.MIN),
+            MoreObjects.firstNonNull(endDateTime, OffsetDateTime.MAX)
+        )
+
+        ChronicleServerUtil.setDownloadContentType(response, FileType.csv)
+        ChronicleServerUtil.setContentDisposition(
+            response,
+            MoreObjects.firstNonNull(fileName, "TimeUseDiary_${dataType}_${LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE)}"), FileType.csv)
+
+        recordEvent(
+            AuditableEvent(
+                aclKey = AclKey(studyId),
+                securablePrincipalId = Principals.getCurrentSecurablePrincipal().id,
+                principal = Principals.getCurrentUser(),
+                eventType = AuditEventType.DOWNLOAD_PARTICIPANTS_TIME_USE_DIARY_DATA,
+                description = "type = $dataType, participants = $participantIds",
                 study = studyId
             )
         )

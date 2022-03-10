@@ -84,6 +84,7 @@ class PostgresColumns {
         @JvmField val SUBMISSION = PostgresColumnDefinition("submission", PostgresDatatype.JSONB)
         @JvmField val SUBMISSION_DATE = PostgresColumnDefinition("submission_date", PostgresDatatype.TIMESTAMPTZ).notNull().withDefault("NOW()")
         @JvmField val SUBMISSION_ID = PostgresColumnDefinition("submission_id", PostgresDatatype.UUID).notNull()
+        @JvmField val SUMMARY_DATA = PostgresColumnDefinition("summary_data", PostgresDatatype.JSONB).notNull()
         @JvmField val TITLE = PostgresColumnDefinition("title", PostgresDatatype.TEXT)
         @JvmField val TUD_UNIQUE_DATES = PostgresColumnDefinition("tud_unique_dates", PostgresDatatype.DATE_ARRAY).withDefault("'{}'")
         @JvmField val TUD_FIRST_DATE = PostgresColumnDefinition("tud_first_date", PostgresDatatype.TIMESTAMPTZ)

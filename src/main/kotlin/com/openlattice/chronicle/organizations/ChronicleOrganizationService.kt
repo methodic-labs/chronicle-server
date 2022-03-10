@@ -4,16 +4,20 @@ import com.geekbeast.mappers.mappers.ObjectMappers
 import com.geekbeast.postgres.PostgresArrays
 import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
+import com.openlattice.chronicle.auditing.*
 import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.authorization.AuthorizationManager
 import com.openlattice.chronicle.authorization.Permission
 import com.openlattice.chronicle.authorization.Principal
 import com.openlattice.chronicle.authorization.SecurableObjectType
+import com.openlattice.chronicle.authorization.principals.Principals
+import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.ORGANIZATIONS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_ID
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.util.ensureVanilla
+import org.springframework.stereotype.Service
 import java.sql.Connection
 import java.util.EnumSet
 import java.util.Optional
@@ -23,11 +27,13 @@ import java.util.UUID
  *
  * @author Matthew Tamayo-Rios &lt;matthew@openlattice.com&gt;
  */
+@Service
 class ChronicleOrganizationService(
     private val storageResolver: StorageResolver,
-    private val authorizationManager: AuthorizationManager
-
-) {
+    private val authorizationManager: AuthorizationManager,
+    private val idGenerationService: HazelcastIdGenerationService,
+    override val auditingManager: AuditingManager
+) :AuditingComponent {
     companion object {
         private val mapper = ObjectMappers.newJsonMapper()
 
@@ -50,8 +56,41 @@ class ChronicleOrganizationService(
         """.trimIndent()
     }
 
+    fun createOrganization(owner: Principal, organization: Organization) : UUID {
+        organization.id = idGenerationService.getNextId()
+        val aclKey = AclKey(organization.id)
+        storageResolver.getPlatformStorage().connection.use { conn ->
+            AuditedOperationBuilder<Unit>(conn, auditingManager)
+                .operation { connection ->
+                    createOrganization(
+                        connection,
+                        Principals.getCurrentUser(),
+                        organization
+                    )
+                }
+                .audit {
+                    listOf(
+                        AuditableEvent(
+                            AclKey(organization.id),
+                            Principals.getCurrentSecurablePrincipal().id,
+                            Principals.getCurrentUser(),
+                            AuditEventType.CREATE_ORGANIZATION,
+                            "",
+                            organization.id,
+                            UUID(0, 0),
+                            mapOf()
+                        )
+                    )
+                }
+                .buildAndRun()
+        }
+
+        authorizationManager.ensureAceIsLoaded(aclKey, owner)
+        return organization.id
+    }
+
     fun createOrganization(connection: Connection, owner: Principal, organization: Organization) {
-        insertOrganization(connection,organization)
+        insertOrganization(connection, organization)
         authorizationManager.createUnnamedSecurableObject(
             connection,
             AclKey(organization.id),
@@ -59,8 +98,6 @@ class ChronicleOrganizationService(
             EnumSet.allOf(Permission::class.java),
             SecurableObjectType.Organization
         )
-
-
     }
 
     private fun insertOrganization(connection: Connection, organization: Organization) {
