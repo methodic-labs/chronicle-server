@@ -41,8 +41,6 @@ import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.LEGAC
 import com.openlattice.chronicle.storage.PostgresColumns
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SETTINGS
 import com.openlattice.chronicle.storage.RedshiftColumns
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PARTICIPANT_ID
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.study.Study
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryResponse
 import com.zaxxer.hikari.HikariDataSource
@@ -584,7 +582,7 @@ class ImportController(
     private fun appUsageSurvey(rs: ResultSet): V2AppUsageEntity {
         return V2AppUsageEntity(
             studyId = rs.getObject(V2_STUDY_ID, UUID::class.java),
-            participant_id = rs.getString(LEGACY_PARTICIPANT_ID),
+            participant_id = rs.getString(PARTICIPANT_ID),
             submissionDate = rs.getObject(PostgresColumns.SUBMISSION_DATE.name, OffsetDateTime::class.java),
             applicationLabel = rs.getString(RedshiftColumns.APPLICATION_LABEL.name),
             appPackageName = rs.getString(RedshiftColumns.APP_PACKAGE_NAME.name),
@@ -626,7 +624,8 @@ private const val LEGACY_FIRST_NAME = "first_name"
 private const val LEGACY_LAST_NAME = "last_name"
 private const val LEGACY_LAT = "lat"
 private const val LEGACY_LON = "lon"
-private const val LEGACY_PARTICIPANT_ID = "participant_id"
+private const val PARTICIPANT_ID = "participant_id"
+private const val LEGACY_PARTICIPANT_ID = "legacy_participant_id"
 private const val LEGACY_PARTICIPATION_STATUS = "participation_status"
 private const val LEGACY_STUDY_CONTACT = "contact"
 private const val LEGACY_STUDY_GROUP = "study_group"
