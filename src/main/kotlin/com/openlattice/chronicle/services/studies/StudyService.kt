@@ -52,6 +52,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.STARTED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STORAGE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_GROUP
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_PHONE_NUMBER
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_VERSION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TITLE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPDATED_AT
@@ -98,7 +99,7 @@ class StudyService(
             NOTIFICATIONS_ENABLED,
             STORAGE,
             SETTINGS,
-            PHONE_NUMBER
+            STUDY_PHONE_NUMBER
         )
         private val STUDY_COLUMNS = STUDY_COLUMNS_LIST.joinToString(",") { it.name }
         private val STUDY_COLUMNS_BIND = STUDY_COLUMNS_LIST.joinToString(",") {
