@@ -219,9 +219,10 @@ class AppDataUploadService(
                     stmt.execute(getDeleteTempTableEntriesSql(tempMergeTable.name))
                     stmt.executeUpdate(getAppendTembTableSql(tempMergeTable.name))
                 }
+                connection.commit()
+
                 updateParticipantStats(data, studyId, participantId)
 
-                connection.commit()
                 connection.autoCommit = true
                 return@use wc
             } catch (ex: Exception) {
