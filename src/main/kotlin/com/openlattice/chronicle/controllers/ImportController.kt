@@ -248,8 +248,9 @@ class ImportController(
                 )
 
                 logger.info("Registered participant {} in study {}", participant.participantId, study)
+
             }
-        }.map { it.get() }
+        }.mapNotNull { it.get() }
 
         logger.info("Starting to grant permissions.")
 
