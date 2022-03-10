@@ -4,11 +4,12 @@ import com.geekbeast.postgres.PostgresColumnsIndexDefinition
 import com.geekbeast.postgres.PostgresTableDefinition
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACTIVE
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.ANDROID_UNIQUE_DATES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ANDROID_FIRST_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ANDROID_LAST_DATE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.ANDROID_UNIQUE_DATES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_USERS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.BASE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.BODY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CANDIDATE_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.COMPLETED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CONTACT
@@ -18,13 +19,14 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.DELETED_ROWS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DESCRIPTION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DEVICE_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.EMAIL
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.EMAIL_NOT_UNIQUE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ENDED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.EXPIRATION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.EXPIRATION_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.FIRST_NAME
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.IOS_UNIQUE_DATES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.IOS_FIRST_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.IOS_LAST_DATE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.IOS_UNIQUE_DATES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.JOB_DEFINITION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.JOB_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LAST_NAME
@@ -33,14 +35,17 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.LEGACY_STUDY_
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LON
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LSB
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.MESSAGE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.MESSAGE_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.MSB
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.NAME
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.NOTIFICATIONS_ENABLED
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.NOTIFICATION_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPATION_STATUS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTITION_INDEX
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PHONE_NUMBER
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.PHONE_NUMBER_NOT_UNIQUE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_OF_ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_TYPE
@@ -62,15 +67,17 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.STATUS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STORAGE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_GROUP
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_PHONE_NUMBER
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_VERSION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUMMARY_DATA
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TITLE
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_UNIQUE_DATES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_FIRST_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_LAST_DATE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_UNIQUE_DATES
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.TYPE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPDATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_DATA
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_ID
@@ -81,6 +88,25 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_ID
  */
 class ChroniclePostgresTables {
     companion object {
+
+        @JvmField
+        val NOTIFICATIONS = PostgresTableDefinition("notifications")
+            .addColumns(
+                NOTIFICATION_ID,
+                CANDIDATE_ID,
+                ORGANIZATION_ID,
+                STUDY_ID,
+                CREATED_AT,
+                UPDATED_AT,
+                MESSAGE_ID,
+                TYPE,
+                STATUS,
+                BODY,
+                EMAIL_NOT_UNIQUE,
+                PHONE_NUMBER_NOT_UNIQUE
+            )
+            .primaryKey(NOTIFICATION_ID)
+            .overwriteOnConflict()
 
         @JvmField
         val ORGANIZATIONS = PostgresTableDefinition("organizations")
@@ -111,6 +137,7 @@ class ChroniclePostgresTables {
                 NOTIFICATIONS_ENABLED,
                 STORAGE,
                 SETTINGS,
+                STUDY_PHONE_NUMBER
             )
             .primaryKey(STUDY_ID)
             .overwriteOnConflict()

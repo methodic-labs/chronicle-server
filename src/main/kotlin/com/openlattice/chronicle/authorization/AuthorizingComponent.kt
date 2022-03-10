@@ -34,11 +34,10 @@ import java.util.function.Predicate
 import java.util.stream.Collectors
 import java.util.stream.Stream
 
-val TRANSPORT_PERMISSION: EnumSet<Permission> = EnumSet.of<Permission>(Permission.MATERIALIZE)
-val READ_PERMISSION: EnumSet<Permission> = EnumSet.of<Permission>(Permission.READ)
-val WRITE_PERMISSION: EnumSet<Permission> = EnumSet.of<Permission>(Permission.WRITE)
-val OWNER_PERMISSION: EnumSet<Permission> = EnumSet.of<Permission>(Permission.OWNER)
-val INTEGRATE_PERMISSION: EnumSet<Permission> = EnumSet.of<Permission>(Permission.INTEGRATE)
+val READ_PERMISSION: EnumSet<Permission> = EnumSet.of(Permission.READ)
+val WRITE_PERMISSION: EnumSet<Permission> = EnumSet.of(Permission.WRITE)
+val OWNER_PERMISSION: EnumSet<Permission> = EnumSet.of(Permission.OWNER)
+val INTEGRATE_PERMISSION: EnumSet<Permission> = EnumSet.of(Permission.INTEGRATE)
 private val internalIds: Set<UUID> = setOf() //Reserved for future use.
 
 interface AuthorizingComponent : AuditingComponent {
@@ -98,11 +97,7 @@ interface AuthorizingComponent : AuditingComponent {
     }
 
     fun ensureReadAccess(keys: Set<AclKey>) {
-        accessCheck(
-            keys.stream().collect(
-                Collectors.toMap(Function.identity(), Function { aclKey: AclKey -> READ_PERMISSION })
-            )
-        )
+        accessCheck(keys.associateWith { READ_PERMISSION })
     }
 
     fun ensureWriteAccess(aclKey: AclKey) {
@@ -110,22 +105,15 @@ interface AuthorizingComponent : AuditingComponent {
     }
 
     fun ensureOwnerAccess(aclKey: AclKey) {
-        accessCheck(aclKey, EnumSet.of<Permission>(Permission.OWNER))
+        accessCheck(aclKey, EnumSet.of(Permission.OWNER))
     }
 
     fun ensureOwnerAccess(keys: Set<AclKey>) {
-        val owner: EnumSet<Permission> = EnumSet.of<Permission>(Permission.OWNER)
-        accessCheck(
-            keys.stream().collect(
-                Collectors.toMap<AclKey, AclKey, EnumSet<Permission>>(
-                    Function.identity(),
-                    Function<AclKey, EnumSet<Permission>> { aclKey: AclKey -> owner })
-            )
-        )
+        accessCheck(keys.associateWith { OWNER_PERMISSION })
     }
 
     fun ensureLinkAccess(aclKey: AclKey) {
-        accessCheck(aclKey, EnumSet.of<Permission>(Permission.LINK))
+        accessCheck(aclKey, EnumSet.of(Permission.LINK))
     }
 
     fun isAdmin(): Boolean = Principals.getCurrentPrincipals().contains(Principals.getAdminRole())
@@ -147,11 +135,7 @@ interface AuthorizingComponent : AuditingComponent {
     fun accessCheck(requiredPermissionsByAclKey: Map<AclKey, EnumSet<Permission>>) {
         val authorized = authorizationManager
             .authorize(requiredPermissionsByAclKey, Principals.getCurrentPrincipals())
-            .values.stream().allMatch(
-                Predicate { m: EnumMap<Permission, Boolean> ->
-                    m.values.stream().allMatch(
-                        Predicate { v: Boolean -> v!! })
-                })
+            .values.all { pm -> pm.values.all { it } }
         if (!authorized) {
             logger.warn("Authorization failed for required permissions: {}", requiredPermissionsByAclKey)
             throw ForbiddenException("Insufficient permissions to perform operation.")

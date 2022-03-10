@@ -1,40 +1,35 @@
-##
-# Rhizome Bootstrap Configuration
-##
-
-# Set to false to disable persistence
 enable-persistence:  false
 session-clustering-enabled: false
 
 hazelcast:
-    server: true
+  server: true
+  group: "local"
+  password: "trellis"
+  cp-member-count: 0
+  seed-nodes:
+    - "localhost"
+  port: 5710
+hazelcast-clients:
+  IDS:
+    server: false
     group: "local"
     password: "test"
     cp-member-count: 0
     seed-nodes:
-        - "localhost"
-    port: 5710
-
-hazelcast-clients:
-    IDS:
-        server: false
-        group: "local"
-        password: "test"
-        cp-member-count: 0
-        seed-nodes:
-            - "127.0.0.1:5710"
-
+      - "127.0.0.1:5710"
 postgres:
-    hikari:
-        jdbcUrl: "jdbc:postgresql://localhost:5432/chronicle"
-        username: "oltest"
-        password: "test"
-        maximumPoolSize: 10
-
+  citus: false
+  hikari:
+    jdbcUrl: "jdbc:postgresql://localhost:5432/chronicle"
+    username: "oltest"
+    password: "test"
+    maximumPoolSize: 20
 datasources:
-    chronicle:
-        hikari:
-            jdbcUrl: "jdbc:postgresql://localhost:5432/chronicle"
-            username: "oltest"
-            password: "test"
-            maximumPoolSize: 10
+  chronicle:
+    citus: false
+    initialize-tables: true
+    hikari:
+      jdbcUrl: "jdbc:postgresql://localhost:5432/chronicle"
+      username: "oltest"
+      password: "test
+      maximumPoolSize: 20

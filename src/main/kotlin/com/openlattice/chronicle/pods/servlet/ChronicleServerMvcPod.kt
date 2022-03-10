@@ -27,6 +27,7 @@ import com.openlattice.chronicle.converters.LegacyPostgresDownloadCsvHttpMessage
 import com.openlattice.chronicle.converters.PostgresDownloadCsvHttpMessageConverter
 import com.openlattice.chronicle.converters.TimeUseDiaryDownloadCsvHttpMessageConverter
 import com.openlattice.chronicle.converters.YamlHttpMessageConverter
+import com.openlattice.chronicle.services.twilio.TwilioService
 import com.ryantenney.metrics.spring.config.annotation.EnableMetrics
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.ComponentScan
@@ -51,6 +52,7 @@ import javax.inject.Inject
         ChronicleController::class,
         ChronicleServerExceptionHandler::class,
         ChronicleControllerV2::class,
+        NotificationController::class,
         StudyController::class,
         AdminController::class,
         PrincipalDirectoryController::class

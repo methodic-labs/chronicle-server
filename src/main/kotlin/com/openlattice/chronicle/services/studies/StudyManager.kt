@@ -36,5 +36,6 @@ interface StudyManager {
     fun removeParticipantsFromStudy(connection: Connection, studyId: UUID, participantIds: Collection<String>): Int
     fun removeStudiesFromOrganizations(connection: Connection, studyIds: Collection<UUID>): Int
     fun updateStudy(connection: Connection, studyId: UUID, study: StudyUpdate)
+    fun getStudyPhoneNumber(studyId: UUID): String?
     fun updateParticipationStatus(studyId: UUID, participantId: String, participationStatus: ParticipationStatus)
 }

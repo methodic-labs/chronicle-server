@@ -24,6 +24,7 @@ import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.sensorkit.SensorType
 import com.openlattice.chronicle.services.candidates.CandidateManager
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
+import com.openlattice.chronicle.services.studies.processors.StudyPhoneNumberGetter
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.LEGACY_STUDY_IDS
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.ORGANIZATION_STUDIES
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.PARTICIPANT_STATS
@@ -44,6 +45,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_IDS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPATION_STATUS
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.PHONE_NUMBER
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SETTINGS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STARTED_AT
@@ -83,6 +85,7 @@ class StudyService(
     companion object {
         private val logger = LoggerFactory.getLogger(StudyService::class.java)
         private val mapper = ObjectMappers.newJsonMapper()
+        private val STUDY_PHONE_NUMBER_GETTER = StudyPhoneNumberGetter()
         private val STUDY_COLUMNS_LIST = listOf(
             STUDY_ID,
             TITLE,
@@ -94,7 +97,8 @@ class StudyService(
             CONTACT,
             NOTIFICATIONS_ENABLED,
             STORAGE,
-            SETTINGS
+            SETTINGS,
+            PHONE_NUMBER
         )
         private val STUDY_COLUMNS = STUDY_COLUMNS_LIST.joinToString(",") { it.name }
         private val STUDY_COLUMNS_BIND = STUDY_COLUMNS_LIST.joinToString(",") {
@@ -382,6 +386,7 @@ class StudyService(
             ps.setObject(9, study.notificationsEnabled)
             ps.setObject(10, study.storage)
             ps.setString(11, mapper.writeValueAsString(study.settings))
+            ps.setString(12, study.phoneNumber)
             return ps.executeUpdate()
         }
     }
@@ -454,7 +459,17 @@ class StudyService(
         studies.loadAll(setOf(studyId), true)
     }
 
-    override fun updateParticipationStatus(studyId: UUID, participantId: String, participationStatus: ParticipationStatus) {
+    override fun getStudyPhoneNumber(studyId: UUID): String? {
+        val realStudyId = getStudyId(studyId)
+        checkNotNull(realStudyId) { "invalid study id" }
+        return checkNotNull(studies.executeOnKey(realStudyId, STUDY_PHONE_NUMBER_GETTER))
+    }
+
+    override fun updateParticipationStatus(
+        studyId: UUID,
+        participantId: String,
+        participationStatus: ParticipationStatus
+    ) {
         logger.info("Updating participation status: ${ChronicleServerUtil.STUDY_PARTICIPANT}", studyId, participantId)
         storageResolver.getPlatformStorage().connection.use { connection ->
             AuditedOperationBuilder<Unit>(connection, auditingManager)

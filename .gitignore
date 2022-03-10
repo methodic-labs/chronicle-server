@@ -22,3 +22,4 @@ target/
 out/
 src/main/resources/auth0.yaml
 src/test/resources/auth0.yaml
+src/main/resources/rhizome.yaml
