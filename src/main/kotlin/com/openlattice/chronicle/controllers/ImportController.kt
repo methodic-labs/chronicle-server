@@ -230,7 +230,7 @@ class ImportController(
             PreparedStatementHolderSupplier(hds, getCandidatesSql(config.candidatesTable)) {}
         ) {
             val participant = participant(it)
-            val studyEkId = it.getObject(V2_STUDY_EK_ID, UUID::class.java)
+            val studyEkId = it.getObject("study_ek_id", UUID::class.java)
             val context = SecurityContextHolder.getContext()
             executor.submit {
                 SecurityContextHolder.setContext(context)
