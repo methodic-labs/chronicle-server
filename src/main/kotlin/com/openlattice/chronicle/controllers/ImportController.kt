@@ -289,13 +289,13 @@ class ImportController(
         val studiesByLegacyStudyId = BasePostgresIterable(
             PreparedStatementHolderSupplier(hds, getStudiesByLegacyStudyIdSql(config.candidatesTable!!)) {}
         ) {
-            it.getObject("organization_id", UUID::class.java) to it.getObject( "study_id", UUID::class.java)
+            it.getObject("legacy_study_id", UUID::class.java) to it.getObject( "study_id", UUID::class.java)
         }.toMap()
 
         val studiesByOrganizationId = BasePostgresIterable(
             PreparedStatementHolderSupplier(hds, getStudiesByOrganizationIdSql(config.candidatesTable!!)) {}
         ) {
-            it.getObject("legacy_study_id", UUID::class.java) to it.getObject( "study_id", UUID::class.java)
+            it.getObject("organization_id", UUID::class.java) to it.getObject( "study_id", UUID::class.java)
         }.groupBy({ it.first }, { it.second }).mapValues { it.value.toSet() }
 
         val legacy_users = BasePostgresIterable(
