@@ -684,7 +684,7 @@ class HazelcastAuthorizationService(
     }
 
     private fun getDefaultObjectType(map: Map<AclKey, SecurableObjectType>, aclKey: AclKey): SecurableObjectType {
-        val securableObjectType = map.getOrDefault(aclKey, SecurableObjectType.Unknown)
+        val securableObjectType = map[aclKey] ?: SecurableObjectType.Unknown
 
         if (securableObjectType == SecurableObjectType.Unknown) {
             logger.warn("Unrecognized object type for acl key {} key ", aclKey)

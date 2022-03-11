@@ -21,7 +21,7 @@ import java.sql.SQLException
 import java.util.*
 
 @Component
-class SecurableObjectTypeMapstore(hds: HikariDataSource?) : AbstractBasePostgresMapstore<AclKey, SecurableObjectType>(
+class SecurableObjectTypeMapstore(hds: HikariDataSource) : AbstractBasePostgresMapstore<AclKey, SecurableObjectType>(
     HazelcastMap.SECURABLE_OBJECT_TYPES,
     ChroniclePostgresTables.SECURABLE_OBJECTS,
     hds
