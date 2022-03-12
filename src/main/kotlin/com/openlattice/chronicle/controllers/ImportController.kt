@@ -254,6 +254,43 @@ class ImportController(
         }.mapNotNull { it.get() }
     }
 
+    override fun importParticipants( @RequestBody config: ImportStudiesConfiguration) {
+        ensureAdminAccess()
+        val hds = dataSourceManager.getDataSource(config.dataSourceName)
+
+        //So we need to read in participants table
+
+        //Only import missing participants
+
+        val participants = BasePostgresIterable(
+            PreparedStatementHolderSupplier(hds, getCandidatesSql(config.candidatesTable)) {}
+        ) {
+            val participant = participant(it)
+            val legacyStudyId = it.getObject("legacy_study_id", UUID::class.java)
+            val maybeStudyId = studyService.getStudyId(legacyStudyId)
+            if( maybeStudyId != null ) {
+                val study = studyService.getStudy(maybeStudyId)
+                val context = SecurityContextHolder.getContext()
+                executor.submit {
+                    SecurityContextHolder.setContext(context)
+                    val candidateId = studyService.registerParticipant(study.id, participant)
+
+                    //Let's make sure admins have full access.
+                    authorizationManager.addPermission(
+                        AclKey(candidateId),
+                        Principals.getAdminRole(),
+                        EnumSet.allOf(Permission::class.java)
+                    )
+
+                    logger.info("Registered participant {} in study {}", participant.participantId, study)
+                }
+            } else {
+                null
+            }
+        }.forEach { it?.get() }
+
+    }
+
     private fun tryGetPrincipal(principalId: String, principalEmail: String): List<Principal>? {
         if (usersMap.containsKey(principalId)) {
             val user = usersMap.getValue(principalId)
@@ -276,6 +313,22 @@ class ImportController(
         }
     }
 
+    private fun getStudiesByLegacyStudyId( hds:HikariDataSource, candidatesTable: String ) : Map<UUID, UUID> {
+        return BasePostgresIterable(
+            PreparedStatementHolderSupplier(hds, getStudiesByLegacyStudyIdSql(candidatesTable)) {}
+        ) {
+            it.getObject("legacy_study_id", UUID::class.java) to it.getObject( "study_id", UUID::class.java)
+        }.toMap()
+    }
+
+    private fun getStudiesByOrganizationId( hds:HikariDataSource, candidatesTable: String ) : Map<UUID, Set<UUID>> {
+        return BasePostgresIterable(
+            PreparedStatementHolderSupplier(hds, getStudiesByOrganizationIdSql(candidatesTable)) {}
+        ) {
+            it.getObject("organization_id", UUID::class.java) to it.getObject( "study_id", UUID::class.java)
+        }.groupBy({ it.first }, { it.second }).mapValues { it.value.toSet() }
+    }
+
     @PostMapping(
         path = [PERMISSIONS],
         produces = [MediaType.APPLICATION_JSON_VALUE],
@@ -286,17 +339,8 @@ class ImportController(
         val hds = dataSourceManager.getDataSource(config.dataSourceName)
 
         logger.info("Starting to grant permissions.")
-        val studiesByLegacyStudyId = BasePostgresIterable(
-            PreparedStatementHolderSupplier(hds, getStudiesByLegacyStudyIdSql(config.candidatesTable!!)) {}
-        ) {
-            it.getObject("legacy_study_id", UUID::class.java) to it.getObject( "study_id", UUID::class.java)
-        }.toMap()
-
-        val studiesByOrganizationId = BasePostgresIterable(
-            PreparedStatementHolderSupplier(hds, getStudiesByOrganizationIdSql(config.candidatesTable!!)) {}
-        ) {
-            it.getObject("organization_id", UUID::class.java) to it.getObject( "study_id", UUID::class.java)
-        }.groupBy({ it.first }, { it.second }).mapValues { it.value.toSet() }
+        val studiesByLegacyStudyId = getStudiesByLegacyStudyId(hds, config.candidatesTable)
+        val studiesByOrganizationId = getStudiesByOrganizationId(hds, config.candidatesTable)
 
         val legacy_users = BasePostgresIterable(
             PreparedStatementHolderSupplier(hds, getLegacyUserSql(config.legacyUsersTable!!)) {}
