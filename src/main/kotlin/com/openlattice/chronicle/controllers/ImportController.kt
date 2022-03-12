@@ -23,6 +23,7 @@ import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.import.ImportApi
 import com.openlattice.chronicle.import.ImportApi.Companion.APP_USAGE_SURVEY
 import com.openlattice.chronicle.import.ImportApi.Companion.CONTROLLER
+import com.openlattice.chronicle.import.ImportApi.Companion.PARTICIPANTS
 import com.openlattice.chronicle.import.ImportApi.Companion.PARTICIPANT_STATS
 import com.openlattice.chronicle.import.ImportApi.Companion.PERMISSIONS
 import com.openlattice.chronicle.import.ImportApi.Companion.STUDIES
@@ -254,6 +255,11 @@ class ImportController(
         }.mapNotNull { it.get() }
     }
 
+    @PostMapping(
+        path = [PARTICIPANTS],
+        produces = [MediaType.APPLICATION_JSON_VALUE],
+        consumes = [MediaType.APPLICATION_JSON_VALUE]
+    )
     override fun importParticipants( @RequestBody config: ImportStudiesConfiguration) {
         ensureAdminAccess()
         val hds = dataSourceManager.getDataSource(config.dataSourceName)
