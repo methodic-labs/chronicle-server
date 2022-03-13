@@ -3,6 +3,7 @@ package com.openlattice.chronicle.controllers
 import com.codahale.metrics.annotation.Timed
 import com.google.common.base.MoreObjects
 import com.google.common.collect.SetMultimap
+import com.hazelcast.core.HazelcastInstance
 import com.openlattice.chronicle.auditing.AuditEventType
 import com.openlattice.chronicle.auditing.AuditableEvent
 import com.openlattice.chronicle.auditing.AuditedOperationBuilder
@@ -22,9 +23,11 @@ import com.openlattice.chronicle.deletion.DeleteParticipantTUDSubmissionData
 import com.openlattice.chronicle.deletion.DeleteStudyAppUsageSurveyData
 import com.openlattice.chronicle.deletion.DeleteStudyTUDSubmissionData
 import com.openlattice.chronicle.deletion.DeleteStudyUsageData
+import com.openlattice.chronicle.hazelcast.HazelcastMap
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.ids.IdConstants
 import com.openlattice.chronicle.jobs.ChronicleJob
+import com.openlattice.chronicle.mapstores.storage.StudyMapstore
 import com.openlattice.chronicle.organizations.ChronicleDataCollectionSettings
 import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.participants.ParticipantStats
@@ -103,6 +106,7 @@ import kotlin.NoSuchElementException
 @RestController
 @RequestMapping(CONTROLLER)
 class StudyController @Inject constructor(
+    hazelcastInstance: HazelcastInstance,
     val storageResolver: StorageResolver,
     val idGenerationService: HazelcastIdGenerationService,
     val enrollmentService: EnrollmentService,
@@ -116,7 +120,7 @@ class StudyController @Inject constructor(
 //    private val managementApi: ManagementAPI,
 ) : StudyApi, AuthorizingComponent {
 
-
+    private val studies = HazelcastMap.STUDIES.getMap(hazelcastInstance)
     companion object {
         private val logger = LoggerFactory.getLogger(StudyController::class.java)!!
     }
@@ -286,6 +290,7 @@ class StudyController @Inject constructor(
                     studyService.deleteStudies(connection, studyIdList)
                     studyService.removeStudiesFromOrganizations(connection, studyIdList)
                     studyService.removeAllParticipantsFromStudies(connection, studyIdList)
+                    studies.remove(studyId)
                     return@operation newJobIds
                 }
                 .audit { jobIds ->
