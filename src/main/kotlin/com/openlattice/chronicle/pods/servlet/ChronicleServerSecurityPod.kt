@@ -42,6 +42,8 @@ class ChronicleServerSecurityPod : Auth0SecurityPod() {
         //TODO: Lock these down
         http.authorizeRequests()
             .antMatchers(HttpMethod.OPTIONS).permitAll()
+            .antMatchers(HttpMethod.POST, "/chronicle/study/**").permitAll()
+            .antMatchers(HttpMethod.POST, "/chronicle/v2/**").permitAll()
             .antMatchers(HttpMethod.POST, "/chronicle/data/study/participant").permitAll()
             .antMatchers(HttpMethod.POST, "/chronicle/v3/study/*/participant/*/ios/*").permitAll()
             .antMatchers(HttpMethod.POST, "/chronicle/v3/study/*/participant/*/android/*").permitAll()
