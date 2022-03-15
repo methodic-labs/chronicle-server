@@ -107,62 +107,6 @@ class ChronicleControllerV2 : ChronicleApi {
 
     @Timed
     @RequestMapping(
-            path = [ChronicleApi.ORGANIZATION_ID_PATH + ChronicleApi.STUDY_ID_PATH + ChronicleApi.QUESTIONNAIRE_PATH + ChronicleApi.ENTITY_KEY_ID_PATH],
-            method = [RequestMethod.GET], produces = [MediaType.APPLICATION_JSON_VALUE]
-    )
-    override fun getChronicleQuestionnaire(
-            @PathVariable(ChronicleApi.ORGANIZATION_ID) organizationId: UUID,
-            @PathVariable(ChronicleApi.STUDY_ID) studyId: UUID,
-            @PathVariable(ChronicleApi.ENTITY_KEY_ID) questionnaireEKID: UUID
-    ): LegacyChronicleQuestionnaire {
-        return surveysManager.getLegacyQuestionnaire(organizationId, studyId, questionnaireEKID)
-    }
-
-    @Timed
-    @RequestMapping(
-            path = [ChronicleApi.ORGANIZATION_ID_PATH + ChronicleApi.STUDY_ID_PATH + ChronicleApi.PARTICIPANT_ID_PATH + ChronicleApi.APPS_PATH],
-            method = [RequestMethod.POST], consumes = [MediaType.APPLICATION_JSON_VALUE]
-    )
-    override fun submitAppUsageSurvey(
-            @PathVariable(ChronicleApi.ORGANIZATION_ID) organizationId: UUID,
-            @PathVariable(ChronicleApi.STUDY_ID) studyId: UUID,
-            @PathVariable(ChronicleApi.PARTICIPANT_ID) participantId: String,
-            @RequestBody associationDetails: Map<UUID, Map<FullQualifiedName, Set<Any>>>
-    ) {
-       TODO("to be removed")
-    }
-
-    @Timed
-    @RequestMapping(
-            path = [ChronicleApi.ORGANIZATION_ID_PATH + ChronicleApi.STUDY_ID_PATH + ChronicleApi.PARTICIPANT_ID_PATH + ChronicleApi.QUESTIONNAIRE_PATH],
-            method = [RequestMethod.POST], consumes = [MediaType.APPLICATION_JSON_VALUE]
-    )
-    override fun submitQuestionnaire(
-            @PathVariable(ChronicleApi.ORGANIZATION_ID) organizationId: UUID,
-            @PathVariable(ChronicleApi.STUDY_ID) studyId: UUID,
-            @PathVariable(ChronicleApi.PARTICIPANT_ID) participantId: String,
-            @RequestBody questionnaireResponses: Map<UUID, Map<FullQualifiedName, Set<Any>>>
-    ) {
-        surveysManager.submitLegacyQuestionnaire(organizationId, studyId, participantId, questionnaireResponses)
-    }
-
-    @Timed
-    @RequestMapping(
-            path = [ChronicleApi.ORGANIZATION_ID_PATH + ChronicleApi.STUDY_ID_PATH + ChronicleApi.PARTICIPANT_ID_PATH + ChronicleApi.APPS_PATH],
-            method = [RequestMethod.GET], produces = [MediaType.APPLICATION_JSON_VALUE]
-    )
-    override fun getParticipantAppsUsageData(
-            @PathVariable(ChronicleApi.ORGANIZATION_ID) organizationId: UUID,
-            @PathVariable(ChronicleApi.STUDY_ID) studyId: UUID,
-            @PathVariable(ChronicleApi.PARTICIPANT_ID) participantId: String,
-            @RequestParam(value = ChronicleApi.DATE) date: String
-    ): List<ChronicleAppsUsageDetails> {
-//        return surveysManager!!.getParticipantAppsUsageData(organizationId, studyId, participantId, date)
-        TODO("won't be needed any more. to remove")
-    }
-
-    @Timed
-    @RequestMapping(
             path = [ChronicleApi.ORGANIZATION_ID_PATH + ChronicleApi.STUDY_ID_PATH + ChronicleApi.QUESTIONNAIRES_PATH],
             method = [RequestMethod.GET], produces = [MediaType.APPLICATION_JSON_VALUE]
     )
@@ -173,20 +117,6 @@ class ChronicleControllerV2 : ChronicleApi {
         val realStudyId = studyService.getStudyId(studyId)
         checkNotNull(realStudyId) { "invalid study id" }
         return surveysManager.getLegacyStudyQuestionnaires(organizationId, realStudyId)
-    }
-
-    @RequestMapping(
-            path = [ChronicleApi.ORGANIZATION_ID_PATH + ChronicleApi.STUDY_ID_PATH + ChronicleApi.PARTICIPANT_ID_PATH + ChronicleApi.TIME_USE_DIARY],
-            method = [RequestMethod.POST], consumes = [MediaType.APPLICATION_JSON_VALUE]
-    )
-    override fun submitTimeUseDiarySurvey(
-            @PathVariable(ChronicleApi.ORGANIZATION_ID) organizationId: UUID,
-            @PathVariable(ChronicleApi.STUDY_ID) studyId: UUID,
-            @PathVariable(ChronicleApi.PARTICIPANT_ID) participantId: String,
-            @RequestBody surveyData: List<Map<FullQualifiedName, Set<Any>>>
-    ) {
-        // surveysManager.submitTimeUseDiarySurvey(organizationId, studyId, participantId, surveyData)
-        TODO("Not needed here. To remove")
     }
 
     @Timed
@@ -215,24 +145,6 @@ class ChronicleControllerV2 : ChronicleApi {
             @RequestBody propertyTypeFqns: Set<FullQualifiedName>
     ): Map<FullQualifiedName, UUID> {
         return LegacyEdmResolver.getPropertyTypeIds(propertyTypeFqns)
-    }
-
-    @RequestMapping(
-            path = [ChronicleApi.ORGANIZATION_ID_PATH + ChronicleApi.SETTINGS_PATH], method = [RequestMethod.GET],
-            produces = [MediaType.APPLICATION_JSON_VALUE]
-    )
-    override fun getAppSettings(
-            @PathVariable(ChronicleApi.ORGANIZATION_ID) organizationId: UUID,
-            @RequestParam(value = ChronicleApi.APP_NAME) appName: String
-    ): Map<String, Any> {
-        return when (val appComponent = AppComponent.fromString(appName)) {
-            AppComponent.CHRONICLE_DATA_COLLECTION -> LegacyUtil.mapToLegacySettings(
-                    organizationSettingsManager.getOrganizationSettings(organizationId).chronicleDataCollection
-            )
-            else -> organizationSettingsManager
-                    .getOrganizationSettings(organizationId)
-                    .appSettings.getValue(appComponent)
-        }
     }
 
     @Timed
