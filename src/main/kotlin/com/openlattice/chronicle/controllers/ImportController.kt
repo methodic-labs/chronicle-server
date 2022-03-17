@@ -46,6 +46,7 @@ import com.openlattice.chronicle.storage.RedshiftColumns
 import com.openlattice.chronicle.study.Study
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryResponse
 import com.zaxxer.hikari.HikariDataSource
+import org.apache.commons.lang3.NotImplementedException
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
@@ -162,97 +163,101 @@ class ImportController(
     )
     override fun importStudies(@RequestBody config: ImportStudiesConfiguration) {
         ensureAdminAccess()
-        val hds = dataSourceManager.getDataSource(config.dataSourceName)
-        val studiesByEkId = Maps.newConcurrentMap<UUID, Study>()
-        val studiesByLegacyStudyId = mutableMapOf<UUID, UUID>()
-        val studiesByOrganizationId = mutableMapOf<UUID, MutableSet<Study>>()
-        val settingsByLegacyStudyId = mutableMapOf<UUID, Map<String, Any>>()
+        logger.error("Importing studies has been disabled.")
+        return
 
-        BasePostgresIterable(
-            PreparedStatementHolderSupplier(hds, getStudySettingsSql(config.studySettingsTable)) {}
-        ) {
-            val v2StudyId: UUID? = v2StudyId(it)
-            val studySettings = mapper.readValue<Map<String, Any>>(it.getString(SETTINGS.name))
-            if (v2StudyId != null) {
-                settingsByLegacyStudyId[v2StudyId] = studySettings
-            }
-        }.count()
-
-        val studies = BasePostgresIterable(
-            PreparedStatementHolderSupplier(hds, getStudiesSql(config.studiesTable)) {}
-        ) {
-            val v2StudyId: UUID? = v2StudyId(it)
-            val study = study(it, settingsByLegacyStudyId.getOrDefault(v2StudyId, mapOf()))
-
-            val studyId = studyService.createStudy(study)
-
-            logger.info("Created study {}", study)
-            check(study.id == studyId) { "Safety check to make sure study id got set appropriately" }
-
-            studiesByEkId[it.getObject(V2_STUDY_EK_ID, UUID::class.java)] = study
-            studiesByOrganizationId.getOrPut(it.getObject(V2_ORGANIZATION_ID, UUID::class.java)) { mutableSetOf() }
-                .add(study)
-
-            if (v2StudyId != null) {
-                studiesByLegacyStudyId[v2StudyId] = study.id
-            }
-            v2StudyId to studyId
-        }.forEach { (v2StudyId, studyId) ->
-            hds.connection.use { connection ->
-                val partcipantsUpdated = connection.prepareStatement(getUpdateParticipantExportSql(config)).use { ps ->
-                    ps.setObject(1, studyId)
-                    ps.setObject(2, v2StudyId)
-                    ps.executeUpdate()
-                }
-                logger.info("Updated $partcipantsUpdated participant for legacy study $v2StudyId with new id $studyId")
-            }
-
-            //Let's make sure admins have full access.
-            authorizationManager.addPermission(
-                AclKey(studyId),
-                Principals.getAdminRole(),
-                EnumSet.allOf(Permission::class.java)
-            )
-        }
-
-        val legacyInserts = hds.connection.use { connection ->
-            connection.prepareStatement(INSERT_LEGACY_STUDY_ID_SQL).use { ps ->
-                studiesByLegacyStudyId.forEach { (legacyStudyId, studyId) ->
-                    var index = 1
-                    ps.setObject(index++, studyId)
-                    ps.setObject(index++, legacyStudyId)
-                    ps.addBatch()
-                }
-                ps.executeBatch().sum()
-            }
-        }
-        check(legacyInserts == studiesByLegacyStudyId.size) { "safety check to ensure all legacy study ids were inserted" }
-
-        val participants = BasePostgresIterable(
-            PreparedStatementHolderSupplier(hds, getCandidatesSql(config.candidatesTable)) {}
-        ) {
-            val participant = participant(it)
-            val studyEkId = it.getObject("study_ek_id", UUID::class.java)
-            val context = SecurityContextHolder.getContext()
-            executor.submit {
-                SecurityContextHolder.setContext(context)
-                val study = studiesByEkId[studyEkId] ?: throw StudyNotFoundException(
-                    studyEkId,
-                    "Missing study with legacy id $studyEkId"
-                )
-                val candidateId = studyService.registerParticipant(study.id, participant)
-
-                //Let's make sure admins have full access.
-                authorizationManager.addPermission(
-                    AclKey(candidateId),
-                    Principals.getAdminRole(),
-                    EnumSet.allOf(Permission::class.java)
-                )
-
-                logger.info("Registered participant {} in study {}", participant.participantId, study)
-
-            }
-        }.mapNotNull { it.get() }
+//        ensureAdminAccess()
+//        val hds = dataSourceManager.getDataSource(config.dataSourceName)
+//        val studiesByEkId = Maps.newConcurrentMap<UUID, Study>()
+//        val studiesByLegacyStudyId = mutableMapOf<UUID, UUID>()
+//        val studiesByOrganizationId = mutableMapOf<UUID, MutableSet<Study>>()
+//        val settingsByLegacyStudyId = mutableMapOf<UUID, Map<String, Any>>()
+//
+//        BasePostgresIterable(
+//            PreparedStatementHolderSupplier(hds, getStudySettingsSql(config.studySettingsTable)) {}
+//        ) {
+//            val v2StudyId: UUID? = v2StudyId(it)
+//            val studySettings = mapper.readValue<Map<String, Any>>(it.getString(SETTINGS.name))
+//            if (v2StudyId != null) {
+//                settingsByLegacyStudyId[v2StudyId] = studySettings
+//            }
+//        }.count()
+//
+//        val studies = BasePostgresIterable(
+//            PreparedStatementHolderSupplier(hds, getStudiesSql(config.studiesTable)) {}
+//        ) {
+//            val v2StudyId: UUID? = v2StudyId(it)
+//            val study = study(it, settingsByLegacyStudyId.getOrDefault(v2StudyId, mapOf()))
+//
+//            val studyId = studyService.createStudy(study)
+//
+//            logger.info("Created study {}", study)
+//            check(study.id == studyId) { "Safety check to make sure study id got set appropriately" }
+//
+//            studiesByEkId[it.getObject(V2_STUDY_EK_ID, UUID::class.java)] = study
+//            studiesByOrganizationId.getOrPut(it.getObject(V2_ORGANIZATION_ID, UUID::class.java)) { mutableSetOf() }
+//                .add(study)
+//
+//            if (v2StudyId != null) {
+//                studiesByLegacyStudyId[v2StudyId] = study.id
+//            }
+//            v2StudyId to studyId
+//        }.forEach { (v2StudyId, studyId) ->
+//            hds.connection.use { connection ->
+//                val partcipantsUpdated = connection.prepareStatement(getUpdateParticipantExportSql(config)).use { ps ->
+//                    ps.setObject(1, studyId)
+//                    ps.setObject(2, v2StudyId)
+//                    ps.executeUpdate()
+//                }
+//                logger.info("Updated $partcipantsUpdated participant for legacy study $v2StudyId with new id $studyId")
+//            }
+//
+//            //Let's make sure admins have full access.
+//            authorizationManager.addPermission(
+//                AclKey(studyId),
+//                Principals.getAdminRole(),
+//                EnumSet.allOf(Permission::class.java)
+//            )
+//        }
+//
+//        val legacyInserts = hds.connection.use { connection ->
+//            connection.prepareStatement(INSERT_LEGACY_STUDY_ID_SQL).use { ps ->
+//                studiesByLegacyStudyId.forEach { (legacyStudyId, studyId) ->
+//                    var index = 1
+//                    ps.setObject(index++, studyId)
+//                    ps.setObject(index++, legacyStudyId)
+//                    ps.addBatch()
+//                }
+//                ps.executeBatch().sum()
+//            }
+//        }
+//        check(legacyInserts == studiesByLegacyStudyId.size) { "safety check to ensure all legacy study ids were inserted" }
+//
+//        val participants = BasePostgresIterable(
+//            PreparedStatementHolderSupplier(hds, getCandidatesSql(config.candidatesTable)) {}
+//        ) {
+//            val participant = participant(it)
+//            val studyEkId = it.getObject("study_ek_id", UUID::class.java)
+//            val context = SecurityContextHolder.getContext()
+//            executor.submit {
+//                SecurityContextHolder.setContext(context)
+//                val study = studiesByEkId[studyEkId] ?: throw StudyNotFoundException(
+//                    studyEkId,
+//                    "Missing study with legacy id $studyEkId"
+//                )
+//                val candidateId = studyService.registerParticipant(study.id, participant)
+//
+//                //Let's make sure admins have full access.
+//                authorizationManager.addPermission(
+//                    AclKey(candidateId),
+//                    Principals.getAdminRole(),
+//                    EnumSet.allOf(Permission::class.java)
+//                )
+//
+//                logger.info("Registered participant {} in study {}", participant.participantId, study)
+//
+//            }
+//        }.mapNotNull { it.get() }
     }
 
     @PostMapping(
@@ -261,39 +266,40 @@ class ImportController(
         consumes = [MediaType.APPLICATION_JSON_VALUE]
     )
     override fun importParticipants( @RequestBody config: ImportStudiesConfiguration) {
+        logger.error("Disabled importing participants")
         ensureAdminAccess()
-        val hds = dataSourceManager.getDataSource(config.dataSourceName)
-
-        //So we need to read in participants table
-
-        //Only import missing participants
-
-        val participants = BasePostgresIterable(
-            PreparedStatementHolderSupplier(hds, getCandidatesSql(config.candidatesTable)) {}
-        ) {
-            val participant = participant(it)
-            val legacyStudyId = it.getObject("legacy_study_id", UUID::class.java)
-            val maybeStudyId = studyService.getStudyId(legacyStudyId)
-            if( maybeStudyId != null ) {
-                val study = studyService.getStudy(maybeStudyId)
-                val context = SecurityContextHolder.getContext()
-                executor.submit {
-                    SecurityContextHolder.setContext(context)
-                    val candidateId = studyService.registerParticipant(study.id, participant)
-
-                    //Let's make sure admins have full access.
-                    authorizationManager.addPermission(
-                        AclKey(candidateId),
-                        Principals.getAdminRole(),
-                        EnumSet.allOf(Permission::class.java)
-                    )
-
-                    logger.info("Registered participant {} in study {}", participant.participantId, study)
-                }
-            } else {
-                null
-            }
-        }.forEach { it?.get() }
+//        val hds = dataSourceManager.getDataSource(config.dataSourceName)
+//
+//        //So we need to read in participants table
+//
+//        //Only import missing participants
+//
+//        val participants = BasePostgresIterable(
+//            PreparedStatementHolderSupplier(hds, getCandidatesSql(config.candidatesTable)) {}
+//        ) {
+//            val participant = participant(it)
+//            val legacyStudyId = it.getObject("legacy_study_id", UUID::class.java)
+//            val maybeStudyId = studyService.getStudyId(legacyStudyId)
+//            if( maybeStudyId != null ) {
+//                val study = studyService.getStudy(maybeStudyId)
+//                val context = SecurityContextHolder.getContext()
+//                executor.submit {
+//                    SecurityContextHolder.setContext(context)
+//                    val candidateId = studyService.registerParticipant(study.id, participant)
+//
+//                    //Let's make sure admins have full access.
+//                    authorizationManager.addPermission(
+//                        AclKey(candidateId),
+//                        Principals.getAdminRole(),
+//                        EnumSet.allOf(Permission::class.java)
+//                    )
+//
+//                    logger.info("Registered participant {} in study {}", participant.participantId, study)
+//                }
+//            } else {
+//                null
+//            }
+//        }.forEach { it?.get() }
 
     }
 
