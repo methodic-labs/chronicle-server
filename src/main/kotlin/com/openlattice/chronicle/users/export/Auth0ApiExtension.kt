@@ -18,13 +18,14 @@
  *
  *
  */
-package com.openlattice.users.export
+package com.openlattice.chronicle.users.export
 
 import com.auth0.net.TelemetryInterceptor
+import com.openlattice.users.export.UserExportEntity
 import okhttp3.HttpUrl
 import okhttp3.OkHttpClient
 
-class Auth0ApiExtension(val domain: String, private val apiToken: String) {
+class Auth0ApiExtension(val domain: String, private val apiToken: () -> String) {
 
     private val baseUrl = HttpUrl.parse("https://$domain")
             ?: throw IllegalArgumentException("Domain '$domain' couldn't be parsed as an URL.")
@@ -34,6 +35,6 @@ class Auth0ApiExtension(val domain: String, private val apiToken: String) {
 
 
     fun userExport(): UserExportEntity {
-        return UserExportEntity(client, baseUrl, apiToken)
+        return UserExportEntity(client, baseUrl, apiToken())
     }
 }

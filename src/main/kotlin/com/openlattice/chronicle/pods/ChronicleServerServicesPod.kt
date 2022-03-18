@@ -19,11 +19,11 @@
  */
 package com.openlattice.chronicle.pods
 
-import com.auth0.client.mgmt.ManagementAPI
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.geekbeast.auth0.Auth0Pod
 import com.geekbeast.auth0.Auth0TokenProvider
 import com.geekbeast.auth0.AwsAuth0TokenProvider
+import com.geekbeast.auth0.ManagementApiProvider
 import com.geekbeast.authentication.Auth0Configuration
 import com.geekbeast.hazelcast.HazelcastClientProvider
 import com.geekbeast.jdbc.DataSourceManager
@@ -87,7 +87,7 @@ import com.openlattice.chronicle.users.DefaultAuth0SyncTask
 import com.openlattice.chronicle.users.LocalAuth0SyncTask
 import com.openlattice.chronicle.users.LocalUserListingService
 import com.openlattice.chronicle.users.UserListingService
-import com.openlattice.users.export.Auth0ApiExtension
+import com.openlattice.chronicle.users.export.Auth0ApiExtension
 import org.slf4j.LoggerFactory
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -141,7 +141,13 @@ class ChronicleServerServicesPod {
 
     @Bean
     fun auth0TokenProvider(): Auth0TokenProvider {
+        //TODO: Remove AWS from the name of this class.
         return AwsAuth0TokenProvider(auth0Configuration)
+    }
+
+    @Bean
+    fun managementApiProvider() : ManagementApiProvider {
+        return ManagementApiProvider(auth0TokenProvider(),auth0Configuration)
     }
 
     @Bean
@@ -289,12 +295,13 @@ class ChronicleServerServicesPod {
         if (auth0Configuration.managementApiUrl.contains(Auth0Configuration.NO_SYNC_URL)) {
             return LocalUserListingService(auth0Configuration)
         }
-        val auth0Token = auth0TokenProvider().token
+        val atp = auth0TokenProvider()
         return Auth0UserListingService(
-            ManagementAPI(auth0Configuration.domain, auth0Token),
-            Auth0ApiExtension(auth0Configuration.domain, auth0Token)
+            managementApiProvider(),
+            Auth0ApiExtension(auth0Configuration.domain) { atp.token }
         )
     }
+
 
     @Bean
     fun userDirectoryService(): UserDirectoryService {
