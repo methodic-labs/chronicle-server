@@ -75,7 +75,7 @@ class StudyMapstore(val hds: HikariDataSource) : TestableSelfRegisteringMapStore
     }
 
     override fun delete(key: UUID) {
-        // throw UnsupportedOperationException("The Study Mapstore is a READ ONLY cache.")
+         throw UnsupportedOperationException("The Study Mapstore is a READ ONLY cache.")
     }
 
     override fun deleteAll(keys: MutableCollection<UUID>) {

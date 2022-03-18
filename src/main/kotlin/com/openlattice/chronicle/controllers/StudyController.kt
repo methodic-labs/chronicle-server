@@ -290,7 +290,7 @@ class StudyController @Inject constructor(
                     studyService.deleteStudies(connection, studyIdList)
                     studyService.removeStudiesFromOrganizations(connection, studyIdList)
                     studyService.removeAllParticipantsFromStudies(connection, studyIdList)
-                    studies.remove(studyId)
+                    studies.evict(studyId)
                     return@operation newJobIds
                 }
                 .audit { jobIds ->
