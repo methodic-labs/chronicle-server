@@ -32,6 +32,7 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_PACKAGE_N
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.INTERACTION_TYPE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMESTAMP
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMEZONE
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.USERNAME
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.CHRONICLE_USAGE_EVENTS
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.survey.AppUsage
@@ -84,6 +85,7 @@ class SurveysService(
                 AND ${TIMESTAMP.name} >=  ?
                 AND ${TIMESTAMP.name} < ?
                 AND ${INTERACTION_TYPE.name} = 'Move to Foreground'
+                AND (${USERNAME.name} IS NULL OR ${USERNAME.name} = '')
         """.trimIndent()
 
         /**
