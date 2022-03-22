@@ -31,7 +31,7 @@ import com.geekbeast.rhizome.jobs.DistributableJob
 import com.geekbeast.rhizome.jobs.PostgresJobsMapStore
 import com.google.common.eventbus.EventBus
 import com.geekbeast.auth0.Auth0TokenProvider
-import com.geekbeast.auth0.AwsAuth0TokenProvider
+import com.geekbeast.auth0.RefreshingAuth0TokenProvider
 import com.openlattice.chronicle.authorization.*
 import com.openlattice.chronicle.authorization.mapstores.SecurableObjectTypeMapstore
 import com.openlattice.chronicle.authorization.mapstores.UserMapstore
@@ -118,7 +118,7 @@ class MapstoresPod {
 
     @Bean
     fun auth0TokenProvider(): Auth0TokenProvider {
-        return AwsAuth0TokenProvider(auth0Configuration)
+        return RefreshingAuth0TokenProvider(auth0Configuration)
     }
 
     @Bean

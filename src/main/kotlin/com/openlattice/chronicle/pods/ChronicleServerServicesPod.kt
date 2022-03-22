@@ -22,7 +22,7 @@ package com.openlattice.chronicle.pods
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.geekbeast.auth0.Auth0Pod
 import com.geekbeast.auth0.Auth0TokenProvider
-import com.geekbeast.auth0.AwsAuth0TokenProvider
+import com.geekbeast.auth0.RefreshingAuth0TokenProvider
 import com.geekbeast.auth0.ManagementApiProvider
 import com.geekbeast.authentication.Auth0Configuration
 import com.geekbeast.hazelcast.HazelcastClientProvider
@@ -142,7 +142,7 @@ class ChronicleServerServicesPod {
     @Bean
     fun auth0TokenProvider(): Auth0TokenProvider {
         //TODO: Remove AWS from the name of this class.
-        return AwsAuth0TokenProvider(auth0Configuration)
+        return RefreshingAuth0TokenProvider(auth0Configuration)
     }
 
     @Bean
