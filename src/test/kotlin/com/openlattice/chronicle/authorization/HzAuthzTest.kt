@@ -47,7 +47,7 @@ open class HzAuthzTest : ChronicleServerTests() {
     @Test
     fun testAddEntitySetPermission() {
         val key = AclKey(UUID.randomUUID())
-        val permissions: EnumSet<Permission> = EnumSet.of(Permission.DISCOVER, Permission.READ)
+        val permissions: EnumSet<Permission> = EnumSet.of(Permission.MATERIALIZE, Permission.READ)
         Assert.assertFalse(
             hzAuthz!!.checkIfHasPermissions(key, ImmutableSet.of(p), permissions)
         )
@@ -64,7 +64,7 @@ open class HzAuthzTest : ChronicleServerTests() {
             AclKey(UUID.randomUUID()),
             AclKey(UUID.randomUUID())
         )
-        val permissions: EnumSet<Permission> = EnumSet.of<Permission>(Permission.DISCOVER, Permission.READ)
+        val permissions: EnumSet<Permission> = EnumSet.of<Permission>(Permission.MATERIALIZE, Permission.READ)
         aclKeys.forEach(Consumer { key: AclKey? ->
             Assert.assertFalse(
                 hzAuthz!!.checkIfHasPermissions(key!!, ImmutableSet.of(p), permissions)
@@ -81,7 +81,7 @@ open class HzAuthzTest : ChronicleServerTests() {
     @Test
     fun testTypeMismatchPermission() {
         val key = AclKey(UUID.randomUUID())
-        val permissions: EnumSet<Permission> = EnumSet.of(Permission.DISCOVER, Permission.READ)
+        val permissions: EnumSet<Permission> = EnumSet.of(Permission.MATERIALIZE, Permission.READ)
         Assert.assertFalse(hzAuthz.checkIfHasPermissions(key, ImmutableSet.of(p), permissions))
 
         hzAuthz.createUnnamedSecurableObject(key, p, EnumSet.noneOf(Permission::class.java), SecurableObjectType.Study)
@@ -94,7 +94,7 @@ open class HzAuthzTest : ChronicleServerTests() {
     fun testRemovePermissions() {
         val key = AclKey(UUID.randomUUID())
         val permissions: EnumSet<Permission> =
-            EnumSet.of(Permission.DISCOVER, Permission.READ, Permission.OWNER)
+            EnumSet.of(Permission.MATERIALIZE, Permission.READ, Permission.OWNER)
         Assert.assertFalse(
             hzAuthz!!.checkIfHasPermissions(key, ImmutableSet.of(p), permissions)
         )
@@ -122,9 +122,9 @@ open class HzAuthzTest : ChronicleServerTests() {
     fun testSetPermissions() {
         val key: AclKey = AclKey(UUID.randomUUID())
         val permissions: EnumSet<Permission> =
-            EnumSet.of<Permission>(Permission.DISCOVER, Permission.READ, Permission.OWNER)
+            EnumSet.of<Permission>(Permission.MATERIALIZE, Permission.READ, Permission.OWNER)
         val badPermissions: EnumSet<Permission> =
-            EnumSet.of<Permission>(Permission.DISCOVER, Permission.READ, Permission.LINK)
+            EnumSet.of<Permission>(Permission.MATERIALIZE, Permission.READ, Permission.LINK)
         Assert.assertFalse(
             hzAuthz!!.checkIfHasPermissions(key, ImmutableSet.of(p), permissions)
         )
@@ -153,9 +153,9 @@ open class HzAuthzTest : ChronicleServerTests() {
         val key: AclKey = AclKey(UUID.randomUUID())
         val p1 = initializePrincipal(TestDataFactory.userPrincipal())
         val p2 = initializePrincipal(TestDataFactory.userPrincipal())
-        val permissions1: EnumSet<Permission> = EnumSet.of<Permission>(Permission.DISCOVER, Permission.READ)
+        val permissions1: EnumSet<Permission> = EnumSet.of<Permission>(Permission.MATERIALIZE, Permission.READ)
         val permissions2: EnumSet<Permission> = EnumSet
-            .of<Permission>(Permission.DISCOVER, Permission.READ, Permission.WRITE, Permission.OWNER)
+            .of<Permission>(Permission.MATERIALIZE, Permission.READ, Permission.WRITE, Permission.OWNER)
         Assert.assertFalse(
             hzAuthz!!.checkIfHasPermissions(key, ImmutableSet.of(p1), permissions1)
         )
@@ -268,7 +268,7 @@ open class HzAuthzTest : ChronicleServerTests() {
             Assert.assertTrue(checkForKey.keys.containsAll(ac.permissions))
             val overlapping: Set<Permission> = ImmutableSet.copyOf(Sets.intersection(permissions2, ac.permissions))
             Assert.assertTrue(overlapping.stream().allMatch { p: Permission -> result.getValue(key).getValue(p) })
-            //            Assert.assertTrue( result.get( key ).get( Permission.DISCOVER ) );
+            //            Assert.assertTrue( result.get( key ).get( Permission.MATERIALIZE ) );
             //            Assert.assertTrue( result.get( key ).get( Permission.READ ) );
             //            Assert.assertFalse( result.get( key ).get( Permission.OWNER ) );
         }
@@ -308,7 +308,7 @@ open class HzAuthzTest : ChronicleServerTests() {
         val write: EnumSet<Permission> = EnumSet.of<Permission>(Permission.WRITE)
         val owner: EnumSet<Permission> = EnumSet.of<Permission>(Permission.OWNER)
         val materialize: EnumSet<Permission> = EnumSet.of<Permission>(Permission.MATERIALIZE)
-        val discover: EnumSet<Permission> = EnumSet.of<Permission>(Permission.DISCOVER)
+        val discover: EnumSet<Permission> = EnumSet.of<Permission>(Permission.MATERIALIZE)
 
         // has read for all 3 acls, owner for 2, write for 2
         val aclKeySet1 = java.util.Set.of(key1, key2, key3)
