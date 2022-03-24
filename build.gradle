@@ -62,8 +62,11 @@ distTar {
     archiveName "$baseName" + ".tgz"
 }
 
-apply from: "../gradles/methodic.gradle"
-apply plugin: 'kotlin'
+if( project.hasProperty('developmentMode') && project.developmentMode ) {
+    apply from: "../gradles/methodic.gradle"
+} else {
+    apply from: "https://raw.githubusercontent.com/methodic-labs/methodic/main/gradles/methodic.gradle"
+}
 
 mainClassName = "com.openlattice.chronicle.ChronicleServer"
 
@@ -143,8 +146,11 @@ configurations {
 checkstyle {
     toolVersion = '7.4'
     showViolations = false
-    config project.resources.text.fromFile("../gradles/checkstyle.xml")
-    //config project.resources.text.fromUri('https://raw.githubusercontent.com/openlattice/openlattice/main/gradles/checkstyle.xml')
+    if( project.hasProperty('developmentMode') && project.developmentMode ) {
+        config project.resources.text.fromFile("../gradles/checkstyle.xml")
+    } else {
+        config project.resources.text.fromUri('https://raw.githubusercontent.com/methodic-labs/methodic/main/gradles/checkstyle.xml')
+    }
 }
 
 import com.github.jk1.license.render.InventoryHtmlReportRenderer
