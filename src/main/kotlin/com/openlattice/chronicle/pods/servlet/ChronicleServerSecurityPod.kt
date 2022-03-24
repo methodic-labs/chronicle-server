@@ -52,7 +52,7 @@ class ChronicleServerSecurityPod : Auth0SecurityPod() {
             //v3 unauthenticated endpoints.
             .antMatchers(HttpMethod.POST, "/chronicle/v3/study/*/participant/*/ios/*").permitAll()
             .antMatchers(HttpMethod.POST, "/chronicle/v3/study/*/participant/*/android/*").permitAll()
-            .antMatchers(HttpMethod.POST, "/chronicle/v3/time-user-diary/**").permitAll()
+            .antMatchers(HttpMethod.POST, "/chronicle/v3/time-use-diary/**").permitAll()
             .antMatchers(HttpMethod.GET, "/chronicle/v3/study/*/settings/sensors").permitAll()
             .antMatchers(HttpMethod.GET, "/chronicle/v3/study/*/settings").permitAll()
             .antMatchers(HttpMethod.GET, "/chronicle/v3/study/*/participant/*/verify").permitAll()
@@ -64,4 +64,5 @@ class ChronicleServerSecurityPod : Auth0SecurityPod() {
         filter.setForceEncoding(true)
         http.addFilterBefore(filter, CsrfFilter::class.java)
     }
+}
 }
