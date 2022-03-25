@@ -62,6 +62,12 @@ distTar {
     archiveName "$baseName" + ".tgz"
 }
 
+if(!project.hasProperty('developmentMode')) {
+    ext.developmentMode = false
+}
+
+println projectName + " with developmentMode = " + project.developmentMode
+
 if( project.hasProperty('developmentMode') && project.developmentMode ) {
     apply from: "../gradles/methodic.gradle"
 } else {
