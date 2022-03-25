@@ -63,10 +63,13 @@ class RedshiftColumns {
         @JvmField val TITLE = PostgresColumnDefinition(EdmConstants.TITLE_FQN.name, PostgresDatatype.TEXT)
         @JvmField val VALUES = PostgresColumnDefinition(EdmConstants.VALUES_FQN.name, PostgresDatatype.TEXT)
         @JvmField val VERSION = PostgresColumnDefinition(EdmConstants.VERSION_FQN.name, PostgresDatatype.TIMESTAMPTZ)
-        @JvmField val NEW_APP = PostgresColumnDefinition(EdmConstants.NEW_APP_FQN.name, PostgresDatatype.TIMESTAMPTZ)
+        @JvmField val NEW_APP = PostgresColumnDefinition("new_app", PostgresDatatype.BOOLEAN)
         @JvmField val GENERAL_END_TIME = PostgresColumnDefinition(EdmConstants.GENERAL_END_TIME_FQN.name, PostgresDatatype.TIMESTAMPTZ)
-        @JvmField val NEW_PERIOD = PostgresColumnDefinition(EdmConstants.NEW_PERIOD_FQN.name, PostgresDatatype.TIMESTAMPTZ)
-        @JvmField val WARNING = PostgresColumnDefinition(EdmConstants.WARNING_FQN.name, PostgresDatatype.TIMESTAMPTZ)
+        @JvmField val NEW_PERIOD = PostgresColumnDefinition("new_period", PostgresDatatype.BOOLEAN)
+        @JvmField val WARNING = PostgresColumnDefinition("warning", PostgresDatatype.TEXT)
+        @JvmField val DURATION_SECONDS = PostgresColumnDefinition("duration_seconds", PostgresDatatype.DOUBLE)
+        @JvmField val RECORD_TYPE = PostgresColumnDefinition("record_type", PostgresDatatype.TEXT)
+
 
         //AUDIT
         @JvmField val SECURABLE_PRINCIPAL_ID = PostgresColumnDefinition("id", PostgresDatatype.TEXT_UUID).notNull()
