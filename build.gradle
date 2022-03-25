@@ -49,12 +49,13 @@ plugins {
     id 'org.jetbrains.kotlin.plugin.spring'
     id 'com.github.jk1.dependency-license-report'
     id 'com.github.spotbugs' version '5.0.4'
-    id 'com.gradle.build-scan' 
 }
 
-buildScan {
-    termsOfServiceUrl = "https://gradle.com/terms-of-service"
-    termsOfServiceAgree = "yes"
+if (hasProperty('buildScan')) {
+    buildScan {
+        termsOfServiceUrl = "https://gradle.com/terms-of-service"
+        termsOfServiceAgree = "yes"
+    }
 }
 
 description = "Chronicle Server"
