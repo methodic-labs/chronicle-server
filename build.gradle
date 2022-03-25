@@ -52,6 +52,11 @@ plugins {
     id ' com.gradle.build-scan'
 }
 
+buildScan {
+    termsOfServiceUrl = "https://gradle.com/terms-of-service"
+    termsOfServiceAgree = "yes"
+}
+
 description = "Chronicle Server"
 group = "com.openlattice"
 ext.projectName = "chronicle-server"
