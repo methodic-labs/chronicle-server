@@ -1,6 +1,6 @@
 package com.openlattice.chronicle.deletion
 
-import com.openlattice.chronicle.jobs.ChronicleParticipantJobDefinition
+import com.openlattice.chronicle.services.jobs.ChronicleParticipantJobDefinition
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.TIME_USE_DIARY_SUBMISSIONS
 import java.util.UUID
 

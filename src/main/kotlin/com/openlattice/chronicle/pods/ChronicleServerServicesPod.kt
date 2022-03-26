@@ -51,7 +51,7 @@ import com.openlattice.chronicle.directory.Auth0UserDirectoryService
 import com.openlattice.chronicle.directory.LocalUserDirectoryService
 import com.openlattice.chronicle.directory.UserDirectoryService
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
-import com.openlattice.chronicle.jobs.BackgroundChronicleJobService
+import com.openlattice.chronicle.services.jobs.BackgroundChronicleJobService
 import com.openlattice.chronicle.organizations.ChronicleOrganizationService
 import com.openlattice.chronicle.organizations.initializers.OrganizationsInitializationDependencies
 import com.openlattice.chronicle.organizations.initializers.OrganizationsInitializationTask

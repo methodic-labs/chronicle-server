@@ -1,4 +1,4 @@
-package com.openlattice.chronicle.jobs
+package com.openlattice.chronicle.services.jobs
 
 import com.fasterxml.jackson.annotation.JsonCreator
 import com.geekbeast.rhizome.jobs.JobStatus
@@ -22,5 +22,5 @@ data class ChronicleJob @JsonCreator constructor(
     val contact: String = "",
     val definition: ChronicleJobDefinition = EmptyJobDefinition(),
     val message: String = "",
-    var deletedRows: Long = 0L
+    var deletedRows: Long = 0L //TODO: Make this a flexible state variable
 )

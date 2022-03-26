@@ -6,10 +6,15 @@ import com.openlattice.chronicle.authorization.AuthorizationManager
 import com.openlattice.chronicle.authorization.SecurableObjectType
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
-import com.openlattice.chronicle.notifications.Notification
-import com.openlattice.chronicle.notifications.NotificationDetails
+import com.openlattice.chronicle.notifications.DeliveryType
+import com.openlattice.chronicle.notifications.ParticipantNotification
 import com.openlattice.chronicle.notifications.NotificationStatus
 import com.openlattice.chronicle.postgres.ResultSetAdapters
+import com.openlattice.chronicle.services.candidates.CandidateService
+import com.openlattice.chronicle.services.enrollment.EnrollmentService
+import com.openlattice.chronicle.services.jobs.ChronicleJob
+import com.openlattice.chronicle.services.jobs.JobService
+import com.openlattice.chronicle.services.studies.StudyService
 import com.openlattice.chronicle.services.twilio.TwilioService
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.NOTIFICATIONS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.MESSAGE_ID
@@ -33,14 +38,19 @@ import java.util.concurrent.ExecutionException
 class NotificationService(
     private val storageResolver: StorageResolver,
     private val authorizationService: AuthorizationManager,
-    val idGenerationService: HazelcastIdGenerationService,
-    private val twilioService :TwilioService,
+    private val enrollmentService: EnrollmentService,
+    private val candidateService: CandidateService,
+    private val studyService: StudyService,
+    private val jobService: JobService,
+    private val idGenerationService: HazelcastIdGenerationService,
+    private val twilioService: TwilioService,
     override val auditingManager: AuditingManager,
 ) : NotificationManager, AuditingComponent {
 
     companion object {
         private val logger = LoggerFactory.getLogger(NotificationService::class.java)
 
+        const val INITIAL_STATUS = "queued"
         private val NOTIFICAITON_COLUMNS = NOTIFICATIONS.columns.joinToString(",") { it.name }
 
         private val UPDATE_NOTIFICATION_COLUMNS = listOf(
@@ -49,33 +59,40 @@ class NotificationService(
         ).joinToString(",") { it.name }
 
         private val INSERT_NOTIFICATION_SQL = """
-            INSERT INTO ${NOTIFICATIONS.name} (${NOTIFICAITON_COLUMNS}) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+            INSERT INTO ${NOTIFICATIONS.name} (${NOTIFICAITON_COLUMNS}) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
         """.trimIndent()
 
-        private val GET_NOTIFICATION_ID_FROM_MESSAGE_ID_SQL = "SELECT * FROM ${NOTIFICATIONS.name} WHERE ${MESSAGE_ID.name} = ?"
+        private val GET_NOTIFICATION_ID_FROM_MESSAGE_ID_SQL =
+            "SELECT * FROM ${NOTIFICATIONS.name} WHERE ${MESSAGE_ID.name} = ?"
 
         private val UPDATE_NOTIFICATION_SQL = """
             UPDATE ${NOTIFICATIONS.name}
             SET (${UPDATE_NOTIFICATION_COLUMNS}) = (?,?)
             WHERE ${NOTIFICATION_ID.name} = ?
         """.trimIndent()
+
+        //Safety check in case twilio adds a matching status
+        init {
+            NotificationStatus.values().none { it.name == INITIAL_STATUS }
+        }
     }
 
     private fun insertNotifications(connection: Connection, notifications: List<Notification>): Int {
         val ps = connection.prepareStatement(INSERT_NOTIFICATION_SQL)
         notifications.forEach { notification ->
             ps.setObject(1, notification.id)
-            ps.setObject(2, notification.candidateId)
-            ps.setObject(3, notification.organizationId)
-            ps.setObject(4, notification.studyId)
-            ps.setObject(5, notification.createdAt)
-            ps.setObject(6, notification.updatedAt)
-            ps.setObject(7, notification.messageId)
-            ps.setObject(8, notification.type)
-            ps.setObject(9, notification.status)
-            ps.setObject(10, notification.body)
-            ps.setObject(11, notification.email)
-            ps.setObject(12, notification.phone)
+            ps.setObject(2, notification.studyId)
+            ps.setObject(3, notification.participantId)
+            ps.setObject(4, notification.createdAt)
+            ps.setObject(5, notification.updatedAt)
+            ps.setString(6, notification.messageId)
+            ps.setString(7, notification.status)
+            ps.setString(8, notification.notificationType.name)
+            ps.setString(9, notification.deliveryType.name)
+            ps.setString(10, notification.subject)
+            ps.setString(11, notification.body)
+            ps.setString(12, notification.destination)
+            ps.setBoolean(13, notification.html)
             ps.addBatch()
             authorizationService.createUnnamedSecurableObject(
                 connection = connection,
@@ -87,7 +104,7 @@ class NotificationService(
         return ps.executeBatch().sum()
     }
 
-    private fun getNotificationByMessageId(messageId: String) :Notification? {
+    private fun getNotificationByMessageId(messageId: String): Notification {
         val hds = storageResolver.getPlatformStorage()
         val notification = hds.connection.use { connection ->
             connection.prepareStatement(GET_NOTIFICATION_ID_FROM_MESSAGE_ID_SQL).use { ps ->
@@ -98,10 +115,11 @@ class NotificationService(
                 }
             }
         }
-        return notification;
+
+        return notification
     }
 
-    private fun updateNotification(connection :Connection, notification: Notification) {
+    private fun updateNotification(connection: Connection, notification: Notification) {
         connection.prepareStatement(UPDATE_NOTIFICATION_SQL).use { ps ->
             ps.setObject(1, notification.updatedAt)
             ps.setObject(2, notification.status)
@@ -112,8 +130,8 @@ class NotificationService(
 
     override fun updateNotificationStatus(messageId: String, status: String) {
         try {
-            val notification :Notification? = getNotificationByMessageId(messageId);
-            val shouldUpdateStatus :Boolean = status == NotificationStatus.failed.name
+            val notification: Notification? = getNotificationByMessageId(messageId);
+            val shouldUpdateStatus: Boolean = status == NotificationStatus.failed.name
                     || status == NotificationStatus.undelivered.name
                     || status == NotificationStatus.delivery_unknown.name
                     || status == NotificationStatus.delivered.name
@@ -122,7 +140,7 @@ class NotificationService(
                 notification.status = status
                 notification.updatedAt = OffsetDateTime.now()
                 val hds = storageResolver.getPlatformStorage()
-                hds.connection.use { connection-> updateNotification(connection, notification) }
+                hds.connection.use { connection -> updateNotification(connection, notification) }
             }
             logger.info("Message status updated to $status for notification with SID $messageId")
         } catch (e: ExecutionException) {
@@ -131,44 +149,53 @@ class NotificationService(
 
     }
 
-    override fun sendNotifications(organizationId: UUID, notificationDetailsList: List<NotificationDetails>) {
+    override fun sendNotifications(studyId: UUID, participantNotifications: List<ParticipantNotification>) {
         val hds = storageResolver.getPlatformStorage()
         val notificationAuditEvents = mutableListOf<AuditableEvent>();
-        val notifications :List<Notification> = notificationDetailsList.map { notificationDetails ->
-            val messageText = "Chronicle device enrollment:  Please download app from your app store and click on ${notificationDetails.url} to enroll your device."
-            val notificationId = idGenerationService.getNextId();
-            notificationAuditEvents.add(
-                AuditableEvent(
-                    AclKey(notificationId),
-                    eventType = AuditEventType.SEND_SMS_NOTIFICATION,
-                    description = "send message to ${notificationDetails.candidateId}",
-                    study = notificationDetails.studyId,
-                    organization = organizationId,
-                )
-            )
-            Notification(
-                notificationId,
-                notificationDetails.candidateId,
-                organizationId,
-                notificationDetails.studyId,
-                OffsetDateTime.now(),
-                OffsetDateTime.now(),
-                NotificationStatus.sent.name,
-                "notification not sent for id, $notificationId",
-                notificationDetails.notificationType,
-                messageText,
-                null,
-                notificationDetails.phoneNumber
-            )
-        }
+
+        val notifications: List<Notification> =
+            participantNotifications.asSequence().mapNotNull { participantNotification ->
+                //val messageText = "Chronicle device enrollment:  Please download app from your app store and click on ${notificationDetails.url} to enroll your device."
+                val participant = enrollmentService.getParticipant(studyId, participantNotification.participantId)
+                val candidateId = participant.candidate.id
+                val phoneNumber = participant.candidate.phoneNumber ?: return@mapNotNull null
+                participantNotification.deliveryType.map { deliveryType ->
+                    val notificationId = idGenerationService.getNextId()
+                    Notification(
+                        notificationId,
+                        studyId,
+                        participantNotification.participantId,
+                        status = INITIAL_STATUS,
+                        messageId = "",
+                        notificationType = participantNotification.notificationType,
+                        deliveryType = deliveryType,
+                        body = participantNotification.message,
+                        destination = when (deliveryType) {
+                            DeliveryType.SMS -> phoneNumber
+                            DeliveryType.EMAIL -> checkNotNull(participant.candidate.email) { "Email cannot be null for email delivery type." }
+                        }
+                    )
+                }
+            }.flatten().toList()
         logger.info("preparing to send batch of ${notifications.size} messages to participants")
+
         hds.connection.use { connection ->
             AuditedOperationBuilder<Unit>(connection, auditingManager)
                 .operation { conn ->
-                    val notificationOutcomes = twilioService.sendNotifications(notifications)
-                    insertNotifications(conn, notificationOutcomes)
+//                    val notificationOutcomes = twilioService.sendNotifications(notifications)
+                    insertNotifications(conn, notifications)
+                    notifications.forEach {
+                        jobService.createJob(conn, ChronicleJob(definition = it))
+                    }
                 }
-                .audit { notificationAuditEvents }
+                .audit {
+                    listOf(AuditableEvent(
+                        AclKey(studyId),
+                        eventType = AuditEventType.QUEUE_NOTIFICATIONS,
+                        description = "Queued ${notifications.size} notifications.",
+                        study = studyId,
+                    ))
+                }
                 .buildAndRun()
         }
     }

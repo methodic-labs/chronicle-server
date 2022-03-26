@@ -26,8 +26,7 @@ import com.openlattice.chronicle.deletion.DeleteStudyUsageData
 import com.openlattice.chronicle.hazelcast.HazelcastMap
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.ids.IdConstants
-import com.openlattice.chronicle.jobs.ChronicleJob
-import com.openlattice.chronicle.mapstores.storage.StudyMapstore
+import com.openlattice.chronicle.services.jobs.ChronicleJob
 import com.openlattice.chronicle.organizations.ChronicleDataCollectionSettings
 import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.participants.ParticipantStats
@@ -94,7 +93,6 @@ import java.time.format.DateTimeFormatter
 import java.util.*
 import javax.inject.Inject
 import javax.servlet.http.HttpServletResponse
-import javax.validation.constraints.Max
 import javax.validation.constraints.Size
 import kotlin.NoSuchElementException
 

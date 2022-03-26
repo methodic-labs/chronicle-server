@@ -1,7 +1,7 @@
 package com.openlattice.chronicle.services.twilio
 
 import com.openlattice.chronicle.configuration.TwilioConfiguration
-import com.openlattice.chronicle.notifications.Notification
+import com.openlattice.chronicle.services.notifications.Notification
 import com.openlattice.chronicle.notifications.NotificationApi.Companion.BASE
 import com.openlattice.chronicle.notifications.NotificationApi.Companion.STATUS_PATH
 import com.openlattice.chronicle.notifications.NotificationStatus
@@ -25,7 +25,7 @@ import java.util.*
 @Service
 class TwilioService(
     twilioConfiguration: TwilioConfiguration,
-    private val studyService: StudyService
+    private val studyService: StudyService,
 ) : TwilioManager {
     companion object {
         protected val logger: Logger = LoggerFactory.getLogger(TwilioService::class.java)
@@ -41,17 +41,17 @@ class TwilioService(
         Twilio.init(twilioConfiguration.sid, twilioConfiguration.token)
     }
 
-    private fun sendNotification(notification: Notification): Notification {
+    fun sendNotification(notification: Notification): Notification {
         try {
             val message = Message
-                .creator(PhoneNumber(notification.phone), getStudyPhoneNumber(notification.studyId), notification.body)
+                .creator(PhoneNumber(notification.destination), getStudyPhoneNumber(notification.studyId), notification.body)
                 .setStatusCallback(URI.create(callbackURL))
                 .create()
-            logger.info("message sent to participant ${notification.candidateId} for study ${notification.studyId} in organization ${notification.organizationId}")
+            logger.info("message sent to participant ${notification.participantId} for study ${notification.studyId}")
             notification.messageId = message.sid
         } catch (e: ApiException) {
             logger.error(
-                "Unable to send message of type ${notification.type} to participant ${notification.candidateId} in study ${notification.studyId}".trimIndent(),
+                "Unable to send message of type ${notification.notificationType} to participant ${notification.participantId} in study ${notification.studyId}".trimIndent(),
                 e
             )
             notification.status = NotificationStatus.failed.name

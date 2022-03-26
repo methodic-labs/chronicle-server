@@ -1,10 +1,8 @@
-package com.openlattice.chronicle.jobs
+package com.openlattice.chronicle.services.jobs
 
 import com.geekbeast.rhizome.jobs.JobStatus
-import com.openlattice.chronicle.services.jobs.JobService
 import org.springframework.beans.factory.annotation.Autowired
 
-import com.google.common.eventbus.EventBus
 import com.openlattice.chronicle.auditing.AuditableEvent
 import com.openlattice.chronicle.auditing.AuditedOperationBuilder
 import com.openlattice.chronicle.auditing.AuditingManager
@@ -14,6 +12,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.COMPLETED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STATUS
 import com.openlattice.chronicle.storage.StorageResolver
 import org.slf4j.LoggerFactory
+import org.springframework.scheduling.annotation.Async
 import org.springframework.scheduling.annotation.Scheduled
 import java.util.*
 import java.util.concurrent.Executors.newFixedThreadPool
@@ -45,13 +44,18 @@ class BackgroundChronicleJobService(
         """.trimIndent()
     }
 
+    @Async
+    fun runNow() {
+        tryAndAcquireTaskForExecutor()
+    }
+
     @Scheduled(fixedRate = 10_000L)
     fun tryAndAcquireTaskForExecutor() {
         logger.info("Attempting to acquire permit for executing background task.")
 
         try {
             if (available.tryAcquire()) {
-                logger.info("Permit acquired to submit next chronicle job")
+                logger.info("Permit acquired to run next chronicle job")
                 executor.execute {
                     try {
                         storageResolver.getPlatformStorage().connection.use { conn ->
@@ -80,7 +84,7 @@ class BackgroundChronicleJobService(
                     }
                 }
             } else {
-                logger.info("No permits available. Skipping chronicle job submission.")
+                logger.info("No permits available. Skipping chronicle job scheduling.")
             }
         } catch (ex: InterruptedException) {
             logger.error("Error acquiring permit.", ex)
