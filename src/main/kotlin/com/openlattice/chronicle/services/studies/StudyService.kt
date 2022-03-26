@@ -537,18 +537,23 @@ class StudyService(
             deliveryTypes.add(DeliveryType.EMAIL)
         }
 
-        val studySettings =
-            getStudy(studyId).settings.getValue(StudyNotificationSettings.SETTINGS_KEY) as StudyNotificationSettings
+        try {
+            val studySettings =
+                getStudy(studyId).settings.getValue(StudyNotificationSettings.SETTINGS_KEY) as StudyNotificationSettings
 
-        if (studySettings.notifyOnEnrollment) {
-            notificationService.sendNotifications(
-                connection,
-                studyId,
-                listOf(ParticipantNotification(participant.participantId,
-                                               NotificationType.ENROLLMENT,
-                                               deliveryTypes,
-                                               message = studySettings.getEnrollmentMessage()))
-            )
+            if (studySettings.notifyOnEnrollment) {
+                notificationService.sendNotifications(
+                    connection,
+                    studyId,
+                    listOf(ParticipantNotification(participant.participantId,
+                                                   NotificationType.ENROLLMENT,
+                                                   deliveryTypes,
+                                                   message = studySettings.getEnrollmentMessage()))
+                )
+            }
+        } catch (ex: Exception) {
+            //If something goes wrong with sending out notifications keep it going.
+            logger.error("Unable to send out notifications.", ex)
         }
         return candidateId
     }
