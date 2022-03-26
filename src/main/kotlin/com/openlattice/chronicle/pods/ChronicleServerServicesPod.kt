@@ -27,6 +27,8 @@ import com.geekbeast.auth0.ManagementApiProvider
 import com.geekbeast.authentication.Auth0Configuration
 import com.geekbeast.hazelcast.HazelcastClientProvider
 import com.geekbeast.jdbc.DataSourceManager
+import com.geekbeast.mail.MailService
+import com.geekbeast.mail.MailServiceConfig
 import com.geekbeast.mappers.mappers.ObjectMappers
 import com.geekbeast.rhizome.configuration.ConfigurationConstants
 import com.geekbeast.rhizome.configuration.service.ConfigurationService
@@ -131,6 +133,9 @@ class ChronicleServerServicesPod {
 
     @Inject
     private lateinit var twilioConfiguration: TwilioConfiguration
+
+    @Inject
+    private lateinit var mailServiceConfig: MailServiceConfig
 
     @Bean
     fun defaultObjectMapper(): ObjectMapper {
@@ -283,6 +288,11 @@ class ChronicleServerServicesPod {
             principalsMapManager(),
             auditingManager()
         )
+    }
+
+    @Bean
+    fun mailService() : MailService {
+        return MailService(mailServiceConfig)
     }
 
     @Bean

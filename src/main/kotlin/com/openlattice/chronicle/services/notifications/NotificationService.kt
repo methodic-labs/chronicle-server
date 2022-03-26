@@ -151,14 +151,11 @@ class NotificationService(
     }
 
     override fun sendNotifications(studyId: UUID, participantNotifications: List<ParticipantNotification>) {
-        val hds = storageResolver.getPlatformStorage()
-        val notificationAuditEvents = mutableListOf<AuditableEvent>();
 
         val notifications: List<Notification> =
             participantNotifications.asSequence().mapNotNull { participantNotification ->
                 //val messageText = "Chronicle device enrollment:  Please download app from your app store and click on ${notificationDetails.url} to enroll your device."
                 val participant = enrollmentService.getParticipant(studyId, participantNotification.participantId)
-                val candidateId = participant.candidate.id
                 val phoneNumber = participant.candidate.phoneNumber ?: return@mapNotNull null
                 participantNotification.deliveryType.map { deliveryType ->
                     val notificationId = idGenerationService.getNextId()
@@ -180,7 +177,7 @@ class NotificationService(
             }.flatten().toList()
         logger.info("preparing to send batch of ${notifications.size} messages to participants")
 
-        hds.connection.use { connection ->
+        storageResolver.getPlatformStorage().connection.use { connection ->
             AuditedOperationBuilder<Unit>(connection, auditingManager)
                 .operation { conn ->
 //                    val notificationOutcomes = twilioService.sendNotifications(notifications)
