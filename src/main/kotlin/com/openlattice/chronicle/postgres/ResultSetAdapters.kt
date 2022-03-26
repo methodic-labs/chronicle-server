@@ -32,6 +32,7 @@ import com.openlattice.chronicle.services.jobs.ChronicleJob
 import com.openlattice.chronicle.mapstores.ids.Range
 import com.openlattice.chronicle.notifications.DeliveryType
 import com.openlattice.chronicle.notifications.NotificationType
+import com.openlattice.chronicle.notifications.StudyNotificationSettings
 import com.openlattice.chronicle.services.notifications.Notification
 import com.openlattice.chronicle.organizations.Organization
 import com.openlattice.chronicle.participants.Participant
@@ -311,10 +312,13 @@ class ResultSetAdapters {
 
         @Throws(SQLException::class)
         fun study(rs: ResultSet): Study {
+            val settings = mapper.readValue<Map<String, Any>>(rs.getString(SETTINGS.name))
+
             return Study(
                 rs.getObject(STUDY_ID.name, UUID::class.java),
                 rs.getString(TITLE.name),
                 rs.getString(DESCRIPTION.name),
+                (settings[StudyNotificationSettings.SETTINGS_KEY] as StudyNotificationSettings?)?.labFriendlyName ?: "",
                 rs.getObject(CREATED_AT.name, OffsetDateTime::class.java),
                 rs.getObject(UPDATED_AT.name, OffsetDateTime::class.java),
                 rs.getObject(STARTED_AT.name, OffsetDateTime::class.java),
@@ -327,7 +331,7 @@ class ResultSetAdapters {
                 PostgresArrays.getUuidArray(rs, ORGANIZATION_IDS.name)?.toSet() ?: setOf(),
                 rs.getBoolean(NOTIFICATIONS_ENABLED.name),
                 rs.getString(STORAGE.name),
-                settings = mapper.readValue(rs.getString(SETTINGS.name)),
+                settings,
                 rs.getString(STUDY_PHONE_NUMBER.name)
             )
         }
