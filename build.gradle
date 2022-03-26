@@ -227,8 +227,8 @@ dependencies {
         implementation("com.openlattice:chronicle-api:${chronicle_api_version}") {
             exclude group: 'com.google.guava', module: 'guava'
         }
-        testImplementation "com.openlattice:rhizome:${rhizome_version}:tests"
-        testImplementation "com.openlattice:rhizome-client:${rhizome_client_version}:tests"
+        testImplementation "com.geekbeast:rhizome:${rhizome_version}:tests"
+        testImplementation "com.geekbeast:rhizome-client:${rhizome_client_version}:tests"
     }
 
     /*
