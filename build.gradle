@@ -49,7 +49,7 @@ plugins {
     id 'org.jetbrains.kotlin.jvm' version '1.6.10'
     id 'org.jetbrains.kotlin.plugin.spring' version '1.6.10'
     id 'org.jetbrains.dokka' version '1.6.10'
-    id 'com.github.jk1.dependency-license-report'
+    id 'com.github.jk1.dependency-license-report' version '1.16'
 }
 
 if (hasProperty('buildScan')) {
