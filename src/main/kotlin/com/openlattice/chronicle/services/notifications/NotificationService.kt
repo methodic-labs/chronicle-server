@@ -150,8 +150,11 @@ class NotificationService(
 
     }
 
-    override fun sendNotifications(studyId: UUID, participantNotifications: List<ParticipantNotification>) {
-
+    override fun sendNotifications(
+        connection: Connection,
+        studyId: UUID,
+        participantNotifications: List<ParticipantNotification>,
+    ) : Int  {
         val notifications: List<Notification> =
             participantNotifications.asSequence().mapNotNull { participantNotification ->
                 //val messageText = "Chronicle device enrollment:  Please download app from your app store and click on ${notificationDetails.url} to enroll your device."
@@ -176,21 +179,25 @@ class NotificationService(
                 }
             }.flatten().toList()
         logger.info("preparing to send batch of ${notifications.size} messages to participants")
+        insertNotifications(connection, notifications)
+        notifications.forEach {
+            jobService.createJob(connection, ChronicleJob(definition = it))
+        }
+        return notifications.size
+    }
 
+    override fun sendNotifications(studyId: UUID, participantNotifications: List<ParticipantNotification>) {
         storageResolver.getPlatformStorage().connection.use { connection ->
             AuditedOperationBuilder<Unit>(connection, auditingManager)
                 .operation { conn ->
 //                    val notificationOutcomes = twilioService.sendNotifications(notifications)
-                    insertNotifications(conn, notifications)
-                    notifications.forEach {
-                        jobService.createJob(conn, ChronicleJob(definition = it))
-                    }
+                    sendNotifications(conn, studyId, participantNotifications)
                 }
                 .audit {
                     listOf(AuditableEvent(
                         AclKey(studyId),
                         eventType = AuditEventType.QUEUE_NOTIFICATIONS,
-                        description = "Queued ${notifications.size} notifications.",
+                        description = "Queued $it notifications.",
                         study = studyId,
                     ))
                 }
