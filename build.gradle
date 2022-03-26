@@ -45,11 +45,11 @@ plugins {
     id 'checkstyle'
     id 'maven-publish'
     id 'signing'
-    id 'org.jetbrains.dokka'
-    id 'org.jetbrains.kotlin.jvm'
-    id 'org.jetbrains.kotlin.plugin.spring'
-    id 'com.github.jk1.dependency-license-report'
     id 'com.github.spotbugs' version '5.0.4'
+    id 'org.jetbrains.kotlin.jvm' version '1.6.10'
+    id 'org.jetbrains.kotlin.plugin.spring' version '1.6.10'
+    id 'org.jetbrains.dokka' version '1.6.10'
+    id 'com.github.jk1.dependency-license-report'
 }
 
 if (hasProperty('buildScan')) {
@@ -132,11 +132,6 @@ jacoco {
 
 tasks.withType(Javadoc) {
     enabled = false
-}
-
-dokka {
-    outputFormat = 'html'
-    outputDirectory = "$buildDir/javadoc"
 }
 
 spotbugs {
