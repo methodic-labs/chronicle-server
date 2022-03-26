@@ -11,6 +11,7 @@ import com.openlattice.chronicle.notifications.ParticipantNotification
 import com.openlattice.chronicle.notifications.NotificationStatus
 import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.services.candidates.CandidateService
+import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import com.openlattice.chronicle.services.enrollment.EnrollmentService
 import com.openlattice.chronicle.services.jobs.ChronicleJob
 import com.openlattice.chronicle.services.jobs.JobService
@@ -38,7 +39,7 @@ import java.util.concurrent.ExecutionException
 class NotificationService(
     private val storageResolver: StorageResolver,
     private val authorizationService: AuthorizationManager,
-    private val enrollmentService: EnrollmentService,
+    private val enrollmentService: EnrollmentManager,
     private val candidateService: CandidateService,
     private val studyService: StudyService,
     private val jobService: JobService,

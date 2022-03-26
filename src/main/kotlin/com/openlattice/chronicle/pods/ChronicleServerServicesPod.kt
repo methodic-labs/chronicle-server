@@ -346,6 +346,10 @@ class ChronicleServerServicesPod {
         return NotificationService(
             storageResolver,
             authorizationService(),
+            enrollmentManager(),
+            candidateService(),
+            studyService(),
+            jobService(),
             idGenerationService(),
             twilioService(),
             auditingManager(),
