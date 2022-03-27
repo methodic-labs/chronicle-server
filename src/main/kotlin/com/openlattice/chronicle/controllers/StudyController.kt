@@ -458,7 +458,7 @@ class StudyController @Inject constructor(
         @PathVariable(STUDY_ID) studyId: UUID,
         @PathVariable(PARTICIPANT_ID) participantId: String,
         @PathVariable(SOURCE_DEVICE_ID) datasourceId: String,
-        @RequestBody data: List<SetMultimap<UUID, Any>>
+        @RequestBody data: List<SetMultimap<UUID, @JvmSuppressWildcards Any>>
     ): Int {
         val realStudyId = studyService.getStudyId(studyId)
         checkNotNull(realStudyId) { "invalid study id" }
