@@ -4,7 +4,6 @@ import com.geekbeast.postgres.PostgresColumnDefinition
 import com.geekbeast.postgres.PostgresDatatype
 import java.lang.reflect.Field
 import java.lang.reflect.Modifier
-import java.util.*
 
 
 /**
@@ -96,8 +95,12 @@ class PostgresColumns {
 
         @JvmField val NOTIFICATION_ID = PostgresColumnDefinition("notification_id", PostgresDatatype.UUID).notNull()
         @JvmField val MESSAGE_ID = PostgresColumnDefinition("message_id", PostgresDatatype.TEXT).unique()
-        @JvmField val TYPE = PostgresColumnDefinition("type", PostgresDatatype.TEXT)
+        @JvmField val NOTIFICATION_TYPE = PostgresColumnDefinition("notification_type", PostgresDatatype.TEXT)
+        @JvmField val DELIVERY_TYPE = PostgresColumnDefinition("delivery_type", PostgresDatatype.TEXT)
+        @JvmField val DESTINATION = PostgresColumnDefinition("destination", PostgresDatatype.TEXT).notNull()
         @JvmField val BODY = PostgresColumnDefinition("body", PostgresDatatype.TEXT)
+        @JvmField val SUBJECT = PostgresColumnDefinition("subject", PostgresDatatype.TEXT)
+        @JvmField val HTML = PostgresColumnDefinition("is_html", PostgresDatatype.BOOLEAN)
 
         val columnTypes : Map<String, PostgresDatatype> = postgresColumns().associate { it.name to it.datatype }
 

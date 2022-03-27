@@ -56,7 +56,7 @@ class QuestionnaireTests : ChronicleServerTests() {
         surveyApi.updateQuestionnaire(studyId, questionnaireId, update)
         val updated = surveyApi.getQuestionnaire(studyId, questionnaireId)
 
-        Assert.assertEquals(updated.title, update.title)
+         Assert.assertEquals( update.title, updated.title)
         Assert.assertEquals(updated.description, questionnaire.description) //description field in update object, therefore description shouldn't be updated
         Assert.assertEquals(updated.recurrenceRule, update.recurrenceRule)
         Assert.assertEquals(updated.active, update.active)
