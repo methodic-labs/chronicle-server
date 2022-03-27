@@ -72,6 +72,7 @@ import org.springframework.stereotype.Service
 import java.sql.Connection
 import java.time.OffsetDateTime
 import java.util.*
+import javax.inject.Inject
 
 /**
  * @author Solomon Tang <solomon@openlattice.com>
@@ -83,11 +84,14 @@ class StudyService(
     private val candidateService: CandidateManager,
     private val enrollmentService: EnrollmentManager,
     private val idGenerationService: HazelcastIdGenerationService,
-    private val notificationService: NotificationService,
     override val auditingManager: AuditingManager,
     hazelcast: HazelcastInstance,
 ) : StudyManager, AuditingComponent {
     private val studies = HazelcastMap.STUDIES.getMap(hazelcast)
+
+    @Inject
+    @org.springframework.context.annotation.Lazy
+    private lateinit var notificationService: NotificationService
 
     companion object {
         private val logger = LoggerFactory.getLogger(StudyService::class.java)

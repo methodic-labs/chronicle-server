@@ -117,6 +117,8 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMESTAMP
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMEZONE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.USERNAME
 import com.openlattice.chronicle.study.Study
+import com.openlattice.chronicle.study.StudySetting
+import com.openlattice.chronicle.study.StudySettings
 import com.openlattice.chronicle.survey.AppUsage
 import com.openlattice.chronicle.survey.Questionnaire
 import org.slf4j.LoggerFactory
@@ -312,7 +314,7 @@ class ResultSetAdapters {
 
         @Throws(SQLException::class)
         fun study(rs: ResultSet): Study {
-            val settings = mapper.readValue<Map<String, Any>>(rs.getString(SETTINGS.name))
+            val settings = mapper.readValue<StudySettings>(rs.getString(SETTINGS.name))
 
             return Study(
                 rs.getObject(STUDY_ID.name, UUID::class.java),

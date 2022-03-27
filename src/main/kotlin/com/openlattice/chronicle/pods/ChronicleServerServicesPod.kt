@@ -20,10 +20,7 @@
 package com.openlattice.chronicle.pods
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.geekbeast.auth0.Auth0Pod
-import com.geekbeast.auth0.Auth0TokenProvider
-import com.geekbeast.auth0.RefreshingAuth0TokenProvider
-import com.geekbeast.auth0.ManagementApiProvider
+import com.geekbeast.auth0.*
 import com.geekbeast.authentication.Auth0Configuration
 import com.geekbeast.hazelcast.HazelcastClientProvider
 import com.geekbeast.jdbc.DataSourceManager
@@ -147,12 +144,16 @@ class ChronicleServerServicesPod {
     @Bean
     fun auth0TokenProvider(): Auth0TokenProvider {
         //TODO: Remove AWS from the name of this class.
-        return RefreshingAuth0TokenProvider(auth0Configuration)
+        return if (auth0Configuration.managementApiUrl.contains("localhost")) {
+            EmptyAuth0TokenProvider(auth0Configuration)
+        } else {
+            RefreshingAuth0TokenProvider(auth0Configuration)
+        }
     }
 
     @Bean
-    fun managementApiProvider() : ManagementApiProvider {
-        return ManagementApiProvider(auth0TokenProvider(),auth0Configuration)
+    fun managementApiProvider(): ManagementApiProvider {
+        return ManagementApiProvider(auth0TokenProvider(), auth0Configuration)
     }
 
     @Bean
@@ -291,7 +292,7 @@ class ChronicleServerServicesPod {
     }
 
     @Bean
-    fun mailService() : MailService {
+    fun mailService(): MailService {
         return MailService(mailServiceConfig)
     }
 
@@ -338,7 +339,6 @@ class ChronicleServerServicesPod {
             candidateService(),
             enrollmentManager(),
             idGenerationService(),
-            notificationService(),
             auditingManager(),
             hazelcast
         )

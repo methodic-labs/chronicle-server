@@ -46,6 +46,8 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.SETTINGS
 import com.openlattice.chronicle.storage.RedshiftColumns
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.study.Study
+import com.openlattice.chronicle.study.StudySetting
+import com.openlattice.chronicle.study.StudySettings
 import com.openlattice.chronicle.study.StudyUpdate
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryResponse
 import com.zaxxer.hikari.HikariDataSource
@@ -670,7 +672,7 @@ class ImportController(
         )
     }
 
-    private fun study(rs: ResultSet, settings: Map<String, Any>?): Study {
+    private fun study(rs: ResultSet, settings: StudySettings?): Study {
 
         val v2StudyId = rs.getString(V2_STUDY_ID)
         val v2StudyEkid = rs.getString(V2_STUDY_EK_ID)
@@ -689,7 +691,7 @@ class ImportController(
         return Study(
             title = title,
             description = description,
-            settings = settings ?: mapOf(),
+            settings = settings ?: StudySettings(),
             group = rs.getString(LEGACY_STUDY_GROUP) ?: "",
             version = rs.getString(LEGACY_STUDY_VERSION) ?: "",
             contact = rs.getString(LEGACY_STUDY_CONTACT) ?: "",

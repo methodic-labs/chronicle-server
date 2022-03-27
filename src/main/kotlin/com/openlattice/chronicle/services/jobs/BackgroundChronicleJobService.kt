@@ -14,6 +14,7 @@ import com.openlattice.chronicle.storage.StorageResolver
 import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.Async
 import org.springframework.scheduling.annotation.Scheduled
+import org.springframework.stereotype.Service
 import java.util.*
 import java.util.concurrent.Executors.newFixedThreadPool
 import java.util.concurrent.Semaphore
@@ -22,6 +23,7 @@ import java.util.concurrent.Semaphore
  * @author Solomon Tang <solomon@openlattice.com>
  */
 
+@Service
 class BackgroundChronicleJobService(
     private val jobService: JobService,
     private val storageResolver: StorageResolver,
