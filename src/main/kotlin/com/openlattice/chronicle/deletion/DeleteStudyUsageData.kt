@@ -1,6 +1,6 @@
 package com.openlattice.chronicle.deletion
 
-import com.openlattice.chronicle.jobs.ChronicleStudyJobDefinition
+import com.openlattice.chronicle.services.jobs.ChronicleStudyJobDefinition
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.CHRONICLE_USAGE_EVENTS
 import java.util.*
 

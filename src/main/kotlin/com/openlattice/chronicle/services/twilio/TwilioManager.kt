@@ -1,6 +1,6 @@
 package com.openlattice.chronicle.services.twilio
 
-import com.openlattice.chronicle.notifications.Notification
+import com.openlattice.chronicle.services.notifications.Notification
 import com.twilio.type.PhoneNumber
 import java.util.*
 

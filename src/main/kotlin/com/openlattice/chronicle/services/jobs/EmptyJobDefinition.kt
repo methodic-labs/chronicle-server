@@ -1,4 +1,4 @@
-package com.openlattice.chronicle.jobs
+package com.openlattice.chronicle.services.jobs
 
 import com.openlattice.chronicle.ids.IdConstants
 

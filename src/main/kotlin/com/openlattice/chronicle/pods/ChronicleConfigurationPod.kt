@@ -1,6 +1,7 @@
 package com.openlattice.chronicle.pods
 
 import com.geekbeast.jdbc.DataSourceManager
+import com.geekbeast.mail.MailServiceConfig
 import com.geekbeast.rhizome.pods.ConfigurationLoader
 import com.openlattice.chronicle.configuration.ChronicleConfiguration
 import com.openlattice.chronicle.configuration.TwilioConfiguration
@@ -28,8 +29,13 @@ class ChronicleConfigurationPod {
     }
 
     @Bean
-    fun twilioConfiguration() : TwilioConfiguration {
+    fun twilioConfiguration(): TwilioConfiguration {
         return configurationLoader.logAndLoad("Twilio Configuration", TwilioConfiguration::class.java)
+    }
+
+    @Bean
+    fun mailConfiguration(): MailServiceConfig {
+        return configurationLoader.logAndLoad("Mail configuration", MailServiceConfig::class.java)
     }
 
     @Bean
