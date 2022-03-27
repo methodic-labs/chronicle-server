@@ -20,13 +20,12 @@
 package com.openlattice.chronicle.pods
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.geekbeast.auth0.Auth0Pod
-import com.geekbeast.auth0.Auth0TokenProvider
-import com.geekbeast.auth0.RefreshingAuth0TokenProvider
-import com.geekbeast.auth0.ManagementApiProvider
+import com.geekbeast.auth0.*
 import com.geekbeast.authentication.Auth0Configuration
 import com.geekbeast.hazelcast.HazelcastClientProvider
 import com.geekbeast.jdbc.DataSourceManager
+import com.geekbeast.mail.MailService
+import com.geekbeast.mail.MailServiceConfig
 import com.geekbeast.mappers.mappers.ObjectMappers
 import com.geekbeast.rhizome.configuration.ConfigurationConstants
 import com.geekbeast.rhizome.configuration.service.ConfigurationService
@@ -51,7 +50,7 @@ import com.openlattice.chronicle.directory.Auth0UserDirectoryService
 import com.openlattice.chronicle.directory.LocalUserDirectoryService
 import com.openlattice.chronicle.directory.UserDirectoryService
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
-import com.openlattice.chronicle.jobs.BackgroundChronicleJobService
+import com.openlattice.chronicle.services.jobs.BackgroundChronicleJobService
 import com.openlattice.chronicle.organizations.ChronicleOrganizationService
 import com.openlattice.chronicle.organizations.initializers.OrganizationsInitializationDependencies
 import com.openlattice.chronicle.organizations.initializers.OrganizationsInitializationTask
@@ -132,6 +131,9 @@ class ChronicleServerServicesPod {
     @Inject
     private lateinit var twilioConfiguration: TwilioConfiguration
 
+    @Inject
+    private lateinit var mailServiceConfig: MailServiceConfig
+
     @Bean
     fun defaultObjectMapper(): ObjectMapper {
         val mapper = ObjectMappers.getJsonMapper()
@@ -142,12 +144,16 @@ class ChronicleServerServicesPod {
     @Bean
     fun auth0TokenProvider(): Auth0TokenProvider {
         //TODO: Remove AWS from the name of this class.
-        return RefreshingAuth0TokenProvider(auth0Configuration)
+        return if (auth0Configuration.managementApiUrl.contains("localhost")) {
+            EmptyAuth0TokenProvider(auth0Configuration)
+        } else {
+            RefreshingAuth0TokenProvider(auth0Configuration)
+        }
     }
 
     @Bean
-    fun managementApiProvider() : ManagementApiProvider {
-        return ManagementApiProvider(auth0TokenProvider(),auth0Configuration)
+    fun managementApiProvider(): ManagementApiProvider {
+        return ManagementApiProvider(auth0TokenProvider(), auth0Configuration)
     }
 
     @Bean
@@ -286,6 +292,11 @@ class ChronicleServerServicesPod {
     }
 
     @Bean
+    fun mailService(): MailService {
+        return MailService(mailServiceConfig)
+    }
+
+    @Bean
     fun auth0SyncService(): Auth0SyncService {
         return Auth0SyncService(hazelcast, principalsManager())
     }
@@ -346,6 +357,10 @@ class ChronicleServerServicesPod {
         return NotificationService(
             storageResolver,
             authorizationService(),
+            enrollmentManager(),
+            candidateService(),
+            studyService(),
+            jobService(),
             idGenerationService(),
             twilioService(),
             auditingManager(),

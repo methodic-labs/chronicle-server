@@ -1,0 +1,6 @@
+smtpHost: email-smtp.us-west-1.amazonaws.com
+smtpPort: 587
+username:
+password:
+defaultFromEmail: "no-reply@mailer.getmethodic.com"
+enabled: false

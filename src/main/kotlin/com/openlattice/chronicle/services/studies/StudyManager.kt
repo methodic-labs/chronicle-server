@@ -30,6 +30,10 @@ interface StudyManager {
     fun isNotificationsEnabled(studyId: UUID): Boolean
     fun isValidStudy(studyId: UUID): Boolean
     fun refreshStudyCache(studyIds: Set<UUID>)
+
+    /**
+     * Callers of this function must ensure that load the participant ace after they commit changes.
+     */
     fun registerParticipant(connection: Connection, studyId: UUID, participant: Participant): UUID
     fun registerParticipant(studyId: UUID, participant: Participant): UUID
     fun removeAllParticipantsFromStudies(connection: Connection, studyIds: Collection<UUID>): Int

@@ -1,6 +1,6 @@
 package com.openlattice.chronicle.services.jobs
 
-import com.openlattice.chronicle.jobs.ChronicleJob
+import com.openlattice.chronicle.services.jobs.ChronicleJob
 import java.sql.Connection
 import java.util.*
 

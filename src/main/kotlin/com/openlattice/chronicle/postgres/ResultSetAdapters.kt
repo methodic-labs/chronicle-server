@@ -28,9 +28,12 @@ import com.geekbeast.rhizome.jobs.JobStatus
 import com.openlattice.chronicle.authorization.*
 import com.openlattice.chronicle.candidates.Candidate
 import com.openlattice.chronicle.data.ParticipationStatus
-import com.openlattice.chronicle.jobs.ChronicleJob
+import com.openlattice.chronicle.services.jobs.ChronicleJob
 import com.openlattice.chronicle.mapstores.ids.Range
-import com.openlattice.chronicle.notifications.Notification
+import com.openlattice.chronicle.notifications.DeliveryType
+import com.openlattice.chronicle.notifications.NotificationType
+import com.openlattice.chronicle.notifications.StudyNotificationSettings
+import com.openlattice.chronicle.services.notifications.Notification
 import com.openlattice.chronicle.organizations.Organization
 import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.participants.ParticipantStats
@@ -47,12 +50,15 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.CONTACT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CREATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DATE_OF_BIRTH
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DELETED_ROWS
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.DELIVERY_TYPE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DESCRIPTION
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.DESTINATION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DEVICE_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.EMAIL
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ENDED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.EXPIRATION_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.FIRST_NAME
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.HTML
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.IOS_FIRST_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.IOS_LAST_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.IOS_UNIQUE_DATES
@@ -100,7 +106,8 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.TITLE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_FIRST_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_LAST_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_UNIQUE_DATES
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.TYPE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.NOTIFICATION_TYPE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBJECT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPDATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.URL
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APPLICATION_LABEL
@@ -110,6 +117,8 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMESTAMP
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMEZONE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.USERNAME
 import com.openlattice.chronicle.study.Study
+import com.openlattice.chronicle.study.StudySetting
+import com.openlattice.chronicle.study.StudySettings
 import com.openlattice.chronicle.survey.AppUsage
 import com.openlattice.chronicle.survey.Questionnaire
 import org.slf4j.LoggerFactory
@@ -305,10 +314,13 @@ class ResultSetAdapters {
 
         @Throws(SQLException::class)
         fun study(rs: ResultSet): Study {
+            val settings = mapper.readValue<StudySettings>(rs.getString(SETTINGS.name))
+
             return Study(
                 rs.getObject(STUDY_ID.name, UUID::class.java),
                 rs.getString(TITLE.name),
                 rs.getString(DESCRIPTION.name),
+                (settings[StudyNotificationSettings.SETTINGS_KEY] as StudyNotificationSettings?)?.labFriendlyName ?: "",
                 rs.getObject(CREATED_AT.name, OffsetDateTime::class.java),
                 rs.getObject(UPDATED_AT.name, OffsetDateTime::class.java),
                 rs.getObject(STARTED_AT.name, OffsetDateTime::class.java),
@@ -321,7 +333,7 @@ class ResultSetAdapters {
                 PostgresArrays.getUuidArray(rs, ORGANIZATION_IDS.name)?.toSet() ?: setOf(),
                 rs.getBoolean(NOTIFICATIONS_ENABLED.name),
                 rs.getString(STORAGE.name),
-                settings = mapper.readValue(rs.getString(SETTINGS.name)),
+                settings,
                 rs.getString(STUDY_PHONE_NUMBER.name)
             )
         }
@@ -410,17 +422,18 @@ class ResultSetAdapters {
         fun notification(rs: ResultSet): Notification {
             return Notification(
                 rs.getObject(NOTIFICATION_ID.name, UUID::class.java),
-                rs.getObject(CANDIDATE_ID.name, UUID::class.java),
-                rs.getObject(ORGANIZATION_ID.name, UUID::class.java),
                 rs.getObject(STUDY_ID.name, UUID::class.java),
+                rs.getString(PARTICIPANT_ID.name),
                 rs.getObject(CREATED_AT.name, OffsetDateTime::class.java),
                 rs.getObject(UPDATED_AT.name, OffsetDateTime::class.java),
                 rs.getString(STATUS.name),
                 rs.getString(MESSAGE_ID.name),
-                rs.getString(TYPE.name),
+                NotificationType.valueOf(rs.getString(NOTIFICATION_TYPE.name)),
+                DeliveryType.valueOf(rs.getString(DELIVERY_TYPE.name)),
+                rs.getString(SUBJECT.name),
                 rs.getString(BODY.name),
-                rs.getString(EMAIL.name),
-                rs.getString(PHONE_NUMBER_NOT_UNIQUE.name)
+                rs.getString(DESTINATION.name),
+                rs.getBoolean(HTML.name)
             )
         }
 

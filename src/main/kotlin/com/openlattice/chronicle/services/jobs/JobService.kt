@@ -9,7 +9,6 @@ import com.geekbeast.rhizome.jobs.JobStatus
 import com.openlattice.chronicle.storage.StorageResolver
 import org.springframework.stereotype.Service
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
-import com.openlattice.chronicle.jobs.ChronicleJob
 import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.JOBS
 import com.openlattice.chronicle.storage.PostgresColumns
@@ -39,7 +38,6 @@ class JobService(
         private val logger = LoggerFactory.getLogger(JobService::class.java)
         private val mapper = ObjectMappers.newJsonMapper()
         private val running = ConcurrentSkipListMap<UUID, ChronicleJob>()
-
         private val JOB_COLUMNS_LIST = listOf(
             JOB_ID,
             SECURABLE_PRINCIPAL_ID,
@@ -51,6 +49,7 @@ class JobService(
             MESSAGE,
             DELETED_ROWS,
         )
+
         private val JOB_COLUMNS = JOB_COLUMNS_LIST.joinToString(",") { it.name }
         private val JOB_COLUMNS_BIND = JOB_COLUMNS_LIST.joinToString(",") {
             if (it.datatype == PostgresDatatype.JSONB) "?::jsonb" else "?"
@@ -58,7 +57,6 @@ class JobService(
         private val INSERT_JOB_SQL = """
             INSERT INTO ${JOBS.name} ($JOB_COLUMNS) VALUES ($JOB_COLUMNS_BIND)
         """.trimIndent()
-
         private val GET_JOBS_SQL = """
             SELECT * FROM ${JOBS.name} WHERE ${JOB_ID.name} = ANY(?)
         """.trimIndent()
@@ -76,8 +74,16 @@ class JobService(
             )
             RETURNING *
         """.trimIndent()
+
     }
 
+    private lateinit var backgroundJobService: BackgroundChronicleJobService
+
+    internal fun setBackgroundJobService(backgroundJobService: BackgroundChronicleJobService) {
+        if (!this::backgroundJobService.isInitialized) {
+            this.backgroundJobService = backgroundJobService
+        }
+    }
 
     override fun createJob(connection: Connection, job: ChronicleJob): UUID {
         return createJobs(connection, listOf(job)).first()
@@ -102,6 +108,7 @@ class JobService(
             }
             ps.executeBatch()
         }
+        backgroundJobService.runNow()
         return jobIds
     }
 
@@ -139,3 +146,4 @@ class JobService(
         }.toMap()
     }
 }
+

@@ -1,4 +1,4 @@
-package com.openlattice.chronicle.jobs
+package com.openlattice.chronicle.services.jobs
 
 import com.openlattice.chronicle.auditing.AuditableEvent
 import java.sql.Connection
@@ -14,7 +14,7 @@ interface ChronicleJobRunner<T : ChronicleJobDefinition> {
      * @param job The job to run.
      *
      */
-    fun run(connection: Connection, job : ChronicleJob ) : List<AuditableEvent>
+    fun run(connection: Connection, job : ChronicleJob) : List<AuditableEvent>
 
     /**
      * The type of job definitions that can be run by this class.
