@@ -4,6 +4,8 @@ import com.codahale.metrics.annotation.Timed
 import com.google.common.base.MoreObjects
 import com.google.common.collect.SetMultimap
 import com.hazelcast.core.HazelcastInstance
+import com.openlattice.chronicle.android.ChronicleDataUpload
+import com.openlattice.chronicle.android.ChronicleUsageEvent
 import com.openlattice.chronicle.auditing.AuditEventType
 import com.openlattice.chronicle.auditing.AuditableEvent
 import com.openlattice.chronicle.auditing.AuditedOperationBuilder
@@ -120,6 +122,7 @@ class StudyController @Inject constructor(
 ) : StudyApi, AuthorizingComponent {
 
     private val studies = HazelcastMap.STUDIES.getMap(hazelcastInstance)
+
     companion object {
         private val logger = LoggerFactory.getLogger(StudyController::class.java)!!
     }
@@ -134,7 +137,7 @@ class StudyController @Inject constructor(
         @PathVariable(STUDY_ID) studyId: UUID,
         @PathVariable(PARTICIPANT_ID) participantId: String,
         @PathVariable(SOURCE_DEVICE_ID) datasourceId: String,
-        @RequestBody sourceDevice: SourceDevice
+        @RequestBody sourceDevice: SourceDevice,
     ): UUID {
         val realStudyId = studyService.getStudyId(studyId)
         checkNotNull(realStudyId) { "invalid study id" }
@@ -223,7 +226,7 @@ class StudyController @Inject constructor(
     override fun updateStudy(
         @PathVariable(STUDY_ID) studyId: UUID,
         @RequestBody study: StudyUpdate,
-        @RequestParam(value = RETRIEVE, required = false, defaultValue = "false") retrieve: Boolean
+        @RequestParam(value = RETRIEVE, required = false, defaultValue = "false") retrieve: Boolean,
     ): Study? {
         val studyAclKey = AclKey(studyId)
         ensureOwnerAccess(studyAclKey)
@@ -327,7 +330,7 @@ class StudyController @Inject constructor(
     )
     override fun deleteStudyParticipants(
         @PathVariable(STUDY_ID) studyId: UUID,
-        @RequestBody participantIds: Set<String>
+        @RequestBody participantIds: Set<String>,
     ): Iterable<UUID> {
         ensureValidStudy(studyId)
         ensureWriteAccess(AclKey(studyId))
@@ -367,7 +370,7 @@ class StudyController @Inject constructor(
                         AuditableEvent(
                             AclKey(studyId),
                             eventType = AuditEventType.DELETE_PARTICIPANTS,
-                            description ="Participants $participantIds were removed from study $studyId",
+                            description = "Participants $participantIds were removed from study $studyId",
                             study = studyId
                         )
                     ) + jobIds.map {
@@ -389,7 +392,7 @@ class StudyController @Inject constructor(
     )
     override fun registerParticipant(
         @PathVariable(STUDY_ID) studyId: UUID,
-        @RequestBody participant: Participant
+        @RequestBody participant: Participant,
     ): UUID {
         ensureValidStudy(studyId)
         ensureWriteAccess(AclKey(studyId))
@@ -420,7 +423,7 @@ class StudyController @Inject constructor(
     )
     override fun setChronicleDataCollectionSettings(
         @PathVariable(STUDY_ID) studyId: UUID,
-        @RequestBody dataCollectionSettings: ChronicleDataCollectionSettings
+        @RequestBody dataCollectionSettings: ChronicleDataCollectionSettings,
     ): OK {
         ensureValidStudy(studyId)
         ensureWriteAccess(AclKey(studyId))
@@ -457,11 +460,21 @@ class StudyController @Inject constructor(
         @PathVariable(STUDY_ID) studyId: UUID,
         @PathVariable(PARTICIPANT_ID) participantId: String,
         @PathVariable(SOURCE_DEVICE_ID) datasourceId: String,
-        @RequestBody data: List<SetMultimap<UUID, Any>>
+        @RequestBody data: List<ChronicleDataUpload>,
     ): Int {
+        //TODO: I think we still needs this as long as there is an enrolled participant in a legacy study.
         val realStudyId = studyService.getStudyId(studyId)
         checkNotNull(realStudyId) { "invalid study id" }
-        return appDataUploadService.upload(realStudyId, participantId, datasourceId, data)
+        return data.groupBy { it.javaClass }.map { (clazz, dataByClass) ->
+            when (clazz) {
+                ChronicleUsageEvent::class.java -> appDataUploadService.uploadAndroidUsageEvents(
+                    realStudyId,
+                    participantId,
+                    datasourceId,
+                    dataByClass.map { it as ChronicleUsageEvent })
+                else -> 0
+            }
+        }.sum()
     }
 
     @Timed
@@ -470,7 +483,7 @@ class StudyController @Inject constructor(
         produces = [MediaType.APPLICATION_JSON_VALUE]
     )
     override fun getStudySettings(
-        @PathVariable(STUDY_ID) studyId: UUID
+        @PathVariable(STUDY_ID) studyId: UUID,
     ): Map<String, Any> {
         // No permissions check since this is assumed to be invoked from a non-authenticated context
         val realStudyId = studyService.getStudyId(studyId)
@@ -500,7 +513,7 @@ class StudyController @Inject constructor(
 
     @Timed
     @GetMapping(
-        path = ["","/"],
+        path = ["", "/"],
         produces = [MediaType.APPLICATION_JSON_VALUE]
     )
     override fun getAllStudies(): Iterable<Study> {
@@ -539,12 +552,15 @@ class StudyController @Inject constructor(
         dataType: ParticipantDataType,
         participantIds: Set<String>,
         startDateTime: OffsetDateTime,
-        endDateTime: OffsetDateTime
+        endDateTime: OffsetDateTime,
     ): Iterable<Map<String, Any>> {
         ensureReadAccess(AclKey(studyId))
-        return when(dataType) {
+        return when (dataType) {
             ParticipantDataType.Preprocessed -> TODO("Not implemented")
-            ParticipantDataType.AppUsageSurvey -> downloadService.getParticipantsAppUsageSurveyData(studyId, participantIds, startDateTime, endDateTime)
+            ParticipantDataType.AppUsageSurvey -> downloadService.getParticipantsAppUsageSurveyData(studyId,
+                                                                                                    participantIds,
+                                                                                                    startDateTime,
+                                                                                                    endDateTime)
             ParticipantDataType.IOSSensor -> {
                 val sensors = getStudySensors(studyId)
                 downloadService.getParticipantsSensorData(studyId, participantIds, sensors, startDateTime, endDateTime)
@@ -556,12 +572,12 @@ class StudyController @Inject constructor(
     }
 
     @PatchMapping(
-        path= [STUDY_ID_PATH + PARTICIPANT_PATH + PARTICIPANT_ID_PATH + STATUS_PATH]
+        path = [STUDY_ID_PATH + PARTICIPANT_PATH + PARTICIPANT_ID_PATH + STATUS_PATH]
     )
     override fun updateParticipationStatus(
         @PathVariable(STUDY_ID) studyId: UUID,
         @PathVariable(PARTICIPANT_ID) participantId: String,
-        @RequestParam(PARTICIPATION_STATUS) participationStatus: ParticipationStatus
+        @RequestParam(PARTICIPATION_STATUS) participationStatus: ParticipationStatus,
     ): OK {
         ensureWriteAccess(AclKey(studyId))
         studyService.updateParticipationStatus(studyId, participantId, participationStatus)
@@ -580,7 +596,7 @@ class StudyController @Inject constructor(
         @RequestParam(value = START_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) startDateTime: OffsetDateTime?,
         @RequestParam(value = END_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) endDateTime: OffsetDateTime?,
         @RequestParam(value = FILE_NAME) @Size(max = 64) fileName: String?,
-        response: HttpServletResponse
+        response: HttpServletResponse,
     ): Iterable<Map<String, Any>> {
         val data = getParticipantsData(
             studyId,
@@ -591,7 +607,13 @@ class StudyController @Inject constructor(
         )
 
         ChronicleServerUtil.setDownloadContentType(response, FileType.csv)
-        ChronicleServerUtil.setContentDisposition(response, MoreObjects.firstNonNull(fileName, "${dataType}_${LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE)}"), FileType.csv)
+        ChronicleServerUtil.setContentDisposition(response,
+                                                  MoreObjects.firstNonNull(fileName,
+                                                                           "${dataType}_${
+                                                                               LocalDate.now()
+                                                                                   .format(DateTimeFormatter.BASIC_ISO_DATE)
+                                                                           }"),
+                                                  FileType.csv)
 
         recordEvent(
             AuditableEvent(
@@ -613,9 +635,9 @@ class StudyController @Inject constructor(
     )
     override fun isKnownParticipant(
         @PathVariable(STUDY_ID) studyId: UUID,
-        @PathVariable(PARTICIPANT_ID) participantId: String
+        @PathVariable(PARTICIPANT_ID) participantId: String,
     ): Boolean {
-       return enrollmentService.isKnownParticipant(studyId, participantId)
+        return enrollmentService.isKnownParticipant(studyId, participantId)
     }
 
     /**
