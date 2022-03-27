@@ -4,6 +4,7 @@ import com.codahale.metrics.annotation.Timed
 import com.google.common.base.MoreObjects
 import com.google.common.collect.SetMultimap
 import com.hazelcast.core.HazelcastInstance
+import com.openlattice.chronicle.android.ChronicleUsageEvent
 import com.openlattice.chronicle.auditing.AuditEventType
 import com.openlattice.chronicle.auditing.AuditableEvent
 import com.openlattice.chronicle.auditing.AuditedOperationBuilder
@@ -458,11 +459,12 @@ class StudyController @Inject constructor(
         @PathVariable(STUDY_ID) studyId: UUID,
         @PathVariable(PARTICIPANT_ID) participantId: String,
         @PathVariable(SOURCE_DEVICE_ID) datasourceId: String,
-        @RequestBody data: List<SetMultimap<UUID, Any>>
+        @RequestBody data: List<ChronicleUsageEvent>
     ): Int {
+        //TODO: I think we still needs this as long as there is an enrolled participant in a legacy study.
         val realStudyId = studyService.getStudyId(studyId)
         checkNotNull(realStudyId) { "invalid study id" }
-        return appDataUploadService.upload(realStudyId, participantId, datasourceId, data)
+        return appDataUploadService.uploadAndroidUsageEvents(realStudyId, participantId, datasourceId, data)
     }
 
     @Timed
