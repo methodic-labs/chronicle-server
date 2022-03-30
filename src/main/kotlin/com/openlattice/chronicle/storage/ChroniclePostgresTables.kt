@@ -136,6 +136,7 @@ class ChroniclePostgresTables {
                 NOTIFICATIONS_ENABLED,
                 STORAGE,
                 SETTINGS,
+                MODULE,
                 STUDY_PHONE_NUMBER
             )
             .primaryKey(STUDY_ID)

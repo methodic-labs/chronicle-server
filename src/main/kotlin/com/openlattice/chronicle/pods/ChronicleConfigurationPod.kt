@@ -1,10 +1,12 @@
 package com.openlattice.chronicle.pods
 
+import com.geekbeast.hazelcast.PreHazelcastUpgradeService
 import com.geekbeast.jdbc.DataSourceManager
 import com.geekbeast.mail.MailServiceConfig
 import com.geekbeast.rhizome.pods.ConfigurationLoader
 import com.openlattice.chronicle.configuration.ChronicleConfiguration
 import com.openlattice.chronicle.configuration.TwilioConfiguration
+import com.openlattice.chronicle.controllers.UpgradeService
 import com.openlattice.chronicle.storage.StorageResolver
 import com.twilio.Twilio
 import org.springframework.context.annotation.Bean
@@ -41,5 +43,10 @@ class ChronicleConfigurationPod {
     @Bean
     fun storageResolver(): StorageResolver {
         return StorageResolver(dataSourceManager, chronicleConfiguration().storageConfiguration)
+    }
+
+    @Bean
+    fun upgradeService(): PreHazelcastUpgradeService {
+        return UpgradeService(storageResolver())
     }
 }
