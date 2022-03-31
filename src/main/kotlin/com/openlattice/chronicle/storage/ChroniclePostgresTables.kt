@@ -37,6 +37,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.LON
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LSB
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.MESSAGE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.MESSAGE_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.MODULES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.MSB
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.NAME
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.NOTIFICATIONS_ENABLED
@@ -136,6 +137,7 @@ class ChroniclePostgresTables {
                 NOTIFICATIONS_ENABLED,
                 STORAGE,
                 SETTINGS,
+                MODULES,
                 STUDY_PHONE_NUMBER
             )
             .primaryKey(STUDY_ID)

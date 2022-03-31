@@ -4,28 +4,19 @@ import com.codahale.metrics.annotation.Timed
 import com.google.common.base.Optional
 import com.google.common.collect.SetMultimap
 import com.openlattice.chronicle.api.ChronicleApi
-import com.openlattice.chronicle.data.ChronicleAppsUsageDetails
-import com.openlattice.chronicle.data.LegacyChronicleQuestionnaire
 import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import com.openlattice.chronicle.services.legacy.LegacyEdmResolver
-import com.openlattice.chronicle.services.legacy.LegacyUtil
 import com.openlattice.chronicle.services.settings.OrganizationSettingsManager
 import com.openlattice.chronicle.services.studies.StudyService
 import com.openlattice.chronicle.services.surveys.SurveysManager
 import com.openlattice.chronicle.services.upload.AppDataUploadManager
-import com.openlattice.chronicle.settings.AppComponent
 import com.openlattice.chronicle.sources.SourceDevice
 import org.apache.olingo.commons.api.edm.FullQualifiedName
 import org.springframework.http.MediaType
-import org.springframework.web.bind.annotation.PathVariable
-import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RequestMethod
-import org.springframework.web.bind.annotation.RequestParam
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.*
 import java.security.InvalidParameterException
-import java.util.UUID
+import java.util.*
 import javax.inject.Inject
 
 /**
