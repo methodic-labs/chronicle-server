@@ -2,7 +2,6 @@ package com.openlattice.chronicle.controllers
 
 import com.codahale.metrics.annotation.Timed
 import com.google.common.base.MoreObjects
-import com.google.common.collect.SetMultimap
 import com.hazelcast.core.HazelcastInstance
 import com.openlattice.chronicle.android.ChronicleDataUpload
 import com.openlattice.chronicle.android.ChronicleUsageEvent
@@ -10,26 +9,15 @@ import com.openlattice.chronicle.auditing.AuditEventType
 import com.openlattice.chronicle.auditing.AuditableEvent
 import com.openlattice.chronicle.auditing.AuditedOperationBuilder
 import com.openlattice.chronicle.auditing.AuditingManager
-import com.openlattice.chronicle.authorization.AclKey
-import com.openlattice.chronicle.authorization.AuthorizationManager
-import com.openlattice.chronicle.authorization.AuthorizingComponent
-import com.openlattice.chronicle.authorization.Permission
-import com.openlattice.chronicle.authorization.SecurableObjectType
+import com.openlattice.chronicle.authorization.*
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.base.OK
 import com.openlattice.chronicle.data.FileType
 import com.openlattice.chronicle.data.ParticipationStatus
-import com.openlattice.chronicle.deletion.DeleteParticipantAppUsageSurveyData
-import com.openlattice.chronicle.deletion.DeleteParticipantUsageData
-import com.openlattice.chronicle.deletion.DeleteParticipantTUDSubmissionData
-import com.openlattice.chronicle.deletion.DeleteStudyAppUsageSurveyData
-import com.openlattice.chronicle.deletion.DeleteStudyTUDSubmissionData
-import com.openlattice.chronicle.deletion.DeleteStudyUsageData
+import com.openlattice.chronicle.deletion.*
 import com.openlattice.chronicle.hazelcast.HazelcastMap
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.ids.IdConstants
-import com.openlattice.chronicle.notifications.StudyNotificationSettings
-import com.openlattice.chronicle.services.jobs.ChronicleJob
 import com.openlattice.chronicle.organizations.ChronicleDataCollectionSettings
 import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.participants.ParticipantStats
@@ -37,16 +25,14 @@ import com.openlattice.chronicle.sensorkit.SensorDataSample
 import com.openlattice.chronicle.sensorkit.SensorType
 import com.openlattice.chronicle.services.download.DataDownloadService
 import com.openlattice.chronicle.services.enrollment.EnrollmentService
+import com.openlattice.chronicle.services.jobs.ChronicleJob
 import com.openlattice.chronicle.services.jobs.JobService
-import com.openlattice.chronicle.services.legacy.LegacyUtil
 import com.openlattice.chronicle.services.studies.StudyService
 import com.openlattice.chronicle.services.upload.AppDataUploadService
 import com.openlattice.chronicle.services.upload.SensorDataUploadService
 import com.openlattice.chronicle.sources.SourceDevice
 import com.openlattice.chronicle.storage.StorageResolver
-import com.openlattice.chronicle.study.ParticipantDataType
-import com.openlattice.chronicle.study.Study
-import com.openlattice.chronicle.study.StudyApi
+import com.openlattice.chronicle.study.*
 import com.openlattice.chronicle.study.StudyApi.Companion.ANDROID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.CONTROLLER
 import com.openlattice.chronicle.study.StudyApi.Companion.DATA_COLLECTION
@@ -75,21 +61,11 @@ import com.openlattice.chronicle.study.StudyApi.Companion.STATUS_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.STUDY_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.STUDY_ID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.VERIFY_PATH
-import com.openlattice.chronicle.study.StudyUpdate
 import com.openlattice.chronicle.util.ChronicleServerUtil
 import org.slf4j.LoggerFactory
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.MediaType
-import org.springframework.web.bind.annotation.DeleteMapping
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PatchMapping
-import org.springframework.web.bind.annotation.PathVariable
-import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.PutMapping
-import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RequestParam
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.*
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
@@ -97,7 +73,6 @@ import java.util.*
 import javax.inject.Inject
 import javax.servlet.http.HttpServletResponse
 import javax.validation.constraints.Size
-import kotlin.NoSuchElementException
 
 
 /**
@@ -429,7 +404,7 @@ class StudyController @Inject constructor(
         ensureWriteAccess(AclKey(studyId))
 
         val study = studyService.getStudy(studyId)
-        study.settings.toMutableMap()[LegacyUtil.DATA_COLLECTION] = dataCollectionSettings
+        study.settings.toMutableMap()[StudySettingType.DATA_COLLECTION.key] = dataCollectionSettings
         storageResolver.getPlatformStorage().connection.use { conn ->
             AuditedOperationBuilder<Unit>(conn, auditingManager)
                 .operation { connection ->
