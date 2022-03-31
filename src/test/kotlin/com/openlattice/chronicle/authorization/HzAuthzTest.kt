@@ -49,11 +49,11 @@ open class HzAuthzTest : ChronicleServerTests() {
         val key = AclKey(UUID.randomUUID())
         val permissions: EnumSet<Permission> = EnumSet.of(Permission.MATERIALIZE, Permission.READ)
         Assert.assertFalse(
-            hzAuthz!!.checkIfHasPermissions(key, ImmutableSet.of(p), permissions)
+            hzAuthz.checkIfHasPermissions(key, ImmutableSet.of(p), permissions)
         )
-        hzAuthz!!.addPermission(key, p, permissions)
+        hzAuthz.addPermission(key, p, permissions)
         Assert.assertTrue(
-            hzAuthz!!.checkIfHasPermissions(key, ImmutableSet.of(p), permissions)
+            hzAuthz.checkIfHasPermissions(key, ImmutableSet.of(p), permissions)
         )
     }
 
@@ -67,13 +67,13 @@ open class HzAuthzTest : ChronicleServerTests() {
         val permissions: EnumSet<Permission> = EnumSet.of<Permission>(Permission.MATERIALIZE, Permission.READ)
         aclKeys.forEach(Consumer { key: AclKey? ->
             Assert.assertFalse(
-                hzAuthz!!.checkIfHasPermissions(key!!, ImmutableSet.of(p), permissions)
+                hzAuthz.checkIfHasPermissions(key, ImmutableSet.of(p), permissions)
             )
         })
-        hzAuthz!!.addPermissions(aclKeys, p, permissions, SecurableObjectType.Study)
+        hzAuthz.addPermissions(aclKeys, p, permissions, SecurableObjectType.Study)
         aclKeys.forEach(Consumer { key: AclKey? ->
             Assert.assertTrue(
-                hzAuthz!!.checkIfHasPermissions(key!!, ImmutableSet.of(p), permissions)
+                hzAuthz.checkIfHasPermissions(key, ImmutableSet.of(p), permissions)
             )
         })
     }
@@ -96,25 +96,25 @@ open class HzAuthzTest : ChronicleServerTests() {
         val permissions: EnumSet<Permission> =
             EnumSet.of(Permission.MATERIALIZE, Permission.READ, Permission.OWNER)
         Assert.assertFalse(
-            hzAuthz!!.checkIfHasPermissions(key, ImmutableSet.of(p), permissions)
+            hzAuthz.checkIfHasPermissions(key, ImmutableSet.of(p), permissions)
         )
         Assert.assertFalse(
-            hzAuthz!!.checkIfHasPermissions(key, ImmutableSet.of(p2), permissions)
+            hzAuthz.checkIfHasPermissions(key, ImmutableSet.of(p2), permissions)
         )
 
         hzAuthz.createUnnamedSecurableObject(key, p, EnumSet.noneOf(Permission::class.java), SecurableObjectType.Study)
 
-        hzAuthz!!.addPermission(key, p, permissions)
-        hzAuthz!!.addPermission(key, p2, permissions)
+        hzAuthz.addPermission(key, p, permissions)
+        hzAuthz.addPermission(key, p2, permissions)
         Assert.assertTrue(
-            hzAuthz!!.checkIfHasPermissions(AclKey(key), ImmutableSet.of(p), permissions)
+            hzAuthz.checkIfHasPermissions(AclKey(key), ImmutableSet.of(p), permissions)
         )
         Assert.assertTrue(
-            hzAuthz!!.checkIfHasPermissions(AclKey(key), ImmutableSet.of(p2), permissions)
+            hzAuthz.checkIfHasPermissions(AclKey(key), ImmutableSet.of(p2), permissions)
         )
-        hzAuthz!!.removePermission(key, p, permissions)
+        hzAuthz.removePermission(key, p, permissions)
         Assert.assertFalse(
-            hzAuthz!!.checkIfHasPermissions(key, ImmutableSet.of(p), permissions)
+            hzAuthz.checkIfHasPermissions(key, ImmutableSet.of(p), permissions)
         )
     }
 
@@ -126,25 +126,25 @@ open class HzAuthzTest : ChronicleServerTests() {
         val badPermissions: EnumSet<Permission> =
             EnumSet.of<Permission>(Permission.MATERIALIZE, Permission.READ, Permission.LINK)
         Assert.assertFalse(
-            hzAuthz!!.checkIfHasPermissions(key, ImmutableSet.of(p), permissions)
+            hzAuthz.checkIfHasPermissions(key, ImmutableSet.of(p), permissions)
         )
         Assert.assertFalse(
-            hzAuthz!!.checkIfHasPermissions(key, ImmutableSet.of(p2), permissions)
+            hzAuthz.checkIfHasPermissions(key, ImmutableSet.of(p2), permissions)
         )
         hzAuthz.createUnnamedSecurableObject(key, p, EnumSet.noneOf(Permission::class.java), SecurableObjectType.Study)
-        hzAuthz!!.setPermission(key, p, permissions)
-        hzAuthz!!.setPermission(key, p2, permissions)
+        hzAuthz.setPermission(key, p, permissions)
+        hzAuthz.setPermission(key, p2, permissions)
         Assert.assertFalse(
-            hzAuthz!!.checkIfHasPermissions(key, ImmutableSet.of(p), badPermissions)
+            hzAuthz.checkIfHasPermissions(key, ImmutableSet.of(p), badPermissions)
         )
         Assert.assertTrue(
-            hzAuthz!!.checkIfHasPermissions(key, ImmutableSet.of(p), permissions)
+            hzAuthz.checkIfHasPermissions(key, ImmutableSet.of(p), permissions)
         )
         Assert.assertFalse(
-            hzAuthz!!.checkIfHasPermissions(key, ImmutableSet.of(p2), badPermissions)
+            hzAuthz.checkIfHasPermissions(key, ImmutableSet.of(p2), badPermissions)
         )
         Assert.assertTrue(
-            hzAuthz!!.checkIfHasPermissions(key, ImmutableSet.of(p2), permissions)
+            hzAuthz.checkIfHasPermissions(key, ImmutableSet.of(p2), permissions)
         )
     }
 
@@ -157,41 +157,41 @@ open class HzAuthzTest : ChronicleServerTests() {
         val permissions2: EnumSet<Permission> = EnumSet
             .of<Permission>(Permission.MATERIALIZE, Permission.READ, Permission.WRITE, Permission.OWNER)
         Assert.assertFalse(
-            hzAuthz!!.checkIfHasPermissions(key, ImmutableSet.of(p1), permissions1)
+            hzAuthz.checkIfHasPermissions(key, ImmutableSet.of(p1), permissions1)
         )
         Assert.assertFalse(
-            hzAuthz!!.checkIfHasPermissions(key, ImmutableSet.of(p2), permissions2)
+            hzAuthz.checkIfHasPermissions(key, ImmutableSet.of(p2), permissions2)
         )
         hzAuthz.createUnnamedSecurableObject(key, p1, EnumSet.noneOf(Permission::class.java), SecurableObjectType.Study)
-        hzAuthz!!.addPermission(key, p1, permissions1)
-        hzAuthz!!.addPermission(key, p2, permissions2)
+        hzAuthz.addPermission(key, p1, permissions1)
+        hzAuthz.addPermission(key, p2, permissions2)
         Assert.assertTrue(
-            hzAuthz!!.checkIfHasPermissions(key, ImmutableSet.of(p1), permissions1)
+            hzAuthz.checkIfHasPermissions(key, ImmutableSet.of(p1), permissions1)
         )
         Assert.assertFalse(
-            hzAuthz!!.checkIfHasPermissions(
+            hzAuthz.checkIfHasPermissions(
                 key,
                 ImmutableSet.of(p1),
                 EnumSet.of(Permission.WRITE, Permission.OWNER)
             )
         )
         Assert.assertTrue(
-            hzAuthz!!.checkIfHasPermissions(key, ImmutableSet.of(p2), permissions2)
+            hzAuthz.checkIfHasPermissions(key, ImmutableSet.of(p2), permissions2)
         )
-        val p1Owned = hzAuthz!!.getAuthorizedObjectsOfType(
+        val p1Owned = hzAuthz.getAuthorizedObjectsOfType(
             ImmutableSet.of(p1),
             SecurableObjectType.Study,
             EnumSet.of(Permission.OWNER)
         )
         val p1s: Set<List<UUID>> = p1Owned.collect(Collectors.toSet<List<UUID>>())
         if (p1s.isNotEmpty()) {
-            val permissions = hzAuthz!!.getSecurableObjectPermissions(key, ImmutableSet.of(p1))
+            val permissions = hzAuthz.getSecurableObjectPermissions(key, ImmutableSet.of(p1))
             Assert.assertTrue(permissions.contains(Permission.OWNER))
             Assert.assertTrue(
-                hzAuthz!!.checkIfHasPermissions(key, ImmutableSet.of(p1), EnumSet.of<Permission>(Permission.OWNER))
+                hzAuthz.checkIfHasPermissions(key, ImmutableSet.of(p1), EnumSet.of<Permission>(Permission.OWNER))
             )
         }
-        val p2Owned = hzAuthz!!.getAuthorizedObjectsOfType(
+        val p2Owned = hzAuthz.getAuthorizedObjectsOfType(
             ImmutableSet.of(p2),
             SecurableObjectType.Study,
             EnumSet.of(Permission.OWNER)
@@ -223,15 +223,15 @@ open class HzAuthzTest : ChronicleServerTests() {
             //            p1s[ i ] = p1;
             p2s[i] = user2
             permissions1s[i] = TestDataFactory.nonEmptyPermissions()
-            val permissions1: EnumSet<Permission> = permissions1s[i]!!
+            val permissions1: EnumSet<Permission> = permissions1s[i]
             permissions2s[i] = TestDataFactory.nonEmptyPermissions()
-            val permissions2: EnumSet<Permission> = permissions2s[i]!!
+            val permissions2: EnumSet<Permission> = permissions2s[i]
             all.addAll(permissions2)
             Assert.assertFalse(
-                hzAuthz!!.checkIfHasPermissions(key, ImmutableSet.of(user1), permissions1)
+                hzAuthz.checkIfHasPermissions(key, ImmutableSet.of(user1), permissions1)
             )
             Assert.assertFalse(
-                hzAuthz!!.checkIfHasPermissions(key, ImmutableSet.of(user2), permissions2)
+                hzAuthz.checkIfHasPermissions(key, ImmutableSet.of(user2), permissions2)
             )
             hzAuthz.createUnnamedSecurableObject(
                 key,
@@ -239,14 +239,14 @@ open class HzAuthzTest : ChronicleServerTests() {
                 EnumSet.noneOf(Permission::class.java),
                 SecurableObjectType.Study
             )
-            hzAuthz!!.addPermission(key, user1, permissions1)
-            hzAuthz!!.addPermission(key, user2, permissions2)
-            Assert.assertTrue(hzAuthz!!.checkIfHasPermissions(key, ImmutableSet.of(user1), permissions1))
+            hzAuthz.addPermission(key, user1, permissions1)
+            hzAuthz.addPermission(key, user2, permissions2)
+            Assert.assertTrue(hzAuthz.checkIfHasPermissions(key, ImmutableSet.of(user1), permissions1))
             Assert.assertEquals(
                 permissions1.containsAll(permissions2),
-                hzAuthz!!.checkIfHasPermissions(key, ImmutableSet.of(user1), permissions2)
+                hzAuthz.checkIfHasPermissions(key, ImmutableSet.of(user1), permissions2)
             )
-            Assert.assertTrue(hzAuthz!!.checkIfHasPermissions(key, ImmutableSet.of(user2), permissions2))
+            Assert.assertTrue(hzAuthz.checkIfHasPermissions(key, ImmutableSet.of(user2), permissions2))
             val ac = AccessCheck(key, permissions1)
             accessChecks.add(ac)
         }
@@ -256,9 +256,9 @@ open class HzAuthzTest : ChronicleServerTests() {
             val key = ac.aclKey
             //            Principal p1 = p1s[ i ];
             i = keys.indexOf(key)
-            val p2 = p2s[i]!!
-            val permissions1: EnumSet<Permission> = permissions1s[i]!!
-            val permissions2: EnumSet<Permission> = permissions2s[i++]!!
+            val p2 = p2s[i]
+            val permissions1: EnumSet<Permission> = permissions1s[i]
+            val permissions2: EnumSet<Permission> = permissions2s[i++]
             val result = hzAuthz
                 .accessChecksForPrincipals(ImmutableSet.of(ac), ImmutableSet.of(p2))
                 .associate { it.aclKey to EnumMap(it.permissions) }
@@ -312,22 +312,22 @@ open class HzAuthzTest : ChronicleServerTests() {
 
         // has read for all 3 acls, owner for 2, write for 2
         val aclKeySet1 = java.util.Set.of(key1, key2, key3)
-        hzAuthz!!.addPermission(key1, principal, read)
-        hzAuthz!!.addPermission(key2, principal, read)
-        hzAuthz!!.addPermission(key3, principal, read)
-        hzAuthz!!.addPermission(key1, principal, write)
-        hzAuthz!!.addPermission(key2, principal, write)
-        hzAuthz!!.addPermission(key2, principal, owner)
-        hzAuthz!!.addPermission(key3, principal, owner)
+        hzAuthz.addPermission(key1, principal, read)
+        hzAuthz.addPermission(key2, principal, read)
+        hzAuthz.addPermission(key3, principal, read)
+        hzAuthz.addPermission(key1, principal, write)
+        hzAuthz.addPermission(key2, principal, write)
+        hzAuthz.addPermission(key2, principal, owner)
+        hzAuthz.addPermission(key3, principal, owner)
 
         // has all 3 on one, none on other
         val aclKeySet2 = java.util.Set.of(key4, key5)
-        hzAuthz!!.addPermission(key4, principal, materialize)
-        hzAuthz!!.addPermission(key4, principal, discover)
+        hzAuthz.addPermission(key4, principal, materialize)
+        hzAuthz.addPermission(key4, principal, discover)
 
         // no permissions at all
         val aclKeySet3 = java.util.Set.of(key5, key6)
-        val reducedPermissionsMap1: Map<Set<AclKey>, EnumSet<Permission>> = hzAuthz!!.getSecurableObjectSetsPermissions(
+        val reducedPermissionsMap1: Map<Set<AclKey>, EnumSet<Permission>> = hzAuthz.getSecurableObjectSetsPermissions(
             java.util.List.of(aclKeySet1, aclKeySet2, aclKeySet3),
             java.util.Set.of(principal)
         )
@@ -339,13 +339,13 @@ open class HzAuthzTest : ChronicleServerTests() {
         val p1 = initializePrincipal(TestDataFactory.userPrincipal())
         val p2 = initializePrincipal(TestDataFactory.userPrincipal())
         val p3 = initializePrincipal(TestDataFactory.userPrincipal())
-        hzAuthz!!.addPermission(key1, p1, read)
-        hzAuthz!!.addPermission(key1, p1, write)
-        hzAuthz!!.addPermission(key2, p2, read)
-        hzAuthz!!.addPermission(key2, p2, owner)
-        hzAuthz!!.addPermission(key3, p3, read)
-        hzAuthz!!.addPermission(key3, p3, materialize)
-        val reducedPermissionsMap2: Map<Set<AclKey>, EnumSet<Permission>> = hzAuthz!!.getSecurableObjectSetsPermissions(
+        hzAuthz.addPermission(key1, p1, read)
+        hzAuthz.addPermission(key1, p1, write)
+        hzAuthz.addPermission(key2, p2, read)
+        hzAuthz.addPermission(key2, p2, owner)
+        hzAuthz.addPermission(key3, p3, read)
+        hzAuthz.addPermission(key3, p3, materialize)
+        val reducedPermissionsMap2: Map<Set<AclKey>, EnumSet<Permission>> = hzAuthz.getSecurableObjectSetsPermissions(
             java.util.List.of(aclKeySet1),
             java.util.Set.of(p1, p2, p3)
         )
