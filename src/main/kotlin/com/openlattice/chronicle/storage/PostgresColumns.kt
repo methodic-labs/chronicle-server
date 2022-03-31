@@ -72,6 +72,7 @@ class PostgresColumns {
         @JvmField val SECURABLE_OBJECT_TYPE = PostgresColumnDefinition("securable_object_type", PostgresDatatype.TEXT).notNull()
         @JvmField val SECURABLE_PRINCIPAL_ID = PostgresColumnDefinition("securable_principal_id", PostgresDatatype.UUID).notNull()
         @JvmField val SETTINGS = PostgresColumnDefinition("settings", PostgresDatatype.JSONB).withDefault("'{}'::jsonb")
+        @JvmField val MODULES = PostgresColumnDefinition("modules", PostgresDatatype.JSONB).withDefault("'{}'::jsonb")
         @JvmField val SOURCE_DEVICE = PostgresColumnDefinition("source_device", PostgresDatatype.JSONB).notNull()
         @JvmField val SOURCE_DEVICE_ID = PostgresColumnDefinition("source_device_id", PostgresDatatype.TEXT).notNull()
         @JvmField val STARTED_AT = PostgresColumnDefinition("started_at", PostgresDatatype.TIMESTAMPTZ).notNull().withDefault("now()")

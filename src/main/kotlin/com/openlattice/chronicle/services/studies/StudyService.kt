@@ -25,6 +25,7 @@ import com.openlattice.chronicle.notifications.StudyNotificationSettings
 import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.participants.ParticipantStats
 import com.openlattice.chronicle.postgres.ResultSetAdapters
+import com.openlattice.chronicle.sensorkit.SensorSetting
 import com.openlattice.chronicle.sensorkit.SensorType
 import com.openlattice.chronicle.services.candidates.CandidateManager
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
@@ -45,6 +46,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.ENDED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LAT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LEGACY_STUDY_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LON
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.MODULES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.NOTIFICATIONS_ENABLED
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_IDS
@@ -63,6 +65,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPDATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_ID
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.study.Study
+import com.openlattice.chronicle.study.StudySettingType
 import com.openlattice.chronicle.study.StudyUpdate
 import com.openlattice.chronicle.util.ChronicleServerUtil
 import com.openlattice.chronicle.util.ensureVanilla
@@ -109,6 +112,7 @@ class StudyService(
             NOTIFICATIONS_ENABLED,
             STORAGE,
             SETTINGS,
+            MODULES,
             STUDY_PHONE_NUMBER
         )
         private val STUDY_COLUMNS = STUDY_COLUMNS_LIST.joinToString(",") { it.name }
@@ -129,7 +133,8 @@ class StudyService(
             CONTACT,
             NOTIFICATIONS_ENABLED,
             STORAGE,
-            SETTINGS
+            SETTINGS,
+            MODULES
         )
 
         private val UPDATE_STUDY_COLUMNS = UPDATE_STUDY_COLUMNS_LIST.joinToString(",") { it.name }
@@ -216,7 +221,8 @@ class StudyService(
          * 11. notifications enabled
          * 12. storage
          * 13. settings
-         * 14. study_id
+         * 14. modules
+         * 15. study_id
          */
 
         private val UPDATE_STUDY_SQL = """
@@ -397,7 +403,8 @@ class StudyService(
             ps.setObject(9, study.notificationsEnabled)
             ps.setObject(10, study.storage)
             ps.setString(11, mapper.writeValueAsString(study.settings))
-            ps.setString(12, study.phoneNumber)
+            ps.setString(12, mapper.writeValueAsString(study.modules))
+            ps.setString(13, study.phoneNumber)
             return ps.executeUpdate()
         }
     }
@@ -459,12 +466,9 @@ class StudyService(
             ps.setString(10, study.contact)
             ps.setObject(11, study.notificationsEnabled)
             ps.setString(12, study.storage)
-            if (study.settings == null) {
-                ps.setObject(13, null)
-            } else {
-                ps.setString(13, mapper.writeValueAsString(study.settings))
-            }
-            ps.setObject(14, studyId)
+            ps.setObject(13, if (study.settings == null) null else mapper.writeValueAsString(study.settings))
+            ps.setString(14, if (study.modules == null) null else mapper.writeValueAsString(study.modules))
+            ps.setObject(15, studyId)
             ps.executeUpdate()
         }
         studies.loadAll(setOf(studyId), true)
@@ -543,7 +547,7 @@ class StudyService(
 
         try {
             val studySettings =
-                getStudy(studyId).settings.getValue(StudyNotificationSettings.SETTINGS_KEY) as StudyNotificationSettings
+                getStudy(studyId).settings.getValue(StudySettingType.NOTIFICATIONS.key) as StudyNotificationSettings
 
             if (studySettings.notifyOnEnrollment) {
                 notificationService.sendNotifications(
@@ -644,11 +648,7 @@ class StudyService(
 
     override fun getStudySensors(studyId: UUID): Set<SensorType> {
         val settings = getStudySettings(studyId)
-        val sensors = settings[Study.SENSORS]
-        sensors?.let {
-            return (it as List<String>).map { sensor -> SensorType.valueOf(sensor) }.toSet()
-        }
-        return setOf()
+        return settings[StudySettingType.SENSOR.key] as SensorSetting? ?: SensorSetting.NO_SENSORS
     }
 
     override fun getStudyParticipantStats(studyId: UUID): Map<String, ParticipantStats> {

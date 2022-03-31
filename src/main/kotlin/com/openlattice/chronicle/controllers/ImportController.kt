@@ -268,26 +268,6 @@ class ImportController(
 //        }.mapNotNull { it.get() }
     }
 
-    @PatchMapping(
-        path = [STUDIES],
-        produces = [MediaType.APPLICATION_JSON_VALUE]
-    )
-    override fun initializeStudySettings(): Int {
-        return storageResolver.getPlatformStorage().connection.use { connection ->
-            val studiesToUpgrade =
-                studiesMap.values.filter { !it.settings.containsKey(StudyNotificationSettings.SETTINGS_KEY) }
-            studiesToUpgrade.forEach { study ->
-                studyService.updateStudy(connection,
-                                         study.id,
-                                         StudyUpdate(settings = study.settings + mapOf(StudyNotificationSettings.SETTINGS_KEY to Study.initialSettings(
-                                             study.title,
-                                             ""))))
-            }
-            return@use studiesToUpgrade.size
-        }
-
-    }
-
     @PostMapping(
         path = [PARTICIPANTS],
         produces = [MediaType.APPLICATION_JSON_VALUE],
