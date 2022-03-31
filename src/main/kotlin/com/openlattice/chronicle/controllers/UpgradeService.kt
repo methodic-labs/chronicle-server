@@ -86,7 +86,7 @@ class UpgradeService(private val storageResolver: StorageResolver) : PreHazelcas
 
     private fun migrateSensorSettings(settings: Map<String, Any>): Pair<String, StudySetting> {
         val sensors = settings["sensors"]
-        return StudySettingType.SENSOR.type to SensorSetting(
+        return StudySettingType.SENSOR.key to SensorSetting(
             when (sensors) {
                 null -> setOf()
                 is Set<*> -> sensors.mapNotNull { SensorType.valueOf(it as String) }.toSet()
@@ -96,7 +96,7 @@ class UpgradeService(private val storageResolver: StorageResolver) : PreHazelcas
 
     private fun migrateDataCollectionSettings(settings: Map<String, Any>): Pair<String, StudySetting> {
         val appUsageFrequency = settings["appUsageFrequency"]
-        return StudySettingType.DATA_COLLECTION.type to ChronicleDataCollectionSettings(
+        return StudySettingType.DATA_COLLECTION.key to ChronicleDataCollectionSettings(
             when (appUsageFrequency) {
                 null -> AppUsageFrequency.HOURLY
                 is String -> AppUsageFrequency.valueOf(appUsageFrequency)
