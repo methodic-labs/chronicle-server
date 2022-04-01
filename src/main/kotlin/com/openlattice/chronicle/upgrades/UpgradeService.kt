@@ -1,4 +1,4 @@
-package com.openlattice.chronicle.controllers
+package com.openlattice.chronicle.upgrades
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.geekbeast.hazelcast.PreHazelcastUpgradeService

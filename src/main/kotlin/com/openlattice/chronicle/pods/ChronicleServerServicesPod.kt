@@ -67,6 +67,8 @@ import com.openlattice.chronicle.services.jobs.JobService
 import com.openlattice.chronicle.services.notifications.NotificationService
 import com.openlattice.chronicle.services.settings.OrganizationSettingsManager
 import com.openlattice.chronicle.services.settings.OrganizationSettingsService
+import com.openlattice.chronicle.services.studies.StudyLimitsManager
+import com.openlattice.chronicle.services.studies.StudyLimitsServce
 import com.openlattice.chronicle.services.studies.StudyService
 import com.openlattice.chronicle.services.surveys.SurveysManager
 import com.openlattice.chronicle.services.surveys.SurveysService
@@ -76,6 +78,9 @@ import com.openlattice.chronicle.services.upload.AppDataUploadManager
 import com.openlattice.chronicle.services.upload.AppDataUploadService
 import com.openlattice.chronicle.services.upload.SensorDataUploadService
 import com.openlattice.chronicle.storage.StorageResolver
+import com.openlattice.chronicle.studies.tasks.StudyLimitsEnforcementTask
+import com.openlattice.chronicle.studies.tasks.StudyLimitsEnforcementTaskDependencies
+import com.openlattice.chronicle.study.StudyLimits
 import com.openlattice.chronicle.tasks.PostConstructInitializerTaskDependencies
 import com.openlattice.chronicle.users.Auth0SyncInitializationTask
 import com.openlattice.chronicle.users.Auth0SyncService
@@ -339,6 +344,7 @@ class ChronicleServerServicesPod {
             candidateService(),
             enrollmentManager(),
             idGenerationService(),
+            studyLimitsManager(),
             auditingManager(),
             hazelcast
         )
@@ -438,6 +444,25 @@ class ChronicleServerServicesPod {
             jobService(),
             storageResolver,
             auditingManager()
+        )
+    }
+
+    @Bean
+    fun studyLimitsManager(): StudyLimitsManager {
+        return StudyLimitsServce(storageResolver, hazelcast)
+    }
+
+    @Bean
+    fun studyLimitsEnforcementTask(): StudyLimitsEnforcementTask {
+        return StudyLimitsEnforcementTask()
+    }
+
+    @Bean
+    fun studyLimitsEnforcementTaskDependencies(): StudyLimitsEnforcementTaskDependencies {
+        return StudyLimitsEnforcementTaskDependencies(
+            storageResolver,
+            studyLimitsManager(),
+            studyService()
         )
     }
 

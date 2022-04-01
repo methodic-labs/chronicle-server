@@ -14,6 +14,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.CANDIDATE_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.COMPLETED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CONTACT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CREATED_AT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.DATA_RETENTION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DATE_OF_BIRTH
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DELETED_ROWS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DELIVERY_TYPE
@@ -24,6 +25,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.EMAIL
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ENDED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.EXPIRATION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.EXPIRATION_DATE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.FEATURES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.FIRST_NAME
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.IOS_FIRST_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.IOS_LAST_DATE
@@ -79,6 +81,9 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_FIRST_DAT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_LAST_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_UNIQUE_DATES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.NOTIFICATION_TYPE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_COUNT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_LIMIT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_DURATION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPDATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_DATA
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_ID
@@ -173,6 +178,10 @@ class ChroniclePostgresTables {
                 PARTICIPATION_STATUS
             )
             .primaryKey(STUDY_ID, PARTICIPANT_ID)
+
+        @JvmField
+        val STUDY_LIMITS = PostgresTableDefinition("study_limits")
+            .addColumns(STUDY_ID, PARTICIPANT_LIMIT, STUDY_DURATION, DATA_RETENTION, FEATURES, PARTICIPANT_COUNT)
 
         @JvmField
         val CANDIDATES = PostgresTableDefinition("candidates")

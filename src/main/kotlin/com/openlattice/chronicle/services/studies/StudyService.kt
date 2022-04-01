@@ -87,6 +87,7 @@ class StudyService(
     private val candidateService: CandidateManager,
     private val enrollmentService: EnrollmentManager,
     private val idGenerationService: HazelcastIdGenerationService,
+    private val studyLimitsMgr: StudyLimitsManager,
     override val auditingManager: AuditingManager,
     hazelcast: HazelcastInstance,
 ) : StudyManager, AuditingComponent {
@@ -380,6 +381,7 @@ class StudyService(
     }
 
     override fun createStudy(connection: Connection, study: Study) {
+        studyLimitsMgr.initializeStudyLimits(connection, study.id)
         insertStudy(connection, study)
         insertOrgStudy(connection, study)
         authorizationService.createUnnamedSecurableObject(
@@ -527,6 +529,7 @@ class StudyService(
     }
 
     override fun registerParticipant(connection: Connection, studyId: UUID, participant: Participant): UUID {
+        studyLimitsMgr.reserveEnrollmentCapacity(connection, studyId)
         val candidateId = candidateService.registerCandidate(connection, participant.candidate)
         enrollmentService.registerParticipant(
             connection,
