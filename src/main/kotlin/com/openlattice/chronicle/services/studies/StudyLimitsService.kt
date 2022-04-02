@@ -2,13 +2,19 @@ package com.openlattice.chronicle.services.studies
 
 import com.geekbeast.mappers.mappers.ObjectMappers
 import com.geekbeast.postgres.PostgresArrays
+import com.geekbeast.postgres.streams.BasePostgresIterable
+import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
 import com.hazelcast.core.HazelcastInstance
 import com.openlattice.chronicle.hazelcast.HazelcastMap
 import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.storage.ChroniclePostgresTables
+import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.STUDIES
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.STUDY_LIMITS
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_COUNT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.CREATED_AT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.DATA_RETENTION
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.ENDED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_LIMIT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_DURATION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.study.StudyDuration
@@ -21,7 +27,7 @@ import java.util.*
  *
  * @author Matthew Tamayo-Rios &lt;matthew@openlattice.com&gt;
  */
-class StudyLimitsServce(
+class StudyLimitsService(
     private val storageResolver: StorageResolver,
     hazelcast: HazelcastInstance
 ) : StudyLimitsManager {
@@ -38,14 +44,26 @@ class StudyLimitsServce(
         private val INSERT_STUDY_LIMITS = """
             INSERT INTO ${STUDY_LIMITS.name} VALUES(?,?,?,?,?) 
         """.trimIndent()
-        private val RESERVE_ENROLLMENT = """
-            UPDATE ${STUDY_LIMITS.name} SET ${PARTICIPANT_COUNT.name} = ${PARTICIPANT_COUNT.name} + ?
-                WHERE ${STUDY_ID.name} = ? AND ${PARTICIPANT_COUNT.name} <= ?
-         """.trimIndent()
-        private val SET_PARTICIPANT_LIMIT = """
-            UPDATE ${STUDY_LIMITS.name} SET ${PARTICIPANT_LIMIT.name} = ?WHERE ${STUDY_ID.name} = ?
+        private val LOCK_STUDY = """
+            SELECT 1 FROM ${STUDY_LIMITS.name} WHERE ${STUDY_ID.name} = ? FOR UPDATE
          """.trimIndent()
 
+        private val SET_PARTICIPANT_LIMIT = """
+            UPDATE ${STUDY_LIMITS.name} SET ${PARTICIPANT_LIMIT.name} = ? WHERE ${STUDY_ID.name} = ?
+         """.trimIndent()
+
+        private val STUDIES_EXCEEDING_DURATION_LIMIT = """
+            SELECT * FROM ${STUDIES.name} INNER JOIN ${STUDY_LIMITS.name} USING (${STUDY_ID.name}) 
+            WHERE (now() - ${CREATED_AT.name}) > INTERVAL (${STUDY_DURATION.name}->>'years' || ' years ' || 
+                {$STUDY_DURATION.name}->>'months' || ' months ' || 
+                {$STUDY_DURATION.name}->>'days' || ' days ')
+        """.trimIndent()
+        private val STUDIES_EXCEEDING_RETENTION_LIMIT = """
+            SELECT * FROM ${STUDIES.name} INNER JOIN ${STUDY_LIMITS.name} USING (${STUDY_ID.name}) 
+            WHERE (now() - ${ENDED_AT.name}) > INTERVAL (${DATA_RETENTION.name}->>'years' || ' years ' || 
+                {$DATA_RETENTION.name}->>'months' || ' months ' || 
+                {$DATA_RETENTION.name}->>'days' || ' days ')
+        """.trimIndent()
         private val COUNT_STUDY_PARTICIPANTS_SQL = """
             SELECT ${STUDY_ID.name}, count(*) FROM ${ChroniclePostgresTables.STUDY_PARTICIPANTS.name} WHERE ${STUDY_ID.name} = ANY(?)
         """.trimIndent()
@@ -64,19 +82,11 @@ class StudyLimitsServce(
         }
     }
 
-    override fun reserveEnrollmentCapacity(connection: Connection, studyId: UUID, capacity: Int) {
-        /**
-         * Need to somehow keep track of
-         */
-        connection.prepareStatement(RESERVE_ENROLLMENT).use { ps ->
-            ps.setObject(1, studyId)
-            ps.setInt(2, capacity)
-            ps.setInt(3, studyLimits.getValue(studyId).participantLimit - capacity)
-            check(ps.executeUpdate() > 1) { "Insufficient capacity to enroll participants." }
-        }
+    override fun lockStudyForEnrollments(connection: Connection, studyId: UUID) {
+        connection.prepareStatement(LOCK_STUDY).use { ps -> ps.setObject(1, studyId) }
     }
 
-    override fun getAvailableEnrollmentCapactity(studyId: UUID): Int {
+    override fun getEnrollmentCapacity(studyId: UUID): Int {
         return studyLimits.getValue(studyId).participantLimit
     }
 
@@ -88,6 +98,7 @@ class StudyLimitsServce(
 
             }
         }
+        studyLimits.loadAll(setOf(studyId), true)
     }
 
     override fun setStudyDuration(studyId: UUID, studyDuration: StudyDuration) {
@@ -106,19 +117,11 @@ class StudyLimitsServce(
         TODO("Not yet implemented")
     }
 
-    override fun makeArchivable(studyId: UUID) {
-        TODO("Not yet implemented")
-    }
-
-    override fun isArchivable(studyId: UUID): Boolean {
-        TODO("Not yet implemented")
-    }
-
     override fun getStudyFeatures(studyId: UUID): Set<StudyFeature> {
         TODO("Not yet implemented")
     }
 
-    override fun setStudyFeatureS(studyId: UUID, studyFeatures: Set<StudyFeature>) {
+    override fun setStudyFeatures(studyId: UUID, studyFeatures: Set<StudyFeature>) {
         TODO("Not yet implemented")
     }
 
@@ -131,11 +134,21 @@ class StudyLimitsServce(
     }
 
     override fun getStudiesExceedingDurationLimit(): Set<UUID> {
-        TODO("Not yet implemented")
+        return BasePostgresIterable(
+            PreparedStatementHolderSupplier(
+                storageResolver.getPlatformStorage(),
+                STUDIES_EXCEEDING_DURATION_LIMIT
+            ) { }
+        ) { ResultSetAdapters.studyId(it) }.toSet()
     }
 
     override fun getStudiesExcceedingDataRetentionPeriod(): Set<UUID> {
-        TODO("Not yet implemented")
+        return BasePostgresIterable(
+            PreparedStatementHolderSupplier(
+                storageResolver.getPlatformStorage(),
+                STUDIES_EXCEEDING_RETENTION_LIMIT
+            ) { }
+        ) { ResultSetAdapters.studyId(it) }.toSet()
     }
 
     override fun countStudyParticipants(studyId: UUID): Long {
@@ -145,12 +158,13 @@ class StudyLimitsServce(
         }
     }
 
-    override fun countStudyParticipants(studyIds: Set<UUID>): Map<UUID,Long> {
+    override fun countStudyParticipants(studyIds: Set<UUID>): Map<UUID, Long> {
         val hds = storageResolver.getPlatformStorage()
         return hds.connection.use { connection ->
             countStudyParticipants(connection, studyIds)
         }
     }
+
     override fun countStudyParticipants(connection: Connection, studyIds: Set<UUID>): Map<UUID, Long> {
         val studyCounts = mutableMapOf<UUID, Long>()
         connection.prepareStatement(COUNT_STUDY_PARTICIPANTS_SQL).use { ps ->

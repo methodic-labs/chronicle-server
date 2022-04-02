@@ -404,7 +404,7 @@ class StudyController @Inject constructor(
         ensureWriteAccess(AclKey(studyId))
 
         val study = studyService.getStudy(studyId)
-        study.settings.toMutableMap()[StudySettingType.DATA_COLLECTION.key] = dataCollectionSettings
+        study.settings.toMutableMap()[StudySettingType.DataCollection] = dataCollectionSettings
         storageResolver.getPlatformStorage().connection.use { conn ->
             AuditedOperationBuilder<Unit>(conn, auditingManager)
                 .operation { connection ->
@@ -424,7 +424,7 @@ class StudyController @Inject constructor(
                 }
                 .buildAndRun()
         }
-
+        studies.loadAll(setOf(studyId), true) //Reload updated study into cache
         return OK()
     }
 
@@ -459,7 +459,7 @@ class StudyController @Inject constructor(
     )
     override fun getStudySettings(
         @PathVariable(STUDY_ID) studyId: UUID,
-    ): Map<String, Any> {
+    ): Map<StudySettingType, StudySetting> {
         // No permissions check since this is assumed to be invoked from a non-authenticated context
         val realStudyId = studyService.getStudyId(studyId)
         checkNotNull(realStudyId) { "invalid study id" }
@@ -532,10 +532,12 @@ class StudyController @Inject constructor(
         ensureReadAccess(AclKey(studyId))
         return when (dataType) {
             ParticipantDataType.Preprocessed -> TODO("Not implemented")
-            ParticipantDataType.AppUsageSurvey -> downloadService.getParticipantsAppUsageSurveyData(studyId,
-                                                                                                    participantIds,
-                                                                                                    startDateTime,
-                                                                                                    endDateTime)
+            ParticipantDataType.AppUsageSurvey -> downloadService.getParticipantsAppUsageSurveyData(
+                studyId,
+                participantIds,
+                startDateTime,
+                endDateTime
+            )
             ParticipantDataType.IOSSensor -> {
                 val sensors = getStudySensors(studyId)
                 downloadService.getParticipantsSensorData(studyId, participantIds, sensors, startDateTime, endDateTime)
@@ -582,13 +584,17 @@ class StudyController @Inject constructor(
         )
 
         ChronicleServerUtil.setDownloadContentType(response, FileType.csv)
-        ChronicleServerUtil.setContentDisposition(response,
-                                                  MoreObjects.firstNonNull(fileName,
-                                                                           "${dataType}_${
-                                                                               LocalDate.now()
-                                                                                   .format(DateTimeFormatter.BASIC_ISO_DATE)
-                                                                           }"),
-                                                  FileType.csv)
+        ChronicleServerUtil.setContentDisposition(
+            response,
+            MoreObjects.firstNonNull(
+                fileName,
+                "${dataType}_${
+                    LocalDate.now()
+                        .format(DateTimeFormatter.BASIC_ISO_DATE)
+                }"
+            ),
+            FileType.csv
+        )
 
         recordEvent(
             AuditableEvent(

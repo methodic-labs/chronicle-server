@@ -73,9 +73,3 @@ class AuditedOperationBuilder<R>(
         return AuditedOperation(connection, op, auditOp, auditingManager)
     }
 }
-
-fun test(storageResolver: StorageResolver) {
-    val hds = storageResolver.getAuditStorage().second
-
-
-}

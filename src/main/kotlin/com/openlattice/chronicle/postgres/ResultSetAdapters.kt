@@ -116,6 +116,7 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMESTAMP
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMEZONE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.USERNAME
 import com.openlattice.chronicle.study.Study
+import com.openlattice.chronicle.study.StudyFeature
 import com.openlattice.chronicle.study.StudySettings
 import com.openlattice.chronicle.survey.AppUsage
 import com.openlattice.chronicle.survey.Questionnaire
@@ -338,8 +339,8 @@ class ResultSetAdapters {
                 PostgresArrays.getUuidArray(rs, ORGANIZATION_IDS.name)?.toSet() ?: setOf(),
                 rs.getBoolean(NOTIFICATIONS_ENABLED.name),
                 rs.getString(STORAGE.name),
-                mapper.readValue<StudySettings>(rs.getString(SETTINGS.name)),
-                mapper.readValue<Map<String, Any>>(rs.getString(MODULES.name)),
+                mapper.readValue(rs.getString(SETTINGS.name)),
+                mapper.readValue(rs.getString(MODULES.name)),
                 rs.getString(STUDY_PHONE_NUMBER.name)
             )
         }

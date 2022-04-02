@@ -56,9 +56,8 @@ class UpgradeService(private val storageResolver: StorageResolver) : PreHazelcas
         val modulesMap = mutableMapOf<UUID, Map<String, Any>>()
         storageResolver.getPlatformStorage().connection.use { connection ->
             connection.autoCommit = false
-            connection.createStatement().use { s-> s.execute(ADD_COLUMN_SQL) }
+            connection.createStatement().use { s -> s.execute(ADD_COLUMN_SQL) }
             val upgradedCount = connection.prepareStatement(UPDATE_LEGACY_STUDY).use { ps ->
-
                 legacySettings.forEach { (studyId, settings) ->
                     modulesMap[studyId] = migrateComponents(settings)
                     val upgradeSettings = mapOf(
@@ -69,8 +68,9 @@ class UpgradeService(private val storageResolver: StorageResolver) : PreHazelcas
                     ps.setString(1, mapper.writeValueAsString(upgradeSettings))
                     ps.setString(2, mapper.writeValueAsString(modulesMap))
                     ps.setObject(2, studyId)
+                    ps.addBatch()
                 }
-
+                ps.executeBatch()
             }
             connection.commit()
             logger.info("Upgrade $upgradedCount studies.")
@@ -84,23 +84,25 @@ class UpgradeService(private val storageResolver: StorageResolver) : PreHazelcas
             .associateWith { emptyMap<String, Any>() }
     }
 
-    private fun migrateSensorSettings(settings: Map<String, Any>): Pair<String, StudySetting> {
+    private fun migrateSensorSettings(settings: Map<String, Any>): Pair<StudySettingType, StudySetting> {
         val sensors = settings["sensors"]
-        return StudySettingType.SENSOR.key to SensorSetting(
+        return StudySettingType.Sensor to SensorSetting(
             when (sensors) {
                 null -> setOf()
                 is Set<*> -> sensors.mapNotNull { SensorType.valueOf(it as String) }.toSet()
                 else -> throw IllegalStateException("Unexpected type encountered.")
-            })
+            }
+        )
     }
 
-    private fun migrateDataCollectionSettings(settings: Map<String, Any>): Pair<String, StudySetting> {
+    private fun migrateDataCollectionSettings(settings: Map<String, Any>): Pair<StudySettingType, StudySetting> {
         val appUsageFrequency = settings["appUsageFrequency"]
-        return StudySettingType.DATA_COLLECTION.key to ChronicleDataCollectionSettings(
+        return StudySettingType.DataCollection to ChronicleDataCollectionSettings(
             when (appUsageFrequency) {
                 null -> AppUsageFrequency.HOURLY
                 is String -> AppUsageFrequency.valueOf(appUsageFrequency)
                 else -> throw IllegalStateException("Unexpected type encountered.")
-            })
+            }
+        )
     }
 }

@@ -5,7 +5,6 @@ import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.authorization.AuthorizationManager
 import com.openlattice.chronicle.authorization.AuthorizingComponent
 import com.openlattice.chronicle.services.studies.StudyLimitsManager
-import com.openlattice.chronicle.services.studies.StudyLimitsServce
 import com.openlattice.chronicle.services.studies.StudyService
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.study.StudyLimits

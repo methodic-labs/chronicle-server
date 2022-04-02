@@ -52,7 +52,6 @@ class PostgresColumns {
         @JvmField val NOTIFICATIONS_ENABLED = PostgresColumnDefinition("notifications_enabled", PostgresDatatype.BOOLEAN)
         @JvmField val ORGANIZATION_ID = PostgresColumnDefinition("organization_id", PostgresDatatype.UUID).notNull()
         @JvmField val ORGANIZATION_IDS = PostgresColumnDefinition("organization_ids", PostgresDatatype.UUID_ARRAY).notNull()
-        @JvmField val PARTICIPANT_COUNT = PostgresColumnDefinition("participant_count", PostgresDatatype.INTEGER).notNull().withDefault("0")
         @JvmField val PARTICIPANT_LIMIT = PostgresColumnDefinition("participant_limit", PostgresDatatype.INTEGER).notNull()
         @JvmField val PARTICIPANT_ID = PostgresColumnDefinition("participant_id", PostgresDatatype.TEXT).notNull()
         @JvmField val PARTICIPATION_STATUS = PostgresColumnDefinition("participation_status", PostgresDatatype.TEXT).notNull()
