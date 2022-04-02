@@ -182,6 +182,7 @@ class ChroniclePostgresTables {
         @JvmField
         val STUDY_LIMITS = PostgresTableDefinition("study_limits")
             .addColumns(STUDY_ID, PARTICIPANT_LIMIT, STUDY_DURATION, DATA_RETENTION, FEATURES, PARTICIPANT_COUNT)
+            .primaryKey(STUDY_ID)
 
         @JvmField
         val CANDIDATES = PostgresTableDefinition("candidates")

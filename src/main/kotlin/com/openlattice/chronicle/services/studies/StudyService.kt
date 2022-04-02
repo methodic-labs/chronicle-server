@@ -556,10 +556,14 @@ class StudyService(
                 notificationService.sendNotifications(
                     connection,
                     studyId,
-                    listOf(ParticipantNotification(participant.participantId,
-                                                   NotificationType.ENROLLMENT,
-                                                   deliveryTypes,
-                                                   message = studySettings.getEnrollmentMessage()))
+                    listOf(
+                        ParticipantNotification(
+                            participant.participantId,
+                            NotificationType.ENROLLMENT,
+                            deliveryTypes,
+                            message = studySettings.getEnrollmentMessage()
+                        )
+                    )
                 )
             }
         } catch (ex: Exception) {
@@ -708,10 +712,23 @@ class StudyService(
                 ps.executeUpdate()
             }
         }
+
     }
 
     override fun getStudyParticipants(studyId: UUID): Iterable<Participant> {
         return selectStudyParticipants(studyId)
+    }
+
+    override fun countStudyParticipants(studyId: UUID): Long {
+        return studyLimitsMgr.countStudyParticipants(studyId)
+    }
+
+    override fun countStudyParticipants(connection: Connection, studyIds: Set<UUID>): Map<UUID, Long> {
+        return studyLimitsMgr.countStudyParticipants(connection, studyIds)
+    }
+
+    override fun countStudyParticipants(studyIds: Set<UUID>): Map<UUID, Long> {
+        return studyLimitsMgr.countStudyParticipants(studyIds)
     }
 
     private fun selectStudyParticipants(studyId: UUID): Iterable<Participant> {

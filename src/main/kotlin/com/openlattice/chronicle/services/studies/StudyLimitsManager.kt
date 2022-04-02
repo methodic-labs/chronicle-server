@@ -41,6 +41,10 @@ interface StudyLimitsManager {
 
     fun getStudiesExceedingDurationLimit() : Set<UUID>
     fun getStudiesExcceedingDataRetentionPeriod() : Set<UUID>
+
+    fun countStudyParticipants(connection: Connection, studyIds: Set<UUID>): Map<UUID, Long>
+    fun countStudyParticipants(studyId: UUID): Long
+    fun countStudyParticipants(studyIds: Set<UUID>): Map<UUID, Long>
 }
 
 

@@ -42,4 +42,7 @@ interface StudyManager {
     fun updateStudy(connection: Connection, studyId: UUID, study: StudyUpdate)
     fun getStudyPhoneNumber(studyId: UUID): String?
     fun updateParticipationStatus(studyId: UUID, participantId: String, participationStatus: ParticipationStatus)
+    fun countStudyParticipants(connection: Connection, studyIds: Set<UUID>): Map<UUID, Long>
+    fun countStudyParticipants(studyId: UUID): Long
+    fun countStudyParticipants(studyIds: Set<UUID>): Map<UUID, Long>
 }

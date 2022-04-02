@@ -4,6 +4,8 @@ import com.geekbeast.mappers.mappers.ObjectMappers
 import com.geekbeast.postgres.PostgresArrays
 import com.hazelcast.core.HazelcastInstance
 import com.openlattice.chronicle.hazelcast.HazelcastMap
+import com.openlattice.chronicle.postgres.ResultSetAdapters
+import com.openlattice.chronicle.storage.ChroniclePostgresTables
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.STUDY_LIMITS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_COUNT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_LIMIT
@@ -43,6 +45,10 @@ class StudyLimitsServce(
         private val SET_PARTICIPANT_LIMIT = """
             UPDATE ${STUDY_LIMITS.name} SET ${PARTICIPANT_LIMIT.name} = ?WHERE ${STUDY_ID.name} = ?
          """.trimIndent()
+
+        private val COUNT_STUDY_PARTICIPANTS_SQL = """
+            SELECT ${STUDY_ID.name}, count(*) FROM ${ChroniclePostgresTables.STUDY_PARTICIPANTS.name} WHERE ${STUDY_ID.name} = ANY(?)
+        """.trimIndent()
     }
 
     private val studyLimits = HazelcastMap.STUDY_LIMITS.getMap(hazelcast)
@@ -85,7 +91,7 @@ class StudyLimitsServce(
     }
 
     override fun setStudyDuration(studyId: UUID, studyDuration: StudyDuration) {
-        TODO("Not yet implemented")
+
     }
 
     override fun getStudyDuration(studyId: UUID): StudyDuration {
@@ -124,4 +130,37 @@ class StudyLimitsServce(
         TODO("Not yet implemented")
     }
 
+    override fun getStudiesExceedingDurationLimit(): Set<UUID> {
+        TODO("Not yet implemented")
+    }
+
+    override fun getStudiesExcceedingDataRetentionPeriod(): Set<UUID> {
+        TODO("Not yet implemented")
+    }
+
+    override fun countStudyParticipants(studyId: UUID): Long {
+        val hds = storageResolver.getPlatformStorage()
+        return hds.connection.use { connection ->
+            countStudyParticipants(connection, setOf(studyId)).values.first()
+        }
+    }
+
+    override fun countStudyParticipants(studyIds: Set<UUID>): Map<UUID,Long> {
+        val hds = storageResolver.getPlatformStorage()
+        return hds.connection.use { connection ->
+            countStudyParticipants(connection, studyIds)
+        }
+    }
+    override fun countStudyParticipants(connection: Connection, studyIds: Set<UUID>): Map<UUID, Long> {
+        val studyCounts = mutableMapOf<UUID, Long>()
+        connection.prepareStatement(COUNT_STUDY_PARTICIPANTS_SQL).use { ps ->
+            ps.setArray(1, PostgresArrays.createUuidArray(connection, studyIds))
+            ps.executeQuery().use { rs ->
+                while (rs.next()) {
+                    studyCounts[ResultSetAdapters.studyId(rs)] = ResultSetAdapters.count(rs)
+                }
+            }
+        }
+        return studyCounts
+    }
 }
