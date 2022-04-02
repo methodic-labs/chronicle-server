@@ -226,4 +226,15 @@ class StudyTests : ChronicleServerTests() {
         Assert.assertEquals(a.participationStatus, b.participationStatus)
         Assert.assertEquals(a.candidate.id, b.candidate.id)
     }
+
+    @Test(expected = RhizomeRetrofitCallException::class)
+    fun testStudyLimits() {
+        val studyApi = chronicleClient.studyApi
+        val studyId = studyApi.createStudy(TestDataFactory.study())
+        val partcipantCount = 25
+        for (i in 0..partcipantCount) { //Will be on more participant than allowed and should fail on the last
+            val participant = TestDataFactory.participant(ParticipationStatus.ENROLLED)
+            studyApi.registerParticipant(studyId, participant)
+        }
+    }
 }

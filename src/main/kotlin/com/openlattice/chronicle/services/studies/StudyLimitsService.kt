@@ -13,6 +13,7 @@ import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.STUDY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CREATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DATA_RETENTION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ENDED_AT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.FEATURES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_LIMIT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_DURATION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
@@ -48,8 +49,20 @@ class StudyLimitsService(
             SELECT 1 FROM ${STUDY_LIMITS.name} WHERE ${STUDY_ID.name} = ? FOR UPDATE
          """.trimIndent()
 
-        private val SET_PARTICIPANT_LIMIT = """
+        private val UPDATE_PARTICIPANT_LIMIT = """
             UPDATE ${STUDY_LIMITS.name} SET ${PARTICIPANT_LIMIT.name} = ? WHERE ${STUDY_ID.name} = ?
+         """.trimIndent()
+
+        private val UPDATE_STUDY_DURATION = """
+            UPDATE ${STUDY_LIMITS.name} SET ${STUDY_DURATION.name} = ? WHERE ${STUDY_ID.name} = ?
+         """.trimIndent()
+
+        private val UPDATE_RETENTION_PERIOD = """
+            UPDATE ${STUDY_LIMITS.name} SET ${DATA_RETENTION.name} = ? WHERE ${STUDY_ID.name} = ?
+         """.trimIndent()
+
+        private val UPDATE_STUDY_FEATURES = """
+            UPDATE ${STUDY_LIMITS.name} SET ${FEATURES.name} = ? WHERE ${STUDY_ID.name} = ?
          """.trimIndent()
 
         private val STUDIES_EXCEEDING_DURATION_LIMIT = """
@@ -92,7 +105,7 @@ class StudyLimitsService(
 
     override fun setEnrollmentCapacity(studyId: UUID, capacity: Int) {
         storageResolver.getPlatformStorage().connection.use { connection ->
-            connection.prepareStatement(SET_PARTICIPANT_LIMIT).use { ps ->
+            connection.prepareStatement(UPDATE_PARTICIPANT_LIMIT).use { ps ->
                 ps.setInt(1, capacity)
                 ps.setObject(2, STUDY_ID)
 
@@ -102,35 +115,56 @@ class StudyLimitsService(
     }
 
     override fun setStudyDuration(studyId: UUID, studyDuration: StudyDuration) {
+        storageResolver.getPlatformStorage().connection.use { connection ->
+            connection.prepareStatement(UPDATE_STUDY_DURATION).use { ps ->
+                ps.setString(1, mapper.writeValueAsString(studyDuration))
+                ps.setObject(2, STUDY_ID)
 
+            }
+        }
+        studyLimits.loadAll(setOf(studyId), true)
     }
 
     override fun getStudyDuration(studyId: UUID): StudyDuration {
-        TODO("Not yet implemented")
+        return studyLimits.getValue(studyId).studyDuration
     }
 
     override fun setDataRetentionPeriod(studyId: UUID, dataRetentionPeriod: StudyDuration) {
-        TODO("Not yet implemented")
+        storageResolver.getPlatformStorage().connection.use { connection ->
+            connection.prepareStatement(UPDATE_RETENTION_PERIOD).use { ps ->
+                ps.setString(1, mapper.writeValueAsString(dataRetentionPeriod))
+                ps.setObject(2, STUDY_ID)
+
+            }
+        }
+        studyLimits.loadAll(setOf(studyId), true)
     }
 
     override fun getDataRetentionPeriod(studyId: UUID): StudyDuration {
-        TODO("Not yet implemented")
+        return studyLimits.getValue(studyId).dataRetentionDuration
     }
 
     override fun getStudyFeatures(studyId: UUID): Set<StudyFeature> {
-        TODO("Not yet implemented")
+        return studyLimits.getValue(studyId).features
     }
 
     override fun setStudyFeatures(studyId: UUID, studyFeatures: Set<StudyFeature>) {
-        TODO("Not yet implemented")
+        storageResolver.getPlatformStorage().connection.use { connection ->
+            connection.prepareStatement(UPDATE_STUDY_FEATURES).use { ps ->
+                ps.setArray(1, PostgresArrays.createTextArray(connection, studyFeatures.map { it.name }))
+                ps.setObject(2, STUDY_ID)
+
+            }
+        }
+        studyLimits.loadAll(setOf(studyId), true)
     }
 
     override fun setStudyLimits(studyId: UUID, studyLimits: StudyLimits) {
-        TODO("Not yet implemented")
+        this.studyLimits[studyId] = studyLimits
     }
 
     override fun getStudyLimits(studyId: UUID): StudyLimits {
-        TODO("Not yet implemented")
+        return studyLimits.getValue(studyId)
     }
 
     override fun getStudiesExceedingDurationLimit(): Set<UUID> {
