@@ -15,6 +15,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.MODULES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SETTINGS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.StorageResolver
+import com.openlattice.chronicle.study.StudyFeature
 import com.openlattice.chronicle.study.StudySetting
 import com.openlattice.chronicle.study.StudySettingType
 import org.slf4j.LoggerFactory
@@ -53,7 +54,7 @@ class UpgradeService(private val storageResolver: StorageResolver) : PreHazelcas
         ) {
             ResultSetAdapters.legacyStudySettings(it)
         }.toMap()
-        val modulesMap = mutableMapOf<UUID, Map<String, Any>>()
+        val modulesMap = mutableMapOf<UUID, Map<StudyFeature, Any>>()
         storageResolver.getPlatformStorage().connection.use { connection ->
             connection.autoCommit = false
             connection.createStatement().use { s -> s.execute(ADD_COLUMN_SQL) }
@@ -77,11 +78,11 @@ class UpgradeService(private val storageResolver: StorageResolver) : PreHazelcas
         }
     }
 
-    private fun migrateComponents(settings: Map<String, Any>): Map<String, Any> {
-        return (settings["components"] as Set<*>? ?: setOf<Any>())
+    private fun migrateComponents(settings: Map<String, Any>): Map<StudyFeature, Any> {
+        return (settings["components"] as Collection<*>? ?: listOf<Any>())
             .filterNotNull()
-            .map { it as String }
-            .associateWith { emptyMap<String, Any>() }
+            .map { StudyFeature.valueOf(it as String) }
+            .associateWith { emptyMap<StudyFeature, Any>() }
     }
 
     private fun migrateSensorSettings(settings: Map<String, Any>): Pair<StudySettingType, StudySetting> {

@@ -43,7 +43,7 @@ class StudyLimitsService(
          * 5. FEATURES
          */
         private val INSERT_STUDY_LIMITS = """
-            INSERT INTO ${STUDY_LIMITS.name} VALUES(?,?,?,?,?) 
+            INSERT INTO ${STUDY_LIMITS.name} VALUES(?,?,?::jsonb,?,?) 
         """.trimIndent()
         private val LOCK_STUDY = """
             SELECT 1 FROM ${STUDY_LIMITS.name} WHERE ${STUDY_ID.name} = ? FOR UPDATE

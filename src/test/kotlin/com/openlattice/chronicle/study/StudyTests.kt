@@ -221,7 +221,7 @@ class StudyTests : ChronicleServerTests() {
         compareParticipants(p2, actualP2)
     }
 
-    fun compareParticipants(a: Participant, b: Participant) {
+    private fun compareParticipants(a: Participant, b: Participant) {
         Assert.assertEquals(a.participantId, b.participantId)
         Assert.assertEquals(a.participationStatus, b.participationStatus)
         Assert.assertEquals(a.candidate.id, b.candidate.id)
