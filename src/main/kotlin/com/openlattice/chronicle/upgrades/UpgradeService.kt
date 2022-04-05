@@ -3,6 +3,7 @@ package com.openlattice.chronicle.upgrades
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.geekbeast.hazelcast.PreHazelcastUpgradeService
 import com.geekbeast.mappers.mappers.ObjectMappers
+import com.geekbeast.postgres.PostgresArrays
 import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.StatementHolderSupplier
 import com.openlattice.chronicle.organizations.ChronicleDataCollectionSettings
@@ -10,15 +11,15 @@ import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.sensorkit.SensorSetting
 import com.openlattice.chronicle.sensorkit.SensorType
 import com.openlattice.chronicle.settings.AppUsageFrequency
+import com.openlattice.chronicle.storage.ChroniclePostgresTables
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.STUDIES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.MODULES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SETTINGS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.StorageResolver
-import com.openlattice.chronicle.study.StudyFeature
-import com.openlattice.chronicle.study.StudySetting
-import com.openlattice.chronicle.study.StudySettingType
+import com.openlattice.chronicle.study.*
 import org.slf4j.LoggerFactory
+import java.sql.Connection
 import java.util.*
 
 /**
@@ -46,6 +47,21 @@ class UpgradeService(private val storageResolver: StorageResolver) : PreHazelcas
             WHERE ${STUDY_ID.name} = ?
          """.trimIndent()
 
+        private val GET_STUDY_IDS_SQL = """
+            SELECT ${STUDY_ID.name} FROM ${STUDIES.name}
+        """.trimIndent()
+
+        /**
+         * 1. STUDY_ID
+         * 2. PARTICIPANT_LIMIT
+         * 3. STUDY_DURATION
+         * 4. DATA_RETENTION
+         * 5. FEATURES
+         */
+        private val INSERT_STUDY_LIMITS = """
+            INSERT INTO ${ChroniclePostgresTables.STUDY_LIMITS.name} VALUES(?,?,?::jsonb,?::jsonb,?) 
+        """.trimIndent()
+
     }
 
     override fun runUpgrade() {
@@ -67,14 +83,37 @@ class UpgradeService(private val storageResolver: StorageResolver) : PreHazelcas
                     )
 
                     ps.setString(1, mapper.writeValueAsString(upgradeSettings))
-                    ps.setString(2, mapper.writeValueAsString(modulesMap))
+                    ps.setString(2, mapper.writeValueAsString(modulesMap.getValue(studyId)))
                     ps.setObject(2, studyId)
                     ps.addBatch()
                 }
                 ps.executeBatch()
             }
+            upgradeStudyLimits(connection)
             connection.commit()
             logger.info("Upgrade $upgradedCount studies.")
+        }
+    }
+
+    private fun upgradeStudyLimits(connection: Connection) {
+        val studyLimits = StudyLimits(
+            StudyDuration(Short.MAX_VALUE),
+            StudyDuration(Short.MAX_VALUE), Int.MAX_VALUE,
+            EnumSet.allOf(StudyFeature::class.java)
+        )
+        connection.prepareStatement(INSERT_STUDY_LIMITS).use { ps ->
+            BasePostgresIterable(
+                StatementHolderSupplier(storageResolver.getPlatformStorage(), GET_STUDY_IDS_SQL)
+            ) { ResultSetAdapters.studyId(it) }.forEach { studyId ->
+                ps.setObject(1, studyId)
+                ps.setInt(2, studyLimits.participantLimit)
+                ps.setString(3, mapper.writeValueAsString(studyLimits.studyDuration))
+                ps.setString(4, mapper.writeValueAsString(studyLimits.dataRetentionDuration))
+                ps.setArray(5, PostgresArrays.createTextArray(connection, studyLimits.features.map { it.name }))
+                ps.addBatch()
+            }
+            val count = ps.executeBatch()
+            logger.info("Upgrade $count study limits.")
         }
     }
 
