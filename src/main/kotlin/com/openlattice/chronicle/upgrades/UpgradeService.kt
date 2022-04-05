@@ -43,7 +43,7 @@ class UpgradeService(private val storageResolver: StorageResolver) : PreHazelcas
                    WHERE ${SETTINGS.name} ? 'appUsageFrequency'
             """.trimIndent()
         private val UPDATE_LEGACY_STUDY = """
-            UPDATE ${STUDIES.name} SET ${SETTINGS.name} = ?, ${MODULES.name} = ? 
+            UPDATE ${STUDIES.name} SET ${SETTINGS.name} = ?::jsonb, ${MODULES.name} = ?::jsonb 
             WHERE ${STUDY_ID.name} = ?
          """.trimIndent()
 
@@ -84,7 +84,7 @@ class UpgradeService(private val storageResolver: StorageResolver) : PreHazelcas
 
                     ps.setString(1, mapper.writeValueAsString(upgradeSettings))
                     ps.setString(2, mapper.writeValueAsString(modulesMap.getValue(studyId)))
-                    ps.setObject(2, studyId)
+                    ps.setObject(3, studyId)
                     ps.addBatch()
                 }
                 ps.executeBatch()
