@@ -45,7 +45,7 @@ interface StudyLimitsManager {
     fun reserveEnrollmentCapacity(connection: Connection, studyId: UUID, capacity: Int = 1) {
         lockStudyForEnrollments(connection, studyId)
         val maxParticipantCount = getEnrollmentCapacity(studyId)
-        val neededParticipants = countStudyParticipants(connection, setOf(studyId)).getValue(studyId) + capacity
+        val neededParticipants = (countStudyParticipants(connection, setOf(studyId))[studyId] ?: 0) + capacity
         if (neededParticipants > maxParticipantCount) {
             throw InsufficientResourcesException("Insufficient remaining capacity to add particpants")
         }

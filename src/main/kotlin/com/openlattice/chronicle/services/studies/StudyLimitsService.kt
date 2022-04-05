@@ -43,7 +43,7 @@ class StudyLimitsService(
          * 5. FEATURES
          */
         private val INSERT_STUDY_LIMITS = """
-            INSERT INTO ${STUDY_LIMITS.name} VALUES(?,?,?::jsonb,?,?) 
+            INSERT INTO ${STUDY_LIMITS.name} VALUES(?,?,?::jsonb,?::jsonb,?) 
         """.trimIndent()
         private val LOCK_STUDY = """
             SELECT 1 FROM ${STUDY_LIMITS.name} WHERE ${STUDY_ID.name} = ? FOR UPDATE
@@ -79,6 +79,7 @@ class StudyLimitsService(
         """.trimIndent()
         private val COUNT_STUDY_PARTICIPANTS_SQL = """
             SELECT ${STUDY_ID.name}, count(*) FROM ${ChroniclePostgresTables.STUDY_PARTICIPANTS.name} WHERE ${STUDY_ID.name} = ANY(?)
+            GROUP BY ${STUDY_ID.name}
         """.trimIndent()
     }
 
