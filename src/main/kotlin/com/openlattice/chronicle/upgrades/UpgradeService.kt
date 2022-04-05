@@ -70,6 +70,9 @@ class UpgradeService(private val storageResolver: StorageResolver) : PreHazelcas
         ) {
             ResultSetAdapters.legacyStudySettings(it)
         }.toMap()
+        val studyIds = BasePostgresIterable(
+            StatementHolderSupplier(storageResolver.getPlatformStorage(), GET_STUDY_IDS_SQL)
+        ) { ResultSetAdapters.studyId(it) }.toList()
         val modulesMap = mutableMapOf<UUID, Map<StudyFeature, Any>>()
         storageResolver.getPlatformStorage().connection.use { connection ->
             connection.autoCommit = false
@@ -89,22 +92,21 @@ class UpgradeService(private val storageResolver: StorageResolver) : PreHazelcas
                 }
                 ps.executeBatch()
             }
-            upgradeStudyLimits(connection)
+            upgradeStudyLimits(connection, studyIds)
             connection.commit()
             logger.info("Upgrade $upgradedCount studies.")
         }
     }
 
-    private fun upgradeStudyLimits(connection: Connection) {
+    private fun upgradeStudyLimits(connection: Connection, studyIds: List<UUID>) {
         val studyLimits = StudyLimits(
             StudyDuration(Short.MAX_VALUE),
             StudyDuration(Short.MAX_VALUE), Int.MAX_VALUE,
             EnumSet.allOf(StudyFeature::class.java)
         )
+
         connection.prepareStatement(INSERT_STUDY_LIMITS).use { ps ->
-            BasePostgresIterable(
-                StatementHolderSupplier(storageResolver.getPlatformStorage(), GET_STUDY_IDS_SQL)
-            ) { ResultSetAdapters.studyId(it) }.forEach { studyId ->
+            studyIds.forEach { studyId ->
                 ps.setObject(1, studyId)
                 ps.setInt(2, studyLimits.participantLimit)
                 ps.setString(3, mapper.writeValueAsString(studyLimits.studyDuration))
