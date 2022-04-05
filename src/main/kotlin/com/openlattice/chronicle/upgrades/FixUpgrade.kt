@@ -26,10 +26,10 @@ import java.util.*
  *
  * @author Matthew Tamayo-Rios &lt;matthew@openlattice.com&gt;
  */
-class UpgradeService(private val storageResolver: StorageResolver) : PreHazelcastUpgradeService {
+class FixUpgrade(private val storageResolver: StorageResolver) : PreHazelcastUpgradeService {
 
     companion object {
-        private val logger = LoggerFactory.getLogger(UpgradeService::class.java)
+        private val logger = LoggerFactory.getLogger(FixUpgrade::class.java)
         private val mapper: ObjectMapper = ObjectMappers.newJsonMapper()
 
         /**
@@ -40,10 +40,9 @@ class UpgradeService(private val storageResolver: StorageResolver) : PreHazelcas
         """.trimIndent()
         private val LEGACY_STUDY_SETTINGS_SQL = """
                  SELECT ${STUDY_ID.name},${SETTINGS.name} FROM ${STUDIES.name}
-                   WHERE ${SETTINGS.name} ? 'appUsageFrequency'
             """.trimIndent()
         private val UPDATE_LEGACY_STUDY = """
-            UPDATE ${STUDIES.name} SET ${SETTINGS.name} = ?::jsonb, ${MODULES.name} = ?::jsonb 
+            UPDATE ${STUDIES.name} SET ${SETTINGS.name} = ?::jsonb 
             WHERE ${STUDY_ID.name} = ?
          """.trimIndent()
 
@@ -70,81 +69,40 @@ class UpgradeService(private val storageResolver: StorageResolver) : PreHazelcas
         ) {
             ResultSetAdapters.legacyStudySettings(it)
         }.toMap()
-        if( legacySettings.isEmpty() ) {
-            return
-        }
-        val studyIds = BasePostgresIterable(
-            StatementHolderSupplier(storageResolver.getPlatformStorage(), GET_STUDY_IDS_SQL)
-        ) { ResultSetAdapters.studyId(it) }.toList()
-        val modulesMap = mutableMapOf<UUID, Map<StudyFeature, Any>>()
+
         storageResolver.getPlatformStorage().connection.use { connection ->
             connection.autoCommit = false
-            connection.createStatement().use { s -> s.execute(ADD_COLUMN_SQL) }
             val upgradedCount = connection.prepareStatement(UPDATE_LEGACY_STUDY).use { ps ->
                 legacySettings.forEach { (studyId, settings) ->
-                    modulesMap[studyId] = migrateComponents(settings)
-                    val upgradeSettings = StudySettings(
-                        mapOf(
-                            migrateDataCollectionSettings(settings),
-                            migrateSensorSettings(settings)
-                        )
-                    )
+                    val upgradeSettings = StudySettings(mapOf(
+                        migrateDataCollectionSettings(settings),
+                        migrateSensorSettings(settings)
+                    ))
 
                     ps.setString(1, mapper.writeValueAsString(upgradeSettings))
-                    ps.setString(2, mapper.writeValueAsString(modulesMap.getValue(studyId)))
-                    ps.setObject(3, studyId)
+                    ps.setObject(2, studyId)
                     ps.addBatch()
                 }
                 ps.executeBatch().sum()
             }
-
-            upgradeStudyLimits(connection, studyIds)
             connection.commit()
             logger.info("Upgrade $upgradedCount studies.")
         }
     }
 
-    private fun upgradeStudyLimits(connection: Connection, studyIds: List<UUID>) {
-        val studyLimits = StudyLimits(
-            StudyDuration(Short.MAX_VALUE),
-            StudyDuration(Short.MAX_VALUE), Int.MAX_VALUE,
-            EnumSet.allOf(StudyFeature::class.java)
-        )
-
-        connection.prepareStatement(INSERT_STUDY_LIMITS).use { ps ->
-            studyIds.forEach { studyId ->
-                ps.setObject(1, studyId)
-                ps.setInt(2, studyLimits.participantLimit)
-                ps.setString(3, mapper.writeValueAsString(studyLimits.studyDuration))
-                ps.setString(4, mapper.writeValueAsString(studyLimits.dataRetentionDuration))
-                ps.setArray(5, PostgresArrays.createTextArray(connection, studyLimits.features.map { it.name }))
-                ps.addBatch()
-            }
-            val count = ps.executeBatch().sum()
-            logger.info("Upgrade $count study limits.")
-        }
-    }
-
-    private fun migrateComponents(settings: Map<String, Any>): Map<StudyFeature, Any> {
-        return (settings["components"] as Collection<*>? ?: listOf<Any>())
-            .filterNotNull()
-            .map { StudyFeature.valueOf(it as String) }
-            .associateWith { emptyMap<StudyFeature, Any>() }
-    }
-
     private fun migrateSensorSettings(settings: Map<String, Any>): Pair<StudySettingType, StudySetting> {
-        val sensors = settings["sensors"]
+        val sensors = (settings[StudySettingType.Sensor.name] as List<*>? ?: listOf<Any>())
         return StudySettingType.Sensor to SensorSetting(
             when (sensors) {
                 null -> setOf()
-                is Set<*> -> sensors.mapNotNull { SensorType.valueOf(it as String) }.toSet()
+                is List<*> -> sensors.mapNotNull { SensorType.valueOf(it as String) }.toSet()
                 else -> throw IllegalStateException("Unexpected type encountered.")
             }
         )
     }
 
     private fun migrateDataCollectionSettings(settings: Map<String, Any>): Pair<StudySettingType, StudySetting> {
-        val appUsageFrequency = settings["appUsageFrequency"]
+        val appUsageFrequency = (settings[StudySettingType.DataCollection.name] as Map<*, *>? ?: mapOf<String,Any>() )["appUsageFrequency"]
         return StudySettingType.DataCollection to ChronicleDataCollectionSettings(
             when (appUsageFrequency) {
                 null -> AppUsageFrequency.HOURLY

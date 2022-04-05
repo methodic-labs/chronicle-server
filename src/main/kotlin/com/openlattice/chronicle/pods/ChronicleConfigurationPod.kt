@@ -8,6 +8,7 @@ import com.openlattice.chronicle.configuration.ChronicleConfiguration
 import com.openlattice.chronicle.configuration.TwilioConfiguration
 import com.openlattice.chronicle.upgrades.UpgradeService
 import com.openlattice.chronicle.storage.StorageResolver
+import com.openlattice.chronicle.upgrades.FixUpgrade
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import javax.inject.Inject
@@ -47,5 +48,10 @@ class ChronicleConfigurationPod {
     @Bean
     fun upgradeService(): PreHazelcastUpgradeService {
         return UpgradeService(storageResolver())
+    }
+
+    @Bean
+    fun fixUpgradeService(): FixUpgrade {
+        return FixUpgrade(storageResolver())
     }
 }
