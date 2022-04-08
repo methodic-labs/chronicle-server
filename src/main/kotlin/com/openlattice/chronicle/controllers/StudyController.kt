@@ -40,6 +40,7 @@ import com.openlattice.chronicle.study.StudyApi.Companion.DATA_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.DATA_TYPE
 import com.openlattice.chronicle.study.StudyApi.Companion.END_DATE
 import com.openlattice.chronicle.study.StudyApi.Companion.ENROLL_PATH
+import com.openlattice.chronicle.study.StudyApi.Companion.FEATURES_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.FILE_NAME
 import com.openlattice.chronicle.study.StudyApi.Companion.IOS_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.ORGANIZATION_ID
@@ -426,6 +427,16 @@ class StudyController @Inject constructor(
         }
         studies.loadAll(setOf(studyId), true) //Reload updated study into cache
         return OK()
+    }
+
+    @GetMapping(
+        path =[STUDY_ID_PATH + FEATURES_PATH],
+        produces = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    override fun getStudyFeatures(@PathVariable(STUDY_ID) studyId: UUID): Map<StudyFeature, Map<String, Any>> {
+        val realStudyId = studyService.getStudyId(studyId)
+        checkNotNull(realStudyId) { "invalid study id" }
+        return studyService.getStudyFeatures(studyId)
     }
 
     @PostMapping(

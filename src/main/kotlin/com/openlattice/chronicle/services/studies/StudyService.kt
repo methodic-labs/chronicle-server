@@ -64,10 +64,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.TITLE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPDATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_ID
 import com.openlattice.chronicle.storage.StorageResolver
-import com.openlattice.chronicle.study.Study
-import com.openlattice.chronicle.study.StudySetting
-import com.openlattice.chronicle.study.StudySettingType
-import com.openlattice.chronicle.study.StudyUpdate
+import com.openlattice.chronicle.study.*
 import com.openlattice.chronicle.util.ChronicleServerUtil
 import com.openlattice.chronicle.util.ensureVanilla
 import org.apache.commons.lang3.StringUtils
@@ -269,6 +266,15 @@ class StudyService(
             ORDER BY ${CREATED_AT.name} DESC
         """.trimIndent()
 
+        /**
+         * PreparedStatement bind order
+         * 1) studyId
+         */
+        private val GET_STUDY_FEATURES_SQL = """
+            SELECT ${MODULES.name}
+            FROM ${STUDIES.name}
+            WHERE ${STUDY_ID.name} = ?
+        """.trimIndent()
 
         /**
          * PreparedStatement bind order:
@@ -641,6 +647,18 @@ class StudyService(
                 ps.setObject(1, studyId)
                 ps.executeQuery().use { rs ->
                     if (rs.next()) mapper.readValue(rs.getString(SETTINGS.name))
+                    else mapOf()
+                }
+            }
+        }
+    }
+
+    override fun getStudyFeatures(studyId: UUID): Map<StudyFeature, Map<String, Any>> {
+        return storageResolver.getPlatformStorage().connection.use { connection ->
+            connection.prepareStatement(GET_STUDY_FEATURES_SQL).use { ps ->
+                ps.setObject(1, studyId)
+                ps.executeQuery().use { rs ->
+                    if (rs.next()) mapper.readValue(rs.getString(MODULES.name))
                     else mapOf()
                 }
             }
