@@ -68,9 +68,10 @@ class UpgradeService(private val storageResolver: StorageResolver) : PreHazelcas
 
                     ps.setString(1, mapper.writeValueAsString(upgradeSettings))
                     ps.setString(2, mapper.writeValueAsString(modulesMap))
-                    ps.setObject(2, studyId)
+                    ps.setObject(3, studyId)
+                    ps.addBatch()
                 }
-
+                ps.executeBatch()
             }
             connection.commit()
             logger.info("Upgrade $upgradedCount studies.")
