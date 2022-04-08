@@ -13,6 +13,9 @@ import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
 import java.time.LocalDate
+import java.time.OffsetDateTime
+import java.time.ZoneId
+import java.time.ZoneOffset
 import java.util.UUID
 
 /**
@@ -59,9 +62,10 @@ class StudyTests : ChronicleServerTests() {
 
         studies.forEach { it.id = studyApi.createStudy(it) }
 
-        val all = studyApi.getAllStudies().toSet()
+        val all = studyApi.getAllStudies().map { it.id }.toSet()
+        val expected = studies.map { it.id }.toSet()
 
-        Assert.assertTrue( ( studies - all ) .isEmpty() )
+        Assert.assertTrue(all.containsAll(expected))
     }
 
 
@@ -201,14 +205,36 @@ class StudyTests : ChronicleServerTests() {
 
     @Test
     fun testStudyParticipants() {
+        val study = TestDataFactory.study()
         val p1 = Participant("p1", c1!!, ParticipationStatus.ENROLLED)
-        val p2 = Participant("p1", c2!!, ParticipationStatus.PAUSED)
-        val studyId = clientUser1.studyApi.createStudy(s1!!)
+        val p2 = Participant("p2", c2!!, ParticipationStatus.PAUSED)
+        val studyId = clientUser1.studyApi.createStudy(study)
         val candidateId1 = clientUser1.studyApi.registerParticipant(studyId, p1)
         val candidateId2 = clientUser1.studyApi.registerParticipant(studyId, p2)
         c1!!.id = candidateId1
         c2!!.id = candidateId2
-        val actual = clientUser1.studyApi.getStudyParticipants(studyId).toSet()
-        Assert.assertTrue(setOf(p1,p1).containsAll(actual))
+        val actualParticipants = clientUser1.studyApi.getStudyParticipants(studyId).associateBy { it.participantId }
+
+        val actualP1 = actualParticipants[p1.participantId]!!
+        compareParticipants(p1, actualP1)
+        val actualP2 = actualParticipants[p2.participantId]!!
+        compareParticipants(p2, actualP2)
+    }
+
+    private fun compareParticipants(a: Participant, b: Participant) {
+        Assert.assertEquals(a.participantId, b.participantId)
+        Assert.assertEquals(a.participationStatus, b.participationStatus)
+        Assert.assertEquals(a.candidate.id, b.candidate.id)
+    }
+
+    @Test(expected = RhizomeRetrofitCallException::class)
+    fun testStudyLimits() {
+        val studyApi = chronicleClient.studyApi
+        val studyId = studyApi.createStudy(TestDataFactory.study())
+        val partcipantCount = 25
+        for (i in 0..partcipantCount) { //Will be on more participant than allowed and should fail on the last
+            val participant = TestDataFactory.participant(ParticipationStatus.ENROLLED)
+            studyApi.registerParticipant(studyId, participant)
+        }
     }
 }

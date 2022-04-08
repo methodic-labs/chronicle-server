@@ -45,10 +45,18 @@ plugins {
     id 'checkstyle'
     id 'maven-publish'
     id 'signing'
-    id 'org.jetbrains.kotlin.jvm'
-    id 'org.jetbrains.kotlin.plugin.spring'
-    id 'com.github.jk1.dependency-license-report'
     id 'com.github.spotbugs' version '5.0.4'
+    id 'org.jetbrains.kotlin.jvm' version '1.6.10'
+    id 'org.jetbrains.kotlin.plugin.spring' version '1.6.10'
+    id 'org.jetbrains.dokka' version '1.6.10'
+    id 'com.github.jk1.dependency-license-report' version '1.16'
+}
+
+if (hasProperty('buildScan')) {
+    buildScan {
+        termsOfServiceUrl = "https://gradle.com/terms-of-service"
+        termsOfServiceAgree = "yes"
+    }
 }
 
 description = "Chronicle Server"
@@ -61,6 +69,12 @@ ext.developerConnectionUrl = 'scm:git:https://github.com/methodic-labs/chronicle
 distTar {
     archiveName "$baseName" + ".tgz"
 }
+
+if(!project.hasProperty('developmentMode')) {
+    ext.developmentMode = false
+}
+
+println projectName + " with developmentMode = " + project.developmentMode
 
 if( project.hasProperty('developmentMode') && project.developmentMode ) {
     apply from: "../gradles/methodic.gradle"
@@ -114,6 +128,10 @@ targetCompatibility = JavaVersion.VERSION_11
 
 jacoco {
     toolVersion = "${jacoco_tool_version}"
+}
+
+tasks.withType(Javadoc) {
+    enabled = false
 }
 
 spotbugs {
@@ -204,8 +222,8 @@ dependencies {
         implementation("com.openlattice:chronicle-api:${chronicle_api_version}") {
             exclude group: 'com.google.guava', module: 'guava'
         }
-        testImplementation "com.openlattice:rhizome:${rhizome_version}:tests"
-        testImplementation "com.openlattice:rhizome-client:${rhizome_client_version}:tests"
+        testImplementation "com.geekbeast:rhizome:${rhizome_version}:tests"
+        testImplementation "com.geekbeast:rhizome-client:${rhizome_client_version}:tests"
     }
 
     /*

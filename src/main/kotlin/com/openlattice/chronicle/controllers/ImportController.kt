@@ -30,6 +30,7 @@ import com.openlattice.chronicle.import.ImportApi.Companion.STUDIES
 import com.openlattice.chronicle.import.ImportApi.Companion.SYSTEM_APPS
 import com.openlattice.chronicle.import.ImportApi.Companion.TIME_USE_DIARY
 import com.openlattice.chronicle.import.ImportStudiesConfiguration
+import com.openlattice.chronicle.notifications.StudyNotificationSettings
 import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.participants.ParticipantStats
 import com.openlattice.chronicle.postgres.ResultSetAdapters
@@ -43,7 +44,11 @@ import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.LEGAC
 import com.openlattice.chronicle.storage.PostgresColumns
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SETTINGS
 import com.openlattice.chronicle.storage.RedshiftColumns
+import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.study.Study
+import com.openlattice.chronicle.study.StudySetting
+import com.openlattice.chronicle.study.StudySettings
+import com.openlattice.chronicle.study.StudyUpdate
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryResponse
 import com.zaxxer.hikari.HikariDataSource
 import org.apache.commons.lang3.NotImplementedException
@@ -51,6 +56,7 @@ import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
 import org.springframework.security.core.context.SecurityContextHolder
+import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
@@ -76,9 +82,10 @@ class ImportController(
     private val appDataUploadService: AppDataUploadService,
     private val idGenerationService: HazelcastIdGenerationService,
     private val dataSourceManager: DataSourceManager,
+    private val storageResolver: StorageResolver,
     override val authorizationManager: AuthorizationManager,
     override val auditingManager: AuditingManager,
-    hazelcast: HazelcastInstance
+    hazelcast: HazelcastInstance,
 ) : ImportApi, AuthorizingComponent {
 
     companion object {
@@ -155,6 +162,7 @@ class ImportController(
     }
 
     private val usersMap = HazelcastMap.USERS.getMap(hazelcast)
+    private val studiesMap = HazelcastMap.STUDIES.getMap(hazelcast)
 
     @PostMapping(
         path = [STUDIES],
@@ -265,7 +273,7 @@ class ImportController(
         produces = [MediaType.APPLICATION_JSON_VALUE],
         consumes = [MediaType.APPLICATION_JSON_VALUE]
     )
-    override fun importParticipants( @RequestBody config: ImportStudiesConfiguration) {
+    override fun importParticipants(@RequestBody config: ImportStudiesConfiguration) {
         logger.error("Disabled importing participants")
         ensureAdminAccess()
 //        val hds = dataSourceManager.getDataSource(config.dataSourceName)
@@ -325,19 +333,19 @@ class ImportController(
         }
     }
 
-    private fun getStudiesByLegacyStudyId( hds:HikariDataSource, candidatesTable: String ) : Map<UUID, UUID> {
+    private fun getStudiesByLegacyStudyId(hds: HikariDataSource, candidatesTable: String): Map<UUID, UUID> {
         return BasePostgresIterable(
             PreparedStatementHolderSupplier(hds, getStudiesByLegacyStudyIdSql(candidatesTable)) {}
         ) {
-            it.getObject("legacy_study_id", UUID::class.java) to it.getObject( "study_id", UUID::class.java)
+            it.getObject("legacy_study_id", UUID::class.java) to it.getObject("study_id", UUID::class.java)
         }.toMap()
     }
 
-    private fun getStudiesByOrganizationId( hds:HikariDataSource, candidatesTable: String ) : Map<UUID, Set<UUID>> {
+    private fun getStudiesByOrganizationId(hds: HikariDataSource, candidatesTable: String): Map<UUID, Set<UUID>> {
         return BasePostgresIterable(
             PreparedStatementHolderSupplier(hds, getStudiesByOrganizationIdSql(candidatesTable)) {}
         ) {
-            it.getObject("organization_id", UUID::class.java) to it.getObject( "study_id", UUID::class.java)
+            it.getObject("organization_id", UUID::class.java) to it.getObject("study_id", UUID::class.java)
         }.groupBy({ it.first }, { it.second }).mapValues { it.value.toSet() }
     }
 
@@ -609,7 +617,7 @@ class ImportController(
         logger.info("inserted $summaryInserts entities into time use diary summary table")
     }
 
-    private fun tudSummarized(rs: ResultSet): TudSummarizedEntity{
+    private fun tudSummarized(rs: ResultSet): TudSummarizedEntity {
         return TudSummarizedEntity(
             submissionId = rs.getObject(PostgresColumns.SUBMISSION_ID.name, UUID::class.java),
             entities = mapper.readValue(rs.getString("data"))
@@ -644,7 +652,7 @@ class ImportController(
         )
     }
 
-    private fun study(rs: ResultSet, settings: Map<String, Any>?): Study {
+    private fun study(rs: ResultSet, settings: StudySettings?): Study {
 
         val v2StudyId = rs.getString(V2_STUDY_ID)
         val v2StudyEkid = rs.getString(V2_STUDY_EK_ID)
@@ -663,7 +671,7 @@ class ImportController(
         return Study(
             title = title,
             description = description,
-            settings = settings ?: mapOf(),
+            settings = settings ?: StudySettings(),
             group = rs.getString(LEGACY_STUDY_GROUP) ?: "",
             version = rs.getString(LEGACY_STUDY_VERSION) ?: "",
             contact = rs.getString(LEGACY_STUDY_CONTACT) ?: "",
@@ -774,7 +782,7 @@ private data class LegacyUser(
     val participantEsId: UUID,
     val principalId: String,
     val legacyEsName: String,
-    val email: String
+    val email: String,
 ) {
     var legacyEsId: UUID = UUID(0, 0)
 }
@@ -787,7 +795,7 @@ private data class V2AppUsageEntity(
     val appPackageName: String?,
     val timestamp: OffsetDateTime,
     val timezone: String?,
-    val users: Array
+    val users: Array,
 )
 
 private data class TudSubmission(
@@ -796,12 +804,12 @@ private data class TudSubmission(
     val participant_id: String,
     val submission_id: UUID,
     val submission: List<TimeUseDiaryResponse>,
-    val submission_date: OffsetDateTime
+    val submission_date: OffsetDateTime,
 )
 
 private data class QuestionAnswer(
     val variable: String,
-    val value: String
+    val value: String,
 )
 
 private data class TudSummarizedEntity(

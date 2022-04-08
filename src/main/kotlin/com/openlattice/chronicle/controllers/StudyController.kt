@@ -2,32 +2,22 @@ package com.openlattice.chronicle.controllers
 
 import com.codahale.metrics.annotation.Timed
 import com.google.common.base.MoreObjects
-import com.google.common.collect.SetMultimap
 import com.hazelcast.core.HazelcastInstance
+import com.openlattice.chronicle.android.ChronicleDataUpload
+import com.openlattice.chronicle.android.ChronicleUsageEvent
 import com.openlattice.chronicle.auditing.AuditEventType
 import com.openlattice.chronicle.auditing.AuditableEvent
 import com.openlattice.chronicle.auditing.AuditedOperationBuilder
 import com.openlattice.chronicle.auditing.AuditingManager
-import com.openlattice.chronicle.authorization.AclKey
-import com.openlattice.chronicle.authorization.AuthorizationManager
-import com.openlattice.chronicle.authorization.AuthorizingComponent
-import com.openlattice.chronicle.authorization.Permission
-import com.openlattice.chronicle.authorization.SecurableObjectType
+import com.openlattice.chronicle.authorization.*
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.base.OK
 import com.openlattice.chronicle.data.FileType
 import com.openlattice.chronicle.data.ParticipationStatus
-import com.openlattice.chronicle.deletion.DeleteParticipantAppUsageSurveyData
-import com.openlattice.chronicle.deletion.DeleteParticipantUsageData
-import com.openlattice.chronicle.deletion.DeleteParticipantTUDSubmissionData
-import com.openlattice.chronicle.deletion.DeleteStudyAppUsageSurveyData
-import com.openlattice.chronicle.deletion.DeleteStudyTUDSubmissionData
-import com.openlattice.chronicle.deletion.DeleteStudyUsageData
+import com.openlattice.chronicle.deletion.*
 import com.openlattice.chronicle.hazelcast.HazelcastMap
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.ids.IdConstants
-import com.openlattice.chronicle.jobs.ChronicleJob
-import com.openlattice.chronicle.mapstores.storage.StudyMapstore
 import com.openlattice.chronicle.organizations.ChronicleDataCollectionSettings
 import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.participants.ParticipantStats
@@ -35,16 +25,14 @@ import com.openlattice.chronicle.sensorkit.SensorDataSample
 import com.openlattice.chronicle.sensorkit.SensorType
 import com.openlattice.chronicle.services.download.DataDownloadService
 import com.openlattice.chronicle.services.enrollment.EnrollmentService
+import com.openlattice.chronicle.services.jobs.ChronicleJob
 import com.openlattice.chronicle.services.jobs.JobService
-import com.openlattice.chronicle.services.legacy.LegacyUtil
 import com.openlattice.chronicle.services.studies.StudyService
 import com.openlattice.chronicle.services.upload.AppDataUploadService
 import com.openlattice.chronicle.services.upload.SensorDataUploadService
 import com.openlattice.chronicle.sources.SourceDevice
 import com.openlattice.chronicle.storage.StorageResolver
-import com.openlattice.chronicle.study.ParticipantDataType
-import com.openlattice.chronicle.study.Study
-import com.openlattice.chronicle.study.StudyApi
+import com.openlattice.chronicle.study.*
 import com.openlattice.chronicle.study.StudyApi.Companion.ANDROID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.CONTROLLER
 import com.openlattice.chronicle.study.StudyApi.Companion.DATA_COLLECTION
@@ -73,30 +61,18 @@ import com.openlattice.chronicle.study.StudyApi.Companion.STATUS_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.STUDY_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.STUDY_ID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.VERIFY_PATH
-import com.openlattice.chronicle.study.StudyUpdate
 import com.openlattice.chronicle.util.ChronicleServerUtil
 import org.slf4j.LoggerFactory
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.http.MediaType
-import org.springframework.web.bind.annotation.DeleteMapping
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PatchMapping
-import org.springframework.web.bind.annotation.PathVariable
-import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.PutMapping
-import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RequestParam
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.*
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import java.util.*
 import javax.inject.Inject
 import javax.servlet.http.HttpServletResponse
-import javax.validation.constraints.Max
 import javax.validation.constraints.Size
-import kotlin.NoSuchElementException
 
 
 /**
@@ -121,6 +97,7 @@ class StudyController @Inject constructor(
 ) : StudyApi, AuthorizingComponent {
 
     private val studies = HazelcastMap.STUDIES.getMap(hazelcastInstance)
+
     companion object {
         private val logger = LoggerFactory.getLogger(StudyController::class.java)!!
     }
@@ -135,7 +112,7 @@ class StudyController @Inject constructor(
         @PathVariable(STUDY_ID) studyId: UUID,
         @PathVariable(PARTICIPANT_ID) participantId: String,
         @PathVariable(SOURCE_DEVICE_ID) datasourceId: String,
-        @RequestBody sourceDevice: SourceDevice
+        @RequestBody sourceDevice: SourceDevice,
     ): UUID {
         val realStudyId = studyService.getStudyId(studyId)
         checkNotNull(realStudyId) { "invalid study id" }
@@ -224,7 +201,7 @@ class StudyController @Inject constructor(
     override fun updateStudy(
         @PathVariable(STUDY_ID) studyId: UUID,
         @RequestBody study: StudyUpdate,
-        @RequestParam(value = RETRIEVE, required = false, defaultValue = "false") retrieve: Boolean
+        @RequestParam(value = RETRIEVE, required = false, defaultValue = "false") retrieve: Boolean,
     ): Study? {
         val studyAclKey = AclKey(studyId)
         ensureOwnerAccess(studyAclKey)
@@ -328,7 +305,7 @@ class StudyController @Inject constructor(
     )
     override fun deleteStudyParticipants(
         @PathVariable(STUDY_ID) studyId: UUID,
-        @RequestBody participantIds: Set<String>
+        @RequestBody participantIds: Set<String>,
     ): Iterable<UUID> {
         ensureValidStudy(studyId)
         ensureWriteAccess(AclKey(studyId))
@@ -368,7 +345,7 @@ class StudyController @Inject constructor(
                         AuditableEvent(
                             AclKey(studyId),
                             eventType = AuditEventType.DELETE_PARTICIPANTS,
-                            description ="Participants $participantIds were removed from study $studyId",
+                            description = "Participants $participantIds were removed from study $studyId",
                             study = studyId
                         )
                     ) + jobIds.map {
@@ -390,7 +367,7 @@ class StudyController @Inject constructor(
     )
     override fun registerParticipant(
         @PathVariable(STUDY_ID) studyId: UUID,
-        @RequestBody participant: Participant
+        @RequestBody participant: Participant,
     ): UUID {
         ensureValidStudy(studyId)
         ensureWriteAccess(AclKey(studyId))
@@ -421,13 +398,13 @@ class StudyController @Inject constructor(
     )
     override fun setChronicleDataCollectionSettings(
         @PathVariable(STUDY_ID) studyId: UUID,
-        @RequestBody dataCollectionSettings: ChronicleDataCollectionSettings
+        @RequestBody dataCollectionSettings: ChronicleDataCollectionSettings,
     ): OK {
         ensureValidStudy(studyId)
         ensureWriteAccess(AclKey(studyId))
 
         val study = studyService.getStudy(studyId)
-        study.settings.toMutableMap()[LegacyUtil.DATA_COLLECTION] = dataCollectionSettings
+        study.settings.toMutableMap()[StudySettingType.DataCollection] = dataCollectionSettings
         storageResolver.getPlatformStorage().connection.use { conn ->
             AuditedOperationBuilder<Unit>(conn, auditingManager)
                 .operation { connection ->
@@ -447,7 +424,7 @@ class StudyController @Inject constructor(
                 }
                 .buildAndRun()
         }
-
+        studies.loadAll(setOf(studyId), true) //Reload updated study into cache
         return OK()
     }
 
@@ -458,11 +435,21 @@ class StudyController @Inject constructor(
         @PathVariable(STUDY_ID) studyId: UUID,
         @PathVariable(PARTICIPANT_ID) participantId: String,
         @PathVariable(SOURCE_DEVICE_ID) datasourceId: String,
-        @RequestBody data: List<SetMultimap<UUID, Any>>
+        @RequestBody data: List<ChronicleDataUpload>,
     ): Int {
+        //TODO: I think we still needs this as long as there is an enrolled participant in a legacy study.
         val realStudyId = studyService.getStudyId(studyId)
         checkNotNull(realStudyId) { "invalid study id" }
-        return appDataUploadService.upload(realStudyId, participantId, datasourceId, data)
+        return data.groupBy { it.javaClass }.map { (clazz, dataByClass) ->
+            when (clazz) {
+                ChronicleUsageEvent::class.java -> appDataUploadService.uploadAndroidUsageEvents(
+                    realStudyId,
+                    participantId,
+                    datasourceId,
+                    dataByClass.map { it as ChronicleUsageEvent })
+                else -> 0
+            }
+        }.sum()
     }
 
     @Timed
@@ -471,8 +458,8 @@ class StudyController @Inject constructor(
         produces = [MediaType.APPLICATION_JSON_VALUE]
     )
     override fun getStudySettings(
-        @PathVariable(STUDY_ID) studyId: UUID
-    ): Map<String, Any> {
+        @PathVariable(STUDY_ID) studyId: UUID,
+    ): Map<StudySettingType, StudySetting> {
         // No permissions check since this is assumed to be invoked from a non-authenticated context
         val realStudyId = studyService.getStudyId(studyId)
         checkNotNull(realStudyId) { "invalid study id" }
@@ -501,7 +488,7 @@ class StudyController @Inject constructor(
 
     @Timed
     @GetMapping(
-        path = ["","/"],
+        path = ["", "/"],
         produces = [MediaType.APPLICATION_JSON_VALUE]
     )
     override fun getAllStudies(): Iterable<Study> {
@@ -540,12 +527,17 @@ class StudyController @Inject constructor(
         dataType: ParticipantDataType,
         participantIds: Set<String>,
         startDateTime: OffsetDateTime,
-        endDateTime: OffsetDateTime
+        endDateTime: OffsetDateTime,
     ): Iterable<Map<String, Any>> {
         ensureReadAccess(AclKey(studyId))
-        return when(dataType) {
+        return when (dataType) {
             ParticipantDataType.Preprocessed -> TODO("Not implemented")
-            ParticipantDataType.AppUsageSurvey -> downloadService.getParticipantsAppUsageSurveyData(studyId, participantIds, startDateTime, endDateTime)
+            ParticipantDataType.AppUsageSurvey -> downloadService.getParticipantsAppUsageSurveyData(
+                studyId,
+                participantIds,
+                startDateTime,
+                endDateTime
+            )
             ParticipantDataType.IOSSensor -> {
                 val sensors = getStudySensors(studyId)
                 downloadService.getParticipantsSensorData(studyId, participantIds, sensors, startDateTime, endDateTime)
@@ -557,12 +549,12 @@ class StudyController @Inject constructor(
     }
 
     @PatchMapping(
-        path= [STUDY_ID_PATH + PARTICIPANT_PATH + PARTICIPANT_ID_PATH + STATUS_PATH]
+        path = [STUDY_ID_PATH + PARTICIPANT_PATH + PARTICIPANT_ID_PATH + STATUS_PATH]
     )
     override fun updateParticipationStatus(
         @PathVariable(STUDY_ID) studyId: UUID,
         @PathVariable(PARTICIPANT_ID) participantId: String,
-        @RequestParam(PARTICIPATION_STATUS) participationStatus: ParticipationStatus
+        @RequestParam(PARTICIPATION_STATUS) participationStatus: ParticipationStatus,
     ): OK {
         ensureWriteAccess(AclKey(studyId))
         studyService.updateParticipationStatus(studyId, participantId, participationStatus)
@@ -581,7 +573,7 @@ class StudyController @Inject constructor(
         @RequestParam(value = START_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) startDateTime: OffsetDateTime?,
         @RequestParam(value = END_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) endDateTime: OffsetDateTime?,
         @RequestParam(value = FILE_NAME) @Size(max = 64) fileName: String?,
-        response: HttpServletResponse
+        response: HttpServletResponse,
     ): Iterable<Map<String, Any>> {
         val data = getParticipantsData(
             studyId,
@@ -592,7 +584,17 @@ class StudyController @Inject constructor(
         )
 
         ChronicleServerUtil.setDownloadContentType(response, FileType.csv)
-        ChronicleServerUtil.setContentDisposition(response, MoreObjects.firstNonNull(fileName, "${dataType}_${LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE)}"), FileType.csv)
+        ChronicleServerUtil.setContentDisposition(
+            response,
+            MoreObjects.firstNonNull(
+                fileName,
+                "${dataType}_${
+                    LocalDate.now()
+                        .format(DateTimeFormatter.BASIC_ISO_DATE)
+                }"
+            ),
+            FileType.csv
+        )
 
         recordEvent(
             AuditableEvent(
@@ -614,9 +616,9 @@ class StudyController @Inject constructor(
     )
     override fun isKnownParticipant(
         @PathVariable(STUDY_ID) studyId: UUID,
-        @PathVariable(PARTICIPANT_ID) participantId: String
+        @PathVariable(PARTICIPANT_ID) participantId: String,
     ): Boolean {
-       return enrollmentService.isKnownParticipant(studyId, participantId)
+        return enrollmentService.isKnownParticipant(studyId, participantId)
     }
 
     /**

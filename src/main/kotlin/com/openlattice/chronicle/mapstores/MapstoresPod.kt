@@ -41,6 +41,7 @@ import com.openlattice.chronicle.ids.mapstores.LongIdsMapstore
 import com.openlattice.chronicle.mapstores.authorization.PermissionMapstore
 import com.openlattice.chronicle.mapstores.authorization.PrincipalTreesMapstore
 import com.openlattice.chronicle.mapstores.ids.Range
+import com.openlattice.chronicle.mapstores.storage.StudyLimitsMapstore
 import com.openlattice.chronicle.mapstores.storage.StudyMapstore
 import com.openlattice.chronicle.storage.StorageResolver
 import org.slf4j.LoggerFactory
@@ -66,6 +67,11 @@ class MapstoresPod {
 
     @Inject
     private lateinit var jdbi: Jdbi
+
+    @Bean
+    fun studyLimitsMapstore(): StudyLimitsMapstore {
+        return StudyLimitsMapstore(storageResolver.getPlatformStorage())
+    }
 
     @Bean
     fun jobsMapstore(): SelfRegisteringMapStore<UUID, DistributableJob<*>> {

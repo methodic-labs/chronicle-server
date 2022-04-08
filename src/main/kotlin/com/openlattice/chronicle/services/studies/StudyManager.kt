@@ -5,6 +5,8 @@ import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.participants.ParticipantStats
 import com.openlattice.chronicle.sensorkit.SensorType
 import com.openlattice.chronicle.study.Study
+import com.openlattice.chronicle.study.StudySetting
+import com.openlattice.chronicle.study.StudySettingType
 import com.openlattice.chronicle.study.StudyUpdate
 import java.sql.Connection
 import java.util.UUID
@@ -25,11 +27,15 @@ interface StudyManager {
     fun getStudyParticipantStats(studyId: UUID): Map<String, ParticipantStats>
     fun getStudyParticipants(studyId: UUID): Iterable<Participant>
     fun getStudySensors(studyId: UUID): Set<SensorType>
-    fun getStudySettings(studyId: UUID): Map<String, Any>
+    fun getStudySettings(studyId: UUID): Map<StudySettingType, StudySetting>
     fun insertOrUpdateParticipantStats(stats: ParticipantStats)
     fun isNotificationsEnabled(studyId: UUID): Boolean
     fun isValidStudy(studyId: UUID): Boolean
     fun refreshStudyCache(studyIds: Set<UUID>)
+
+    /**
+     * Callers of this function must ensure that load the participant ace after they commit changes.
+     */
     fun registerParticipant(connection: Connection, studyId: UUID, participant: Participant): UUID
     fun registerParticipant(studyId: UUID, participant: Participant): UUID
     fun removeAllParticipantsFromStudies(connection: Connection, studyIds: Collection<UUID>): Int
@@ -38,4 +44,7 @@ interface StudyManager {
     fun updateStudy(connection: Connection, studyId: UUID, study: StudyUpdate)
     fun getStudyPhoneNumber(studyId: UUID): String?
     fun updateParticipationStatus(studyId: UUID, participantId: String, participationStatus: ParticipationStatus)
+    fun countStudyParticipants(connection: Connection, studyIds: Set<UUID>): Map<UUID, Long>
+    fun countStudyParticipants(studyId: UUID): Long
+    fun countStudyParticipants(studyIds: Set<UUID>): Map<UUID, Long>
 }

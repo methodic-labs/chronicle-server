@@ -26,6 +26,7 @@ import com.openlattice.chronicle.authorization.*
 import com.openlattice.chronicle.mapstores.ids.Range
 import com.geekbeast.postgres.mapstores.TypedMapIdentifier
 import com.openlattice.chronicle.study.Study
+import com.openlattice.chronicle.study.StudyLimits
 import java.util.*
 
 class HazelcastMap<K, V> internal constructor(val name: String) : TypedMapIdentifier<K, V> {
@@ -86,7 +87,8 @@ class HazelcastMap<K, V> internal constructor(val name: String) : TypedMapIdenti
         @JvmField val SECURABLE_OBJECT_TYPES = HazelcastMap<AclKey, SecurableObjectType>("SECURABLE_OBJECT_TYPES")
         @JvmField val SECURABLE_PRINCIPALS = HazelcastMap<String, SecurablePrincipal>("SECURABLE_PRINCIPALS")
         @JvmField val STUDIES = HazelcastMap<UUID,Study>("STUDIES")
-//        @JvmField val SMS_INFORMATION = HazelcastMap<SmsInformationKey, SmsEntitySetInformation>("SMS_INFORMATION")
+        @JvmField val STUDY_LIMITS = HazelcastMap<UUID, StudyLimits>("STUDY_LIMITS")
+//      @JvmField val SMS_INFORMATION = HazelcastMap<SmsInformationKey, SmsEntitySetInformation>("SMS_INFORMATION")
         @JvmField val USERS = HazelcastMap<String, User>("USERS")
 
         // @formatter:on

@@ -359,8 +359,7 @@ class SurveysService(
                             )
                         )
                     }
-            }
-
+            }.buildAndRun()
         } catch (ex: Exception) {
             logger.error("unable to toggle questionnaire active status")
             throw ex

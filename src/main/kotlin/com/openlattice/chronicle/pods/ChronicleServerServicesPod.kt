@@ -20,13 +20,12 @@
 package com.openlattice.chronicle.pods
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.geekbeast.auth0.Auth0Pod
-import com.geekbeast.auth0.Auth0TokenProvider
-import com.geekbeast.auth0.RefreshingAuth0TokenProvider
-import com.geekbeast.auth0.ManagementApiProvider
+import com.geekbeast.auth0.*
 import com.geekbeast.authentication.Auth0Configuration
 import com.geekbeast.hazelcast.HazelcastClientProvider
 import com.geekbeast.jdbc.DataSourceManager
+import com.geekbeast.mail.MailService
+import com.geekbeast.mail.MailServiceConfig
 import com.geekbeast.mappers.mappers.ObjectMappers
 import com.geekbeast.rhizome.configuration.ConfigurationConstants
 import com.geekbeast.rhizome.configuration.service.ConfigurationService
@@ -51,7 +50,7 @@ import com.openlattice.chronicle.directory.Auth0UserDirectoryService
 import com.openlattice.chronicle.directory.LocalUserDirectoryService
 import com.openlattice.chronicle.directory.UserDirectoryService
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
-import com.openlattice.chronicle.jobs.BackgroundChronicleJobService
+import com.openlattice.chronicle.services.jobs.BackgroundChronicleJobService
 import com.openlattice.chronicle.organizations.ChronicleOrganizationService
 import com.openlattice.chronicle.organizations.initializers.OrganizationsInitializationDependencies
 import com.openlattice.chronicle.organizations.initializers.OrganizationsInitializationTask
@@ -68,6 +67,8 @@ import com.openlattice.chronicle.services.jobs.JobService
 import com.openlattice.chronicle.services.notifications.NotificationService
 import com.openlattice.chronicle.services.settings.OrganizationSettingsManager
 import com.openlattice.chronicle.services.settings.OrganizationSettingsService
+import com.openlattice.chronicle.services.studies.StudyLimitsManager
+import com.openlattice.chronicle.services.studies.StudyLimitsService
 import com.openlattice.chronicle.services.studies.StudyService
 import com.openlattice.chronicle.services.surveys.SurveysManager
 import com.openlattice.chronicle.services.surveys.SurveysService
@@ -77,6 +78,8 @@ import com.openlattice.chronicle.services.upload.AppDataUploadManager
 import com.openlattice.chronicle.services.upload.AppDataUploadService
 import com.openlattice.chronicle.services.upload.SensorDataUploadService
 import com.openlattice.chronicle.storage.StorageResolver
+import com.openlattice.chronicle.studies.tasks.StudyLimitsEnforcementTask
+import com.openlattice.chronicle.studies.tasks.StudyLimitsEnforcementTaskDependencies
 import com.openlattice.chronicle.tasks.PostConstructInitializerTaskDependencies
 import com.openlattice.chronicle.users.Auth0SyncInitializationTask
 import com.openlattice.chronicle.users.Auth0SyncService
@@ -132,6 +135,9 @@ class ChronicleServerServicesPod {
     @Inject
     private lateinit var twilioConfiguration: TwilioConfiguration
 
+    @Inject
+    private lateinit var mailServiceConfig: MailServiceConfig
+
     @Bean
     fun defaultObjectMapper(): ObjectMapper {
         val mapper = ObjectMappers.getJsonMapper()
@@ -142,12 +148,16 @@ class ChronicleServerServicesPod {
     @Bean
     fun auth0TokenProvider(): Auth0TokenProvider {
         //TODO: Remove AWS from the name of this class.
-        return RefreshingAuth0TokenProvider(auth0Configuration)
+        return if (auth0Configuration.managementApiUrl.contains("localhost")) {
+            EmptyAuth0TokenProvider(auth0Configuration)
+        } else {
+            RefreshingAuth0TokenProvider(auth0Configuration)
+        }
     }
 
     @Bean
-    fun managementApiProvider() : ManagementApiProvider {
-        return ManagementApiProvider(auth0TokenProvider(),auth0Configuration)
+    fun managementApiProvider(): ManagementApiProvider {
+        return ManagementApiProvider(auth0TokenProvider(), auth0Configuration)
     }
 
     @Bean
@@ -286,6 +296,11 @@ class ChronicleServerServicesPod {
     }
 
     @Bean
+    fun mailService(): MailService {
+        return MailService(mailServiceConfig)
+    }
+
+    @Bean
     fun auth0SyncService(): Auth0SyncService {
         return Auth0SyncService(hazelcast, principalsManager())
     }
@@ -328,6 +343,7 @@ class ChronicleServerServicesPod {
             candidateService(),
             enrollmentManager(),
             idGenerationService(),
+            studyLimitsManager(),
             auditingManager(),
             hazelcast
         )
@@ -346,6 +362,10 @@ class ChronicleServerServicesPod {
         return NotificationService(
             storageResolver,
             authorizationService(),
+            enrollmentManager(),
+            candidateService(),
+            studyService(),
+            jobService(),
             idGenerationService(),
             twilioService(),
             auditingManager(),
@@ -423,6 +443,25 @@ class ChronicleServerServicesPod {
             jobService(),
             storageResolver,
             auditingManager()
+        )
+    }
+
+    @Bean
+    fun studyLimitsManager(): StudyLimitsManager {
+        return StudyLimitsService(storageResolver, hazelcast)
+    }
+
+    @Bean
+    fun studyLimitsEnforcementTask(): StudyLimitsEnforcementTask {
+        return StudyLimitsEnforcementTask()
+    }
+
+    @Bean
+    fun studyLimitsEnforcementTaskDependencies(): StudyLimitsEnforcementTaskDependencies {
+        return StudyLimitsEnforcementTaskDependencies(
+            storageResolver,
+            studyLimitsManager(),
+            studyService()
         )
     }
 

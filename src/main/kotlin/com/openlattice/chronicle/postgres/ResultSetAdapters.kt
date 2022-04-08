@@ -28,12 +28,14 @@ import com.geekbeast.rhizome.jobs.JobStatus
 import com.openlattice.chronicle.authorization.*
 import com.openlattice.chronicle.candidates.Candidate
 import com.openlattice.chronicle.data.ParticipationStatus
-import com.openlattice.chronicle.jobs.ChronicleJob
 import com.openlattice.chronicle.mapstores.ids.Range
-import com.openlattice.chronicle.notifications.Notification
+import com.openlattice.chronicle.notifications.DeliveryType
+import com.openlattice.chronicle.notifications.NotificationType
 import com.openlattice.chronicle.organizations.Organization
 import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.participants.ParticipantStats
+import com.openlattice.chronicle.services.jobs.ChronicleJob
+import com.openlattice.chronicle.services.notifications.Notification
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACTIVE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ANDROID_FIRST_DATE
@@ -45,14 +47,19 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.CATEGORY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.COMPLETED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CONTACT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CREATED_AT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.DATA_RETENTION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DATE_OF_BIRTH
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DELETED_ROWS
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.DELIVERY_TYPE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DESCRIPTION
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.DESTINATION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DEVICE_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.EMAIL
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ENDED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.EXPIRATION_DATE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.FEATURES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.FIRST_NAME
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.HTML
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.IOS_FIRST_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.IOS_LAST_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.IOS_UNIQUE_DATES
@@ -64,18 +71,20 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.LON
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LSB
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.MESSAGE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.MESSAGE_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.MODULES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.MSB
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.NAME
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.NOTIFICATIONS_ENABLED
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.NOTIFICATION_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.NOTIFICATION_TYPE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_IDS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_LIMIT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPATION_STATUS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTITION_INDEX
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PERMISSIONS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PHONE_NUMBER
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.PHONE_NUMBER_NOT_UNIQUE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_OF_ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_TYPE
@@ -90,17 +99,18 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.SETTINGS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STARTED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STATUS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STORAGE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_DURATION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_GROUP
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_PHONE_NUMBER
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_VERSION
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBJECT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TITLE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_FIRST_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_LAST_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_UNIQUE_DATES
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.TYPE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPDATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.URL
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APPLICATION_LABEL
@@ -110,6 +120,9 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMESTAMP
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMEZONE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.USERNAME
 import com.openlattice.chronicle.study.Study
+import com.openlattice.chronicle.study.StudyFeature
+import com.openlattice.chronicle.study.StudyLimits
+import com.openlattice.chronicle.study.StudySettings
 import com.openlattice.chronicle.survey.AppUsage
 import com.openlattice.chronicle.survey.Questionnaire
 import org.slf4j.LoggerFactory
@@ -300,8 +313,28 @@ class ResultSetAdapters {
             return rs.getString(USERNAME.name)
         }
 
+
         @Throws(SQLException::class)
         fun studyId(rs: ResultSet): UUID = rs.getObject(STUDY_ID.name, UUID::class.java)
+
+
+        @Throws(SQLException::class)
+        fun legacyStudySettings(rs: ResultSet): Pair<UUID, Map<String, Any>> {
+            val studyId = studyId(rs)
+            val settings = mapper.readValue<Map<String, Any>>(rs.getString(SETTINGS.name))
+            return studyId to settings
+
+        }
+
+        @Throws(SQLException::class)
+        fun studyLimits(rs: ResultSet): StudyLimits {
+            return StudyLimits(
+                mapper.readValue(rs.getString(STUDY_DURATION.name)),
+                mapper.readValue(rs.getString(DATA_RETENTION.name)),
+                rs.getInt(PARTICIPANT_LIMIT.name),
+                EnumSet.copyOf(PostgresArrays.getTextArray(rs, FEATURES.name).map(StudyFeature::valueOf))
+            )
+        }
 
         @Throws(SQLException::class)
         fun study(rs: ResultSet): Study {
@@ -321,7 +354,8 @@ class ResultSetAdapters {
                 PostgresArrays.getUuidArray(rs, ORGANIZATION_IDS.name)?.toSet() ?: setOf(),
                 rs.getBoolean(NOTIFICATIONS_ENABLED.name),
                 rs.getString(STORAGE.name),
-                settings = mapper.readValue(rs.getString(SETTINGS.name)),
+                mapper.readValue(rs.getString(SETTINGS.name)),
+                mapper.readValue(rs.getString(MODULES.name)),
                 rs.getString(STUDY_PHONE_NUMBER.name)
             )
         }
@@ -410,17 +444,18 @@ class ResultSetAdapters {
         fun notification(rs: ResultSet): Notification {
             return Notification(
                 rs.getObject(NOTIFICATION_ID.name, UUID::class.java),
-                rs.getObject(CANDIDATE_ID.name, UUID::class.java),
-                rs.getObject(ORGANIZATION_ID.name, UUID::class.java),
                 rs.getObject(STUDY_ID.name, UUID::class.java),
+                rs.getString(PARTICIPANT_ID.name),
                 rs.getObject(CREATED_AT.name, OffsetDateTime::class.java),
                 rs.getObject(UPDATED_AT.name, OffsetDateTime::class.java),
                 rs.getString(STATUS.name),
                 rs.getString(MESSAGE_ID.name),
-                rs.getString(TYPE.name),
+                NotificationType.valueOf(rs.getString(NOTIFICATION_TYPE.name)),
+                DeliveryType.valueOf(rs.getString(DELIVERY_TYPE.name)),
+                rs.getString(SUBJECT.name),
                 rs.getString(BODY.name),
-                rs.getString(EMAIL.name),
-                rs.getString(PHONE_NUMBER_NOT_UNIQUE.name)
+                rs.getString(DESTINATION.name),
+                rs.getBoolean(HTML.name)
             )
         }
 

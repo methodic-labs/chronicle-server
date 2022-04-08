@@ -14,15 +14,18 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.CANDIDATE_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.COMPLETED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CONTACT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CREATED_AT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.DATA_RETENTION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DATE_OF_BIRTH
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DELETED_ROWS
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.DELIVERY_TYPE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DESCRIPTION
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.DESTINATION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DEVICE_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.EMAIL
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.EMAIL_NOT_UNIQUE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ENDED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.EXPIRATION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.EXPIRATION_DATE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.FEATURES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.FIRST_NAME
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.IOS_FIRST_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.IOS_LAST_DATE
@@ -36,16 +39,18 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.LON
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LSB
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.MESSAGE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.MESSAGE_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.MODULES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.MSB
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.NAME
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.NOTIFICATIONS_ENABLED
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.NOTIFICATION_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.NOTIFICATION_TYPE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_LIMIT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPATION_STATUS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTITION_INDEX
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PHONE_NUMBER
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.PHONE_NUMBER_NOT_UNIQUE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_OF_ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_TYPE
@@ -65,6 +70,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.SOURCE_DEVICE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STARTED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STATUS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STORAGE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_DURATION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_GROUP
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_PHONE_NUMBER
@@ -77,7 +83,6 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.TITLE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_FIRST_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_LAST_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_UNIQUE_DATES
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.TYPE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPDATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_DATA
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_ID
@@ -93,17 +98,16 @@ class ChroniclePostgresTables {
         val NOTIFICATIONS = PostgresTableDefinition("notifications")
             .addColumns(
                 NOTIFICATION_ID,
-                CANDIDATE_ID,
-                ORGANIZATION_ID,
                 STUDY_ID,
+                PARTICIPANT_ID,
                 CREATED_AT,
                 UPDATED_AT,
                 MESSAGE_ID,
-                TYPE,
                 STATUS,
+                NOTIFICATION_TYPE,
+                DELIVERY_TYPE,
                 BODY,
-                EMAIL_NOT_UNIQUE,
-                PHONE_NUMBER_NOT_UNIQUE
+                DESTINATION
             )
             .primaryKey(NOTIFICATION_ID)
             .overwriteOnConflict()
@@ -137,6 +141,7 @@ class ChroniclePostgresTables {
                 NOTIFICATIONS_ENABLED,
                 STORAGE,
                 SETTINGS,
+                MODULES,
                 STUDY_PHONE_NUMBER
             )
             .primaryKey(STUDY_ID)
@@ -172,6 +177,12 @@ class ChroniclePostgresTables {
                 PARTICIPATION_STATUS
             )
             .primaryKey(STUDY_ID, PARTICIPANT_ID)
+
+        @JvmField
+        val STUDY_LIMITS = PostgresTableDefinition("study_limits")
+            .addColumns(STUDY_ID, PARTICIPANT_LIMIT, STUDY_DURATION, DATA_RETENTION, FEATURES)
+            .primaryKey(STUDY_ID)
+            .overwriteOnConflict()
 
         @JvmField
         val CANDIDATES = PostgresTableDefinition("candidates")

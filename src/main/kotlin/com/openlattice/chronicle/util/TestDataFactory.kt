@@ -4,9 +4,14 @@ import com.google.common.collect.ImmutableList
 import com.openlattice.chronicle.authorization.*
 import com.openlattice.chronicle.candidates.Candidate
 import com.openlattice.chronicle.data.ParticipationStatus
+import com.openlattice.chronicle.notifications.StudyNotificationSettings
+import com.openlattice.chronicle.organizations.ChronicleDataCollectionSettings
 import com.openlattice.chronicle.organizations.OrganizationPrincipal
 import com.openlattice.chronicle.participants.Participant
-import com.openlattice.chronicle.study.Study
+import com.openlattice.chronicle.sensorkit.SensorSetting
+import com.openlattice.chronicle.sensorkit.SensorType
+import com.openlattice.chronicle.settings.AppUsageFrequency
+import com.openlattice.chronicle.study.*
 import org.apache.commons.lang3.RandomStringUtils
 import org.apache.commons.text.CharacterPredicates
 import org.apache.commons.text.RandomStringGenerator
@@ -23,6 +28,9 @@ class TestDataFactory {
         private val r = Random()
         private val permissions = Permission.values()
         private val securableObjectTypes = SecurableObjectType.values()
+        private val studyFeatures = StudyFeature.values()
+        private val studySettings = StudySettingType.values()
+        private val sensorTypes = SensorType.values()
         private val allowedDigitsAndLetters = arrayOf(
             charArrayOf('a', 'z'), charArrayOf('A', 'Z'), charArrayOf('0', '9')
         )
@@ -30,6 +38,32 @@ class TestDataFactory {
             .withinRange(*TestDataFactory.allowedDigitsAndLetters)
             .filteredBy(CharacterPredicates.LETTERS, CharacterPredicates.DIGITS)
             .build()
+
+        fun <T> randomSubset(values: Array<T>): Set<T> {
+            return values.filter { r.nextBoolean() }.toSet()
+        }
+
+        fun randomFeatures(): Map<StudyFeature, Any> {
+            val numFeatures = 1 + r.nextInt(studyFeatures.size)
+            return (0 until numFeatures).associate { studyFeatures[it] to Any() }
+        }
+
+        fun randomSettings():StudySettings {
+            val numFeatures = 1 + r.nextInt(studyFeatures.size)
+            return StudySettings((0 until numFeatures).associate {
+                studySettings[it] to when (studySettings[it]) {
+                    StudySettingType.DataCollection -> ChronicleDataCollectionSettings(if (r.nextBoolean()) AppUsageFrequency.DAILY else AppUsageFrequency.HOURLY)
+                    StudySettingType.Sensor -> SensorSetting(randomSubset(sensorTypes))
+                    StudySettingType.Notifications -> StudyNotificationSettings(
+                        randomAlphanumeric(5),
+                        randomAlphanumeric(5), r.nextBoolean()
+                    )
+
+                }
+            })
+
+        }
+
 
         fun randomAlphanumeric(length: Int): String {
             return randomAlphaNumeric.generate(length)
@@ -165,8 +199,14 @@ class TestDataFactory {
             )
         }
 
+
         fun study(): Study {
-            return Study(title = "This is a test study.", contact = "${RandomStringUtils.randomAlphabetic(5)}@openlattice.com")
+            return Study(
+                title = "This is a test study.",
+                contact = "${RandomStringUtils.randomAlphabetic(5)}@openlattice.com",
+                settings = randomSettings(),
+                modules = randomFeatures()
+            )
         }
     }
 }

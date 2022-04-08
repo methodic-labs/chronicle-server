@@ -4,7 +4,6 @@ import com.geekbeast.postgres.PostgresColumnDefinition
 import com.geekbeast.postgres.PostgresDatatype
 import java.lang.reflect.Field
 import java.lang.reflect.Modifier
-import java.util.*
 
 
 /**
@@ -26,6 +25,7 @@ class PostgresColumns {
         @JvmField val CONTACT = PostgresColumnDefinition("contact", PostgresDatatype.TEXT)
         @JvmField val CREATED_AT = PostgresColumnDefinition("created_at", PostgresDatatype.TIMESTAMPTZ).notNull().withDefault("now()")
         @JvmField val DATE_OF_BIRTH = PostgresColumnDefinition("dob", PostgresDatatype.DATE)
+        @JvmField val DATA_RETENTION = PostgresColumnDefinition("data_retention", PostgresDatatype.JSONB).notNull()
         @JvmField val DELETED_ROWS = PostgresColumnDefinition("deleted_rows", PostgresDatatype.BIGINT).notNull()
         @JvmField val DESCRIPTION = PostgresColumnDefinition("description", PostgresDatatype.TEXT)
         @JvmField val DEVICE_ID = PostgresColumnDefinition("device_id", PostgresDatatype.UUID).notNull()
@@ -35,6 +35,7 @@ class PostgresColumns {
         @JvmField val EXPIRATION = PostgresColumnDefinition("expiration", PostgresDatatype.BIGINT)
         @JvmField val EXPIRATION_DATE = PostgresColumnDefinition("expiration_date", PostgresDatatype.TIMESTAMPTZ).withDefault("'infinity'").notNull()
         @JvmField val FIRST_NAME = PostgresColumnDefinition("first_name", PostgresDatatype.TEXT)
+        @JvmField val FEATURES = PostgresColumnDefinition("features", PostgresDatatype.TEXT_ARRAY).notNull().withDefault("'{}'")
         @JvmField val IOS_UNIQUE_DATES = PostgresColumnDefinition("ios_unique_dates", PostgresDatatype.DATE_ARRAY).withDefault("'{}'")
         @JvmField val IOS_FIRST_DATE = PostgresColumnDefinition("ios_first_date", PostgresDatatype.TIMESTAMPTZ)
         @JvmField val IOS_LAST_DATE = PostgresColumnDefinition("ios_last_date", PostgresDatatype.TIMESTAMPTZ)
@@ -51,6 +52,7 @@ class PostgresColumns {
         @JvmField val NOTIFICATIONS_ENABLED = PostgresColumnDefinition("notifications_enabled", PostgresDatatype.BOOLEAN)
         @JvmField val ORGANIZATION_ID = PostgresColumnDefinition("organization_id", PostgresDatatype.UUID).notNull()
         @JvmField val ORGANIZATION_IDS = PostgresColumnDefinition("organization_ids", PostgresDatatype.UUID_ARRAY).notNull()
+        @JvmField val PARTICIPANT_LIMIT = PostgresColumnDefinition("participant_limit", PostgresDatatype.INTEGER).notNull()
         @JvmField val PARTICIPANT_ID = PostgresColumnDefinition("participant_id", PostgresDatatype.TEXT).notNull()
         @JvmField val PARTICIPATION_STATUS = PostgresColumnDefinition("participation_status", PostgresDatatype.TEXT).notNull()
         @JvmField val PARTITION_INDEX = PostgresColumnDefinition("partition_index", PostgresDatatype.BIGINT).notNull()
@@ -73,11 +75,13 @@ class PostgresColumns {
         @JvmField val SECURABLE_OBJECT_TYPE = PostgresColumnDefinition("securable_object_type", PostgresDatatype.TEXT).notNull()
         @JvmField val SECURABLE_PRINCIPAL_ID = PostgresColumnDefinition("securable_principal_id", PostgresDatatype.UUID).notNull()
         @JvmField val SETTINGS = PostgresColumnDefinition("settings", PostgresDatatype.JSONB).withDefault("'{}'::jsonb")
+        @JvmField val MODULES = PostgresColumnDefinition("modules", PostgresDatatype.JSONB).withDefault("'{}'::jsonb")
         @JvmField val SOURCE_DEVICE = PostgresColumnDefinition("source_device", PostgresDatatype.JSONB).notNull()
         @JvmField val SOURCE_DEVICE_ID = PostgresColumnDefinition("source_device_id", PostgresDatatype.TEXT).notNull()
         @JvmField val STARTED_AT = PostgresColumnDefinition("started_at", PostgresDatatype.TIMESTAMPTZ).notNull().withDefault("now()")
         @JvmField val STATUS = PostgresColumnDefinition("status", PostgresDatatype.TEXT)
         @JvmField val STORAGE = PostgresColumnDefinition("storage", PostgresDatatype.TEXT).notNull().withDefault("'default'")
+        @JvmField val STUDY_DURATION = PostgresColumnDefinition("study_duration", PostgresDatatype.JSONB).notNull()
         @JvmField val STUDY_GROUP = PostgresColumnDefinition("study_group", PostgresDatatype.TEXT)
         @JvmField val STUDY_ID = PostgresColumnDefinition("study_id", PostgresDatatype.UUID).notNull()
         @JvmField val STUDY_VERSION = PostgresColumnDefinition("study_version", PostgresDatatype.TEXT)
@@ -96,8 +100,12 @@ class PostgresColumns {
 
         @JvmField val NOTIFICATION_ID = PostgresColumnDefinition("notification_id", PostgresDatatype.UUID).notNull()
         @JvmField val MESSAGE_ID = PostgresColumnDefinition("message_id", PostgresDatatype.TEXT).unique()
-        @JvmField val TYPE = PostgresColumnDefinition("type", PostgresDatatype.TEXT)
+        @JvmField val NOTIFICATION_TYPE = PostgresColumnDefinition("notification_type", PostgresDatatype.TEXT)
+        @JvmField val DELIVERY_TYPE = PostgresColumnDefinition("delivery_type", PostgresDatatype.TEXT)
+        @JvmField val DESTINATION = PostgresColumnDefinition("destination", PostgresDatatype.TEXT).notNull()
         @JvmField val BODY = PostgresColumnDefinition("body", PostgresDatatype.TEXT)
+        @JvmField val SUBJECT = PostgresColumnDefinition("subject", PostgresDatatype.TEXT)
+        @JvmField val HTML = PostgresColumnDefinition("is_html", PostgresDatatype.BOOLEAN)
 
         val columnTypes : Map<String, PostgresDatatype> = postgresColumns().associate { it.name to it.datatype }
 
