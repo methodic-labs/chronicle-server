@@ -86,7 +86,7 @@ class StudyStreamSerializer : TestableSelfRegisteringStreamSerializer<Study> {
                 notificationsEnabled = input.readBoolean(),
                 storage = input.readString()!!,
                 settings = mapper.readValue(input.readByteArray()!!),
-                modules = mapper.readValue(input.readByteArray())
+                modules = mapper.readValue(input.readByteArray()!!)
             )
         }
     }
