@@ -59,6 +59,7 @@ class StudyLimitsController @Inject constructor(
     )
     override fun getStudyLimits(@PathVariable(STUDY_ID) studyId: UUID): StudyLimits {
         ensureReadAccess(AclKey(studyId))
+        check( studyService.isValidStudy(studyId) ) { "$studyId is not valid." }
         return studyLimitsMgr.getStudyLimits(studyId)
     }
 }
