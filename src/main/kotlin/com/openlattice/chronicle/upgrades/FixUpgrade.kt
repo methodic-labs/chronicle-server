@@ -76,7 +76,6 @@ class FixUpgrade(private val storageResolver: StorageResolver) : PreHazelcastUpg
                 legacySettings.forEach { (studyId, settings) ->
                     val upgradeSettings = StudySettings(mapOf(
                         migrateDataCollectionSettings(settings),
-                        migrateSensorSettings(settings)
                     ))
 
                     ps.setString(1, mapper.writeValueAsString(upgradeSettings))
@@ -88,17 +87,6 @@ class FixUpgrade(private val storageResolver: StorageResolver) : PreHazelcastUpg
             connection.commit()
             logger.info("Upgrade $upgradedCount studies.")
         }
-    }
-
-    private fun migrateSensorSettings(settings: Map<String, Any>): Pair<StudySettingType, StudySetting> {
-        val sensors = (settings[StudySettingType.Sensor.name] as List<*>? ?: listOf<Any>())
-        return StudySettingType.Sensor to SensorSetting(
-            when (sensors) {
-                null -> setOf()
-                is List<*> -> sensors.mapNotNull { SensorType.valueOf(it as String) }.toSet()
-                else -> throw IllegalStateException("Unexpected type encountered.")
-            }
-        )
     }
 
     private fun migrateDataCollectionSettings(settings: Map<String, Any>): Pair<StudySettingType, StudySetting> {
