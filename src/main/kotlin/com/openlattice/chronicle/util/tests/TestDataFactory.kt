@@ -1,4 +1,4 @@
-package com.openlattice.chronicle.util
+package com.openlattice.chronicle.util.tests
 
 import com.google.common.collect.ImmutableList
 import com.openlattice.chronicle.authorization.*
@@ -35,7 +35,7 @@ class TestDataFactory {
             charArrayOf('a', 'z'), charArrayOf('A', 'Z'), charArrayOf('0', '9')
         )
         private val randomAlphaNumeric: RandomStringGenerator = org.apache.commons.text.RandomStringGenerator.Builder()
-            .withinRange(*TestDataFactory.allowedDigitsAndLetters)
+            .withinRange(*allowedDigitsAndLetters)
             .filteredBy(CharacterPredicates.LETTERS, CharacterPredicates.DIGITS)
             .build()
 

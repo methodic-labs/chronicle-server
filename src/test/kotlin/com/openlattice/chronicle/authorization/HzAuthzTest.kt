@@ -31,7 +31,7 @@ import com.openlattice.chronicle.authorization.principals.PrincipalsMapManager
 import com.openlattice.chronicle.authorization.principals.SecurePrincipalsManager
 import com.openlattice.chronicle.authorization.reservations.AclKeyReservationService
 import com.openlattice.chronicle.storage.StorageResolver
-import com.openlattice.chronicle.util.TestDataFactory
+import com.openlattice.chronicle.util.tests.TestDataFactory
 import org.junit.Assert
 import org.junit.BeforeClass
 import org.junit.Test

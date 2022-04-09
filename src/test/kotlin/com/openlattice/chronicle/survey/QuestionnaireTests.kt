@@ -9,7 +9,7 @@ import com.openlattice.chronicle.data.FileType
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.QUESTION_TITLE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.RESPONSES
-import com.openlattice.chronicle.util.TestDataFactory
+import com.openlattice.chronicle.util.tests.TestDataFactory
 import org.dmfs.rfc5545.recur.RecurrenceRule
 import org.junit.Assert
 import org.junit.Test

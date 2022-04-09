@@ -19,7 +19,7 @@ import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.STUDY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.study.Study
 import com.openlattice.chronicle.study.StudyLimits
-import com.openlattice.chronicle.util.TestDataFactory
+import com.openlattice.chronicle.util.tests.TestDataFactory
 import com.zaxxer.hikari.HikariDataSource
 import org.springframework.stereotype.Component
 import java.sql.PreparedStatement

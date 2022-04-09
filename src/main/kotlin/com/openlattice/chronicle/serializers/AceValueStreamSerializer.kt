@@ -25,7 +25,7 @@ import com.openlattice.chronicle.authorization.AceValue
 import com.openlattice.chronicle.authorization.SecurableObjectType
 import com.openlattice.chronicle.hazelcast.StreamSerializerTypeIds
 import com.openlattice.chronicle.serializers.DelegatedPermissionEnumSetStreamSerializer.Companion.serialize
-import com.openlattice.chronicle.util.TestDataFactory
+import com.openlattice.chronicle.util.tests.TestDataFactory
 import com.geekbeast.serializers.Jdk8StreamSerializers.AbstractOffsetDateTimeStreamSerializer
 import com.geekbeast.hazelcast.serializers.TestableSelfRegisteringStreamSerializer
 import org.springframework.stereotype.Component

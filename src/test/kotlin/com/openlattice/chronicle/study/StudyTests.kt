@@ -7,7 +7,7 @@ import com.openlattice.chronicle.client.ChronicleClient
 import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.organizations.Organization
 import com.openlattice.chronicle.participants.Participant
-import com.openlattice.chronicle.util.TestDataFactory
+import com.openlattice.chronicle.util.tests.TestDataFactory
 import org.junit.After
 import org.junit.Assert
 import org.junit.Before
@@ -236,5 +236,17 @@ class StudyTests : ChronicleServerTests() {
             val participant = TestDataFactory.participant(ParticipationStatus.ENROLLED)
             studyApi.registerParticipant(studyId, participant)
         }
+    }
+
+    @Test
+    fun testUsageEventUpload() {
+        val studyApi = chronicleClient.studyApi
+        val studyId = studyApi.createStudy(TestDataFactory.study())
+
+        val participant = TestDataFactory.participant(ParticipationStatus.ENROLLED)
+        studyApi.registerParticipant(studyId, participant)
+        studyApi.enroll(studyId, participant.participantId, )
+
+        studyApi.uploadAndroidUsageEventData(studyId,participant.participantId, data)
     }
 }
