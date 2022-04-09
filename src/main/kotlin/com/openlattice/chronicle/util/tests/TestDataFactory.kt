@@ -1,6 +1,8 @@
 package com.openlattice.chronicle.util.tests
 
 import com.google.common.collect.ImmutableList
+import com.openlattice.chronicle.android.ChronicleData
+import com.openlattice.chronicle.android.ChronicleUsageEvent
 import com.openlattice.chronicle.authorization.*
 import com.openlattice.chronicle.candidates.Candidate
 import com.openlattice.chronicle.data.ParticipationStatus
@@ -16,6 +18,7 @@ import org.apache.commons.lang3.RandomStringUtils
 import org.apache.commons.text.CharacterPredicates
 import org.apache.commons.text.RandomStringGenerator
 import java.time.LocalDate
+import java.time.OffsetDateTime
 import java.util.*
 
 /**
@@ -48,8 +51,8 @@ class TestDataFactory {
             return (0 until numFeatures).associate { studyFeatures[it] to Any() }
         }
 
-        fun randomSettings():StudySettings {
-            val numFeatures =  r.nextInt(studyFeatures.size)
+        fun randomSettings(): StudySettings {
+            val numFeatures = r.nextInt(studyFeatures.size)
             return StudySettings((0 until numFeatures).associate {
                 studySettings[it] to when (studySettings[it]) {
                     StudySettingType.DataCollection -> ChronicleDataCollectionSettings(if (r.nextBoolean()) AppUsageFrequency.DAILY else AppUsageFrequency.HOURLY)
@@ -208,6 +211,22 @@ class TestDataFactory {
                 settings = randomSettings(),
                 modules = randomFeatures()
             )
+        }
+
+        fun chronicleUsageEvents(studyId: UUID, participantId: String, count: Int = 10): ChronicleData {
+            val usageEvents = (0 until count).map {
+                ChronicleUsageEvent(
+                    studyId,
+                    participantId, RandomStringUtils.randomAlphanumeric(5),
+                    randomAlphanumeric(5),
+                    OffsetDateTime.now(),
+                    TimeZone.getDefault().id,
+                    randomAlphanumeric(5),
+                    randomAlphanumeric(5)
+                )
+            }
+
+            return ChronicleData( usageEvents )
         }
     }
 }

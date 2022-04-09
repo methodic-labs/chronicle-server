@@ -39,9 +39,7 @@ import org.slf4j.LoggerFactory
 import java.util.*
 import java.util.concurrent.TimeUnit
 import java.util.function.Consumer
-import java.util.function.Function
 import java.util.stream.Collectors
-import kotlin.streams.asSequence
 
 open class HzAuthzTest : ChronicleServerTests() {
     @Test

@@ -8,14 +8,12 @@ import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.organizations.Organization
 import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.util.tests.TestDataFactory
+import com.openlattice.chronicle.util.tests.TestSourceDevice
 import org.junit.After
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
 import java.time.LocalDate
-import java.time.OffsetDateTime
-import java.time.ZoneId
-import java.time.ZoneOffset
 import java.util.UUID
 
 /**
@@ -245,8 +243,16 @@ class StudyTests : ChronicleServerTests() {
 
         val participant = TestDataFactory.participant(ParticipationStatus.ENROLLED)
         studyApi.registerParticipant(studyId, participant)
-        studyApi.enroll(studyId, participant.participantId, )
 
-        studyApi.uploadAndroidUsageEventData(studyId,participant.participantId, data)
+        val sourceDevice = TestSourceDevice()
+        studyApi.enroll(studyId, participant.participantId, sourceDevice.sourceDeviceId, sourceDevice)
+
+        val chronicleData = TestDataFactory.chronicleUsageEvents(studyId, participant.participantId)
+        studyApi.uploadAndroidUsageEventData(
+            studyId,
+            participant.participantId,
+            sourceDevice.sourceDeviceId,
+            chronicleData
+        )
     }
 }
