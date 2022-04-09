@@ -49,14 +49,15 @@ class TestDataFactory {
         }
 
         fun randomSettings():StudySettings {
-            val numFeatures = 1 + r.nextInt(studyFeatures.size)
+            val numFeatures =  r.nextInt(studyFeatures.size)
             return StudySettings((0 until numFeatures).associate {
                 studySettings[it] to when (studySettings[it]) {
                     StudySettingType.DataCollection -> ChronicleDataCollectionSettings(if (r.nextBoolean()) AppUsageFrequency.DAILY else AppUsageFrequency.HOURLY)
                     StudySettingType.Sensor -> SensorSetting(randomSubset(sensorTypes))
                     StudySettingType.Notifications -> StudyNotificationSettings(
                         randomAlphanumeric(5),
-                        randomAlphanumeric(5), r.nextBoolean()
+                        randomAlphanumeric(5),
+                        r.nextBoolean()
                     )
 
                 }
