@@ -4,7 +4,7 @@ import com.kryptnostic.rhizome.hazelcast.serializers.AbstractStreamSerializerTes
 import com.openlattice.chronicle.authorization.PrincipalType
 import com.openlattice.chronicle.authorization.SecurablePrincipal
 import com.openlattice.chronicle.serializers.SecurablePrincipalStreamSerializer
-import com.openlattice.chronicle.util.TestDataFactory
+import com.openlattice.chronicle.util.tests.TestDataFactory
 
 /**
  *

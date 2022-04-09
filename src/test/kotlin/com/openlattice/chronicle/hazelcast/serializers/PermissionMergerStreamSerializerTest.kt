@@ -20,7 +20,7 @@
 package com.openlattice.chronicle.hazelcast.serializers
 
 import com.openlattice.chronicle.authorization.DelegatedPermissionEnumSet.Companion.wrap
-import com.openlattice.chronicle.util.TestDataFactory.Companion.permissions
+import com.openlattice.chronicle.util.tests.TestDataFactory.Companion.permissions
 import com.kryptnostic.rhizome.hazelcast.serializers.AbstractStreamSerializerTest
 import com.openlattice.chronicle.authorization.SecurableObjectType
 import com.openlattice.chronicle.authorization.processors.PermissionMerger

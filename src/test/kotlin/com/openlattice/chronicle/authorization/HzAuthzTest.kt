@@ -31,7 +31,7 @@ import com.openlattice.chronicle.authorization.principals.PrincipalsMapManager
 import com.openlattice.chronicle.authorization.principals.SecurePrincipalsManager
 import com.openlattice.chronicle.authorization.reservations.AclKeyReservationService
 import com.openlattice.chronicle.storage.StorageResolver
-import com.openlattice.chronicle.util.TestDataFactory
+import com.openlattice.chronicle.util.tests.TestDataFactory
 import org.junit.Assert
 import org.junit.BeforeClass
 import org.junit.Test
@@ -39,9 +39,7 @@ import org.slf4j.LoggerFactory
 import java.util.*
 import java.util.concurrent.TimeUnit
 import java.util.function.Consumer
-import java.util.function.Function
 import java.util.stream.Collectors
-import kotlin.streams.asSequence
 
 open class HzAuthzTest : ChronicleServerTests() {
     @Test
