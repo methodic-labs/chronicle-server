@@ -5,9 +5,13 @@ import com.geekbeast.postgres.PostgresTableDefinition
 import com.geekbeast.postgres.RedshiftTableDefinition
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.ACL_KEY
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APPLICATION_LABEL
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_ENGAGE_30
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_PACKAGE_NAME
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_USAGE_FLAGS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.AUDIT_EVENT_TYPE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DATA
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DATE
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DAY
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DESCRIPTION
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DEVICE_USAGE_SENSOR_COLS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DURATION
@@ -30,6 +34,7 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.SHARED_SENSOR
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.START_DATE_TIME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.START_TIME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.STUDY_ID
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.SWITCHED_APP
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMESTAMP
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMEZONE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.USERNAME
@@ -105,11 +110,16 @@ class RedshiftDataTables {
                 START_DATE_TIME,
                 END_DATE_TIME,
                 TIMEZONE,
+                DATE,
                 RECORD_TYPE,
                 NEW_PERIOD,
                 NEW_APP,
                 DURATION_SECONDS,
-                WARNING
+                WARNING,
+                DAY,
+                APP_ENGAGE_30,
+                SWITCHED_APP,
+                APP_USAGE_FLAGS
             ).addDataSourceNames(REDSHIFT_DATASOURCE_NAME)
 
         @JvmField

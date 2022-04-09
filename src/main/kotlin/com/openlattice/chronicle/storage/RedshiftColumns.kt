@@ -69,7 +69,10 @@ class RedshiftColumns {
         @JvmField val WARNING = PostgresColumnDefinition("warning", PostgresDatatype.TEXT)
         @JvmField val DURATION_SECONDS = PostgresColumnDefinition("duration_seconds", PostgresDatatype.DOUBLE)
         @JvmField val RECORD_TYPE = PostgresColumnDefinition("record_type", PostgresDatatype.TEXT)
-
+        @JvmField val DAY = PostgresColumnDefinition("day", PostgresDatatype.INTEGER)
+        @JvmField val APP_ENGAGE_30 = PostgresColumnDefinition("app_engage_30", PostgresDatatype.INTEGER)
+        @JvmField val SWITCHED_APP = PostgresColumnDefinition("app_switched_app", PostgresDatatype.INTEGER)
+        @JvmField val APP_USAGE_FLAGS = PostgresColumnDefinition("app_usage_flags", PostgresDatatype.INTEGER)
 
         //AUDIT
         @JvmField val SECURABLE_PRINCIPAL_ID = PostgresColumnDefinition("id", PostgresDatatype.TEXT_UUID).notNull()
