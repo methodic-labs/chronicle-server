@@ -1,10 +1,15 @@
 package com.openlattice.chronicle.util.tests
 
+import com.google.common.collect.HashMultimap
 import com.google.common.collect.ImmutableList
+import com.google.common.collect.LinkedHashMultimap
+import com.google.common.collect.SetMultimap
 import com.openlattice.chronicle.android.ChronicleData
 import com.openlattice.chronicle.android.ChronicleUsageEvent
+import com.openlattice.chronicle.android.LegacyChronicleData
 import com.openlattice.chronicle.authorization.*
 import com.openlattice.chronicle.candidates.Candidate
+import com.openlattice.chronicle.constants.EdmConstants
 import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.notifications.StudyNotificationSettings
 import com.openlattice.chronicle.organizations.ChronicleDataCollectionSettings
@@ -12,7 +17,9 @@ import com.openlattice.chronicle.organizations.OrganizationPrincipal
 import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.sensorkit.SensorSetting
 import com.openlattice.chronicle.sensorkit.SensorType
+import com.openlattice.chronicle.services.legacy.LegacyEdmResolver
 import com.openlattice.chronicle.settings.AppUsageFrequency
+import com.openlattice.chronicle.sources.AndroidDevice
 import com.openlattice.chronicle.study.*
 import org.apache.commons.lang3.RandomStringUtils
 import org.apache.commons.text.CharacterPredicates
@@ -48,11 +55,11 @@ class TestDataFactory {
 
         fun randomFeatures(): Map<StudyFeature, Any> {
             val numFeatures = 1 + r.nextInt(studyFeatures.size)
-            return (0 until numFeatures).associate { studyFeatures[it] to Any() }
+            return (0 until numFeatures).associate { studyFeatures[it] to mapOf<String, Any>() }
         }
 
         fun randomSettings(): StudySettings {
-            val numFeatures = r.nextInt(studyFeatures.size)
+            val numFeatures = 1 + r.nextInt(studySettings.size)
             return StudySettings((0 until numFeatures).associate {
                 studySettings[it] to when (studySettings[it]) {
                     StudySettingType.DataCollection -> ChronicleDataCollectionSettings(if (r.nextBoolean()) AppUsageFrequency.DAILY else AppUsageFrequency.HOURLY)
@@ -212,6 +219,36 @@ class TestDataFactory {
                 modules = randomFeatures()
             )
         }
+
+        fun androidDevice() : AndroidDevice {
+            return AndroidDevice(
+                randomAlphanumeric(5),
+                randomAlphanumeric(5),
+                randomAlphanumeric(5),
+                randomAlphanumeric(5),
+                randomAlphanumeric(5),
+                randomAlphanumeric(5),
+                randomAlphanumeric(5),
+                randomAlphanumeric(5),
+                com.google.common.base.Optional.absent()
+            )
+        }
+
+        fun legacyChronicleUsageEvents(count: Int = 10): LegacyChronicleData {
+            val usageEvents = (0 until count).map {
+                val mm : SetMultimap<UUID, Any> = LinkedHashMultimap.create()
+                mm.put(LegacyEdmResolver.getPropertyTypeId(EdmConstants.FULL_NAME_FQN), randomAlphanumeric(5))
+                mm.put(LegacyEdmResolver.getPropertyTypeId(EdmConstants.RECORD_TYPE_FQN), randomAlphanumeric(5))
+                mm.put(LegacyEdmResolver.getPropertyTypeId(EdmConstants.DATE_LOGGED_FQN), OffsetDateTime.now())
+                mm.put(LegacyEdmResolver.getPropertyTypeId(EdmConstants.TIMEZONE_FQN), TimeZone.getDefault().id)
+                mm.put(LegacyEdmResolver.getPropertyTypeId(EdmConstants.USER_FQN), randomAlphanumeric(5))
+                mm.put(LegacyEdmResolver.getPropertyTypeId(EdmConstants.TITLE_FQN), randomAlphanumeric(5))
+                return@map mm
+            }
+
+            return LegacyChronicleData(usageEvents)
+        }
+
 
         fun chronicleUsageEvents(studyId: UUID, participantId: String, count: Int = 10): ChronicleData {
             val usageEvents = (0 until count).map {
