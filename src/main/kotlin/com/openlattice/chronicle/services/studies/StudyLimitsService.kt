@@ -11,11 +11,13 @@ import com.openlattice.chronicle.storage.ChroniclePostgresTables
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.STUDIES
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.STUDY_LIMITS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CREATED_AT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.DATA_EXPIRES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DATA_RETENTION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ENDED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.FEATURES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_LIMIT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_DURATION
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ENDS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.study.StudyDuration
@@ -67,15 +69,11 @@ class StudyLimitsService(
 
         private val STUDIES_EXCEEDING_DURATION_LIMIT = """
             SELECT * FROM ${STUDIES.name} INNER JOIN ${STUDY_LIMITS.name} USING (${STUDY_ID.name}) 
-            WHERE (now() - ${CREATED_AT.name}) > INTERVAL (${STUDY_DURATION.name}->>'years' || ' years ' || 
-                {$STUDY_DURATION.name}->>'months' || ' months ' || 
-                {$STUDY_DURATION.name}->>'days' || ' days ')
+            WHERE ${STUDY_ENDS.name} <= now()
         """.trimIndent()
         private val STUDIES_EXCEEDING_RETENTION_LIMIT = """
             SELECT * FROM ${STUDIES.name} INNER JOIN ${STUDY_LIMITS.name} USING (${STUDY_ID.name}) 
-            WHERE (now() - ${ENDED_AT.name}) > INTERVAL (${DATA_RETENTION.name}->>'years' || ' years ' || 
-                {$DATA_RETENTION.name}->>'months' || ' months ' || 
-                {$DATA_RETENTION.name}->>'days' || ' days ')
+            WHERE ${DATA_EXPIRES.name} <= now()
         """.trimIndent()
         private val COUNT_STUDY_PARTICIPANTS_SQL = """
             SELECT ${STUDY_ID.name}, count(*) FROM ${ChroniclePostgresTables.STUDY_PARTICIPANTS.name} WHERE ${STUDY_ID.name} = ANY(?)

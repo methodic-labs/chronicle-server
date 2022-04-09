@@ -107,8 +107,9 @@ class UpgradeService(private val storageResolver: StorageResolver) : PreHazelcas
     private fun upgradeStudyLimits(connection: Connection, studyIds: List<UUID>) {
         val studyLimits = StudyLimits(
             StudyDuration(Short.MAX_VALUE),
-            StudyDuration(Short.MAX_VALUE), Int.MAX_VALUE,
-            EnumSet.allOf(StudyFeature::class.java)
+            StudyDuration(Short.MAX_VALUE),
+            participantLimit = Int.MAX_VALUE,
+            features = EnumSet.allOf(StudyFeature::class.java)
         )
 
         connection.prepareStatement(INSERT_STUDY_LIMITS).use { ps ->
