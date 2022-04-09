@@ -8,7 +8,7 @@ import com.openlattice.chronicle.client.ChronicleClient
 import com.openlattice.chronicle.sources.AndroidDevice
 import com.openlattice.chronicle.sources.IOSDevice
 import com.openlattice.chronicle.study.Study
-import com.openlattice.chronicle.util.TestDataFactory
+import com.openlattice.chronicle.util.tests.TestDataFactory
 import org.apache.commons.lang3.RandomStringUtils
 import org.junit.Test
 import org.slf4j.LoggerFactory

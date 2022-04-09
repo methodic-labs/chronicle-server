@@ -65,6 +65,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPDATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_ID
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.study.Study
+import com.openlattice.chronicle.study.StudySetting
 import com.openlattice.chronicle.study.StudySettingType
 import com.openlattice.chronicle.study.StudyUpdate
 import com.openlattice.chronicle.util.ChronicleServerUtil
@@ -87,6 +88,7 @@ class StudyService(
     private val candidateService: CandidateManager,
     private val enrollmentService: EnrollmentManager,
     private val idGenerationService: HazelcastIdGenerationService,
+    private val studyLimitsMgr: StudyLimitsManager,
     override val auditingManager: AuditingManager,
     hazelcast: HazelcastInstance,
 ) : StudyManager, AuditingComponent {
@@ -124,8 +126,6 @@ class StudyService(
             TITLE,
             DESCRIPTION,
             UPDATED_AT,
-            STARTED_AT,
-            ENDED_AT,
             LAT,
             LON,
             STUDY_GROUP,
@@ -210,19 +210,17 @@ class StudyService(
         /**
          * 1. title,
          * 2. description,
-         * 3. updated_at,
-         * 4. started_at,
-         * 5. ended_at,
-         * 6. lat,
-         * 7. lon,
-         * 8. study_group,
-         * 9. study_version,
-         * 10. contact,
-         * 11. notifications enabled
-         * 12. storage
-         * 13. settings
-         * 14. modules
-         * 15. study_id
+         * 3. updated_at
+         * 4. lat,
+         * 5. lon,
+         * 6. study_group,
+         * 7. study_version,
+         * 8. contact,
+         * 9. notifications enabled
+         * 10. storage
+         * 11. settings
+         * 12. modules
+         * 13. study_id
          */
 
         private val UPDATE_STUDY_SQL = """
@@ -380,6 +378,7 @@ class StudyService(
     }
 
     override fun createStudy(connection: Connection, study: Study) {
+        studyLimitsMgr.initializeStudyLimits(connection, study.id)
         insertStudy(connection, study)
         insertOrgStudy(connection, study)
         authorizationService.createUnnamedSecurableObject(
@@ -456,22 +455,19 @@ class StudyService(
         connection.prepareStatement(UPDATE_STUDY_SQL).use { ps ->
             ps.setString(1, study.title)
             ps.setString(2, study.description)
-            ps.setObject(3, OffsetDateTime.now())
-            ps.setObject(4, study.startedAt)
-            ps.setObject(5, study.endedAt)
-            ps.setObject(6, study.lat)
-            ps.setObject(7, study.lon)
-            ps.setString(8, study.group)
-            ps.setString(9, study.version)
-            ps.setString(10, study.contact)
-            ps.setObject(11, study.notificationsEnabled)
-            ps.setString(12, study.storage)
-            ps.setObject(13, if (study.settings == null) null else mapper.writeValueAsString(study.settings))
-            ps.setString(14, if (study.modules == null) null else mapper.writeValueAsString(study.modules))
-            ps.setObject(15, studyId)
+            ps.setObject(3, OffsetDateTime.now()) //Set last updated field.
+            ps.setObject(4, study.lat)
+            ps.setObject(5, study.lon)
+            ps.setString(6, study.group)
+            ps.setString(7, study.version)
+            ps.setString(8, study.contact)
+            ps.setObject(9, study.notificationsEnabled)
+            ps.setString(10, study.storage)
+            ps.setObject(11, if (study.settings == null) null else mapper.writeValueAsString(study.settings))
+            ps.setString(12, if (study.modules == null) null else mapper.writeValueAsString(study.modules))
+            ps.setObject(13, studyId)
             ps.executeUpdate()
         }
-        studies.loadAll(setOf(studyId), true)
     }
 
     override fun getStudyPhoneNumber(studyId: UUID): String? {
@@ -527,6 +523,7 @@ class StudyService(
     }
 
     override fun registerParticipant(connection: Connection, studyId: UUID, participant: Participant): UUID {
+        studyLimitsMgr.reserveEnrollmentCapacity(connection, studyId)
         val candidateId = candidateService.registerCandidate(connection, participant.candidate)
         enrollmentService.registerParticipant(
             connection,
@@ -547,16 +544,20 @@ class StudyService(
 
         try {
             val studySettings =
-                getStudy(studyId).settings.getValue(StudySettingType.NOTIFICATIONS.key) as StudyNotificationSettings
+                getStudy(studyId).settings.getValue(StudySettingType.Notifications) as StudyNotificationSettings
 
             if (studySettings.notifyOnEnrollment) {
                 notificationService.sendNotifications(
                     connection,
                     studyId,
-                    listOf(ParticipantNotification(participant.participantId,
-                                                   NotificationType.ENROLLMENT,
-                                                   deliveryTypes,
-                                                   message = studySettings.getEnrollmentMessage()))
+                    listOf(
+                        ParticipantNotification(
+                            participant.participantId,
+                            NotificationType.ENROLLMENT,
+                            deliveryTypes,
+                            message = studySettings.getEnrollmentMessage()
+                        )
+                    )
                 )
             }
         } catch (ex: Exception) {
@@ -634,7 +635,7 @@ class StudyService(
         }
     }
 
-    override fun getStudySettings(studyId: UUID): Map<String, Any> {
+    override fun getStudySettings(studyId: UUID): Map<StudySettingType, StudySetting> {
         return storageResolver.getPlatformStorage().connection.use { connection ->
             connection.prepareStatement(GET_STUDY_SETTINGS_SQL).use { ps ->
                 ps.setObject(1, studyId)
@@ -648,7 +649,7 @@ class StudyService(
 
     override fun getStudySensors(studyId: UUID): Set<SensorType> {
         val settings = getStudySettings(studyId)
-        return settings[StudySettingType.SENSOR.key] as SensorSetting? ?: SensorSetting.NO_SENSORS
+        return settings[StudySettingType.Sensor] as SensorSetting? ?: SensorSetting.NO_SENSORS
     }
 
     override fun getStudyParticipantStats(studyId: UUID): Map<String, ParticipantStats> {
@@ -705,10 +706,23 @@ class StudyService(
                 ps.executeUpdate()
             }
         }
+
     }
 
     override fun getStudyParticipants(studyId: UUID): Iterable<Participant> {
         return selectStudyParticipants(studyId)
+    }
+
+    override fun countStudyParticipants(studyId: UUID): Long {
+        return studyLimitsMgr.countStudyParticipants(studyId)
+    }
+
+    override fun countStudyParticipants(connection: Connection, studyIds: Set<UUID>): Map<UUID, Long> {
+        return studyLimitsMgr.countStudyParticipants(connection, studyIds)
+    }
+
+    override fun countStudyParticipants(studyIds: Set<UUID>): Map<UUID, Long> {
+        return studyLimitsMgr.countStudyParticipants(studyIds)
     }
 
     private fun selectStudyParticipants(studyId: UUID): Iterable<Participant> {

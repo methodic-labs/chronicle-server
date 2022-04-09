@@ -58,4 +58,5 @@ enum class AuditEventType {
     QUEUE_NOTIFICATIONS,
     GET_ALL_STUDIES,
     NOTIFICATION_SENT,
+    SET_STUDY_LIMITS,
 }
