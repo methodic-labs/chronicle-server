@@ -49,9 +49,5 @@ class ChronicleConfigurationPod {
     fun upgradeService(): PreHazelcastUpgradeService {
         return UpgradeService(storageResolver())
     }
-
-    @Bean
-    fun fixUpgradeService(): FixUpgrade {
-        return FixUpgrade(storageResolver())
-    }
+    
 }
