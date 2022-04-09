@@ -77,12 +77,12 @@ class FixUpgrade(private val storageResolver: StorageResolver) : PreHazelcastUpg
                     val upgradeSettings = StudySettings(mapOf(
                         migrateDataCollectionSettings(settings),
                     ))
-
                     ps.setString(1, mapper.writeValueAsString(upgradeSettings))
                     ps.setObject(2, studyId)
                     ps.addBatch()
                 }
                 ps.executeBatch().sum()
+
             }
             connection.commit()
             logger.info("Upgrade $upgradedCount studies.")

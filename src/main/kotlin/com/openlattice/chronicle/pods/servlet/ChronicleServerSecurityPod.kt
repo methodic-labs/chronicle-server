@@ -52,6 +52,7 @@ class ChronicleServerSecurityPod : Auth0SecurityPod() {
             //v3 unauthenticated endpoints.
             .antMatchers(HttpMethod.POST, "/chronicle/v3/study/*/participant/*/ios/*").permitAll()
             .antMatchers(HttpMethod.POST, "/chronicle/v3/study/*/participant/*/android/*").permitAll()
+            .antMatchers(HttpMethod.POST, "/chronicle/v3/study/*/participant/*/*/enroll").permitAll()
             .antMatchers(HttpMethod.POST, "/chronicle/v3/time-use-diary/**").permitAll()
             .antMatchers(HttpMethod.GET, "/chronicle/v3/study/*/settings/sensors").permitAll()
             .antMatchers(HttpMethod.GET, "/chronicle/v3/study/*/settings").permitAll()
