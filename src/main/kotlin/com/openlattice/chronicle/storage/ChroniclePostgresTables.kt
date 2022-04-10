@@ -182,7 +182,7 @@ class ChroniclePostgresTables {
 
         @JvmField
         val STUDY_LIMITS = PostgresTableDefinition("study_limits")
-            .addColumns(STUDY_ID, PARTICIPANT_LIMIT, STUDY_DURATION, STUDY_ENDS, DATA_RETENTION, DATA_EXPIRES, FEATURES)
+            .addColumns(STUDY_ID, PARTICIPANT_LIMIT, STUDY_DURATION, DATA_RETENTION, STUDY_ENDS, DATA_EXPIRES, FEATURES)
             .primaryKey(STUDY_ID)
             .overwriteOnConflict()
 

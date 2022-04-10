@@ -33,7 +33,7 @@ class NotificationJobRunner(
     override fun runJob(connection: Connection, job: ChronicleJob): List<AuditableEvent> {
         val notification = job.definition as Notification
         when (notification.deliveryType) {
-            DeliveryType.SMS -> updateNotification(connection, twilioService.sendNotification(notification))
+            DeliveryType.SMS -> updateWithMessageId(connection, twilioService.sendNotification(notification))
             DeliveryType.EMAIL -> mailService.sendEmails(
                 listOf(EmailRequest(
                     to = listOf(notification.destination),
@@ -54,7 +54,7 @@ class NotificationJobRunner(
         ))
     }
 
-    private fun updateNotification(connection: Connection, notification: Notification) {
+    private fun updateWithMessageId(connection: Connection, notification: Notification) {
         connection.prepareStatement(UPDATE_NOTIFICATION_MESSAGE_ID_SQL).use { ps ->
             ps.setString(1, notification.messageId)
             ps.setObject(2, notification.id)

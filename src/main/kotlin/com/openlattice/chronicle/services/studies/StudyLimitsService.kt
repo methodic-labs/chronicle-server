@@ -37,15 +37,18 @@ class StudyLimitsService(
     companion object {
         private val mapper = ObjectMappers.newJsonMapper()
 
+        private val STUDY_LIMITS_COLS = STUDY_LIMITS.columns.joinToString(",") { it.name }
         /**
          * 1. STUDY_ID
          * 2. PARTICIPANT_LIMIT
          * 3. STUDY_DURATION
          * 4. DATA_RETENTION
-         * 5. FEATURES
+         * 5. STUDY_EXPIRES
+         * 6. STUDY_DATA_EXPIRES
+         * 7. FEATURES
          */
         private val INSERT_STUDY_LIMITS = """
-            INSERT INTO ${STUDY_LIMITS.name} VALUES(?,?,?::jsonb,?::jsonb,?) 
+            INSERT INTO ${STUDY_LIMITS.name}($STUDY_LIMITS_COLS) VALUES(?,?,?::jsonb,?::jsonb,?,?,?) 
         """.trimIndent()
         private val LOCK_STUDY = """
             SELECT 1 FROM ${STUDY_LIMITS.name} WHERE ${STUDY_ID.name} = ? FOR UPDATE
@@ -89,8 +92,10 @@ class StudyLimitsService(
             ps.setInt(2, studyLimits.participantLimit)
             ps.setString(3, mapper.writeValueAsString(studyLimits.studyDuration))
             ps.setString(4, mapper.writeValueAsString(studyLimits.dataRetentionDuration))
-            ps.setArray(5, PostgresArrays.createTextArray(ps.connection, studyLimits.features.map { it.name }))
-            ps.execute()
+            ps.setObject(5, studyLimits.studyEnds)
+            ps.setObject(6, studyLimits.studyDataExpires)
+            ps.setArray(7, PostgresArrays.createTextArray(ps.connection, studyLimits.features.map { it.name }))
+            ps.executeUpdate()
         }
     }
 
