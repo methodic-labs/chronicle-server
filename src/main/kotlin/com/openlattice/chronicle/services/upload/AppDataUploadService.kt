@@ -234,27 +234,40 @@ class AppDataUploadService(
         }
     }
 
-    private fun filter(
-        mappedData: Sequence<Map<String, UsageEventColumn>>
-    ): Sequence<Map<String, UsageEventColumn>> {
+    /**
+     * This filters out events that have a null date logged and handles both String date time times from legacy events
+     * and typed OffsetDateTime objects from non-legacy events.
+     */
+    private fun filter(mappedData: Sequence<Map<String, UsageEventColumn>>): Sequence<Map<String, UsageEventColumn>> {
         return mappedData.filter { mappedUsageEventCols ->
-            val eventDate = mappedUsageEventCols[FQNS_TO_COLUMNS.getValue(DATE_LOGGED_FQN).name]?.value as String
-            val dateLogged = parseDateTime(eventDate)
+            val eventDate = mappedUsageEventCols[FQNS_TO_COLUMNS.getValue(DATE_LOGGED_FQN).name]?.value
+            val dateLogged = if (eventDate != null) {
+                if (eventDate is String) parseDateTime(eventDate) else eventDate as OffsetDateTime
+            } else {
+                null
+            }
             dateLogged != null
         }
+    }
+
+    private fun <T> getUsageEventColumn(
+        pcd: PostgresColumnDefinition,
+        selector: () -> T
+    ): Pair<String, UsageEventColumn> {
+        return pcd.name to UsageEventColumn(pcd, getInsertUsageEventColumnIndex(pcd), selector())
     }
 
     private fun mapToStorageModel(data: List<ChronicleUsageEvent>): Sequence<Map<String, UsageEventColumn>> {
         return data.asSequence().map { usageEvent ->
             mapOf(
-                STUDY_ID.name to UsageEventColumn(STUDY_ID, getInsertUsageEventColumnIndex(STUDY_ID),usageEvent.studyId),
-                PARTICIPANT_ID.name to UsageEventColumn(STUDY_ID, getInsertUsageEventColumnIndex(STUDY_ID),usageEvent.participantId),
-                APP_PACKAGE_NAME.name to UsageEventColumn(STUDY_ID, getInsertUsageEventColumnIndex(STUDY_ID),usageEvent.appPackageName),
-                INTERACTION_TYPE.name to UsageEventColumn(STUDY_ID, getInsertUsageEventColumnIndex(STUDY_ID),usageEvent.interactionType),
-                TIMESTAMP.name to UsageEventColumn(STUDY_ID, getInsertUsageEventColumnIndex(STUDY_ID),usageEvent.timestamp),
-                TIMEZONE.name to UsageEventColumn(STUDY_ID, getInsertUsageEventColumnIndex(STUDY_ID),usageEvent.timezone),
-                USERNAME.name to UsageEventColumn(STUDY_ID, getInsertUsageEventColumnIndex(STUDY_ID),usageEvent.user),
-                APPLICATION_LABEL.name to UsageEventColumn(STUDY_ID, getInsertUsageEventColumnIndex(STUDY_ID),usageEvent.applicationLabel)
+                getUsageEventColumn(STUDY_ID) { usageEvent.studyId },
+                getUsageEventColumn(PARTICIPANT_ID) { usageEvent.participantId },
+                getUsageEventColumn(APP_PACKAGE_NAME) { usageEvent.appPackageName },
+                getUsageEventColumn(INTERACTION_TYPE) { usageEvent.interactionType },
+                getUsageEventColumn(TIMESTAMP) { usageEvent.timestamp },
+                getUsageEventColumn(TIMEZONE) { usageEvent.timezone },
+                getUsageEventColumn(USERNAME) { usageEvent.user },
+                getUsageEventColumn(APPLICATION_LABEL) { usageEvent.applicationLabel }
             )
         }
     }
@@ -342,9 +355,15 @@ class AppDataUploadService(
         }
     }
 
-    private fun updateParticipantStats(data:  Sequence<Map<String, UsageEventColumn>>, studyId: UUID, participantId: String) {
+    private fun updateParticipantStats(
+        data: Sequence<Map<String, UsageEventColumn>>,
+        studyId: UUID,
+        participantId: String
+    ) {
         // unique dates
-        val dates: MutableSet<OffsetDateTime> = data.map { OffsetDateTime.parse(it.getValue(RedshiftColumns.TIMESTAMP.name).value as String) }.toMutableSet()
+        val dates: MutableSet<OffsetDateTime> =
+            data.map { OffsetDateTime.parse(it.getValue(RedshiftColumns.TIMESTAMP.name).value as String) }
+                .toMutableSet()
 
         val currentStats = studyManager.getParticipantStats(studyId, participantId)
         currentStats?.androidFirstDate?.let {
