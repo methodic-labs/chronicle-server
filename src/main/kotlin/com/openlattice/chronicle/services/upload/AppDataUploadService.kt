@@ -241,11 +241,7 @@ class AppDataUploadService(
     private fun filter(mappedData: Sequence<Map<String, UsageEventColumn>>): Sequence<Map<String, UsageEventColumn>> {
         return mappedData.filter { mappedUsageEventCols ->
             val eventDate = mappedUsageEventCols[FQNS_TO_COLUMNS.getValue(DATE_LOGGED_FQN).name]?.value
-            val dateLogged = if (eventDate != null) {
-                if (eventDate is String) parseDateTime(eventDate) else eventDate as OffsetDateTime
-            } else {
-                null
-            }
+            val dateLogged = odtFromUsageEventColumn(eventDate)
             dateLogged != null
         }
     }
@@ -325,7 +321,7 @@ class AppDataUploadService(
                                         PostgresDatatype.TEXT -> ps.setString(colIndex, value as String)
                                         PostgresDatatype.TIMESTAMPTZ -> ps.setObject(
                                             colIndex,
-                                            OffsetDateTime.parse(value as String?)
+                                            odtFromUsageEventColumn(value)
                                         )
                                         PostgresDatatype.BIGINT -> ps.setLong(colIndex, value as Long)
                                         else -> ps.setObject(colIndex, value)
@@ -355,15 +351,24 @@ class AppDataUploadService(
         }
     }
 
+    private fun odtFromUsageEventColumn(value: Any?): OffsetDateTime? {
+        if (value == null) return null
+        return when (value) {
+            is String -> OffsetDateTime.parse(value)
+            is OffsetDateTime -> value
+            else -> throw UnsupportedOperationException("${value.javaClass.canonicalName} is not a supported date time class.")
+        }
+    }
+
     private fun updateParticipantStats(
         data: Sequence<Map<String, UsageEventColumn>>,
         studyId: UUID,
         participantId: String
     ) {
         // unique dates
-        val dates: MutableSet<OffsetDateTime> =
-            data.map { OffsetDateTime.parse(it.getValue(RedshiftColumns.TIMESTAMP.name).value as String) }
-                .toMutableSet()
+        val dates = data
+            .mapNotNull { odtFromUsageEventColumn(it.getValue(TIMESTAMP.name).value) }
+            .toMutableSet()
 
         val currentStats = studyManager.getParticipantStats(studyId, participantId)
         currentStats?.androidFirstDate?.let {
