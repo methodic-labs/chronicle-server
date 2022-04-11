@@ -70,9 +70,12 @@ class RedshiftColumns {
         @JvmField val DURATION_SECONDS = PostgresColumnDefinition("duration_seconds", PostgresDatatype.DOUBLE)
         @JvmField val RECORD_TYPE = PostgresColumnDefinition("record_type", PostgresDatatype.TEXT)
         @JvmField val DAY = PostgresColumnDefinition("day", PostgresDatatype.INTEGER)
-        @JvmField val APP_ENGAGE_30 = PostgresColumnDefinition("app_engage_30", PostgresDatatype.INTEGER)
-        @JvmField val SWITCHED_APP = PostgresColumnDefinition("app_switched_app", PostgresDatatype.INTEGER)
+        @JvmField val APP_ENGAGE_30S = PostgresColumnDefinition("app_engage_30s", PostgresDatatype.INTEGER)
+        @JvmField val APP_SWITCHED_APP = PostgresColumnDefinition("app_switched_app", PostgresDatatype.INTEGER)
         @JvmField val APP_USAGE_FLAGS = PostgresColumnDefinition("app_usage_flags", PostgresDatatype.INTEGER)
+        @JvmField val WEEKDAY_MONDAY_FRIDAY = PostgresColumnDefinition("weekday_MF", PostgresDatatype.INTEGER)
+        @JvmField val WEEKDAY_MONDAY_THURSDAY = PostgresColumnDefinition("weekday_MTh", PostgresDatatype.INTEGER)
+        @JvmField val WEEKDAY_SUNDAY_THURSDAY = PostgresColumnDefinition("weekday_STh", PostgresDatatype.INTEGER)
 
         //AUDIT
         @JvmField val SECURABLE_PRINCIPAL_ID = PostgresColumnDefinition("id", PostgresDatatype.TEXT_UUID).notNull()

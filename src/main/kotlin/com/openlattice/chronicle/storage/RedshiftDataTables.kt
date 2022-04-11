@@ -1,11 +1,10 @@
 package com.openlattice.chronicle.storage
 
 import com.geekbeast.postgres.PostgresColumnDefinition
-import com.geekbeast.postgres.PostgresTableDefinition
 import com.geekbeast.postgres.RedshiftTableDefinition
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.ACL_KEY
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APPLICATION_LABEL
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_ENGAGE_30
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_ENGAGE_30S
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_PACKAGE_NAME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_USAGE_FLAGS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.AUDIT_EVENT_TYPE
@@ -34,11 +33,14 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.SHARED_SENSOR
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.START_DATE_TIME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.START_TIME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.STUDY_ID
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.SWITCHED_APP
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_SWITCHED_APP
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMESTAMP
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMEZONE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.USERNAME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.WARNING
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.WEEKDAY_MONDAY_FRIDAY
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.WEEKDAY_MONDAY_THURSDAY
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.WEEKDAY_SUNDAY_THURSDAY
 
 /**
  *
@@ -117,8 +119,11 @@ class RedshiftDataTables {
                 DURATION_SECONDS,
                 WARNING,
                 DAY,
-                APP_ENGAGE_30,
-                SWITCHED_APP,
+                WEEKDAY_MONDAY_FRIDAY,
+                WEEKDAY_MONDAY_THURSDAY,
+                WEEKDAY_SUNDAY_THURSDAY,
+                APP_ENGAGE_30S,
+                APP_SWITCHED_APP,
                 APP_USAGE_FLAGS
             ).addDataSourceNames(REDSHIFT_DATASOURCE_NAME)
 
