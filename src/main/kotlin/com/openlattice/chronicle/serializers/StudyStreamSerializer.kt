@@ -29,7 +29,7 @@ import com.hazelcast.nio.ObjectDataInput
 import com.hazelcast.nio.ObjectDataOutput
 import com.openlattice.chronicle.hazelcast.StreamSerializerTypeIds
 import com.openlattice.chronicle.study.Study
-import com.openlattice.chronicle.util.TestDataFactory
+import com.openlattice.chronicle.util.tests.TestDataFactory
 import org.springframework.stereotype.Component
 import java.io.IOException
 

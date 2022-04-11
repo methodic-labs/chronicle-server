@@ -21,7 +21,7 @@ package com.openlattice.chronicle.serializers
 
 import com.openlattice.chronicle.serializers.AclKeyStreamSerializer.Companion.serialize
 import com.openlattice.chronicle.serializers.AclKeyStreamSerializer.Companion.deserialize
-import com.openlattice.chronicle.util.InternalTestDataFactory.Companion.aclKeySet
+import com.openlattice.chronicle.util.tests.InternalTestDataFactory.Companion.aclKeySet
 import com.geekbeast.hazelcast.serializers.TestableSelfRegisteringStreamSerializer
 import kotlin.Throws
 import java.io.IOException

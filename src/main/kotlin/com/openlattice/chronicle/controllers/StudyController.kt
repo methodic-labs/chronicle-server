@@ -3,7 +3,8 @@ package com.openlattice.chronicle.controllers
 import com.codahale.metrics.annotation.Timed
 import com.google.common.base.MoreObjects
 import com.hazelcast.core.HazelcastInstance
-import com.openlattice.chronicle.android.ChronicleDataUpload
+import com.openlattice.chronicle.android.ChronicleData
+import com.openlattice.chronicle.android.ChronicleSample
 import com.openlattice.chronicle.android.ChronicleUsageEvent
 import com.openlattice.chronicle.auditing.AuditEventType
 import com.openlattice.chronicle.auditing.AuditableEvent
@@ -435,7 +436,7 @@ class StudyController @Inject constructor(
         @PathVariable(STUDY_ID) studyId: UUID,
         @PathVariable(PARTICIPANT_ID) participantId: String,
         @PathVariable(SOURCE_DEVICE_ID) datasourceId: String,
-        @RequestBody data: List<ChronicleDataUpload>,
+        @RequestBody data: ChronicleData,
     ): Int {
         //TODO: I think we still needs this as long as there is an enrolled participant in a legacy study.
         val realStudyId = studyService.getStudyId(studyId)

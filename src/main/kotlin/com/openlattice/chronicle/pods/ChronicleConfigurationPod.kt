@@ -6,9 +6,8 @@ import com.geekbeast.mail.MailServiceConfig
 import com.geekbeast.rhizome.pods.ConfigurationLoader
 import com.openlattice.chronicle.configuration.ChronicleConfiguration
 import com.openlattice.chronicle.configuration.TwilioConfiguration
-import com.openlattice.chronicle.upgrades.UpgradeService
 import com.openlattice.chronicle.storage.StorageResolver
-import com.openlattice.chronicle.upgrades.FixUpgrade
+import com.openlattice.chronicle.upgrades.UpgradeService
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import javax.inject.Inject
@@ -50,8 +49,4 @@ class ChronicleConfigurationPod {
         return UpgradeService(storageResolver())
     }
 
-    @Bean
-    fun fixUpgradeService(): FixUpgrade {
-        return FixUpgrade(storageResolver())
-    }
 }

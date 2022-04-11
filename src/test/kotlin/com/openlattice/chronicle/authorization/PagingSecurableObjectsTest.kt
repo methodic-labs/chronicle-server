@@ -19,7 +19,7 @@
  */
 package com.openlattice.chronicle.authorization
 
-import com.openlattice.chronicle.util.TestDataFactory
+import com.openlattice.chronicle.util.tests.TestDataFactory
 import org.junit.Assert
 import org.junit.BeforeClass
 import org.junit.Test

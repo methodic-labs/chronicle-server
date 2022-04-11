@@ -7,15 +7,14 @@ import com.openlattice.chronicle.client.ChronicleClient
 import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.organizations.Organization
 import com.openlattice.chronicle.participants.Participant
-import com.openlattice.chronicle.util.TestDataFactory
+import com.openlattice.chronicle.sources.AndroidDevice
+import com.openlattice.chronicle.util.tests.TestDataFactory
+import com.openlattice.chronicle.util.tests.TestSourceDevice
 import org.junit.After
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
 import java.time.LocalDate
-import java.time.OffsetDateTime
-import java.time.ZoneId
-import java.time.ZoneOffset
 import java.util.UUID
 
 /**
@@ -236,5 +235,67 @@ class StudyTests : ChronicleServerTests() {
             val participant = TestDataFactory.participant(ParticipationStatus.ENROLLED)
             studyApi.registerParticipant(studyId, participant)
         }
+    }
+
+    @Test
+    fun testLegacyUsageEventUpload() {
+        val studyApi = chronicleClient.studyApi
+        val studyId = studyApi.createStudy(TestDataFactory.study())
+        val chroniclev2Api = chronicleClient.chronicleApi
+        val participant = TestDataFactory.participant(ParticipationStatus.ENROLLED)
+        studyApi.registerParticipant(studyId, participant)
+
+        val sourceDevice = TestDataFactory.androidDevice()
+        studyApi.enroll(studyId, participant.participantId, sourceDevice.deviceId, sourceDevice)
+
+        val chronicleData = TestDataFactory.legacyChronicleUsageEvents()
+        chroniclev2Api.upload(
+            UUID.randomUUID(),
+            studyId,
+            participant.participantId,
+            sourceDevice.deviceId,
+            chronicleData
+        )
+
+    }
+
+    @Test
+    fun testUsageEventUpload() {
+        val studyApi = chronicleClient.studyApi
+        val studyId = studyApi.createStudy(TestDataFactory.study())
+
+        val participant = TestDataFactory.participant(ParticipationStatus.ENROLLED)
+        studyApi.registerParticipant(studyId, participant)
+
+        val sourceDevice = TestDataFactory.androidDevice()
+        studyApi.enroll(studyId, participant.participantId, sourceDevice.deviceId, sourceDevice)
+
+        val chronicleData = TestDataFactory.chronicleUsageEvents(studyId, participant.participantId)
+        studyApi.uploadAndroidUsageEventData(
+            studyId,
+            participant.participantId,
+            sourceDevice.deviceId,
+            chronicleData
+        )
+    }
+
+    @Test(expected = RhizomeRetrofitCallException::class)
+    fun testUsageEventUploadWithUnknownDevice() {
+        val studyApi = chronicleClient.studyApi
+        val studyId = studyApi.createStudy(TestDataFactory.study())
+
+        val participant = TestDataFactory.participant(ParticipationStatus.ENROLLED)
+        studyApi.registerParticipant(studyId, participant)
+
+        val sourceDevice = TestSourceDevice()
+        studyApi.enroll(studyId, participant.participantId, sourceDevice.sourceDeviceId, sourceDevice)
+
+        val chronicleData = TestDataFactory.chronicleUsageEvents(studyId, participant.participantId)
+        studyApi.uploadAndroidUsageEventData(
+            studyId,
+            participant.participantId,
+            sourceDevice.sourceDeviceId,
+            chronicleData
+        )
     }
 }

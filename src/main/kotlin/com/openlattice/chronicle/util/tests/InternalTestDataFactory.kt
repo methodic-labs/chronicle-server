@@ -1,4 +1,4 @@
-package com.openlattice.chronicle.util
+package com.openlattice.chronicle.util.tests
 
 import com.geekbeast.rhizome.hazelcast.DelegatedIntList
 import com.openlattice.chronicle.authorization.AclKeySet
