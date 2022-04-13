@@ -59,7 +59,7 @@ class UpgradeService(private val storageResolver: StorageResolver) : PreHazelcas
          * 5. FEATURES
          */
         private val INSERT_STUDY_LIMITS = """
-            INSERT INTO ${ChroniclePostgresTables.STUDY_LIMITS.name} VALUES(?,?,?::jsonb,?::jsonb,?) 
+            INSERT INTO ${ChroniclePostgresTables.STUDY_LIMITS.name} VALUES(?,?,?::jsonb,?::jsonb,?,?,?) 
         """.trimIndent()
 
     }
@@ -118,7 +118,9 @@ class UpgradeService(private val storageResolver: StorageResolver) : PreHazelcas
                 ps.setInt(2, studyLimits.participantLimit)
                 ps.setString(3, mapper.writeValueAsString(studyLimits.studyDuration))
                 ps.setString(4, mapper.writeValueAsString(studyLimits.dataRetentionDuration))
-                ps.setArray(5, PostgresArrays.createTextArray(connection, studyLimits.features.map { it.name }))
+                ps.setObject(5, studyLimits.studyEnds)
+                ps.setObject(6, studyLimits.studyDataExpires)
+                ps.setArray(7, PostgresArrays.createTextArray(connection, studyLimits.features.map { it.name }))
                 ps.addBatch()
             }
             val count = ps.executeBatch().sum()
