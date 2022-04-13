@@ -47,6 +47,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.CATEGORY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.COMPLETED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CONTACT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CREATED_AT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.DATA_EXPIRES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DATA_RETENTION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DATE_OF_BIRTH
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DELETED_ROWS
@@ -100,6 +101,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.STARTED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STATUS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STORAGE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_DURATION
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ENDS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_GROUP
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_PHONE_NUMBER
@@ -319,10 +321,10 @@ class ResultSetAdapters {
 
 
         @Throws(SQLException::class)
-        fun legacyStudySettings(rs: ResultSet): Pair<UUID, Map<String, Any>> {
+        fun legacyStudySettings(rs: ResultSet): Pair<UUID, Pair<String,Map<String, Any>>> {
             val studyId = studyId(rs)
             val settings = mapper.readValue<Map<String, Any>>(rs.getString(SETTINGS.name))
-            return studyId to settings
+            return studyId to (title(rs) to settings)
 
         }
 
@@ -331,6 +333,8 @@ class ResultSetAdapters {
             return StudyLimits(
                 mapper.readValue(rs.getString(STUDY_DURATION.name)),
                 mapper.readValue(rs.getString(DATA_RETENTION.name)),
+                rs.getObject(STUDY_ENDS.name, OffsetDateTime::class.java),
+                rs.getObject(DATA_EXPIRES.name, OffsetDateTime::class.java),
                 rs.getInt(PARTICIPANT_LIMIT.name),
                 EnumSet.copyOf(PostgresArrays.getTextArray(rs, FEATURES.name).map(StudyFeature::valueOf))
             )

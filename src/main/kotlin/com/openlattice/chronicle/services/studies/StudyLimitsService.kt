@@ -11,11 +11,13 @@ import com.openlattice.chronicle.storage.ChroniclePostgresTables
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.STUDIES
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.STUDY_LIMITS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CREATED_AT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.DATA_EXPIRES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DATA_RETENTION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ENDED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.FEATURES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_LIMIT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_DURATION
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ENDS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.study.StudyDuration
@@ -35,15 +37,18 @@ class StudyLimitsService(
     companion object {
         private val mapper = ObjectMappers.newJsonMapper()
 
+        private val STUDY_LIMITS_COLS = STUDY_LIMITS.columns.joinToString(",") { it.name }
         /**
          * 1. STUDY_ID
          * 2. PARTICIPANT_LIMIT
          * 3. STUDY_DURATION
          * 4. DATA_RETENTION
-         * 5. FEATURES
+         * 5. STUDY_EXPIRES
+         * 6. STUDY_DATA_EXPIRES
+         * 7. FEATURES
          */
         private val INSERT_STUDY_LIMITS = """
-            INSERT INTO ${STUDY_LIMITS.name} VALUES(?,?,?::jsonb,?::jsonb,?) 
+            INSERT INTO ${STUDY_LIMITS.name}($STUDY_LIMITS_COLS) VALUES(?,?,?::jsonb,?::jsonb,?,?,?) 
         """.trimIndent()
         private val LOCK_STUDY = """
             SELECT 1 FROM ${STUDY_LIMITS.name} WHERE ${STUDY_ID.name} = ? FOR UPDATE
@@ -67,15 +72,11 @@ class StudyLimitsService(
 
         private val STUDIES_EXCEEDING_DURATION_LIMIT = """
             SELECT * FROM ${STUDIES.name} INNER JOIN ${STUDY_LIMITS.name} USING (${STUDY_ID.name}) 
-            WHERE (now() - ${CREATED_AT.name}) > INTERVAL (${STUDY_DURATION.name}->>'years' || ' years ' || 
-                {$STUDY_DURATION.name}->>'months' || ' months ' || 
-                {$STUDY_DURATION.name}->>'days' || ' days ')
+            WHERE ${STUDY_ENDS.name} <= now()
         """.trimIndent()
         private val STUDIES_EXCEEDING_RETENTION_LIMIT = """
             SELECT * FROM ${STUDIES.name} INNER JOIN ${STUDY_LIMITS.name} USING (${STUDY_ID.name}) 
-            WHERE (now() - ${ENDED_AT.name}) > INTERVAL (${DATA_RETENTION.name}->>'years' || ' years ' || 
-                {$DATA_RETENTION.name}->>'months' || ' months ' || 
-                {$DATA_RETENTION.name}->>'days' || ' days ')
+            WHERE ${DATA_EXPIRES.name} <= now()
         """.trimIndent()
         private val COUNT_STUDY_PARTICIPANTS_SQL = """
             SELECT ${STUDY_ID.name}, count(*) FROM ${ChroniclePostgresTables.STUDY_PARTICIPANTS.name} WHERE ${STUDY_ID.name} = ANY(?)
@@ -91,8 +92,10 @@ class StudyLimitsService(
             ps.setInt(2, studyLimits.participantLimit)
             ps.setString(3, mapper.writeValueAsString(studyLimits.studyDuration))
             ps.setString(4, mapper.writeValueAsString(studyLimits.dataRetentionDuration))
-            ps.setArray(5, PostgresArrays.createTextArray(ps.connection, studyLimits.features.map { it.name }))
-            ps.execute()
+            ps.setObject(5, studyLimits.studyEnds)
+            ps.setObject(6, studyLimits.studyDataExpires)
+            ps.setArray(7, PostgresArrays.createTextArray(ps.connection, studyLimits.features.map { it.name }))
+            ps.executeUpdate()
         }
     }
 
