@@ -321,10 +321,10 @@ class ResultSetAdapters {
 
 
         @Throws(SQLException::class)
-        fun legacyStudySettings(rs: ResultSet): Pair<UUID, Map<String, Any>> {
+        fun legacyStudySettings(rs: ResultSet): Pair<UUID, Pair<String,Map<String, Any>>> {
             val studyId = studyId(rs)
             val settings = mapper.readValue<Map<String, Any>>(rs.getString(SETTINGS.name))
-            return studyId to settings
+            return studyId to (title(rs) to settings)
 
         }
 
