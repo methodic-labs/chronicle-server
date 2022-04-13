@@ -73,14 +73,14 @@ class RedshiftColumns {
         @JvmField val APP_ENGAGE_30S = PostgresColumnDefinition("app_engage_30s", PostgresDatatype.INTEGER)
         @JvmField val APP_SWITCHED_APP = PostgresColumnDefinition("app_switched_app", PostgresDatatype.INTEGER)
         @JvmField val APP_USAGE_FLAGS = PostgresColumnDefinition("app_usage_flags", PostgresDatatype.TEXT)
-        @JvmField val WEEKDAY_MONDAY_FRIDAY = PostgresColumnDefinition("\"weekday_MF\"", PostgresDatatype.INTEGER)
-        @JvmField val WEEKDAY_MONDAY_THURSDAY = PostgresColumnDefinition("\"weekday_MTh\"", PostgresDatatype.INTEGER)
-        @JvmField val WEEKDAY_SUNDAY_THURSDAY = PostgresColumnDefinition("\"weekday_STh\"", PostgresDatatype.INTEGER)
+        @JvmField val WEEKDAY_MONDAY_FRIDAY = PostgresColumnDefinition("\"weekdayMF\"", PostgresDatatype.INTEGER)
+        @JvmField val WEEKDAY_MONDAY_THURSDAY = PostgresColumnDefinition("\"weekdayMTh\"", PostgresDatatype.INTEGER)
+        @JvmField val WEEKDAY_SUNDAY_THURSDAY = PostgresColumnDefinition("\"weekdaySTh\"", PostgresDatatype.INTEGER)
         @JvmField val APP_TIMEZONE = PostgresColumnDefinition("app_timezone", PostgresDatatype.TEXT)
         @JvmField val APP_DATETIME_START = PostgresColumnDefinition("app_datetime_start", PostgresDatatype.TIMESTAMPTZ)
         @JvmField val APP_DATETIME_END = PostgresColumnDefinition("app_datetime_end", PostgresDatatype.TIMESTAMPTZ)
         @JvmField val DATE_WITH_TIMEZONE = PostgresColumnDefinition("date_tzaware", PostgresDatatype.TIMESTAMPTZ)
-        @JvmField val APP_TITLE = PostgresColumnDefinition("app_title", PostgresDatatype.TEXT)
+        @JvmField val APP_TITLE = PostgresColumnDefinition("app_title", PostgresDatatype.TEXT).notNull()
         @JvmField val APP_FULL_NAME = PostgresColumnDefinition("app_full_name", PostgresDatatype.TEXT).notNull()
 
         //AUDIT
