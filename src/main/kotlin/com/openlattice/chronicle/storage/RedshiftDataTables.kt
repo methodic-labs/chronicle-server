@@ -103,7 +103,7 @@ class RedshiftDataTables {
 
         @JvmField
         val PREPROCESSED_USAGE_EVENTS = RedshiftTableDefinition("preprocessed_usage_events")
-            .sortKey(ACL_KEY)
+            .sortKey(STUDY_ID)
             .addColumns(
                 STUDY_ID,
                 PARTICIPANT_ID,
