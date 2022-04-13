@@ -532,7 +532,12 @@ class StudyController @Inject constructor(
     ): Iterable<Map<String, Any>> {
         ensureReadAccess(AclKey(studyId))
         return when (dataType) {
-            ParticipantDataType.Preprocessed -> TODO("Not implemented")
+            ParticipantDataType.Preprocessed -> downloadService.getPreprocessedUsageEventsData(
+                studyId,
+                participantIds,
+                startDateTime,
+                endDateTime
+            )
             ParticipantDataType.AppUsageSurvey -> downloadService.getParticipantsAppUsageSurveyData(
                 studyId,
                 participantIds,
