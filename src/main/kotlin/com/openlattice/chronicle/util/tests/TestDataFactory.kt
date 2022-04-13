@@ -254,12 +254,13 @@ class TestDataFactory {
             val usageEvents = (0 until count).map {
                 ChronicleUsageEvent(
                     studyId,
-                    participantId, RandomStringUtils.randomAlphanumeric(5),
-                    randomAlphanumeric(5),
+                    participantId,
+                    RandomStringUtils.randomAlphanumeric(5),
+                    RandomStringUtils.randomAlphanumeric(5),
                     OffsetDateTime.now(),
                     TimeZone.getDefault().id,
-                    randomAlphanumeric(5),
-                    randomAlphanumeric(5)
+                    RandomStringUtils.randomAlphanumeric(5),
+                    RandomStringUtils.randomAlphanumeric(5)
                 )
             }
 

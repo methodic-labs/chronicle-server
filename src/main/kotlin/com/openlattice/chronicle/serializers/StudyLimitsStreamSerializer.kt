@@ -24,6 +24,7 @@ import com.hazelcast.nio.ObjectDataOutput
 import com.openlattice.chronicle.hazelcast.StreamSerializerTypeIds
 import com.geekbeast.hazelcast.serializers.TestableSelfRegisteringStreamSerializer
 import com.geekbeast.rhizome.hazelcast.serializers.SetStreamSerializers
+import com.hazelcast.internal.serialization.impl.defaultserializers.JavaDefaultSerializers
 import com.openlattice.chronicle.study.StudyDuration
 import com.openlattice.chronicle.study.StudyFeature
 import com.openlattice.chronicle.study.StudyLimits
@@ -38,6 +39,7 @@ import java.util.*
 class StudyLimitsStreamSerializer : TestableSelfRegisteringStreamSerializer<StudyLimits> {
     companion object {
         private val lookup = StudyFeature.values()
+        private val odtSerializer = JavaDefaultSerializers.OffsetDateTimeSerializer()
 
         @JvmStatic
         @Throws(IOException::class)
@@ -85,6 +87,8 @@ class StudyLimitsStreamSerializer : TestableSelfRegisteringStreamSerializer<Stud
         SetStreamSerializers.serialize(out, obj.features) { studyFeature -> serialize(out, studyFeature) }
         serializeStudyDuration(out, obj.studyDuration)
         serializeStudyDuration(out, obj.dataRetentionDuration)
+        odtSerializer.write(out, obj.studyEnds)
+        odtSerializer.write(out, obj.studyDataExpires)
 
     }
 
@@ -93,7 +97,8 @@ class StudyLimitsStreamSerializer : TestableSelfRegisteringStreamSerializer<Stud
         val studyFeatures = EnumSet.copyOf(SetStreamSerializers.deserialize(input) { deserialize(input) })
         val studyDuration = deserializeStudyDuration(input)
         val dataRetention = deserializeStudyDuration(input)
-
-        return StudyLimits(studyDuration, dataRetention, participantLimit, studyFeatures)
+        val studyEnds = odtSerializer.read(input)
+        val studyDataExpires = odtSerializer.read(input)
+        return StudyLimits(studyDuration, dataRetention, studyEnds, studyDataExpires, participantLimit, studyFeatures)
     }
 }
