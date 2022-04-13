@@ -6,6 +6,7 @@ import com.geekbeast.mappers.mappers.ObjectMappers
 import com.geekbeast.postgres.PostgresArrays
 import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.StatementHolderSupplier
+import com.openlattice.chronicle.notifications.StudyNotificationSettings
 import com.openlattice.chronicle.organizations.ChronicleDataCollectionSettings
 import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.sensorkit.SensorSetting
@@ -16,6 +17,7 @@ import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.STUDI
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.MODULES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SETTINGS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.TITLE
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.study.*
 import org.slf4j.LoggerFactory
@@ -39,7 +41,7 @@ class UpgradeService(private val storageResolver: StorageResolver) : PreHazelcas
             ALTER TABLE ${STUDIES.name} ADD COLUMN IF NOT EXISTS ${MODULES.name} ${MODULES.datatype.sql()} DEFAULT '{}'
         """.trimIndent()
         private val LEGACY_STUDY_SETTINGS_SQL = """
-                 SELECT ${STUDY_ID.name},${SETTINGS.name} FROM ${STUDIES.name}
+                 SELECT ${STUDY_ID.name},${SETTINGS.name},${TITLE.name} FROM ${STUDIES.name}
                    WHERE ${SETTINGS.name} ? 'appUsageFrequency'
             """.trimIndent()
         private val UPDATE_LEGACY_STUDY = """
@@ -70,7 +72,7 @@ class UpgradeService(private val storageResolver: StorageResolver) : PreHazelcas
         ) {
             ResultSetAdapters.legacyStudySettings(it)
         }.toMap()
-        if( legacySettings.isEmpty() ) {
+        if (legacySettings.isEmpty()) {
             return
         }
         val studyIds = BasePostgresIterable(
@@ -81,12 +83,14 @@ class UpgradeService(private val storageResolver: StorageResolver) : PreHazelcas
             connection.autoCommit = false
             connection.createStatement().use { s -> s.execute(ADD_COLUMN_SQL) }
             val upgradedCount = connection.prepareStatement(UPDATE_LEGACY_STUDY).use { ps ->
-                legacySettings.forEach { (studyId, settings) ->
+                legacySettings.forEach { (studyId, legacyStudyInfo) ->
+                    val (title, settings) = legacyStudyInfo
                     modulesMap[studyId] = migrateComponents(settings)
                     val upgradeSettings = StudySettings(
                         mapOf(
                             migrateDataCollectionSettings(settings),
-                            migrateSensorSettings(settings)
+                            migrateSensorSettings(settings),
+                            StudySettingType.Notifications to StudyNotificationSettings("", title)
                         )
                     )
 
