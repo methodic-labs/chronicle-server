@@ -79,7 +79,7 @@ class RedshiftColumns {
         @JvmField val APP_TIMEZONE = PostgresColumnDefinition("app_timezone", PostgresDatatype.TEXT)
         @JvmField val APP_DATETIME_START = PostgresColumnDefinition("app_datetime_start", PostgresDatatype.TIMESTAMPTZ)
         @JvmField val APP_DATETIME_END = PostgresColumnDefinition("app_datetime_end", PostgresDatatype.TIMESTAMPTZ)
-        @JvmField val DATE_WITH_TIMEZONE = PostgresColumnDefinition("date_tzaware", PostgresDatatype.TIMESTAMPTZ).notNull()
+        @JvmField val DATE_WITH_TIMEZONE = PostgresColumnDefinition("startdate_tzaware", PostgresDatatype.TIMESTAMPTZ).notNull()
         @JvmField val APP_TITLE = PostgresColumnDefinition("app_title", PostgresDatatype.TEXT).notNull()
         @JvmField val APP_FULL_NAME = PostgresColumnDefinition("app_full_name", PostgresDatatype.TEXT).notNull()
 
