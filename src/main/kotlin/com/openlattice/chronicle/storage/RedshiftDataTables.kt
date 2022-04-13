@@ -4,7 +4,10 @@ import com.geekbeast.postgres.PostgresColumnDefinition
 import com.geekbeast.postgres.RedshiftTableDefinition
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.ACL_KEY
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APPLICATION_LABEL
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_DATETIME_END
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_DATETIME_START
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_ENGAGE_30S
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_FULL_NAME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_PACKAGE_NAME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_USAGE_FLAGS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.AUDIT_EVENT_TYPE
@@ -14,7 +17,7 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DAY
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DESCRIPTION
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DEVICE_USAGE_SENSOR_COLS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DURATION
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DURATION_SECONDS
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_DURATION_SECONDS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.END_DATE_TIME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.END_TIME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.INTERACTION_TYPE
@@ -27,17 +30,19 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PARTICIPANT_I
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PHONE_USAGE_SENSOR_COLS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PRINCIPAL_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PRINCIPAL_TYPE
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.RECORD_TYPE
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_RECORD_TYPE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.SECURABLE_PRINCIPAL_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.SHARED_SENSOR_COLS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.START_DATE_TIME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.START_TIME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_SWITCHED_APP
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_TIMEZONE
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_TITLE
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DATE_WITH_TIMEZONE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMESTAMP
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMEZONE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.USERNAME
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.WARNING
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.WEEKDAY_MONDAY_FRIDAY
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.WEEKDAY_MONDAY_THURSDAY
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.WEEKDAY_SUNDAY_THURSDAY
@@ -107,17 +112,14 @@ class RedshiftDataTables {
             .addColumns(
                 STUDY_ID,
                 PARTICIPANT_ID,
-                APPLICATION_LABEL.notNull(),
-                APP_PACKAGE_NAME.notNull(),
-                START_DATE_TIME,
-                END_DATE_TIME,
-                TIMEZONE,
-                DATE,
-                RECORD_TYPE,
-                NEW_PERIOD,
-                NEW_APP,
-                DURATION_SECONDS,
-                WARNING,
+                APP_RECORD_TYPE,
+                APP_TITLE,
+                APP_FULL_NAME,
+                APP_DATETIME_START,
+                APP_DATETIME_END,
+                APP_TIMEZONE,
+                DATE_WITH_TIMEZONE,
+                APP_DURATION_SECONDS,
                 DAY,
                 WEEKDAY_MONDAY_FRIDAY,
                 WEEKDAY_MONDAY_THURSDAY,
