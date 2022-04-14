@@ -37,9 +37,6 @@ import java.nio.charset.StandardCharsets
 @EnableGlobalMethodSecurity(prePostEnabled = true)
 @EnableWebSecurity(debug = false)
 @EnableMetrics
-@ComponentScan(
-    basePackages = ["com.geekbeast.rhizome.core"]
-)
 class ChronicleServerSecurityPod : Auth0SecurityPod() {
     @Throws(Exception::class)
     override fun authorizeRequests(http: HttpSecurity) {
