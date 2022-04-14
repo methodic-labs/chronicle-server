@@ -313,19 +313,24 @@ class AppDataUploadService(
                                 val colIndex = usageEventCol.colIndex
                                 val value = usageEventCol.value
 
-                                //Set insert value to null, if value was not provided.
-                                if (value == null) {
-                                    ps.setObject(colIndex, null)
-                                } else {
-                                    when (col.datatype) {
-                                        PostgresDatatype.TEXT -> ps.setString(colIndex, value as String)
-                                        PostgresDatatype.TIMESTAMPTZ -> ps.setObject(
-                                            colIndex,
-                                            odtFromUsageEventColumn(value)
-                                        )
-                                        PostgresDatatype.BIGINT -> ps.setLong(colIndex, value as Long)
-                                        else -> ps.setObject(colIndex, value)
+                                try {
+                                    //Set insert value to null, if value was not provided.
+                                    if (value == null) {
+                                        ps.setObject(colIndex, null)
+                                    } else {
+                                        when (col.datatype) {
+                                            PostgresDatatype.TEXT -> ps.setString(colIndex, value as String)
+                                            PostgresDatatype.TIMESTAMPTZ -> ps.setObject(
+                                                colIndex,
+                                                odtFromUsageEventColumn(value)
+                                            )
+                                            PostgresDatatype.BIGINT -> ps.setLong(colIndex, value as Long)
+                                            else -> ps.setObject(colIndex, value)
+                                        }
                                     }
+                                } catch(ex :Exception ) {
+                                    logger.info("Error writing $usageEventCol", ex)
+                                    throw ex
                                 }
                             }
                             ps.addBatch()
