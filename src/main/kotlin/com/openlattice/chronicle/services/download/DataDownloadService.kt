@@ -14,7 +14,15 @@ import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.APP_U
 import com.openlattice.chronicle.storage.PostgresColumns
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_USERS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APPLICATION_LABEL
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_DATETIME_END
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_DATETIME_START
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_FULL_NAME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_PACKAGE_NAME
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_RECORD_TYPE
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_TIMEZONE
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_TITLE
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DATE_WITH_TIMEZONE
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DAY
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DEVICE_USAGE_SENSOR_COLS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.INTERACTION_TYPE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.KEYBOARD_METRICS_SENSOR_COLS
@@ -30,9 +38,11 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMEZONE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.USERNAME
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.CHRONICLE_USAGE_EVENTS
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.IOS_SENSOR_DATA
+import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.PREPROCESSED_USAGE_EVENTS
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.util.ChronicleServerUtil
 import org.slf4j.LoggerFactory
+import java.lang.RuntimeException
 import java.sql.ResultSet
 import java.time.OffsetDateTime
 import java.time.ZoneId
@@ -58,6 +68,25 @@ class DataDownloadService(
             AND ${TIMESTAMP.name} < ?
         """.trimIndent()
 
+        private val PREPROCESSED_DATA_COLS = PREPROCESSED_USAGE_EVENTS.columns.map { it.name }
+        private val PREPROCESSED_DATA_COLS_STR = PREPROCESSED_DATA_COLS.joinToString(", ")
+
+        /**
+         * PreparedStatement binding
+         * 1) studyId
+         * 2) participant ids
+         * 3) startDate
+         * 4) endDate
+         */
+        private val PREPROCESSED_DATA_SQL = """
+            SELECT $PREPROCESSED_DATA_COLS_STR
+            FROM ${PREPROCESSED_USAGE_EVENTS.name}
+            WHERE ${STUDY_ID.name} = ?
+            AND ${PARTICIPANT_ID.name} = ANY(?)
+            AND ${DATE_WITH_TIMEZONE.name} >= ?
+            AND ${DATE_WITH_TIMEZONE.name} < ?
+        """.trimIndent()
+
         private val APP_USAGE_SURVEY_COLS = APP_USAGE_SURVEY.columns.joinToString { it.name }
 
         val APP_USAGE_SURVEY_SQL = """
@@ -72,6 +101,8 @@ class DataDownloadService(
         private const val FETCH_SIZE = 32768
 
         fun associateString(rs: ResultSet, pcd: PostgresColumnDefinition) = pcd.name to rs.getString(pcd.name)
+        fun associateInteger(rs: ResultSet, pcd: PostgresColumnDefinition) = pcd.name to rs.getInt(pcd.name)
+        fun associateDouble(rs: ResultSet, pcd: PostgresColumnDefinition) = pcd.name to rs.getDouble(pcd.name)
         fun associateOffsetDatetimeWithTimezone(
             rs: ResultSet,
             timezoneColumn: PostgresColumnDefinition,
@@ -268,6 +299,46 @@ class DataDownloadService(
         }
 
         return PostgresDownloadWrapper(pgIter).withColumnAdvice(CHRONICLE_USAGE_EVENTS.columns.map { it.name })
+    }
+
+    override fun getPreprocessedUsageEventsData(
+        studyId: UUID,
+        participantIds: Set<String>,
+        startDateTime: OffsetDateTime,
+        endDateTime: OffsetDateTime
+    ): Iterable<Map<String, Any>> {
+        val (_, hds) = storageResolver.resolveAndGetFlavor(studyId)
+
+        val resultSetAwareCols = PREPROCESSED_USAGE_EVENTS.columns.map {
+            val name = it.name.replace("\"", "")
+            PostgresColumnDefinition(name, it.datatype)
+        }
+        val pgIterable = BasePostgresIterable<Map<String, Any>>(
+            PreparedStatementHolderSupplier(
+                hds,
+                PREPROCESSED_DATA_SQL,
+                FETCH_SIZE
+            ) { ps ->
+                var index = 0
+                ps.setString(++index, studyId.toString())
+                ps.setArray(++index, PostgresArrays.createTextArray(hds.connection, participantIds))
+                ps.setObject(++index, startDateTime)
+                ps.setObject(++index, endDateTime)
+            }
+        ) { rs ->
+            resultSetAwareCols.associate {
+                when(it.datatype) {
+                    PostgresDatatype.TEXT -> associateString(rs, it)
+                    PostgresDatatype.TIMESTAMPTZ -> associateOffsetDatetimeWithTimezone(rs, APP_TIMEZONE, it)
+                    PostgresDatatype.TEXT_UUID -> associateString(rs, it)
+                    PostgresDatatype.INTEGER -> associateInteger(rs, it)
+                    PostgresDatatype.DOUBLE -> associateDouble(rs, it)
+                    else -> throw RuntimeException("Invalid column type: ${it.datatype}")
+                }
+            }
+        }
+
+        return PostgresDownloadWrapper(pgIterable).withColumnAdvice(resultSetAwareCols.map { it.name })
     }
 
     override fun getQuestionnaireResponses(
