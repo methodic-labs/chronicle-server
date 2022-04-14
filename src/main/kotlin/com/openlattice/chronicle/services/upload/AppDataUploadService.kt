@@ -256,8 +256,8 @@ class AppDataUploadService(
     private fun mapToStorageModel(data: List<ChronicleUsageEvent>): Sequence<Map<String, UsageEventColumn>> {
         return data.asSequence().map { usageEvent ->
             mapOf(
-                getUsageEventColumn(STUDY_ID) { usageEvent.studyId },
-                getUsageEventColumn(PARTICIPANT_ID) { usageEvent.participantId },
+//                getUsageEventColumn(STUDY_ID) { usageEvent.studyId },
+//                getUsageEventColumn(PARTICIPANT_ID) { usageEvent.participantId },
                 getUsageEventColumn(APP_PACKAGE_NAME) { usageEvent.appPackageName },
                 getUsageEventColumn(INTERACTION_TYPE) { usageEvent.interactionType },
                 getUsageEventColumn(TIMESTAMP) { usageEvent.timestamp },
