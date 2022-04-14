@@ -23,6 +23,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 import com.ryantenney.metrics.spring.config.annotation.EnableMetrics
 import com.geekbeast.auth0.Auth0SecurityPod
+import org.springframework.context.annotation.ComponentScan
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpMethod
 import kotlin.Throws
@@ -36,6 +37,9 @@ import java.nio.charset.StandardCharsets
 @EnableGlobalMethodSecurity(prePostEnabled = true)
 @EnableWebSecurity(debug = false)
 @EnableMetrics
+@ComponentScan(
+    basePackages = ["com.geekbeast.rhizome.core"]
+)
 class ChronicleServerSecurityPod : Auth0SecurityPod() {
     @Throws(Exception::class)
     override fun authorizeRequests(http: HttpSecurity) {
