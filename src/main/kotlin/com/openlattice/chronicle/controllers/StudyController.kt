@@ -1,10 +1,10 @@
 package com.openlattice.chronicle.controllers
 
 import com.codahale.metrics.annotation.Timed
+import com.geekbeast.controllers.exceptions.ForbiddenException
 import com.google.common.base.MoreObjects
 import com.hazelcast.core.HazelcastInstance
 import com.openlattice.chronicle.android.ChronicleData
-import com.openlattice.chronicle.android.ChronicleSample
 import com.openlattice.chronicle.android.ChronicleUsageEvent
 import com.openlattice.chronicle.auditing.AuditEventType
 import com.openlattice.chronicle.auditing.AuditableEvent
@@ -13,6 +13,7 @@ import com.openlattice.chronicle.auditing.AuditingManager
 import com.openlattice.chronicle.authorization.*
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.base.OK
+import com.openlattice.chronicle.base.OK.Companion.ok
 import com.openlattice.chronicle.data.FileType
 import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.deletion.*
@@ -23,6 +24,7 @@ import com.openlattice.chronicle.organizations.ChronicleDataCollectionSettings
 import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.participants.ParticipantStats
 import com.openlattice.chronicle.sensorkit.SensorDataSample
+import com.openlattice.chronicle.sensorkit.SensorSetting
 import com.openlattice.chronicle.sensorkit.SensorType
 import com.openlattice.chronicle.services.download.DataDownloadService
 import com.openlattice.chronicle.services.enrollment.EnrollmentService
@@ -127,6 +129,10 @@ class StudyController @Inject constructor(
         produces = [MediaType.APPLICATION_JSON_VALUE],
     )
     override fun createStudy(@RequestBody study: Study): UUID {
+        if (study.settings.containsKey(StudySettingType.Sensor) && !isAdmin()) {
+            throw ForbiddenException("Only admins can modify sensor types.")
+        }
+
         ensureAuthenticated()
         study.organizationIds.forEach { organizationId -> ensureOwnerAccess(AclKey(organizationId)) }
         logger.info("Creating study associated with organizations ${study.organizationIds}")
@@ -195,6 +201,26 @@ class StudyController @Inject constructor(
     }
 
     @Timed
+    @PutMapping(
+        path = [STUDY_ID_PATH + SETTINGS_PATH + SENSORS_PATH],
+        consumes = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    override fun updateStudyAppleSettings(
+        @PathVariable(STUDY_ID) studyId: UUID,
+        @RequestBody sensorSetting: SensorSetting
+    ): OK {
+        ensureAdminAccess()
+
+        //We don't need to resolve real study id as this won't ever be called from legacy clients.
+        val study = studyService.getStudy(studyId)
+        val studySettings = study.settings.toMutableMap()
+        studySettings[ StudySettingType.Sensor ] = sensorSetting
+        updateStudy(studyId, StudyUpdate(settings = StudySettings(studySettings)))
+
+        return ok
+    }
+
+    @Timed
     @PatchMapping(
         path = [STUDY_ID_PATH],
         consumes = [MediaType.APPLICATION_JSON_VALUE]
@@ -204,6 +230,10 @@ class StudyController @Inject constructor(
         @RequestBody study: StudyUpdate,
         @RequestParam(value = RETRIEVE, required = false, defaultValue = "false") retrieve: Boolean,
     ): Study? {
+        if (study.settings?.containsKey(StudySettingType.Sensor) == true && !isAdmin()) {
+            throw ForbiddenException("Only admins can modify sensor types.")
+        }
+
         val studyAclKey = AclKey(studyId)
         ensureOwnerAccess(studyAclKey)
         val currentUser = Principals.getCurrentSecurablePrincipal()
