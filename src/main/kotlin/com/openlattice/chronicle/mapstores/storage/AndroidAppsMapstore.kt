@@ -19,6 +19,9 @@ import java.sql.ResultSet
 
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
+ *
+ * Read/Write cache that stores a mapping of known android app package names to human friendly values
+ * Note: Deleting from this store is NOT allowed
  */
 
 @Component
