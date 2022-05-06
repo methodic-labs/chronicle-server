@@ -88,7 +88,6 @@ class AndroidAppsMapstore(val hds: HikariDataSource) :
                 map.forEach { (appPackageName, applicationLabel) ->
                     ps.setString(1, appPackageName)
                     ps.setString(2, applicationLabel)
-                    ps.setString(3, applicationLabel)
                     ps.addBatch()
                 }
                 ps.executeBatch()
