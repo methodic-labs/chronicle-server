@@ -51,6 +51,8 @@ import com.openlattice.chronicle.organizations.initializers.OrganizationsInitial
 import com.openlattice.chronicle.organizations.initializers.OrganizationsInitializationTask
 import com.openlattice.chronicle.serializers.FullQualifiedNameJacksonSerializer.registerWithMapper
 import com.openlattice.chronicle.services.ScheduledTasksManager
+import com.openlattice.chronicle.services.android.AndroidApplicationLabelResolutionManager
+import com.openlattice.chronicle.services.android.AndroidApplicationLabelResolutionService
 import com.openlattice.chronicle.services.candidates.CandidateService
 import com.openlattice.chronicle.services.delete.DataDeletionManager
 import com.openlattice.chronicle.services.delete.DataDeletionService
@@ -200,7 +202,7 @@ class ChronicleServerServicesPod {
     @Bean
     @Throws(IOException::class, ExecutionException::class)
     fun dataDownloadManager(): DataDownloadManager {
-        return DataDownloadService(storageResolver)
+        return DataDownloadService(storageResolver, applicationLabelResolver())
     }
 
     @Bean
@@ -236,6 +238,7 @@ class ChronicleServerServicesPod {
             storageResolver,
             enrollmentManager(),
             scheduledTasksManager(),
+            applicationLabelResolver(),
             auditingManager(),
             idGenerationService(),
         )
@@ -442,6 +445,11 @@ class ChronicleServerServicesPod {
             studyLimitsManager(),
             studyService()
         )
+    }
+
+    @Bean
+    fun applicationLabelResolver(): AndroidApplicationLabelResolutionManager {
+        return AndroidApplicationLabelResolutionService(hazelcast)
     }
 
     companion object {

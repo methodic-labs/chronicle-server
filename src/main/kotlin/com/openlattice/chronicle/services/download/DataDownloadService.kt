@@ -9,20 +9,15 @@ import com.openlattice.chronicle.constants.OutputConstants
 import com.openlattice.chronicle.constants.ParticipantDataType
 import com.openlattice.chronicle.converters.PostgresDownloadWrapper
 import com.openlattice.chronicle.sensorkit.SensorType
+import com.openlattice.chronicle.services.android.AndroidApplicationLabelResolutionManager
 import com.openlattice.chronicle.services.surveys.SurveysService
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.APP_USAGE_SURVEY
 import com.openlattice.chronicle.storage.PostgresColumns
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_USERS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APPLICATION_LABEL
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_DATETIME_END
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_DATETIME_START
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_FULL_NAME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_PACKAGE_NAME
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_RECORD_TYPE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_TIMEZONE
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_TITLE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DATE_WITH_TIMEZONE
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DAY
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DEVICE_USAGE_SENSOR_COLS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.INTERACTION_TYPE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.KEYBOARD_METRICS_SENSOR_COLS
@@ -42,7 +37,6 @@ import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.PREPROCESS
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.util.ChronicleServerUtil
 import org.slf4j.LoggerFactory
-import java.lang.RuntimeException
 import java.sql.ResultSet
 import java.time.OffsetDateTime
 import java.time.ZoneId
@@ -54,6 +48,7 @@ import java.util.*
  */
 class DataDownloadService(
     private val storageResolver: StorageResolver,
+    private val applicationLabelResolver: AndroidApplicationLabelResolutionManager,
 ) : DataDownloadManager {
     companion object {
         private val logger = LoggerFactory.getLogger(DataDownloadService::class.java)
@@ -143,6 +138,16 @@ class DataDownloadService(
 
     }
 
+    private fun resolveApplicationLabel(mapping: MutableMap<String, Any>): Map<String, Any> {
+        val appPackageName = mapping[APP_PACKAGE_NAME.name]
+        val applicationLabel = mapping[APPLICATION_LABEL.name]
+        if (applicationLabel != null && appPackageName != null) {
+            mapping[APPLICATION_LABEL.name] = applicationLabelResolver.resolve(appPackageName as String, applicationLabel as String)
+        }
+
+        return mapping.toMap()
+    }
+
     private fun getParticipantDataHelper(
         studyId: UUID,
         participantId: String,
@@ -158,7 +163,7 @@ class DataDownloadService(
                 ps.setString(1, studyId.toString())
                 ps.setString(2, participantId)
             }) { rs ->
-            mapOf(
+            val mapping: MutableMap<String, Any> = mapOf(
                 associateString(rs, STUDY_ID),
                 associateString(rs, PARTICIPANT_ID),
                 associateString(rs, APP_PACKAGE_NAME),
@@ -167,7 +172,9 @@ class DataDownloadService(
                 associateString(rs, TIMEZONE),
                 associateString(rs, USERNAME),
                 associateString(rs, APPLICATION_LABEL)
-            )
+            ).toMutableMap()
+
+            resolveApplicationLabel(mapping)
         }
 
         return PostgresDownloadWrapper(pgIter).withColumnAdvice(CHRONICLE_USAGE_EVENTS.columns.map { it.name })
@@ -253,7 +260,7 @@ class DataDownloadService(
                 ps.setObject(++index, endDateTime)
             }
         ) { rs ->
-            mapOf(
+            val mapping: MutableMap<String, Any> =  mapOf(
                 associateObject(rs, STUDY_ID, UUID::class.java),
                 associateString(rs, PARTICIPANT_ID),
                 associateString(rs, APPLICATION_LABEL),
@@ -261,7 +268,9 @@ class DataDownloadService(
                 associateOffsetDatetimeWithTimezone(rs, TIMEZONE, TIMESTAMP),
                 associateString(rs, TIMEZONE),
                 associateString(rs, APP_USERS)
-            )
+            ).toMutableMap()
+
+            resolveApplicationLabel(mapping)
         }
 
         return PostgresDownloadWrapper(iterable).withColumnAdvice(APP_USAGE_SURVEY.columns.map { it.name })
@@ -286,7 +295,8 @@ class DataDownloadService(
                 ps.setObject(++index, startDateTime)
                 ps.setObject(++index, endDateTime)
             }) { rs ->
-            mapOf(
+
+            val mapping: MutableMap<String, Any> = mapOf(
                 associateString(rs, STUDY_ID),
                 associateString(rs, PARTICIPANT_ID),
                 associateString(rs, APP_PACKAGE_NAME),
@@ -295,7 +305,9 @@ class DataDownloadService(
                 associateString(rs, TIMEZONE),
                 associateString(rs, USERNAME),
                 associateString(rs, APPLICATION_LABEL)
-            )
+            ).toMutableMap()
+
+            resolveApplicationLabel(mapping)
         }
 
         return PostgresDownloadWrapper(pgIter).withColumnAdvice(CHRONICLE_USAGE_EVENTS.columns.map { it.name })
@@ -326,8 +338,8 @@ class DataDownloadService(
                 ps.setObject(++index, endDateTime)
             }
         ) { rs ->
-            resultSetAwareCols.associate {
-                when(it.datatype) {
+            val mapping: MutableMap<String, Any> = resultSetAwareCols.associate {
+                when (it.datatype) {
                     PostgresDatatype.TEXT -> associateString(rs, it)
                     PostgresDatatype.TIMESTAMPTZ -> associateOffsetDatetimeWithTimezone(rs, APP_TIMEZONE, it)
                     PostgresDatatype.TEXT_UUID -> associateString(rs, it)
@@ -335,7 +347,9 @@ class DataDownloadService(
                     PostgresDatatype.DOUBLE -> associateDouble(rs, it)
                     else -> throw RuntimeException("Invalid column type: ${it.datatype}")
                 }
-            }
+            }.toMutableMap()
+
+            resolveApplicationLabel(mapping)
         }
 
         return PostgresDownloadWrapper(pgIterable).withColumnAdvice(resultSetAwareCols.map { it.name })

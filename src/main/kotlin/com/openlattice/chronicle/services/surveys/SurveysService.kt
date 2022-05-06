@@ -12,6 +12,7 @@ import com.openlattice.chronicle.data.LegacyChronicleQuestionnaire
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.services.ScheduledTasksManager
+import com.openlattice.chronicle.services.android.AndroidApplicationLabelResolutionManager
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.APP_USAGE_SURVEY
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.QUESTIONNAIRES
@@ -61,6 +62,7 @@ class SurveysService(
     private val storageResolver: StorageResolver,
     private val enrollmentManager: EnrollmentManager,
     private val scheduledTasksManager: ScheduledTasksManager,
+    private val applicationLabelResolver: AndroidApplicationLabelResolutionManager,
     override val auditingManager: AuditingManager,
     val idGenerationService: HazelcastIdGenerationService
 ) : SurveysManager, AuditingComponent {
@@ -270,7 +272,13 @@ class SurveysService(
                     ps.setObject(4, endDateTime)
                 }
             ) {
-                ResultSetAdapters.appUsage(it)
+                val appUsage = ResultSetAdapters.appUsage(it)
+                val applicationLabel = applicationLabelResolver.resolve(
+                    appUsage.appPackageName,
+                    appUsage.appLabel!!
+                )
+                appUsage.appLabel = applicationLabel
+                appUsage
 
             }.toList().filterNot { scheduledTasksManager.systemAppPackageNames.contains(it.appPackageName) }
 
