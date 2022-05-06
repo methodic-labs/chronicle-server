@@ -7,14 +7,12 @@ import com.geekbeast.mappers.mappers.ObjectMappers
 import com.geekbeast.postgres.PostgresDatatype
 import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
-import com.google.common.collect.Maps
 import com.google.common.util.concurrent.MoreExecutors
 import com.hazelcast.core.HazelcastInstance
 import com.hazelcast.query.Predicates
 import com.openlattice.chronicle.auditing.AuditingManager
 import com.openlattice.chronicle.authorization.*
 import com.openlattice.chronicle.authorization.mapstores.UserMapstore
-import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.candidates.Candidate
 import com.openlattice.chronicle.constants.OutputConstants
 import com.openlattice.chronicle.data.ParticipationStatus
@@ -30,7 +28,6 @@ import com.openlattice.chronicle.import.ImportApi.Companion.STUDIES
 import com.openlattice.chronicle.import.ImportApi.Companion.SYSTEM_APPS
 import com.openlattice.chronicle.import.ImportApi.Companion.TIME_USE_DIARY
 import com.openlattice.chronicle.import.ImportStudiesConfiguration
-import com.openlattice.chronicle.notifications.StudyNotificationSettings
 import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.participants.ParticipantStats
 import com.openlattice.chronicle.postgres.ResultSetAdapters
@@ -42,21 +39,15 @@ import com.openlattice.chronicle.services.upload.AppDataUploadService
 import com.openlattice.chronicle.storage.ChroniclePostgresTables
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.LEGACY_STUDY_IDS
 import com.openlattice.chronicle.storage.PostgresColumns
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.SETTINGS
 import com.openlattice.chronicle.storage.RedshiftColumns
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.study.Study
-import com.openlattice.chronicle.study.StudySetting
 import com.openlattice.chronicle.study.StudySettings
-import com.openlattice.chronicle.study.StudyUpdate
 import com.openlattice.chronicle.timeusediary.TimeUseDiaryResponse
 import com.zaxxer.hikari.HikariDataSource
-import org.apache.commons.lang3.NotImplementedException
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
-import org.springframework.security.core.context.SecurityContextHolder
-import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
@@ -542,7 +533,7 @@ class ImportController(
                 "SELECT * FROM ${ChroniclePostgresTables.SYSTEM_APPS.name}"
             ) {}
         ) {
-            ResultSetAdapters.systemApp(it)
+            ResultSetAdapters.appPackageName(it)
         }.toList()
 
         logger.info("Inserted ${inserted.size} entities into system apps table")

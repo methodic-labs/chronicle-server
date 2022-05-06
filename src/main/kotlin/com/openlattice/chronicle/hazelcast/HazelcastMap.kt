@@ -90,6 +90,7 @@ class HazelcastMap<K, V> internal constructor(val name: String) : TypedMapIdenti
         @JvmField val STUDY_LIMITS = HazelcastMap<UUID, StudyLimits>("STUDY_LIMITS")
 //      @JvmField val SMS_INFORMATION = HazelcastMap<SmsInformationKey, SmsEntitySetInformation>("SMS_INFORMATION")
         @JvmField val USERS = HazelcastMap<String, User>("USERS")
+        @JvmField val ANDROID_APPS = HazelcastMap<String, String>("ANDROID_APPS")
 
         // @formatter:on
 

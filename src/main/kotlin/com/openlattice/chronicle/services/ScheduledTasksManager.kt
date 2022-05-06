@@ -11,7 +11,6 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_PACKAGE_N
 import com.openlattice.chronicle.storage.StorageResolver
 import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.Scheduled
-import java.sql.ResultSet
 import java.util.*
 
 
@@ -68,7 +67,7 @@ class ScheduledTasksManager(
                 sql = "SELECT ${APP_PACKAGE_NAME.name} from ${SYSTEM_APPS.name}"
             ){}
         ){
-            ResultSetAdapters.systemApp(it)
+            ResultSetAdapters.appPackageName(it)
         }.toSet()
         systemAppPackageNames.addAll(apps)
         logger.info("loaded ${apps.size} system apps into cache")

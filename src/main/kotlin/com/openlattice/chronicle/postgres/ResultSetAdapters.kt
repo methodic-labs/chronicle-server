@@ -124,7 +124,6 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.USERNAME
 import com.openlattice.chronicle.study.Study
 import com.openlattice.chronicle.study.StudyFeature
 import com.openlattice.chronicle.study.StudyLimits
-import com.openlattice.chronicle.study.StudySettings
 import com.openlattice.chronicle.survey.AppUsage
 import com.openlattice.chronicle.survey.Questionnaire
 import org.slf4j.LoggerFactory
@@ -498,7 +497,7 @@ class ResultSetAdapters {
         }
 
         @Throws(SQLException::class)
-        fun systemApp(rs: ResultSet): String {
+        fun appPackageName(rs: ResultSet): String {
             return rs.getString(APP_PACKAGE_NAME.name)
         }
 
@@ -510,6 +509,11 @@ class ResultSetAdapters {
         @Throws(SQLException::class)
         fun submissionId(rs: ResultSet): UUID {
             return UUID.fromString(rs.getString(SUBMISSION_ID.name))
+        }
+
+        @Throws(SQLException::class)
+        fun applicationLabel(rs: ResultSet): String {
+            return rs.getString(APPLICATION_LABEL.name)
         }
     }
 }
