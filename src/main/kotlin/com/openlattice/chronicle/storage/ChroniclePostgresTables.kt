@@ -298,6 +298,15 @@ class ChroniclePostgresTables {
         val SYSTEM_APPS = PostgresTableDefinition("system_apps")
             .addColumns(RedshiftColumns.APP_PACKAGE_NAME)
             .primaryKey(RedshiftColumns.APP_PACKAGE_NAME)
+
+        @JvmField
+        val ANDROID_APPS = PostgresTableDefinition("android_apps")
+            .addColumns(
+                RedshiftColumns.APP_PACKAGE_NAME,
+                RedshiftColumns.APPLICATION_LABEL
+            )
+            .primaryKey(RedshiftColumns.APP_PACKAGE_NAME)
+
         /**
          * Authorization tables
          *
