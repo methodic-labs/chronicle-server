@@ -48,8 +48,7 @@ class AndroidAppsMapstore(val hds: HikariDataSource) :
         private val INSERT_SQL = """
             INSERT INTO ${ANDROID_APPS.name} (${APP_PACKAGE_NAME.name}, ${APPLICATION_LABEL.name })
             VALUES(?, ?)
-            ON CONFLICT (${APP_PACKAGE_NAME.name}) DO UPDATE
-            SET ${APPLICATION_LABEL.name} = ?
+            ON CONFLICT DO NOTHING
         """.trimIndent()
     }
 
