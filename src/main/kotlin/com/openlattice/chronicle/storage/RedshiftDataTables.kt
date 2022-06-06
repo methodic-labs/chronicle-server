@@ -40,6 +40,7 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_SWITCHED_
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_TIMEZONE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_TITLE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DATE_WITH_TIMEZONE
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.RUN_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMESTAMP
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMEZONE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.USERNAME
@@ -110,6 +111,7 @@ class RedshiftDataTables {
         val PREPROCESSED_USAGE_EVENTS = RedshiftTableDefinition("preprocessed_usage_events")
             .sortKey(STUDY_ID)
             .addColumns(
+                RUN_ID,
                 STUDY_ID,
                 PARTICIPANT_ID,
                 APP_RECORD_TYPE,
@@ -118,7 +120,6 @@ class RedshiftDataTables {
                 APP_DATETIME_START,
                 APP_DATETIME_END,
                 APP_TIMEZONE,
-                DATE_WITH_TIMEZONE,
                 APP_DURATION_SECONDS,
                 DAY,
                 WEEKDAY_MONDAY_FRIDAY,
