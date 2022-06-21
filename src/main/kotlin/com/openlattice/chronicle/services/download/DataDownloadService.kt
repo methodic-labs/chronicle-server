@@ -14,15 +14,9 @@ import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.APP_U
 import com.openlattice.chronicle.storage.PostgresColumns
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_USERS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APPLICATION_LABEL
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_DATETIME_END
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_DATETIME_START
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_FULL_NAME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_PACKAGE_NAME
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_RECORD_TYPE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_TIMEZONE
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_TITLE
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DATE_WITH_TIMEZONE
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DAY
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DEVICE_USAGE_SENSOR_COLS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.INTERACTION_TYPE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.KEYBOARD_METRICS_SENSOR_COLS
@@ -42,7 +36,6 @@ import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.PREPROCESS
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.util.ChronicleServerUtil
 import org.slf4j.LoggerFactory
-import java.lang.RuntimeException
 import java.sql.ResultSet
 import java.time.OffsetDateTime
 import java.time.ZoneId
@@ -83,8 +76,8 @@ class DataDownloadService(
             FROM ${PREPROCESSED_USAGE_EVENTS.name}
             WHERE ${STUDY_ID.name} = ?
             AND ${PARTICIPANT_ID.name} = ANY(?)
-            AND ${DATE_WITH_TIMEZONE.name} >= ?
-            AND ${DATE_WITH_TIMEZONE.name} < ?
+            AND ${APP_DATETIME_START.name} >= ?
+            AND ${APP_DATETIME_START.name} < ?
         """.trimIndent()
 
         private val APP_USAGE_SURVEY_COLS = APP_USAGE_SURVEY.columns.joinToString { it.name }
