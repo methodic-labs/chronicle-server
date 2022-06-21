@@ -21,6 +21,7 @@ import com.openlattice.chronicle.services.legacy.LegacyEdmResolver
 import com.openlattice.chronicle.settings.AppUsageFrequency
 import com.openlattice.chronicle.sources.AndroidDevice
 import com.openlattice.chronicle.study.*
+import com.openlattice.chronicle.timeusediary.TimeUseDiarySettings
 import org.apache.commons.lang3.RandomStringUtils
 import org.apache.commons.text.CharacterPredicates
 import org.apache.commons.text.RandomStringGenerator
@@ -69,7 +70,7 @@ class TestDataFactory {
                         randomAlphanumeric(5),
                         r.nextBoolean()
                     )
-
+                    StudySettingType.TimeUseDiary -> TimeUseDiarySettings()
                 }
             })
 
