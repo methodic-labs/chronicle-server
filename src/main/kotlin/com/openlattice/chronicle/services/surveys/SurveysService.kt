@@ -1,14 +1,18 @@
 package com.openlattice.chronicle.services.surveys
 
+import com.codahale.metrics.annotation.Timed
 import com.geekbeast.mappers.mappers.ObjectMappers
 import com.geekbeast.postgres.PostgresArrays
 import com.geekbeast.postgres.PostgresDatatype
 import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
+import com.geekbeast.rhizome.KotlinDelegatedStringSet
+import com.hazelcast.core.HazelcastInstance
 import com.openlattice.chronicle.auditing.*
 import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.constants.EdmConstants
 import com.openlattice.chronicle.data.LegacyChronicleQuestionnaire
+import com.openlattice.chronicle.hazelcast.HazelcastMap
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.services.ScheduledTasksManager
@@ -59,12 +63,15 @@ import java.util.*
  */
 @Service
 class SurveysService(
+    hazelcast: HazelcastInstance,
     private val storageResolver: StorageResolver,
     private val enrollmentManager: EnrollmentManager,
     private val scheduledTasksManager: ScheduledTasksManager,
     override val auditingManager: AuditingManager,
     val idGenerationService: HazelcastIdGenerationService,
 ) : SurveysManager, AuditingComponent {
+    private val filteredApps = HazelcastMap.FILTERED_APPS.getMap(hazelcast)
+
     companion object {
         private val logger = LoggerFactory.getLogger(SurveysService::class.java)
         private val mapper = ObjectMappers.newJsonMapper()
@@ -164,13 +171,6 @@ class SurveysService(
         private val SUBMIT_QUESTIONNAIRE_SQL = """
             INSERT INTO ${QUESTIONNAIRE_SUBMISSIONS.name} ($SUBMIT_QUESTIONNAIRE_COLS)
             VALUES ($SUBMIT_QUESTIONNAIRE_PARAMS)
-        """.trimIndent()
-
-        /**
-         * 1. study id
-         */
-        private val GET_FILTERED_APPS_FOR_STUDY = """
-            SELECT ${APP_PACKAGE_NAME.name} FROM ${FILTERED_APPS.name} WHERE ${STUDY_ID.name} = ?
         """.trimIndent()
 
         /**
@@ -292,6 +292,7 @@ class SurveysService(
         try {
 
             val (_, hds) = storageResolver.resolveAndGetFlavor(studyId)
+            val filtered = filteredApps[studyId] ?: scheduledTasksManager.systemAppPackageNames
 
             val result = BasePostgresIterable(
                 PreparedStatementHolderSupplier(hds, GET_APP_USAGE_SQL) { ps ->
@@ -303,7 +304,7 @@ class SurveysService(
             ) {
                 ResultSetAdapters.appUsage(it)
 
-            }.toList().filterNot { scheduledTasksManager.systemAppPackageNames.contains(it.appPackageName) }
+            }.toList().filterNot { filtered.contains(it.appPackageName) }
 
             logger.info(
                 "fetched {} app usage entities spanning {} to {} $STUDY_PARTICIPANT",
@@ -488,13 +489,11 @@ class SurveysService(
             throw ex
         }
     }
-
-    override fun getAppsFilteredForStudyAppUsageSurvey(studyId: UUID): List<String> {
+    
+    @Timed
+    override fun getAppsFilteredForStudyAppUsageSurvey(studyId: UUID): Collection<String> {
         val hds = storageResolver.getPlatformStorage()
-        val apps = BasePostgresIterable(
-            PreparedStatementHolderSupplier(hds, GET_FILTERED_APPS_FOR_STUDY) { ps ->
-                ps.setObject(1, studyId)
-            }) { it.getString(APP_PACKAGE_NAME.name) }.toList()
+        val apps = filteredApps[studyId] ?: scheduledTasksManager.systemAppPackageNames
 
         hds.connection.use { connection ->
             AuditedTransactionBuilder<Unit>(connection, auditingManager)
@@ -509,9 +508,11 @@ class SurveysService(
                     )
                 }.buildAndRun()
         }
+
         return apps
     }
 
+    @Timed
     override fun setAppsFilteredForStudyAppUsageSurvey(studyId: UUID, appPackages: Set<String>) {
         storageResolver.getPlatformStorage().connection.use { connection ->
             AuditedTransactionBuilder<Unit>(connection, auditingManager)
@@ -538,8 +539,10 @@ class SurveysService(
                     )
                 }.buildAndRun()
         }
+        refreshMapstore(studyId)
     }
 
+    @Timed
     override fun filterAppForStudyAppUsageSurvey(studyId: UUID, appPackages: Set<String>) {
         storageResolver.getPlatformStorage().connection.use { connection ->
             AuditedTransactionBuilder<Unit>(connection, auditingManager)
@@ -562,8 +565,10 @@ class SurveysService(
                     )
                 }.buildAndRun()
         }
+        refreshMapstore(studyId)
     }
 
+    @Timed
     override fun allowAppForStudyAppUsageSurvey(studyId: UUID, appPackages: Set<String>) {
         storageResolver.getPlatformStorage().connection.use { connection ->
             AuditedTransactionBuilder<Unit>(connection, auditingManager)
@@ -586,6 +591,11 @@ class SurveysService(
                     )
                 }.buildAndRun()
         }
+        refreshMapstore(studyId)
+    }
+
+    fun refreshMapstore(studyId: UUID) {
+        filteredApps.loadAll(setOf(studyId), true)
     }
 
     // writes questionnaire responses to postgres and returns number of rows written

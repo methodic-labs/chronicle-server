@@ -54,15 +54,17 @@ class SurveyController @Inject constructor(
     override val authorizationManager: AuthorizationManager,
     override val auditingManager: AuditingManager,
 ) : SurveyApi, AuthorizingComponent {
+    @Timed
     @GetMapping(
         path = [STUDY_ID_PATH + FILTERED_PATH],
         produces = [MediaType.APPLICATION_JSON_VALUE]
     )
-    override fun getAppsFilteredForStudyAppUsageSurvey(@PathVariable(STUDY_ID) studyId: UUID): List<String> {
+    override fun getAppsFilteredForStudyAppUsageSurvey(@PathVariable(STUDY_ID) studyId: UUID): Collection<String> {
         ensureReadAccess(AclKey(studyId))
         return surveysService.getAppsFilteredForStudyAppUsageSurvey(studyId)
     }
 
+    @Timed
     @PutMapping(
         path = [STUDY_ID_PATH + FILTERED_PATH],
         produces = [MediaType.APPLICATION_JSON_VALUE]
@@ -76,6 +78,7 @@ class SurveyController @Inject constructor(
         return ok
     }
 
+    @Timed
     @PatchMapping(
         path = [STUDY_ID_PATH + FILTERED_PATH],
         produces = [MediaType.APPLICATION_JSON_VALUE]
@@ -85,17 +88,18 @@ class SurveyController @Inject constructor(
         @RequestBody appPackages: Set<String>,
     ): OK {
         ensureWriteAccess(AclKey(studyId))
-        surveysService.filterAppForStudyAppUsageSurvey(studyId,appPackages)
+        surveysService.filterAppForStudyAppUsageSurvey(studyId, appPackages)
         return ok
     }
 
+    @Timed
     @DeleteMapping(
         path = [STUDY_ID_PATH + FILTERED_PATH],
         produces = [MediaType.APPLICATION_JSON_VALUE]
     )
     override fun allowAppForStudyAppUsageSurvey(studyId: UUID, @RequestBody appPackages: Set<String>): OK {
         ensureWriteAccess(AclKey(studyId))
-        surveysService.allowAppForStudyAppUsageSurvey(studyId,appPackages)
+        surveysService.allowAppForStudyAppUsageSurvey(studyId, appPackages)
         return ok
     }
 

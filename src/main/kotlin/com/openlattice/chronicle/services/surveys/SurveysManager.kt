@@ -74,7 +74,7 @@ interface SurveysManager {
         responses: List<QuestionnaireResponse>,
     )
 
-    fun getAppsFilteredForStudyAppUsageSurvey(studyId: UUID): List<String>
+    fun getAppsFilteredForStudyAppUsageSurvey(studyId: UUID): Collection<String>
     fun setAppsFilteredForStudyAppUsageSurvey(studyId: UUID, appPackages: Set<String>)
     fun filterAppForStudyAppUsageSurvey(studyId: UUID, appPackages: Set<String>)
     fun allowAppForStudyAppUsageSurvey(studyId: UUID, appPackages: Set<String>)

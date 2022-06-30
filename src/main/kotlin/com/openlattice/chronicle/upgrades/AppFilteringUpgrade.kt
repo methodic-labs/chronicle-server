@@ -13,6 +13,7 @@ import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.FILTE
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.STUDIES
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.SYSTEM_APPS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
+import com.openlattice.chronicle.storage.RedshiftColumns
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.study.*
 import org.slf4j.LoggerFactory
@@ -34,7 +35,8 @@ class AppFilteringUpgrade(private val storageResolver: StorageResolver) : PreHaz
          */
         private val RENAME_TABLE_SQL = "ALTER TABLE system_apps RENAME TO ${SYSTEM_APPS.name}"
         private val INITIALIZE_STUDIES_SQL = """
-            INSERT INTO ${FILTERED_APPS.name} SELECT ${STUDY_ID.name} FROM $STUDIES.name} CROSS JOIN ${SYSTEM_APPS.name}
+            INSERT INTO ${FILTERED_APPS.name} SELECT ${STUDY_ID.name}, ${RedshiftColumns.APP_PACKAGE_NAME} 
+            FROM $STUDIES.name} CROSS JOIN ${SYSTEM_APPS.name}
         """.trimIndent()
 
     }

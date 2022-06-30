@@ -32,12 +32,14 @@ import com.geekbeast.rhizome.jobs.PostgresJobsMapStore
 import com.google.common.eventbus.EventBus
 import com.geekbeast.auth0.Auth0TokenProvider
 import com.geekbeast.auth0.RefreshingAuth0TokenProvider
+import com.geekbeast.rhizome.KotlinDelegatedStringSet
 import com.openlattice.chronicle.authorization.*
 import com.openlattice.chronicle.authorization.mapstores.SecurableObjectTypeMapstore
 import com.openlattice.chronicle.authorization.mapstores.UserMapstore
 import com.openlattice.chronicle.authorization.principals.PrincipalMapstore
 import com.openlattice.chronicle.ids.mapstores.IdGenerationMapstore
 import com.openlattice.chronicle.ids.mapstores.LongIdsMapstore
+import com.openlattice.chronicle.mapstores.apps.FilteredAppsMapstore
 import com.openlattice.chronicle.mapstores.authorization.PermissionMapstore
 import com.openlattice.chronicle.mapstores.authorization.PrincipalTreesMapstore
 import com.openlattice.chronicle.mapstores.ids.Range
@@ -86,6 +88,11 @@ class MapstoresPod {
     @Bean
     fun permissionMapstore(): SelfRegisteringMapStore<AceKey, AceValue> {
         return PermissionMapstore(storageResolver.getPlatformStorage(), eventBus)
+    }
+
+    @Bean
+    fun filteredAppsMapstore(): SelfRegisteringMapStore<UUID, KotlinDelegatedStringSet> {
+        return FilteredAppsMapstore(storageResolver.getPlatformStorage())
     }
 
     @Bean
