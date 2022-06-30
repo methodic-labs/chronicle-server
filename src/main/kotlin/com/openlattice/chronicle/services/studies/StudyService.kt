@@ -31,6 +31,7 @@ import com.openlattice.chronicle.services.candidates.CandidateManager
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import com.openlattice.chronicle.services.notifications.NotificationService
 import com.openlattice.chronicle.services.studies.processors.StudyPhoneNumberGetter
+import com.openlattice.chronicle.services.surveys.SurveysManager
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.LEGACY_STUDY_IDS
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.ORGANIZATION_STUDIES
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.PARTICIPANT_STATS
@@ -85,6 +86,7 @@ class StudyService(
     private val authorizationService: AuthorizationManager,
     private val candidateService: CandidateManager,
     private val enrollmentService: EnrollmentManager,
+    private val surveysManager: SurveysManager,
     private val idGenerationService: HazelcastIdGenerationService,
     private val studyLimitsMgr: StudyLimitsManager,
     override val auditingManager: AuditingManager,
@@ -376,9 +378,10 @@ class StudyService(
     }
 
     override fun createStudy(connection: Connection, study: Study) {
-        studyLimitsMgr.initializeStudyLimits(connection, study.id)
         insertStudy(connection, study)
         insertOrgStudy(connection, study)
+        studyLimitsMgr.initializeStudyLimits(connection, study.id)
+        surveysManager.initializeFilterdApps(connection, study.id)
         authorizationService.createUnnamedSecurableObject(
             connection = connection,
             aclKey = AclKey(study.id),

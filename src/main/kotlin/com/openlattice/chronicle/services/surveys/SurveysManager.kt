@@ -6,6 +6,7 @@ import com.openlattice.chronicle.survey.Questionnaire
 import com.openlattice.chronicle.survey.QuestionnaireResponse
 import com.openlattice.chronicle.survey.QuestionnaireUpdate
 import org.apache.olingo.commons.api.edm.FullQualifiedName
+import java.sql.Connection
 import java.time.OffsetDateTime
 import java.util.*
 
@@ -78,4 +79,6 @@ interface SurveysManager {
     fun setAppsFilteredForStudyAppUsageSurvey(studyId: UUID, appPackages: Set<String>)
     fun filterAppForStudyAppUsageSurvey(studyId: UUID, appPackages: Set<String>)
     fun allowAppForStudyAppUsageSurvey(studyId: UUID, appPackages: Set<String>)
+    fun initializeFilterdApps(connection: Connection, studyId: UUID)
+
 }

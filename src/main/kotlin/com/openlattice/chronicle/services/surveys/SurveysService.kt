@@ -21,6 +21,7 @@ import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.APP_U
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.QUESTIONNAIRES
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.QUESTIONNAIRE_SUBMISSIONS
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.FILTERED_APPS
+import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.SYSTEM_APPS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACTIVE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.COMPLETED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DESCRIPTION
@@ -49,6 +50,7 @@ import com.zaxxer.hikari.HikariDataSource
 import org.apache.olingo.commons.api.edm.FullQualifiedName
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import java.sql.Connection
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.util.*
@@ -194,6 +196,14 @@ class SurveysService(
          */
         private val INSERT_FILTERED_APP_FOR_STUDY = """
             INSERT INTO ${FILTERED_APPS.name} (${STUDY_ID.name},${APP_PACKAGE_NAME.name}) VALUES(?, ?)
+        """.trimIndent()
+
+        /**
+         * 1. study id
+         */
+        private val INIT_FILTERED_APPS_FOR_STUDY = """
+            INSERT INTO ${FILTERED_APPS.name} (${STUDY_ID.name},${APP_PACKAGE_NAME.name}) 
+                SELECT ?,${APP_PACKAGE_NAME.name} FROM ${SYSTEM_APPS.name}
         """.trimIndent()
 
         /**
@@ -490,6 +500,7 @@ class SurveysService(
         }
     }
 
+
     @Timed
     override fun getAppsFilteredForStudyAppUsageSurvey(studyId: UUID): Collection<String> {
         val hds = storageResolver.getPlatformStorage()
@@ -596,6 +607,15 @@ class SurveysService(
 
     fun refreshMapstore(studyId: UUID) {
         filteredApps.loadAll(setOf(studyId), true)
+    }
+
+    override fun initializeFilterdApps(connection: Connection, studyId: UUID) {
+        val inserted = connection.prepareStatement(INIT_FILTERED_APPS_FOR_STUDY).use { ps ->
+            ps.setObject(1, studyId)
+            ps.executeUpdate()
+        }
+
+        logger.info("Initialized $inserted filtered apps for study $studyId based off defaults.")
     }
 
     // writes questionnaire responses to postgres and returns number of rows written
