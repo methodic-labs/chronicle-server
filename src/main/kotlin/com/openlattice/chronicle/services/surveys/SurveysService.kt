@@ -304,7 +304,7 @@ class SurveysService(
             ) {
                 ResultSetAdapters.appUsage(it)
 
-            }.toList().filterNot { filtered.contains(it.appPackageName) }
+            }.filterNot { filtered.contains(it.appPackageName) }
 
             logger.info(
                 "fetched {} app usage entities spanning {} to {} $STUDY_PARTICIPANT",
@@ -489,7 +489,7 @@ class SurveysService(
             throw ex
         }
     }
-    
+
     @Timed
     override fun getAppsFilteredForStudyAppUsageSurvey(studyId: UUID): Collection<String> {
         val hds = storageResolver.getPlatformStorage()
