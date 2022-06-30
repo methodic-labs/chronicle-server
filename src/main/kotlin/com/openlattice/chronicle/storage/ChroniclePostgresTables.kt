@@ -295,9 +295,15 @@ class ChroniclePostgresTables {
             .primaryKey(SUBMISSION_ID)
 
         @JvmField
-        val SYSTEM_APPS = PostgresTableDefinition("system_apps")
+        val FILTERED_APPS = PostgresTableDefinition("filtered_apps")
+            .addColumns(STUDY_ID,RedshiftColumns.APP_PACKAGE_NAME)
+            .primaryKey(STUDY_ID,RedshiftColumns.APP_PACKAGE_NAME)
+
+        @JvmField
+        val SYSTEM_APPS = PostgresTableDefinition("default_filtered_apps")
             .addColumns(RedshiftColumns.APP_PACKAGE_NAME)
             .primaryKey(RedshiftColumns.APP_PACKAGE_NAME)
+
         /**
          * Authorization tables
          *
@@ -379,6 +385,9 @@ class ChroniclePostgresTables {
             STUDY_LIMITS.addIndexes(
                 PostgresColumnsIndexDefinition(STUDY_LIMITS, STUDY_ENDS).ifNotExists(),
                 PostgresColumnsIndexDefinition(STUDY_LIMITS, DATA_EXPIRES).ifNotExists()
+            )
+            FILTERED_APPS.addIndexes(
+                PostgresColumnsIndexDefinition(FILTERED_APPS, STUDY_ID).ifNotExists()
             )
         }
     }

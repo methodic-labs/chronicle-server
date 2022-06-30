@@ -38,8 +38,8 @@ class StudyLimitsController @Inject constructor(
     override fun setStudyLimits(@PathVariable(STUDY_ID) studyId: UUID, @RequestBody studyLimits: StudyLimits) {
         ensureAdminAccess()
         storageResolver.getPlatformStorage().connection.use { connection ->
-            AuditedOperationBuilder<Unit>(connection, auditingManager)
-                .operation {
+            AuditedTransactionBuilder<Unit>(connection, auditingManager)
+                .transaction {
                     studyLimitsMgr.setStudyLimits(studyId, studyLimits)
                 }.audit {
                     listOf(

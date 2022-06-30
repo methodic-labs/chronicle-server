@@ -7,7 +7,7 @@ import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
 import com.geekbeast.rhizome.jobs.JobStatus
 import com.openlattice.chronicle.auditing.AuditableEvent
-import com.openlattice.chronicle.auditing.AuditedOperationBuilder
+import com.openlattice.chronicle.auditing.AuditedTransactionBuilder
 import com.openlattice.chronicle.auditing.AuditingManager
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.ids.IdConstants
@@ -171,12 +171,12 @@ class JobService(
                 executor.execute {
                     try {
                         storageResolver.getPlatformStorage().connection.use { conn ->
-                            val (jobId, _) = AuditedOperationBuilder<Pair<UUID, List<AuditableEvent>>>(
+                            val (jobId, _) = AuditedTransactionBuilder<Pair<UUID, List<AuditableEvent>>>(
                                 conn,
                                 auditingManager
                             )
-                                .operation { connection ->
-                                    val job = lockAndGetNextJob(connection) ?: return@operation NO_JOB_FOUND
+                                .transaction { connection ->
+                                    val job = lockAndGetNextJob(connection) ?: return@transaction NO_JOB_FOUND
                                     val runner = runner.getOrDefault(
                                         job.definition.javaClass,
                                         DefaultJobRunner.getDefaultJobRunner(job.definition)

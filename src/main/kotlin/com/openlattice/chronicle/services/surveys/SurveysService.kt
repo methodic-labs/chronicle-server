@@ -16,6 +16,7 @@ import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.APP_USAGE_SURVEY
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.QUESTIONNAIRES
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.QUESTIONNAIRE_SUBMISSIONS
+import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.FILTERED_APPS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACTIVE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.COMPLETED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DESCRIPTION
@@ -62,7 +63,7 @@ class SurveysService(
     private val enrollmentManager: EnrollmentManager,
     private val scheduledTasksManager: ScheduledTasksManager,
     override val auditingManager: AuditingManager,
-    val idGenerationService: HazelcastIdGenerationService
+    val idGenerationService: HazelcastIdGenerationService,
 ) : SurveysManager, AuditingComponent {
     companion object {
         private val logger = LoggerFactory.getLogger(SurveysService::class.java)
@@ -166,6 +167,36 @@ class SurveysService(
         """.trimIndent()
 
         /**
+         * 1. study id
+         */
+        private val GET_FILTERED_APPS_FOR_STUDY = """
+            SELECT ${APP_PACKAGE_NAME.name} FROM ${FILTERED_APPS.name} WHERE ${STUDY_ID.name} = ?
+        """.trimIndent()
+
+        /**
+         * 1. study id
+         */
+        private val DELETE_FILTERED_APPS_FOR_STUDY = """
+            DELETE FROM ${FILTERED_APPS.name} WHERE ${STUDY_ID.name} = ?
+        """.trimIndent()
+
+        /**
+         * 1. study id
+         * 2. app package name
+         */
+        private val DELETE_FILTERED_APP_FOR_STUDY = """
+            DELETE FROM ${FILTERED_APPS.name} WHERE ${STUDY_ID.name} = ? AND ${APP_PACKAGE_NAME.name} = ?
+        """.trimIndent()
+
+        /**
+         * 1. study id
+         * 2. app package name
+         */
+        private val INSERT_FILTERED_APP_FOR_STUDY = """
+            INSERT INTO ${FILTERED_APPS.name} (${STUDY_ID.name},${APP_PACKAGE_NAME.name}) VALUES(?, ?)
+        """.trimIndent()
+
+        /**
          * PreparedStatement bind order
          * 1) studyId
          * 2) questionnaireId
@@ -206,13 +237,13 @@ class SurveysService(
     }
 
     override fun getLegacyQuestionnaire(
-        organizationId: UUID, studyId: UUID, questionnaireEKID: UUID
+        organizationId: UUID, studyId: UUID, questionnaireEKID: UUID,
     ): LegacyChronicleQuestionnaire {
         TODO("Not yet implemented")
     }
 
     override fun getLegacyStudyQuestionnaires(
-        organizationId: UUID, studyId: UUID
+        organizationId: UUID, studyId: UUID,
     ): Map<UUID, Map<FullQualifiedName, Set<Any>>> {
         val questionnaires = getStudyQuestionnaires(studyId)
         return questionnaires.associate { questionnaire ->
@@ -227,7 +258,7 @@ class SurveysService(
 
     override fun submitLegacyQuestionnaire(
         organizationId: UUID, studyId: UUID, participantId: String,
-        questionnaireResponses: Map<UUID, Map<FullQualifiedName, Set<Any>>>
+        questionnaireResponses: Map<UUID, Map<FullQualifiedName, Set<Any>>>,
     ) {
         TODO("Not yet implemented")
     }
@@ -236,7 +267,7 @@ class SurveysService(
     override fun submitAppUsageSurvey(
         studyId: UUID,
         participantId: String,
-        surveyResponses: List<AppUsage>
+        surveyResponses: List<AppUsage>,
     ) {
         logger.info(
             "submitting app usage survey $STUDY_PARTICIPANT",
@@ -256,7 +287,7 @@ class SurveysService(
         studyId: UUID,
         participantId: String,
         startDateTime: OffsetDateTime,
-        endDateTime: OffsetDateTime
+        endDateTime: OffsetDateTime,
     ): List<AppUsage> {
         try {
 
@@ -296,8 +327,8 @@ class SurveysService(
             val questionnaireId = idGenerationService.getNextId()
 
             storageResolver.getPlatformStorage().connection.use { connection ->
-                AuditedOperationBuilder<Unit>(connection, auditingManager)
-                    .operation { conn ->
+                AuditedTransactionBuilder<Unit>(connection, auditingManager)
+                    .transaction { conn ->
                         conn.prepareStatement(CREATE_QUESTIONNAIRE_SQL).use { ps ->
                             var index = 0
                             ps.setObject(++index, studyId)
@@ -334,8 +365,8 @@ class SurveysService(
     override fun updateQuestionnaire(studyId: UUID, questionnaireId: UUID, update: QuestionnaireUpdate) {
         try {
             storageResolver.getPlatformStorage().connection.use { connection ->
-                AuditedOperationBuilder<Int>(connection, auditingManager)
-                    .operation {
+                AuditedTransactionBuilder<Int>(connection, auditingManager)
+                    .transaction {
                         connection.prepareStatement(getUpdateQuestionnaireSql(update)).use { ps ->
                             var index = 0
                             ps.setString(++index, update.title)
@@ -387,8 +418,8 @@ class SurveysService(
     override fun deleteQuestionnaire(studyId: UUID, questionnaireId: UUID) {
         try {
             storageResolver.getPlatformStorage().connection.use { connection ->
-                AuditedOperationBuilder<Unit>(connection, auditingManager)
-                    .operation {
+                AuditedTransactionBuilder<Unit>(connection, auditingManager)
+                    .transaction {
                         connection.prepareStatement(DELETE_QUESTIONNAIRE_SQL).use { ps ->
                             ps.setObject(1, studyId)
                             ps.setObject(2, questionnaireId)
@@ -430,7 +461,7 @@ class SurveysService(
         studyId: UUID,
         participantId: String,
         questionnaireId: UUID,
-        responses: List<QuestionnaireResponse>
+        responses: List<QuestionnaireResponse>,
     ) {
         try {
             val isKnownParticipant = enrollmentManager.isKnownParticipant(studyId, participantId)
@@ -458,13 +489,112 @@ class SurveysService(
         }
     }
 
+    override fun getAppsFilteredForStudyAppUsageSurvey(studyId: UUID): List<String> {
+        val hds = storageResolver.getPlatformStorage()
+        val apps = BasePostgresIterable(
+            PreparedStatementHolderSupplier(hds, GET_FILTERED_APPS_FOR_STUDY) { ps ->
+                ps.setObject(1, studyId)
+            }) { it.getString(APP_PACKAGE_NAME.name) }.toList()
+
+        hds.connection.use { connection ->
+            AuditedTransactionBuilder<Unit>(connection, auditingManager)
+                .transaction { }
+                .audit {
+                    listOf(
+                        AuditableEvent(
+                            aclKey = AclKey(studyId),
+                            eventType = AuditEventType.GET_FILTERED_APPS,
+                            description = "Retrieved list of filtered applications."
+                        )
+                    )
+                }.buildAndRun()
+        }
+        return apps
+    }
+
+    override fun setAppsFilteredForStudyAppUsageSurvey(studyId: UUID, appPackages: Set<String>) {
+        storageResolver.getPlatformStorage().connection.use { connection ->
+            AuditedTransactionBuilder<Unit>(connection, auditingManager)
+                .transaction { conn ->
+                    val psDel = conn.prepareStatement(DELETE_FILTERED_APPS_FOR_STUDY)
+                    psDel.setObject(1, studyId)
+                    psDel.executeUpdate()
+
+                    val psInsert = conn.prepareStatement(INSERT_FILTERED_APP_FOR_STUDY)
+                    psInsert.setObject(1, studyId)
+                    appPackages.forEach {
+                        psInsert.setString(2, it)
+                        psInsert.addBatch()
+                    }
+                    psInsert.executeBatch()
+                }
+                .audit {
+                    listOf(
+                        AuditableEvent(
+                            aclKey = AclKey(studyId),
+                            eventType = AuditEventType.GET_FILTERED_APPS,
+                            description = "Retrieved list of filtered applications."
+                        )
+                    )
+                }.buildAndRun()
+        }
+    }
+
+    override fun filterAppForStudyAppUsageSurvey(studyId: UUID, appPackages: Set<String>) {
+        storageResolver.getPlatformStorage().connection.use { connection ->
+            AuditedTransactionBuilder<Unit>(connection, auditingManager)
+                .transaction { conn ->
+                    val psInsert = conn.prepareStatement(INSERT_FILTERED_APP_FOR_STUDY)
+                    psInsert.setObject(1, studyId)
+                    appPackages.forEach {
+                        psInsert.setString(2, it)
+                        psInsert.addBatch()
+                    }
+                    psInsert.executeBatch()
+                }
+                .audit {
+                    listOf(
+                        AuditableEvent(
+                            aclKey = AclKey(studyId),
+                            eventType = AuditEventType.FILTER_APPS,
+                            description = "Retrieved list of filtered applications."
+                        )
+                    )
+                }.buildAndRun()
+        }
+    }
+
+    override fun allowAppForStudyAppUsageSurvey(studyId: UUID, appPackages: Set<String>) {
+        storageResolver.getPlatformStorage().connection.use { connection ->
+            AuditedTransactionBuilder<Unit>(connection, auditingManager)
+                .transaction { conn ->
+                    val psInsert = conn.prepareStatement(DELETE_FILTERED_APP_FOR_STUDY)
+                    psInsert.setObject(1, studyId)
+                    appPackages.forEach {
+                        psInsert.setString(2, it)
+                        psInsert.addBatch()
+                    }
+                    val count = psInsert.executeBatch()
+                }
+                .audit {
+                    listOf(
+                        AuditableEvent(
+                            aclKey = AclKey(studyId),
+                            eventType = AuditEventType.ALLOW_APPS,
+                            description = "Retrieved list of filtered applications."
+                        )
+                    )
+                }.buildAndRun()
+        }
+    }
+
     // writes questionnaire responses to postgres and returns number of rows written
     private fun writeQuestionnaireResponses(
         hds: HikariDataSource,
         studyId: UUID,
         participantId: String,
         questionnaireId: UUID,
-        responses: List<QuestionnaireResponse>
+        responses: List<QuestionnaireResponse>,
     ): Int {
         val submissionId = idGenerationService.getNextId()
         return hds.connection.use { connection ->
