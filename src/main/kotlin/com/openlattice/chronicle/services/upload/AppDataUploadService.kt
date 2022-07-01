@@ -7,16 +7,24 @@ import com.geekbeast.postgres.PostgresTableDefinition
 import com.geekbeast.postgres.RedshiftTableDefinition
 import com.geekbeast.util.StopWatch
 import com.google.common.collect.SetMultimap
+import com.openlattice.chronicle.android.ChronicleUsageEvent
 import com.openlattice.chronicle.constants.EdmConstants.*
 import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.participants.ParticipantStats
-import com.openlattice.chronicle.services.ScheduledTasksManager
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import com.openlattice.chronicle.services.legacy.LegacyEdmResolver
 import com.openlattice.chronicle.services.studies.StudyManager
 import com.openlattice.chronicle.storage.PostgresDataTables
 import com.openlattice.chronicle.storage.RedshiftColumns
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APPLICATION_LABEL
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_PACKAGE_NAME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.FQNS_TO_COLUMNS
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.INTERACTION_TYPE
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PARTICIPANT_ID
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.STUDY_ID
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMESTAMP
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMEZONE
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.USERNAME
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.CHRONICLE_USAGE_EVENTS
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.getAppendTembTableSql
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.getDeleteTempTableEntriesSql
@@ -66,11 +74,11 @@ class AppDataUploadService(
      * The probability of the same UUID being generated twice for the same organization id/participant id/device
      * id/timestamp is unlikely to happen in the lifetime of our universe.
      */
-    override fun upload(
+    override fun uploadAndroidUsageEvents(
         studyId: UUID,
         participantId: String,
         sourceDeviceId: String,
-        data: List<SetMultimap<UUID, Any>>
+        data: List<ChronicleUsageEvent>
     ): Int {
         StopWatch(
             log = "logging ${data.size} entries for ${ChronicleServerUtil.STUDY_PARTICIPANT_DATASOURCE}",
@@ -140,17 +148,127 @@ class AppDataUploadService(
         }
     }
 
-    private fun filter(
-        mappedData: Sequence<Map<String, UsageEventColumn>>
-    ): Sequence<Map<String, UsageEventColumn>> {
+    /**
+     * This routine implements once and only once append of client data.
+     *
+     * Assumptions:
+     * - Client generates a UUID uniformly at random for each event and stores it in the id field.
+     * - Client will retry upload until receives successful acknowledgement from the server.
+     *
+     * Data is first written into a postgres table which is periodically flushed to redshift for long term storage.
+     *
+     * The probability of the same UUID being generated twice for the same organization id/participant id/device
+     * id/timestamp is unlikely to happen in the lifetime of our universe.
+     */
+    override fun upload(
+        studyId: UUID,
+        participantId: String,
+        sourceDeviceId: String,
+        data: List<SetMultimap<UUID, Any>>
+    ): Int {
+        StopWatch(
+            log = "logging ${data.size} entries for ${ChronicleServerUtil.STUDY_PARTICIPANT_DATASOURCE}",
+            level = Level.INFO,
+            logger = logger,
+            studyId,
+            participantId,
+            sourceDeviceId
+        ).use {
+            try {
+                val (flavor, hds) = storageResolver.resolveAndGetFlavor(studyId)
+
+                val status = enrollmentManager.getParticipationStatus(studyId, participantId)
+                if (ParticipationStatus.NOT_ENROLLED == status) {
+                    logger.warn(
+                        "participant is not enrolled, ignoring upload" + ChronicleServerUtil.STUDY_PARTICIPANT_DATASOURCE,
+                        studyId,
+                        participantId,
+                        sourceDeviceId
+                    )
+                    return 0
+                }
+                val deviceEnrolled = enrollmentManager.isKnownDatasource(studyId, participantId, sourceDeviceId)
+
+                if (!deviceEnrolled) {
+                    logger.error(
+                        "data source not found, ignoring upload" + ChronicleServerUtil.STUDY_PARTICIPANT_DATASOURCE,
+                        studyId,
+                        participantId,
+                        sourceDeviceId
+                    )
+                    return 0
+                }
+
+                logger.info(
+                    "attempting to log data" + ChronicleServerUtil.STUDY_PARTICIPANT_DATASOURCE,
+                    studyId,
+                    participantId,
+                    sourceDeviceId
+                )
+
+                val mappedData = filter(mapLegacyDataToStorageModel(data))
+
+                StopWatch(log = "Writing ${data.size} entites to DB ")
+                val written = when (flavor) {
+                    PostgresFlavor.VANILLA -> writeToPostgres(hds, studyId, participantId, mappedData)
+                    PostgresFlavor.REDSHIFT -> writeToRedshift(hds, studyId, participantId, mappedData)
+                    else -> throw InvalidParameterException("Only regular postgres and redshift are supported.")
+                }
+
+                //TODO: In reality we are likely to write less entities than were provided and are actually returning number processed so that client knows all is good
+                if (data.size != written) {
+                    //Should probably be an assertion as this should never happen.
+                    logger.warn("Wrote $written entities, but expected to write ${data.size} entities")
+                }
+                return data.size
+            } catch (exception: Exception) {
+                logger.error(
+                    "error logging data" + ChronicleServerUtil.STUDY_PARTICIPANT_DATASOURCE,
+                    studyId,
+                    participantId,
+                    sourceDeviceId,
+                    exception
+                )
+                return 0
+            }
+        }
+    }
+
+    /**
+     * This filters out events that have a null date logged and handles both String date time times from legacy events
+     * and typed OffsetDateTime objects from non-legacy events.
+     */
+    private fun filter(mappedData: Sequence<Map<String, UsageEventColumn>>): Sequence<Map<String, UsageEventColumn>> {
         return mappedData.filter { mappedUsageEventCols ->
-            val eventDate = mappedUsageEventCols[FQNS_TO_COLUMNS.getValue(DATE_LOGGED_FQN).name]?.value as String
-            val dateLogged = parseDateTime(eventDate)
+            val eventDate = mappedUsageEventCols[FQNS_TO_COLUMNS.getValue(DATE_LOGGED_FQN).name]?.value
+            val dateLogged = odtFromUsageEventColumn(eventDate)
             dateLogged != null
         }
     }
 
-    private fun mapToStorageModel(data: List<SetMultimap<UUID, Any>>): Sequence<Map<String, UsageEventColumn>> {
+    private fun <T> getUsageEventColumn(
+        pcd: PostgresColumnDefinition,
+        selector: () -> T
+    ): Pair<String, UsageEventColumn> {
+        return pcd.name to UsageEventColumn(pcd, getInsertUsageEventColumnIndex(pcd), selector())
+    }
+
+    private fun mapToStorageModel(data: List<ChronicleUsageEvent>): Sequence<Map<String, UsageEventColumn>> {
+        return data.asSequence().map { usageEvent ->
+            mapOf(
+//                getUsageEventColumn(STUDY_ID) { usageEvent.studyId },
+//                getUsageEventColumn(PARTICIPANT_ID) { usageEvent.participantId },
+                getUsageEventColumn(APP_PACKAGE_NAME) { usageEvent.appPackageName },
+                getUsageEventColumn(INTERACTION_TYPE) { usageEvent.interactionType },
+                getUsageEventColumn(TIMESTAMP) { usageEvent.timestamp },
+                getUsageEventColumn(TIMEZONE) { usageEvent.timezone },
+                getUsageEventColumn(USERNAME) { usageEvent.user },
+                getUsageEventColumn(APPLICATION_LABEL) { usageEvent.applicationLabel }
+            )
+        }
+    }
+
+    private fun mapLegacyDataToStorageModel(data: List<SetMultimap<UUID, Any>>): Sequence<Map<String, UsageEventColumn>> {
         return data.asSequence().map { usageEvent ->
             USAGE_EVENT_COLUMNS.associate { fqn ->
                 val col = FQNS_TO_COLUMNS.getValue(fqn)
@@ -195,19 +313,24 @@ class AppDataUploadService(
                                 val colIndex = usageEventCol.colIndex
                                 val value = usageEventCol.value
 
-                                //Set insert value to null, if value was not provided.
-                                if (value == null) {
-                                    ps.setObject(colIndex, null)
-                                } else {
-                                    when (col.datatype) {
-                                        PostgresDatatype.TEXT -> ps.setString(colIndex, value as String)
-                                        PostgresDatatype.TIMESTAMPTZ -> ps.setObject(
-                                            colIndex,
-                                            OffsetDateTime.parse(value as String?)
-                                        )
-                                        PostgresDatatype.BIGINT -> ps.setLong(colIndex, value as Long)
-                                        else -> ps.setObject(colIndex, value)
+                                try {
+                                    //Set insert value to null, if value was not provided.
+                                    if (value == null) {
+                                        ps.setObject(colIndex, null)
+                                    } else {
+                                        when (col.datatype) {
+                                            PostgresDatatype.TEXT -> ps.setString(colIndex, value as String)
+                                            PostgresDatatype.TIMESTAMPTZ -> ps.setObject(
+                                                colIndex,
+                                                odtFromUsageEventColumn(value)
+                                            )
+                                            PostgresDatatype.BIGINT -> ps.setLong(colIndex, value as Long)
+                                            else -> ps.setObject(colIndex, value)
+                                        }
                                     }
+                                } catch(ex :Exception ) {
+                                    logger.info("Error writing $usageEventCol", ex)
+                                    throw ex
                                 }
                             }
                             ps.addBatch()
@@ -233,9 +356,24 @@ class AppDataUploadService(
         }
     }
 
-    private fun updateParticipantStats(data:  Sequence<Map<String, UsageEventColumn>>, studyId: UUID, participantId: String) {
+    private fun odtFromUsageEventColumn(value: Any?): OffsetDateTime? {
+        if (value == null) return null
+        return when (value) {
+            is String -> OffsetDateTime.parse(value)
+            is OffsetDateTime -> value
+            else -> throw UnsupportedOperationException("${value.javaClass.canonicalName} is not a supported date time class.")
+        }
+    }
+
+    private fun updateParticipantStats(
+        data: Sequence<Map<String, UsageEventColumn>>,
+        studyId: UUID,
+        participantId: String
+    ) {
         // unique dates
-        val dates: MutableSet<OffsetDateTime> = data.map { OffsetDateTime.parse(it.getValue(RedshiftColumns.TIMESTAMP.name).value as String) }.toMutableSet()
+        val dates = data
+            .mapNotNull { odtFromUsageEventColumn(it.getValue(TIMESTAMP.name).value) }
+            .toMutableSet()
 
         val currentStats = studyManager.getParticipantStats(studyId, participantId)
         currentStats?.androidFirstDate?.let {
@@ -248,7 +386,7 @@ class AppDataUploadService(
         currentStats?.androidUniqueDates?.let {
             uniqueDates += it
         }
-        
+
         val minDate = dates.stream().min(OffsetDateTime::compareTo).get()
         val maxDate = dates.stream().max(OffsetDateTime::compareTo).get()
 

@@ -34,7 +34,7 @@ import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.PRINCIPAL_TREES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_OF_ACL_KEY
-import com.openlattice.chronicle.util.TestDataFactory
+import com.openlattice.chronicle.util.tests.TestDataFactory
 import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.StatementHolderSupplier
 import com.zaxxer.hikari.HikariDataSource

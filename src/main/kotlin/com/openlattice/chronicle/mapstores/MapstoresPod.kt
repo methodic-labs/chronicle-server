@@ -31,7 +31,7 @@ import com.geekbeast.rhizome.jobs.DistributableJob
 import com.geekbeast.rhizome.jobs.PostgresJobsMapStore
 import com.google.common.eventbus.EventBus
 import com.geekbeast.auth0.Auth0TokenProvider
-import com.geekbeast.auth0.AwsAuth0TokenProvider
+import com.geekbeast.auth0.RefreshingAuth0TokenProvider
 import com.openlattice.chronicle.authorization.*
 import com.openlattice.chronicle.authorization.mapstores.SecurableObjectTypeMapstore
 import com.openlattice.chronicle.authorization.mapstores.UserMapstore
@@ -41,6 +41,7 @@ import com.openlattice.chronicle.ids.mapstores.LongIdsMapstore
 import com.openlattice.chronicle.mapstores.authorization.PermissionMapstore
 import com.openlattice.chronicle.mapstores.authorization.PrincipalTreesMapstore
 import com.openlattice.chronicle.mapstores.ids.Range
+import com.openlattice.chronicle.mapstores.storage.StudyLimitsMapstore
 import com.openlattice.chronicle.mapstores.storage.StudyMapstore
 import com.openlattice.chronicle.storage.StorageResolver
 import org.slf4j.LoggerFactory
@@ -66,6 +67,11 @@ class MapstoresPod {
 
     @Inject
     private lateinit var jdbi: Jdbi
+
+    @Bean
+    fun studyLimitsMapstore(): StudyLimitsMapstore {
+        return StudyLimitsMapstore(storageResolver.getPlatformStorage())
+    }
 
     @Bean
     fun jobsMapstore(): SelfRegisteringMapStore<UUID, DistributableJob<*>> {
@@ -118,7 +124,7 @@ class MapstoresPod {
 
     @Bean
     fun auth0TokenProvider(): Auth0TokenProvider {
-        return AwsAuth0TokenProvider(auth0Configuration)
+        return RefreshingAuth0TokenProvider(auth0Configuration)
     }
 
     @Bean

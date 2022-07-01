@@ -1,25 +1,5 @@
 /*
- * Copyright (C) 2018. OpenLattice, Inc.
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- *
- * You can contact the owner of the copyright at support@openlattice.com
- *
- */
-
-/*
- * Copyright (C) 2018. OpenLattice, Inc.
+ * Copyright (C) 2022. Methodic, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -45,25 +25,42 @@ plugins {
     id 'checkstyle'
     id 'maven-publish'
     id 'signing'
-    id 'org.jetbrains.kotlin.jvm'
-    id 'org.jetbrains.kotlin.plugin.spring'
-    id 'com.github.jk1.dependency-license-report'
     id 'com.github.spotbugs' version '5.0.4'
+    id 'org.jetbrains.kotlin.jvm' version '1.6.10'
+    id 'org.jetbrains.kotlin.plugin.spring' version '1.6.10'
+    id 'org.jetbrains.dokka' version '1.6.10'
+    id 'com.github.jk1.dependency-license-report' version '1.16'
+}
+
+if (hasProperty('buildScan')) {
+    buildScan {
+        termsOfServiceUrl = "https://gradle.com/terms-of-service"
+        termsOfServiceAgree = "yes"
+    }
 }
 
 description = "Chronicle Server"
 group = "com.openlattice"
 ext.projectName = "chronicle-server"
-ext.scmUrl = 'scm:git:https://github.com/openlattice/chronicle-server.git'
-ext.connectionUrl = 'scm:git:https://github.com/openlattice/chronicle-server.git'
-ext.developerConnectionUrl = 'scm:git:https://github.com/openlattice/chronicle-server.git'
+ext.scmUrl = 'scm:git:https://github.com/methodic-labs/chronicle-server.git'
+ext.connectionUrl = 'scm:git:https://github.com/methodic-labs/chronicle-server.git'
+ext.developerConnectionUrl = 'scm:git:https://github.com/methodic-labs/chronicle-server.git'
 
 distTar {
     archiveName "$baseName" + ".tgz"
 }
 
-apply from: "https://raw.githubusercontent.com/openlattice/openlattice/main/gradles/openlattice.gradle"
-apply plugin: 'kotlin'
+if(!project.hasProperty('developmentMode')) {
+    ext.developmentMode = false
+}
+
+println projectName + " with developmentMode = " + project.developmentMode
+
+if( project.hasProperty('developmentMode') && project.developmentMode ) {
+    apply from: "../gradles/methodic.gradle"
+} else {
+    apply from: "https://raw.githubusercontent.com/methodic-labs/methodic/main/gradles/methodic.gradle"
+}
 
 mainClassName = "com.openlattice.chronicle.ChronicleServer"
 
@@ -113,6 +110,10 @@ jacoco {
     toolVersion = "${jacoco_tool_version}"
 }
 
+tasks.withType(Javadoc) {
+    enabled = false
+}
+
 spotbugs {
     reportLevel = 'high'
     toolVersion = "${spotbugs_annotations_version}"
@@ -143,7 +144,11 @@ configurations {
 checkstyle {
     toolVersion = '7.4'
     showViolations = false
-    config project.resources.text.fromUri('https://raw.githubusercontent.com/openlattice/openlattice/main/gradles/checkstyle.xml')
+    if( project.hasProperty('developmentMode') && project.developmentMode ) {
+        config project.resources.text.fromFile("../gradles/checkstyle.xml")
+    } else {
+        config project.resources.text.fromUri('https://raw.githubusercontent.com/methodic-labs/methodic/main/gradles/checkstyle.xml')
+    }
 }
 
 import com.github.jk1.license.render.InventoryHtmlReportRenderer
@@ -197,8 +202,8 @@ dependencies {
         implementation("com.openlattice:chronicle-api:${chronicle_api_version}") {
             exclude group: 'com.google.guava', module: 'guava'
         }
-        testImplementation "com.openlattice:rhizome:${rhizome_version}:tests"
-        testImplementation "com.openlattice:rhizome-client:${rhizome_client_version}:tests"
+        testImplementation "com.geekbeast:rhizome:${rhizome_version}:tests"
+        testImplementation "com.geekbeast:rhizome-client:${rhizome_client_version}:tests"
     }
 
     /*
@@ -249,5 +254,5 @@ jar {
 }
 
 startScripts {
-    classpath = files(jar.archivePath)
+    classpath = files(jar.archiveFile.get().asFile) + classpath.filter { it.getName().startsWith("rhizome") && !it.getName().contains("client") }
 }

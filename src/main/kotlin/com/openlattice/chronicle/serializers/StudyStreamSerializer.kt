@@ -29,7 +29,7 @@ import com.hazelcast.nio.ObjectDataInput
 import com.hazelcast.nio.ObjectDataOutput
 import com.openlattice.chronicle.hazelcast.StreamSerializerTypeIds
 import com.openlattice.chronicle.study.Study
-import com.openlattice.chronicle.util.TestDataFactory
+import com.openlattice.chronicle.util.tests.TestDataFactory
 import org.springframework.stereotype.Component
 import java.io.IOException
 
@@ -41,17 +41,18 @@ class StudyStreamSerializer : TestableSelfRegisteringStreamSerializer<Study> {
     companion object {
         private val mapper = ObjectMappers.newJsonMapper()
         private val odtss = JavaDefaultSerializers.OffsetDateTimeSerializer()
+
         @JvmStatic
         @Throws(IOException::class)
-        fun serialize(out: ObjectDataOutput, study:Study) {
+        fun serialize(out: ObjectDataOutput, study: Study) {
             UUIDStreamSerializerUtils.serialize(out, study.id)
             out.writeString(study.title)
             out.writeString(study.description)
 
-            odtss.write(out,study.createdAt)
-            odtss.write(out,study.updatedAt)
-            odtss.write(out,study.startedAt)
-            odtss.write(out,study.endedAt)
+            odtss.write(out, study.createdAt)
+            odtss.write(out, study.updatedAt)
+            odtss.write(out, study.startedAt)
+            odtss.write(out, study.endedAt)
 
             out.writeDouble(study.lat)
             out.writeDouble(study.lon)
@@ -62,31 +63,34 @@ class StudyStreamSerializer : TestableSelfRegisteringStreamSerializer<Study> {
             out.writeBoolean(study.notificationsEnabled)
             out.writeString(study.storage)
             out.writeByteArray(mapper.writeValueAsBytes(study.settings))
-
+            out.writeByteArray(mapper.writeValueAsBytes(study.modules))
         }
 
         @JvmStatic
         @Throws(IOException::class)
         fun deserialize(input: ObjectDataInput): Study {
-            return Study(studyId = UUIDStreamSerializerUtils.deserialize(input),
-                         title = input.readString()!!,
-                         description = input.readString()!!,
-                         createdAt = odtss.read(input),
-                         updatedAt = odtss.read(input),
-                         startedAt = odtss.read(input),
-                         endedAt = odtss.read(input),
-                         lat = input.readDouble(),
-                         lon =input.readDouble(),
-                         group = input.readString()!!,
-                         version = input.readString()!!,
-                         contact = input.readString()!!,
-                         organizationIds = SetStreamSerializers.fastUUIDSetDeserialize(input),
-                         notificationsEnabled = input.readBoolean(),
-                         storage = input.readString()!!,
-                         settings = mapper.readValue(input.readByteArray()!!)
+            return Study(
+                studyId = UUIDStreamSerializerUtils.deserialize(input),
+                title = input.readString()!!,
+                description = input.readString()!!,
+                createdAt = odtss.read(input),
+                updatedAt = odtss.read(input),
+                startedAt = odtss.read(input),
+                endedAt = odtss.read(input),
+                lat = input.readDouble(),
+                lon = input.readDouble(),
+                group = input.readString()!!,
+                version = input.readString()!!,
+                contact = input.readString()!!,
+                organizationIds = SetStreamSerializers.fastUUIDSetDeserialize(input),
+                notificationsEnabled = input.readBoolean(),
+                storage = input.readString()!!,
+                settings = mapper.readValue(input.readByteArray()!!),
+                modules = mapper.readValue(input.readByteArray()!!)
             )
         }
     }
+
     override fun generateTestValue(): Study {
         return TestDataFactory.study()
     }

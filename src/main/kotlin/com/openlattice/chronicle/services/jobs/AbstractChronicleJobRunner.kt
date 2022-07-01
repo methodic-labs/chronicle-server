@@ -1,4 +1,4 @@
-package com.openlattice.chronicle.jobs
+package com.openlattice.chronicle.services.jobs
 
 import com.geekbeast.rhizome.jobs.JobStatus
 import com.openlattice.chronicle.auditing.AuditableEvent

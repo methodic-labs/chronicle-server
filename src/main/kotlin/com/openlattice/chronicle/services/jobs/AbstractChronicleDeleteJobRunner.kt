@@ -1,4 +1,4 @@
-package com.openlattice.chronicle.jobs
+package com.openlattice.chronicle.services.jobs
 
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.JOBS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.COMPLETED_AT

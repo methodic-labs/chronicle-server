@@ -23,6 +23,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 import com.ryantenney.metrics.spring.config.annotation.EnableMetrics
 import com.geekbeast.auth0.Auth0SecurityPod
+import org.springframework.context.annotation.ComponentScan
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpMethod
 import kotlin.Throws
@@ -52,10 +53,13 @@ class ChronicleServerSecurityPod : Auth0SecurityPod() {
             //v3 unauthenticated endpoints.
             .antMatchers(HttpMethod.POST, "/chronicle/v3/study/*/participant/*/ios/*").permitAll()
             .antMatchers(HttpMethod.POST, "/chronicle/v3/study/*/participant/*/android/*").permitAll()
-            .antMatchers(HttpMethod.POST, "/chronicle/v3/time-user-diary/**").permitAll()
+            .antMatchers(HttpMethod.POST, "/chronicle/v3/study/*/participant/*/*/enroll").permitAll()
+            .antMatchers(HttpMethod.POST, "/chronicle/v3/time-use-diary/**").permitAll()
             .antMatchers(HttpMethod.GET, "/chronicle/v3/study/*/settings/sensors").permitAll()
             .antMatchers(HttpMethod.GET, "/chronicle/v3/study/*/settings").permitAll()
             .antMatchers(HttpMethod.GET, "/chronicle/v3/study/*/participant/*/verify").permitAll()
+            .antMatchers(HttpMethod.GET, "/chronicle/v3/survey/*/participant/*/app-usage").permitAll()
+            .antMatchers(HttpMethod.POST, "/chronicle/v3/survey/*/participant/*/app-usage").permitAll()
 
             .antMatchers( "/chronicle/**").authenticated()
 

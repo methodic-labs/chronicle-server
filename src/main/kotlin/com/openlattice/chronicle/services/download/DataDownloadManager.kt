@@ -40,6 +40,13 @@ interface DataDownloadManager {
         endDateTime: OffsetDateTime
     ): Iterable<Map<String, Any>>
 
+    fun getPreprocessedUsageEventsData(
+        studyId: UUID,
+        participantIds: Set<String>,
+        startDateTime: OffsetDateTime,
+        endDateTime: OffsetDateTime
+    ): Iterable<Map<String, Any>>
+
     fun getQuestionnaireResponses(
         studyId: UUID,
         questionnaireId: UUID

@@ -18,12 +18,18 @@ import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.hazelcast.HazelcastMap
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.ids.IdConstants
+import com.openlattice.chronicle.notifications.DeliveryType
+import com.openlattice.chronicle.notifications.NotificationType
+import com.openlattice.chronicle.notifications.ParticipantNotification
+import com.openlattice.chronicle.notifications.StudyNotificationSettings
 import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.participants.ParticipantStats
 import com.openlattice.chronicle.postgres.ResultSetAdapters
+import com.openlattice.chronicle.sensorkit.SensorSetting
 import com.openlattice.chronicle.sensorkit.SensorType
 import com.openlattice.chronicle.services.candidates.CandidateManager
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
+import com.openlattice.chronicle.services.notifications.NotificationService
 import com.openlattice.chronicle.services.studies.processors.StudyPhoneNumberGetter
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.LEGACY_STUDY_IDS
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.ORGANIZATION_STUDIES
@@ -40,12 +46,12 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.ENDED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LAT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LEGACY_STUDY_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LON
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.MODULES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.NOTIFICATIONS_ENABLED
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ORGANIZATION_IDS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPATION_STATUS
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.PHONE_NUMBER
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SETTINGS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STARTED_AT
@@ -59,14 +65,18 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPDATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_ID
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.study.Study
+import com.openlattice.chronicle.study.StudySetting
+import com.openlattice.chronicle.study.StudySettingType
 import com.openlattice.chronicle.study.StudyUpdate
 import com.openlattice.chronicle.util.ChronicleServerUtil
 import com.openlattice.chronicle.util.ensureVanilla
+import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.sql.Connection
 import java.time.OffsetDateTime
 import java.util.*
+import javax.inject.Inject
 
 /**
  * @author Solomon Tang <solomon@openlattice.com>
@@ -78,10 +88,15 @@ class StudyService(
     private val candidateService: CandidateManager,
     private val enrollmentService: EnrollmentManager,
     private val idGenerationService: HazelcastIdGenerationService,
+    private val studyLimitsMgr: StudyLimitsManager,
     override val auditingManager: AuditingManager,
     hazelcast: HazelcastInstance,
 ) : StudyManager, AuditingComponent {
     private val studies = HazelcastMap.STUDIES.getMap(hazelcast)
+
+    @Inject
+    @org.springframework.context.annotation.Lazy
+    private lateinit var notificationService: NotificationService
 
     companion object {
         private val logger = LoggerFactory.getLogger(StudyService::class.java)
@@ -99,6 +114,7 @@ class StudyService(
             NOTIFICATIONS_ENABLED,
             STORAGE,
             SETTINGS,
+            MODULES,
             STUDY_PHONE_NUMBER
         )
         private val STUDY_COLUMNS = STUDY_COLUMNS_LIST.joinToString(",") { it.name }
@@ -110,8 +126,6 @@ class StudyService(
             TITLE,
             DESCRIPTION,
             UPDATED_AT,
-            STARTED_AT,
-            ENDED_AT,
             LAT,
             LON,
             STUDY_GROUP,
@@ -119,7 +133,8 @@ class StudyService(
             CONTACT,
             NOTIFICATIONS_ENABLED,
             STORAGE,
-            SETTINGS
+            SETTINGS,
+            MODULES
         )
 
         private val UPDATE_STUDY_COLUMNS = UPDATE_STUDY_COLUMNS_LIST.joinToString(",") { it.name }
@@ -195,18 +210,17 @@ class StudyService(
         /**
          * 1. title,
          * 2. description,
-         * 3. updated_at,
-         * 4. started_at,
-         * 5. ended_at,
-         * 6. lat,
-         * 7. lon,
-         * 8. study_group,
-         * 9. study_version,
-         * 10. contact,
-         * 11. notifications enabled
-         * 12. storage
-         * 13. settings
-         * 14. study_id
+         * 3. updated_at
+         * 4. lat,
+         * 5. lon,
+         * 6. study_group,
+         * 7. study_version,
+         * 8. contact,
+         * 9. notifications enabled
+         * 10. storage
+         * 11. settings
+         * 12. modules
+         * 13. study_id
          */
 
         private val UPDATE_STUDY_SQL = """
@@ -364,6 +378,7 @@ class StudyService(
     }
 
     override fun createStudy(connection: Connection, study: Study) {
+        studyLimitsMgr.initializeStudyLimits(connection, study.id)
         insertStudy(connection, study)
         insertOrgStudy(connection, study)
         authorizationService.createUnnamedSecurableObject(
@@ -387,7 +402,8 @@ class StudyService(
             ps.setObject(9, study.notificationsEnabled)
             ps.setObject(10, study.storage)
             ps.setString(11, mapper.writeValueAsString(study.settings))
-            ps.setString(12, study.phoneNumber)
+            ps.setString(12, mapper.writeValueAsString(study.modules))
+            ps.setString(13, study.phoneNumber)
             return ps.executeUpdate()
         }
     }
@@ -439,25 +455,19 @@ class StudyService(
         connection.prepareStatement(UPDATE_STUDY_SQL).use { ps ->
             ps.setString(1, study.title)
             ps.setString(2, study.description)
-            ps.setObject(3, OffsetDateTime.now())
-            ps.setObject(4, study.startedAt)
-            ps.setObject(5, study.endedAt)
-            ps.setObject(6, study.lat)
-            ps.setObject(7, study.lon)
-            ps.setString(8, study.group)
-            ps.setString(9, study.version)
-            ps.setString(10, study.contact)
-            ps.setObject(11, study.notificationsEnabled)
-            ps.setString(12, study.storage)
-            if (study.settings == null) {
-                ps.setObject(13, study.settings)
-            } else {
-                ps.setString(13, mapper.writeValueAsString(study.settings))
-            }
-            ps.setObject(14, studyId)
+            ps.setObject(3, OffsetDateTime.now()) //Set last updated field.
+            ps.setObject(4, study.lat)
+            ps.setObject(5, study.lon)
+            ps.setString(6, study.group)
+            ps.setString(7, study.version)
+            ps.setString(8, study.contact)
+            ps.setObject(9, study.notificationsEnabled)
+            ps.setString(10, study.storage)
+            ps.setObject(11, if (study.settings == null) null else mapper.writeValueAsString(study.settings))
+            ps.setString(12, if (study.modules == null) null else mapper.writeValueAsString(study.modules))
+            ps.setObject(13, studyId)
             ps.executeUpdate()
         }
-        studies.loadAll(setOf(studyId), true)
     }
 
     override fun getStudyPhoneNumber(studyId: UUID): String? {
@@ -469,7 +479,7 @@ class StudyService(
     override fun updateParticipationStatus(
         studyId: UUID,
         participantId: String,
-        participationStatus: ParticipationStatus
+        participationStatus: ParticipationStatus,
     ) {
         logger.info("Updating participation status: ${ChronicleServerUtil.STUDY_PARTICIPANT}", studyId, participantId)
         storageResolver.getPlatformStorage().connection.use { connection ->
@@ -494,7 +504,7 @@ class StudyService(
     }
 
     override fun registerParticipant(studyId: UUID, participant: Participant): UUID {
-        return storageResolver.getPlatformStorage().connection.use { conn ->
+        val candidateId = storageResolver.getPlatformStorage().connection.use { conn ->
             AuditedOperationBuilder<UUID>(conn, auditingManager)
                 .operation { connection -> registerParticipant(connection, studyId, participant) }
                 .audit { candidateId ->
@@ -508,9 +518,12 @@ class StudyService(
                 }
                 .buildAndRun()
         }
+        authorizationService.ensureAceIsLoaded(AclKey(candidateId), Principals.getCurrentUser())
+        return candidateId
     }
 
     override fun registerParticipant(connection: Connection, studyId: UUID, participant: Participant): UUID {
+        studyLimitsMgr.reserveEnrollmentCapacity(connection, studyId)
         val candidateId = candidateService.registerCandidate(connection, participant.candidate)
         enrollmentService.registerParticipant(
             connection,
@@ -519,7 +532,38 @@ class StudyService(
             candidateId,
             participant.participationStatus
         )
-        authorizationService.ensureAceIsLoaded(AclKey(candidateId), Principals.getCurrentUser())
+        val deliveryTypes = EnumSet.noneOf(DeliveryType::class.java)
+
+        if (StringUtils.isNotBlank(participant.candidate.phoneNumber)) {
+            deliveryTypes.add(DeliveryType.SMS)
+
+        }
+        if (StringUtils.isNotBlank(participant.candidate.email)) {
+            deliveryTypes.add(DeliveryType.EMAIL)
+        }
+
+        try {
+            val studySettings =
+                getStudy(studyId).settings.getValue(StudySettingType.Notifications) as StudyNotificationSettings
+
+            if (studySettings.notifyOnEnrollment) {
+                notificationService.sendNotifications(
+                    connection,
+                    studyId,
+                    listOf(
+                        ParticipantNotification(
+                            participant.participantId,
+                            NotificationType.ENROLLMENT,
+                            deliveryTypes,
+                            message = studySettings.getEnrollmentMessage()
+                        )
+                    )
+                )
+            }
+        } catch (ex: Exception) {
+            //If something goes wrong with sending out notifications keep it going.
+            logger.error("Unable to send out notifications.", ex)
+        }
         return candidateId
     }
 
@@ -581,7 +625,7 @@ class StudyService(
     override fun removeParticipantsFromStudy(
         connection: Connection,
         studyId: UUID,
-        participantIds: Collection<String>
+        participantIds: Collection<String>,
     ): Int {
         return connection.prepareStatement(REMOVE_PARTICIPANTS_FROM_STUDY_SQL).use { ps ->
             ps.setObject(1, studyId)
@@ -591,7 +635,7 @@ class StudyService(
         }
     }
 
-    override fun getStudySettings(studyId: UUID): Map<String, Any> {
+    override fun getStudySettings(studyId: UUID): Map<StudySettingType, StudySetting> {
         return storageResolver.getPlatformStorage().connection.use { connection ->
             connection.prepareStatement(GET_STUDY_SETTINGS_SQL).use { ps ->
                 ps.setObject(1, studyId)
@@ -605,11 +649,7 @@ class StudyService(
 
     override fun getStudySensors(studyId: UUID): Set<SensorType> {
         val settings = getStudySettings(studyId)
-        val sensors = settings[Study.SENSORS]
-        sensors?.let {
-            return (it as List<String>).map { sensor -> SensorType.valueOf(sensor) }.toSet()
-        }
-        return setOf()
+        return settings[StudySettingType.Sensor] as SensorSetting? ?: SensorSetting.NO_SENSORS
     }
 
     override fun getStudyParticipantStats(studyId: UUID): Map<String, ParticipantStats> {
@@ -666,10 +706,23 @@ class StudyService(
                 ps.executeUpdate()
             }
         }
+
     }
 
     override fun getStudyParticipants(studyId: UUID): Iterable<Participant> {
         return selectStudyParticipants(studyId)
+    }
+
+    override fun countStudyParticipants(studyId: UUID): Long {
+        return studyLimitsMgr.countStudyParticipants(studyId)
+    }
+
+    override fun countStudyParticipants(connection: Connection, studyIds: Set<UUID>): Map<UUID, Long> {
+        return studyLimitsMgr.countStudyParticipants(connection, studyIds)
+    }
+
+    override fun countStudyParticipants(studyIds: Set<UUID>): Map<UUID, Long> {
+        return studyLimitsMgr.countStudyParticipants(studyIds)
     }
 
     private fun selectStudyParticipants(studyId: UUID): Iterable<Participant> {

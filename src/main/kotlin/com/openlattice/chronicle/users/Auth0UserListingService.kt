@@ -114,11 +114,11 @@ class Auth0UserListingService(
      * [to] (inclusive) as a sequence.
      */
     override fun getUpdatedUsers(from: Instant, to: Instant): Sequence<User> {
-        return Auth0UserListingResult(managementApiProvider.managementApi, from, to).asSequence()
+        return Auth0UserListingResult(managementApiProvider.getInstance(), from, to).asSequence()
     }
 
     override fun getUser(userId: String): User {
-        return com.openlattice.chronicle.util.getUser(managementApiProvider.managementApi, userId)
+        return com.openlattice.chronicle.util.getUser(managementApiProvider.getInstance(), userId)
     }
 }
 

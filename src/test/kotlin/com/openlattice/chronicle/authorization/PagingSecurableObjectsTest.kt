@@ -19,7 +19,7 @@
  */
 package com.openlattice.chronicle.authorization
 
-import com.openlattice.chronicle.util.TestDataFactory
+import com.openlattice.chronicle.util.tests.TestDataFactory
 import org.junit.Assert
 import org.junit.BeforeClass
 import org.junit.Test
@@ -30,12 +30,13 @@ import java.util.stream.Collectors
 open class PagingSecurableObjectsTest : HzAuthzTest() {
     @Test
     override fun testListSecurableObjects() {
-        val result = hzAuthz.getAuthorizedObjectsOfType(
+        val result = hzAuthz.listAuthorizedObjectsOfType(
             currentPrincipals,
             SecurableObjectType.Study,
             EnumSet.of(Permission.READ)
-        ).collect(Collectors.toSet())
-        Assert.assertEquals(3, result.size.toLong())
+        )
+
+        Assert.assertEquals(2, result.size.toLong())
     }
 
     @Test
@@ -75,9 +76,10 @@ open class PagingSecurableObjectsTest : HzAuthzTest() {
             currentPrincipals.add(r1)
             currentPrincipals.add(r2)
             currentPrincipals.add(r3)
-            hzAuthz.addPermission(key1, u1, EnumSet.allOf(Permission::class.java))
             hzAuthz.createUnnamedSecurableObject(key1, u1, EnumSet.noneOf(Permission::class.java),SecurableObjectType.Study)
+            hzAuthz.addPermission(key1, u1, EnumSet.allOf(Permission::class.java))
             hzAuthz.createUnnamedSecurableObject(key2, r1, EnumSet.noneOf(Permission::class.java),SecurableObjectType.Study)
+            hzAuthz.addPermission(key2, r1, EnumSet.allOf(Permission::class.java))
             hzAuthz.createUnnamedSecurableObject(key3, r2, EnumSet.noneOf(Permission::class.java),SecurableObjectType.Study)
         }
     }

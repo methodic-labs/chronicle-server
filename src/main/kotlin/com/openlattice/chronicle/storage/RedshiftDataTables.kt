@@ -1,35 +1,52 @@
 package com.openlattice.chronicle.storage
 
 import com.geekbeast.postgres.PostgresColumnDefinition
-import com.geekbeast.postgres.PostgresDatatype
-import com.geekbeast.postgres.PostgresTableDefinition
 import com.geekbeast.postgres.RedshiftTableDefinition
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.ACL_KEY
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APPLICATION_LABEL
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_DATETIME_END
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_DATETIME_START
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_ENGAGE_30S
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_FULL_NAME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_PACKAGE_NAME
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_USAGE_FLAGS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.AUDIT_EVENT_TYPE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DATA
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DATE
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DAY
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DESCRIPTION
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DEVICE_USAGE_SENSOR_COLS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DURATION
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_DURATION_SECONDS
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.END_DATE_TIME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.END_TIME
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.INTERACTION_TYPE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.KEYBOARD_METRICS_SENSOR_COLS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.MESSAGES_USAGE_SENSOR_COLS
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.NEW_APP
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.NEW_PERIOD
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.ORGANIZATION_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PHONE_USAGE_SENSOR_COLS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PRINCIPAL_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PRINCIPAL_TYPE
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.RECORDED_DATE
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_RECORD_TYPE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.SECURABLE_PRINCIPAL_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.SHARED_SENSOR_COLS
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.START_DATE_TIME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.START_TIME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.STUDY_ID
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_SWITCHED_APP
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_TIMEZONE
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_TITLE
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DATE_WITH_TIMEZONE
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.RUN_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMESTAMP
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMEZONE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.USERNAME
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.WEEKDAY_MONDAY_FRIDAY
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.WEEKDAY_MONDAY_THURSDAY
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.WEEKDAY_SUNDAY_THURSDAY
 
 /**
  *
@@ -42,61 +59,84 @@ class RedshiftDataTables {
 
         @JvmField
         val CHRONICLE_USAGE_EVENTS = RedshiftTableDefinition("chronicle_usage_events")
-                .sortKey(STUDY_ID)
-                .addColumns(
-                        STUDY_ID,
-                        PARTICIPANT_ID,
-                        APP_PACKAGE_NAME,
-                        INTERACTION_TYPE,
-                        TIMESTAMP,
-                        TIMEZONE,
-                        USERNAME,
-                        APPLICATION_LABEL,
-                    )
-                .addDataSourceNames(REDSHIFT_DATASOURCE_NAME)
+            .sortKey(STUDY_ID)
+            .addColumns(
+                STUDY_ID,
+                PARTICIPANT_ID,
+                APP_PACKAGE_NAME,
+                INTERACTION_TYPE,
+                TIMESTAMP,
+                TIMEZONE,
+                USERNAME,
+                APPLICATION_LABEL,
+            )
+            .addDataSourceNames(REDSHIFT_DATASOURCE_NAME)
 
         @JvmField
         val CHRONICLE_USAGE_STATS = RedshiftTableDefinition("chronicle_usage_stats")
-                .sortKey(STUDY_ID)
-                .addColumns(
-                        STUDY_ID,
-                        PARTICIPANT_ID,
-                        APP_PACKAGE_NAME,
-                        INTERACTION_TYPE,
-                        START_TIME,
-                        END_TIME,
-                        DURATION,
-                        TIMESTAMP,
-                        TIMEZONE,
-                        APPLICATION_LABEL
-                )
-                .addDataSourceNames(REDSHIFT_DATASOURCE_NAME)
+            .sortKey(STUDY_ID)
+            .addColumns(
+                STUDY_ID,
+                PARTICIPANT_ID,
+                APP_PACKAGE_NAME,
+                INTERACTION_TYPE,
+                START_TIME,
+                END_TIME,
+                DURATION,
+                TIMESTAMP,
+                TIMEZONE,
+                APPLICATION_LABEL
+            )
+            .addDataSourceNames(REDSHIFT_DATASOURCE_NAME)
 
 
         @JvmField
         val AUDIT = RedshiftTableDefinition("audit")
-                .sortKey(ACL_KEY)
-                .addColumns(
-                        ACL_KEY,
-                        SECURABLE_PRINCIPAL_ID,
-                        PRINCIPAL_TYPE,
-                        PRINCIPAL_ID,
-                        AUDIT_EVENT_TYPE,
-                        STUDY_ID,
-                        ORGANIZATION_ID,
-                        DESCRIPTION,
-                        DATA,
-                        TIMESTAMP
-                )
-                .addDataSourceNames(REDSHIFT_DATASOURCE_NAME)
+            .sortKey(ACL_KEY)
+            .addColumns(
+                ACL_KEY,
+                SECURABLE_PRINCIPAL_ID,
+                PRINCIPAL_TYPE,
+                PRINCIPAL_ID,
+                AUDIT_EVENT_TYPE,
+                STUDY_ID,
+                ORGANIZATION_ID,
+                DESCRIPTION,
+                DATA,
+                TIMESTAMP
+            )
+            .addDataSourceNames(REDSHIFT_DATASOURCE_NAME)
+
+        @JvmField
+        val PREPROCESSED_USAGE_EVENTS = RedshiftTableDefinition("preprocessed_usage_events")
+            .sortKey(STUDY_ID)
+            .addColumns(
+                RUN_ID,
+                STUDY_ID,
+                PARTICIPANT_ID,
+                APP_RECORD_TYPE,
+                APP_TITLE,
+                APP_FULL_NAME,
+                APP_DATETIME_START,
+                APP_DATETIME_END,
+                APP_TIMEZONE,
+                APP_DURATION_SECONDS,
+                DAY,
+                WEEKDAY_MONDAY_FRIDAY,
+                WEEKDAY_MONDAY_THURSDAY,
+                WEEKDAY_SUNDAY_THURSDAY,
+                APP_ENGAGE_30S,
+                APP_SWITCHED_APP,
+                APP_USAGE_FLAGS
+            ).addDataSourceNames(REDSHIFT_DATASOURCE_NAME)
 
         @JvmField
         val IOS_SENSOR_DATA = RedshiftTableDefinition("sensor_data")
-                .sortKey(STUDY_ID)
-                .addColumns(
-                        *(SHARED_SENSOR_COLS + DEVICE_USAGE_SENSOR_COLS + PHONE_USAGE_SENSOR_COLS + MESSAGES_USAGE_SENSOR_COLS + KEYBOARD_METRICS_SENSOR_COLS).toTypedArray()
-                )
-                .addDataSourceNames(REDSHIFT_DATASOURCE_NAME)
+            .sortKey(STUDY_ID)
+            .addColumns(
+                *(SHARED_SENSOR_COLS + DEVICE_USAGE_SENSOR_COLS + PHONE_USAGE_SENSOR_COLS + MESSAGES_USAGE_SENSOR_COLS + KEYBOARD_METRICS_SENSOR_COLS).toTypedArray()
+            )
+            .addDataSourceNames(REDSHIFT_DATASOURCE_NAME)
 
         private val INSERT_SENSOR_DATA_COL_INDICES = IOS_SENSOR_DATA.columns.mapIndexed { index, col -> col.name to index + 1 }.toMap()
 
@@ -112,7 +152,7 @@ class RedshiftDataTables {
          */
         private fun getMergeClause(srcMergeTableName: String): String {
             return CHRONICLE_USAGE_EVENTS.columns.joinToString(
-                    " AND "
+                " AND "
             ) { "${CHRONICLE_USAGE_EVENTS.name}.${it.name} = ${srcMergeTableName}.${it.name}" }
         }
 
@@ -172,16 +212,16 @@ class RedshiftDataTables {
         """.trimIndent()
 
         val INSERT_USAGE_EVENT_COLUMN_INDICES: Map<String, Int> =
-                CHRONICLE_USAGE_EVENTS.columns.mapIndexed { index, pcd -> pcd.name to (index + 1) }.toMap() //remeber postgres is 1 based index
+            CHRONICLE_USAGE_EVENTS.columns.mapIndexed { index, pcd -> pcd.name to (index + 1) }.toMap() //remeber postgres is 1 based index
         val INSERT_USAGE_STATS_COLUMN_INDICES: Map<String, Int> =
-                CHRONICLE_USAGE_STATS.columns.mapIndexed { index, pcd -> pcd.name to (index + 1) }.toMap()
+            CHRONICLE_USAGE_STATS.columns.mapIndexed { index, pcd -> pcd.name to (index + 1) }.toMap()
 
         fun getInsertUsageEventColumnIndex(
-                column: PostgresColumnDefinition
+            column: PostgresColumnDefinition
         ): Int = INSERT_USAGE_EVENT_COLUMN_INDICES.getValue(column.name)
 
         fun getInsertUsageStatColumnIndex(
-                column: PostgresColumnDefinition
+            column: PostgresColumnDefinition
         ): Int = INSERT_USAGE_STATS_COLUMN_INDICES.getValue(column.name)
     }
 }

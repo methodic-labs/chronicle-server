@@ -1,15 +1,9 @@
 package com.openlattice.chronicle.survey
 
-import com.google.common.collect.Iterables
-import com.google.common.collect.Lists
 import com.openlattice.chronicle.ChronicleServerTests
 import com.openlattice.chronicle.client.ChronicleClient
 import com.openlattice.chronicle.constants.EdmConstants
-import com.openlattice.chronicle.data.FileType
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_ID
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.QUESTION_TITLE
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.RESPONSES
-import com.openlattice.chronicle.util.TestDataFactory
+import com.openlattice.chronicle.util.tests.TestDataFactory
 import org.dmfs.rfc5545.recur.RecurrenceRule
 import org.junit.Assert
 import org.junit.Test
@@ -56,7 +50,7 @@ class QuestionnaireTests : ChronicleServerTests() {
         surveyApi.updateQuestionnaire(studyId, questionnaireId, update)
         val updated = surveyApi.getQuestionnaire(studyId, questionnaireId)
 
-        Assert.assertEquals(updated.title, update.title)
+         Assert.assertEquals( update.title, updated.title)
         Assert.assertEquals(updated.description, questionnaire.description) //description field in update object, therefore description shouldn't be updated
         Assert.assertEquals(updated.recurrenceRule, update.recurrenceRule)
         Assert.assertEquals(updated.active, update.active)
