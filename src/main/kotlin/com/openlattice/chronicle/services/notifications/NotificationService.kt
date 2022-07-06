@@ -12,7 +12,6 @@ import com.openlattice.chronicle.notifications.NotificationStatus
 import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.services.candidates.CandidateService
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
-import com.openlattice.chronicle.services.enrollment.EnrollmentService
 import com.openlattice.chronicle.services.jobs.ChronicleJob
 import com.openlattice.chronicle.services.jobs.JobService
 import com.openlattice.chronicle.services.studies.StudyService
@@ -188,8 +187,8 @@ class NotificationService(
 
     override fun sendNotifications(studyId: UUID, participantNotifications: List<ParticipantNotification>) {
         storageResolver.getPlatformStorage().connection.use { connection ->
-            AuditedOperationBuilder<Unit>(connection, auditingManager)
-                .operation { conn ->
+            AuditedTransactionBuilder<Unit>(connection, auditingManager)
+                .transaction { conn ->
 //                    val notificationOutcomes = twilioService.sendNotifications(notifications)
                     sendNotifications(conn, studyId, participantNotifications)
                 }

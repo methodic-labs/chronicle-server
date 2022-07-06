@@ -1,9 +1,6 @@
 package com.openlattice.chronicle.controllers
 
 import com.codahale.metrics.annotation.Timed
-import com.openlattice.chronicle.auditing.AuditEventType
-import com.openlattice.chronicle.auditing.AuditableEvent
-import com.openlattice.chronicle.auditing.AuditedOperationBuilder
 import com.openlattice.chronicle.auditing.AuditingManager
 import com.openlattice.chronicle.authorization.*
 import com.openlattice.chronicle.authorization.principals.Principals

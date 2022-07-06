@@ -6,6 +6,7 @@ import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.authorization.AuthorizationManager
 import com.openlattice.chronicle.authorization.AuthorizingComponent
 import com.openlattice.chronicle.base.OK
+import com.openlattice.chronicle.base.OK.Companion.ok
 import com.openlattice.chronicle.data.FileType
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.services.download.DataDownloadService
@@ -17,6 +18,7 @@ import com.openlattice.chronicle.survey.SurveyApi.Companion.CONTROLLER
 import com.openlattice.chronicle.survey.SurveyApi.Companion.DATA_PATH
 import com.openlattice.chronicle.survey.SurveyApi.Companion.END_DATE
 import com.openlattice.chronicle.survey.SurveyApi.Companion.FILE_NAME
+import com.openlattice.chronicle.survey.SurveyApi.Companion.FILTERED_PATH
 import com.openlattice.chronicle.survey.SurveyApi.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.survey.SurveyApi.Companion.PARTICIPANT_ID_PATH
 import com.openlattice.chronicle.survey.SurveyApi.Companion.PARTICIPANT_PATH
@@ -50,8 +52,56 @@ class SurveyController @Inject constructor(
     val downloadService: DataDownloadService,
     val idGenerationService: HazelcastIdGenerationService,
     override val authorizationManager: AuthorizationManager,
-    override val auditingManager: AuditingManager
+    override val auditingManager: AuditingManager,
 ) : SurveyApi, AuthorizingComponent {
+    @Timed
+    @GetMapping(
+        path = [STUDY_ID_PATH + FILTERED_PATH],
+        produces = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    override fun getAppsFilteredForStudyAppUsageSurvey(@PathVariable(STUDY_ID) studyId: UUID): Collection<String> {
+        ensureReadAccess(AclKey(studyId))
+        return surveysService.getAppsFilteredForStudyAppUsageSurvey(studyId)
+    }
+
+    @Timed
+    @PutMapping(
+        path = [STUDY_ID_PATH + FILTERED_PATH],
+        produces = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    override fun setAppsFilteredForStudyAppUsageSurvey(
+        @PathVariable(STUDY_ID) studyId: UUID,
+        @RequestBody appPackages: Set<String>,
+    ): OK {
+        ensureWriteAccess(AclKey(studyId))
+        surveysService.setAppsFilteredForStudyAppUsageSurvey(studyId, appPackages)
+        return ok
+    }
+
+    @Timed
+    @PatchMapping(
+        path = [STUDY_ID_PATH + FILTERED_PATH],
+        produces = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    override fun filterAppForStudyAppUsageSurvey(
+        @PathVariable(STUDY_ID) studyId: UUID,
+        @RequestBody appPackages: Set<String>,
+    ): OK {
+        ensureWriteAccess(AclKey(studyId))
+        surveysService.filterAppForStudyAppUsageSurvey(studyId, appPackages)
+        return ok
+    }
+
+    @Timed
+    @DeleteMapping(
+        path = [STUDY_ID_PATH + FILTERED_PATH],
+        produces = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    override fun allowAppForStudyAppUsageSurvey(studyId: UUID, @RequestBody appPackages: Set<String>): OK {
+        ensureWriteAccess(AclKey(studyId))
+        surveysService.allowAppForStudyAppUsageSurvey(studyId, appPackages)
+        return ok
+    }
 
     @Timed
     @GetMapping(
@@ -62,7 +112,7 @@ class SurveyController @Inject constructor(
         @PathVariable(STUDY_ID) studyId: UUID,
         @PathVariable(PARTICIPANT_ID) participantId: String,
         @RequestParam(value = START_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) startDateTime: OffsetDateTime,
-        @RequestParam(value = END_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) endDateTime: OffsetDateTime
+        @RequestParam(value = END_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) endDateTime: OffsetDateTime,
     ): List<AppUsage> {
         val realStudyId = studyService.getStudyId(studyId)
         checkNotNull(realStudyId) { "invalid study id" }
@@ -77,7 +127,7 @@ class SurveyController @Inject constructor(
     override fun submitAppUsageSurvey(
         @PathVariable(STUDY_ID) studyId: UUID,
         @PathVariable(PARTICIPANT_ID) participantId: String,
-        @RequestBody surveyResponses: List<AppUsage>
+        @RequestBody surveyResponses: List<AppUsage>,
     ) {
         val realStudyId = studyService.getStudyId(studyId)
         checkNotNull(realStudyId) { "invalid study id" }
@@ -91,7 +141,7 @@ class SurveyController @Inject constructor(
     )
     override fun createQuestionnaire(
         @PathVariable(STUDY_ID) studyId: UUID,
-        @RequestBody questionnaire: Questionnaire
+        @RequestBody questionnaire: Questionnaire,
     ): UUID {
         ensureWriteAccess(AclKey(studyId))
         return surveysService.createQuestionnaire(studyId, questionnaire)
@@ -103,7 +153,7 @@ class SurveyController @Inject constructor(
     )
     override fun deleteQuestionnaire(
         @PathVariable(STUDY_ID) studyId: UUID,
-        @PathVariable(QUESTIONNAIRE_ID) questionnaireId: UUID
+        @PathVariable(QUESTIONNAIRE_ID) questionnaireId: UUID,
     ): OK {
         ensureOwnerAccess(AclKey(studyId))
         surveysService.deleteQuestionnaire(studyId, questionnaireId)
@@ -117,7 +167,7 @@ class SurveyController @Inject constructor(
     )
     override fun getQuestionnaire(
         @PathVariable(STUDY_ID) studyId: UUID,
-        @PathVariable(QUESTIONNAIRE_ID) questionnaireId: UUID
+        @PathVariable(QUESTIONNAIRE_ID) questionnaireId: UUID,
     ): Questionnaire {
         return surveysService.getQuestionnaire(studyId, questionnaireId)
     }
@@ -130,7 +180,7 @@ class SurveyController @Inject constructor(
     override fun updateQuestionnaire(
         @PathVariable(STUDY_ID) studyId: UUID,
         @PathVariable(QUESTIONNAIRE_ID) questionnaireId: UUID,
-        @RequestBody update: QuestionnaireUpdate
+        @RequestBody update: QuestionnaireUpdate,
     ): OK {
         ensureWriteAccess(AclKey(studyId))
         surveysService.updateQuestionnaire(studyId, questionnaireId, update)
@@ -158,7 +208,7 @@ class SurveyController @Inject constructor(
         @PathVariable(STUDY_ID) studyId: UUID,
         @PathVariable(PARTICIPANT_ID) participantId: String,
         @PathVariable(QUESTIONNAIRE_ID) questionnaireId: UUID,
-        @RequestBody responses: List<QuestionnaireResponse>
+        @RequestBody responses: List<QuestionnaireResponse>,
     ): OK {
         val realStudyId = studyService.getStudyId(studyId)
         checkNotNull(realStudyId) { "invalid study id" }
@@ -169,7 +219,7 @@ class SurveyController @Inject constructor(
     override fun getQuestionnaireResponses(
         @PathVariable(STUDY_ID) studyId: UUID,
         @PathVariable(QUESTIONNAIRE_ID) questionnaireId: UUID,
-        @PathVariable(TYPE) fileType: FileType
+        @PathVariable(TYPE) fileType: FileType,
     ): Iterable<Map<String, Any>> {
         ensureReadAccess(AclKey(studyId))
         return downloadService.getQuestionnaireResponses(studyId, questionnaireId)
@@ -184,8 +234,10 @@ class SurveyController @Inject constructor(
         @PathVariable(STUDY_ID) studyId: UUID,
         @PathVariable(QUESTIONNAIRE_ID) questionnaireId: UUID,
         @RequestParam(value = TYPE) fileType: FileType,
-        @RequestParam(value = FILE_NAME) fileName: String? = "Questionnaire_${questionnaireId}_${LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE)}",
-        httpServletResponse: HttpServletResponse
+        @RequestParam(value = FILE_NAME) fileName: String? = "Questionnaire_${questionnaireId}_${
+            LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE)
+        }",
+        httpServletResponse: HttpServletResponse,
     ): Iterable<Map<String, Any>> {
 
         val data = getQuestionnaireResponses(studyId, questionnaireId, fileType)

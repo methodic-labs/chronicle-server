@@ -60,8 +60,8 @@ class ChronicleOrganizationService(
         organization.id = idGenerationService.getNextId()
         val aclKey = AclKey(organization.id)
         storageResolver.getPlatformStorage().connection.use { conn ->
-            AuditedOperationBuilder<Unit>(conn, auditingManager)
-                .operation { connection ->
+            AuditedTransactionBuilder<Unit>(conn, auditingManager)
+                .transaction { connection ->
                     createOrganization(
                         connection,
                         Principals.getCurrentUser(),

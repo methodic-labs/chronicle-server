@@ -27,6 +27,7 @@ package com.openlattice.chronicle.auditing
  */
 enum class AuditEventType {
     ACCESS_DENIED,
+    ALLOW_APPS,
     ADD_PERMISSION,
     ASSOCIATE_STUDY,
     BACKGROUND_USAGE_DATA_DELETION,
@@ -43,6 +44,8 @@ enum class AuditEventType {
     DOWNLOAD_PARTICIPANTS_TIME_USE_DIARY_DATA,
     DOWNLOAD_PARTICIPANTS_DATA,
     ENROLL_DEVICE,
+    FILTER_APPS,
+    GET_FILTERED_APPS,
     GET_ORGANIZATION,
     GET_STUDY,
     GET_TIME_USE_DIARY_SUBMISSION,

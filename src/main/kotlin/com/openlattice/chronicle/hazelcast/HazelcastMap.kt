@@ -20,11 +20,13 @@
 package com.openlattice.chronicle.hazelcast
 
 import com.auth0.json.mgmt.users.User
+import com.geekbeast.hazelcast.DelegatedStringSet
 import com.hazelcast.core.HazelcastInstance
 import com.hazelcast.map.IMap
 import com.openlattice.chronicle.authorization.*
 import com.openlattice.chronicle.mapstores.ids.Range
 import com.geekbeast.postgres.mapstores.TypedMapIdentifier
+import com.geekbeast.rhizome.KotlinDelegatedStringSet
 import com.openlattice.chronicle.study.Study
 import com.openlattice.chronicle.study.StudyLimits
 import java.util.*
@@ -68,6 +70,7 @@ class HazelcastMap<K, V> internal constructor(val name: String) : TypedMapIdenti
 //        @JvmField val DB_CREDS = HazelcastMap<AclKey, MaterializedViewAccount>("DB_CREDS")
 //        @JvmField val EXTERNAL_COLUMNS = HazelcastMap<UUID, ExternalColumn>("EXTERNAL_COLUMNS")
 //        @JvmField val EXTERNAL_TABLES = HazelcastMap<UUID, ExternalTable>("EXTERNAL_TABLES")
+        @JvmField val FILTERED_APPS = HazelcastMap<UUID, KotlinDelegatedStringSet>("FILTERED_APPS")
         @JvmField val ID_GENERATION = HazelcastMap<Long, Range>("ID_GENERATION")
 //        @JvmField val INDEXING_JOBS = HazelcastMap<UUID, DelegatedUUIDSet>("INDEXING_JOBS")
 //        @JvmField val INDEXING_LOCKS = HazelcastMap<UUID, Long>("INDEXING_LOCKS")
