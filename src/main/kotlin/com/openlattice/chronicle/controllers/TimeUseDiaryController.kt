@@ -4,7 +4,7 @@ import com.codahale.metrics.annotation.Timed
 import com.google.common.base.MoreObjects
 import com.openlattice.chronicle.auditing.AuditEventType
 import com.openlattice.chronicle.auditing.AuditableEvent
-import com.openlattice.chronicle.auditing.AuditedOperationBuilder
+import com.openlattice.chronicle.auditing.AuditedTransactionBuilder
 import com.openlattice.chronicle.auditing.AuditingManager
 import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.authorization.AuthorizationManager
@@ -76,8 +76,8 @@ class TimeUseDiaryController(
         val realStudyId = studyService.getStudyId(studyId)
         checkNotNull(realStudyId) { "invalid study id" }
         return storageResolver.getPlatformStorage().connection.use { conn ->
-            AuditedOperationBuilder<UUID>(conn, auditingManager)
-                .operation { connection ->
+            AuditedTransactionBuilder<UUID>(conn, auditingManager)
+                .transaction { connection ->
                     timeUseDiaryService.submitTimeUseDiary(
                         connection,
                         realStudyId,

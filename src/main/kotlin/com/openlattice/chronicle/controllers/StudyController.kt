@@ -8,7 +8,7 @@ import com.openlattice.chronicle.android.ChronicleData
 import com.openlattice.chronicle.android.ChronicleUsageEvent
 import com.openlattice.chronicle.auditing.AuditEventType
 import com.openlattice.chronicle.auditing.AuditableEvent
-import com.openlattice.chronicle.auditing.AuditedOperationBuilder
+import com.openlattice.chronicle.auditing.AuditedTransactionBuilder
 import com.openlattice.chronicle.auditing.AuditingManager
 import com.openlattice.chronicle.authorization.*
 import com.openlattice.chronicle.authorization.principals.Principals
@@ -239,8 +239,8 @@ class StudyController @Inject constructor(
         val currentUser = Principals.getCurrentSecurablePrincipal()
         logger.info("Updating study with id $studyId on behalf of ${currentUser.principal.id}")
         storageResolver.getPlatformStorage().connection.use { conn ->
-            AuditedOperationBuilder<Unit>(conn, auditingManager)
-                .operation { connection -> studyService.updateStudy(connection, studyId, study) }
+            AuditedTransactionBuilder<Unit>(conn, auditingManager)
+                .transaction { connection -> studyService.updateStudy(connection, studyId, study) }
                 .audit {
                     listOf(
                         AuditableEvent(
@@ -290,8 +290,8 @@ class StudyController @Inject constructor(
             deleteStudyAppUsageSurveyJob
         )
         return storageResolver.getPlatformStorage().connection.use { conn ->
-            AuditedOperationBuilder<Iterable<UUID>>(conn, auditingManager)
-                .operation { connection ->
+            AuditedTransactionBuilder<Iterable<UUID>>(conn, auditingManager)
+                .transaction { connection ->
                     val newJobIds = chronicleJobService.createJobs(connection, jobList)
                     logger.info("Created jobs with ids = {}", newJobIds)
                     val studyIdList = listOf(studyId)
@@ -299,7 +299,7 @@ class StudyController @Inject constructor(
                     studyService.removeStudiesFromOrganizations(connection, studyIdList)
                     studyService.removeAllParticipantsFromStudies(connection, studyIdList)
                     studies.evict(studyId)
-                    return@operation newJobIds
+                    return@transaction newJobIds
                 }
                 .audit { jobIds ->
                     listOf(
@@ -364,12 +364,12 @@ class StudyController @Inject constructor(
         )
 
         return storageResolver.getPlatformStorage().connection.use { conn ->
-            AuditedOperationBuilder<Iterable<UUID>>(conn, auditingManager)
-                .operation { connection ->
+            AuditedTransactionBuilder<Iterable<UUID>>(conn, auditingManager)
+                .transaction { connection ->
                     val newJobIds = chronicleJobService.createJobs(connection, jobList)
                     logger.info("Created jobs with ids = {}", newJobIds)
                     studyService.removeParticipantsFromStudy(connection, studyId, participantIds)
-                    return@operation newJobIds
+                    return@transaction newJobIds
                 }
                 .audit { jobIds ->
                     listOf(
@@ -437,8 +437,8 @@ class StudyController @Inject constructor(
         val study = studyService.getStudy(studyId)
         study.settings.toMutableMap()[StudySettingType.DataCollection] = dataCollectionSettings
         storageResolver.getPlatformStorage().connection.use { conn ->
-            AuditedOperationBuilder<Unit>(conn, auditingManager)
-                .operation { connection ->
+            AuditedTransactionBuilder<Unit>(conn, auditingManager)
+                .transaction { connection ->
                     studyService.updateStudy(
                         connection,
                         studyId,

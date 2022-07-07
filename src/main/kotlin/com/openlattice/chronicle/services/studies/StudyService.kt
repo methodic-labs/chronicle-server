@@ -31,6 +31,7 @@ import com.openlattice.chronicle.services.candidates.CandidateManager
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import com.openlattice.chronicle.services.notifications.NotificationService
 import com.openlattice.chronicle.services.studies.processors.StudyPhoneNumberGetter
+import com.openlattice.chronicle.services.surveys.SurveysManager
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.LEGACY_STUDY_IDS
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.ORGANIZATION_STUDIES
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.PARTICIPANT_STATS
@@ -42,7 +43,6 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CONTACT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CREATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DESCRIPTION
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.ENDED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LAT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LEGACY_STUDY_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LON
@@ -54,7 +54,6 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_I
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPATION_STATUS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PRINCIPAL_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SETTINGS
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.STARTED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STORAGE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_GROUP
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
@@ -87,6 +86,7 @@ class StudyService(
     private val authorizationService: AuthorizationManager,
     private val candidateService: CandidateManager,
     private val enrollmentService: EnrollmentManager,
+    private val surveysManager: SurveysManager,
     private val idGenerationService: HazelcastIdGenerationService,
     private val studyLimitsMgr: StudyLimitsManager,
     override val auditingManager: AuditingManager,
@@ -348,8 +348,8 @@ class StudyService(
         study.id = idGenerationService.getNextId()
         val aclKey = AclKey(study.id)
         hds.connection.use { connection ->
-            AuditedOperationBuilder<Unit>(connection, auditingManager)
-                .operation { createStudy(it, study) }
+            AuditedTransactionBuilder<Unit>(connection, auditingManager)
+                .transaction { createStudy(it, study) }
                 .audit {
                     listOf(
                         AuditableEvent(
@@ -378,9 +378,10 @@ class StudyService(
     }
 
     override fun createStudy(connection: Connection, study: Study) {
-        studyLimitsMgr.initializeStudyLimits(connection, study.id)
         insertStudy(connection, study)
         insertOrgStudy(connection, study)
+        studyLimitsMgr.initializeStudyLimits(connection, study.id)
+        surveysManager.initializeFilterdApps(connection, study.id)
         authorizationService.createUnnamedSecurableObject(
             connection = connection,
             aclKey = AclKey(study.id),
@@ -483,8 +484,8 @@ class StudyService(
     ) {
         logger.info("Updating participation status: ${ChronicleServerUtil.STUDY_PARTICIPANT}", studyId, participantId)
         storageResolver.getPlatformStorage().connection.use { connection ->
-            AuditedOperationBuilder<Unit>(connection, auditingManager)
-                .operation { conn ->
+            AuditedTransactionBuilder<Unit>(connection, auditingManager)
+                .transaction { conn ->
                     conn.prepareStatement(SET_PARTICIPATION_STATUS_SQL).use { ps ->
                         ps.setString(1, participationStatus.name)
                         ps.setObject(2, studyId)
@@ -505,8 +506,8 @@ class StudyService(
 
     override fun registerParticipant(studyId: UUID, participant: Participant): UUID {
         val candidateId = storageResolver.getPlatformStorage().connection.use { conn ->
-            AuditedOperationBuilder<UUID>(conn, auditingManager)
-                .operation { connection -> registerParticipant(connection, studyId, participant) }
+            AuditedTransactionBuilder<UUID>(conn, auditingManager)
+                .transaction { connection -> registerParticipant(connection, studyId, participant) }
                 .audit { candidateId ->
                     listOf(
                         AuditableEvent(

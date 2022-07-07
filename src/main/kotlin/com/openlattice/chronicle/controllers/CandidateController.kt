@@ -3,7 +3,7 @@ package com.openlattice.chronicle.controllers
 import com.codahale.metrics.annotation.Timed
 import com.openlattice.chronicle.auditing.AuditEventType
 import com.openlattice.chronicle.auditing.AuditableEvent
-import com.openlattice.chronicle.auditing.AuditedOperationBuilder
+import com.openlattice.chronicle.auditing.AuditedTransactionBuilder
 import com.openlattice.chronicle.auditing.AuditingManager
 import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.authorization.AuthorizationManager
@@ -79,8 +79,8 @@ class CandidateController @Inject constructor(
         ensureAuthenticated()
         ensureUninitializedId(candidate.id) { "cannot register candidate with the given id" }
         val candidateId = storageResolver.getPlatformStorage().connection.use { conn ->
-            AuditedOperationBuilder<UUID>(conn, auditingManager)
-                .operation { connection -> candidateService.registerCandidate(connection, candidate) }
+            AuditedTransactionBuilder<UUID>(conn, auditingManager)
+                .transaction { connection -> candidateService.registerCandidate(connection, candidate) }
                 .audit { candidateId ->
                     listOf(
                         AuditableEvent(

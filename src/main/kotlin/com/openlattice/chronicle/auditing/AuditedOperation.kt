@@ -1,6 +1,5 @@
 package com.openlattice.chronicle.auditing
 
-import com.openlattice.chronicle.storage.StorageResolver
 import org.slf4j.LoggerFactory
 import java.sql.Connection
 
@@ -48,19 +47,19 @@ class AuditedOperation<R>(
     }
 }
 
-class AuditedOperationBuilder<R>(
+class AuditedTransactionBuilder<R>(
     val connection: Connection,
     override val auditingManager: AuditingManager
 ) : AuditingComponent {
     private lateinit var op: (Connection) -> R
     private lateinit var auditOp: (R) -> List<AuditableEvent>
 
-    fun operation(op: (Connection) -> R): AuditedOperationBuilder<R> {
+    fun transaction(op: (Connection) -> R): AuditedTransactionBuilder<R> {
         this.op = op
         return this
     }
 
-    fun audit(auditOp: (R) -> List<AuditableEvent>): AuditedOperationBuilder<R> {
+    fun audit(auditOp: (R) -> List<AuditableEvent>): AuditedTransactionBuilder<R> {
         this.auditOp = auditOp
         return this
     }
