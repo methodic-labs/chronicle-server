@@ -153,7 +153,7 @@ class RedshiftColumns {
         @JvmField val SENTIMENT_EMOJI_COUNT = PostgresColumnDefinition("sentiment_emoji_count", PostgresDatatype.INTEGER)
         @JvmField val TYPING_SPEED = PostgresColumnDefinition("typing_speed", PostgresDatatype.DOUBLE)
         @JvmField val PATH_TYPING_SPEED = PostgresColumnDefinition("path_typing_speed", PostgresDatatype.DOUBLE)
-        @JvmField val RUN_ID = PostgresColumnDefinition("keyboard_identifier", PostgresDatatype.TEXT_128)
+        @JvmField val RUN_ID = PostgresColumnDefinition("run_id", PostgresDatatype.TEXT_128)
 
         val columnTypes : Map<String, PostgresDatatype> = redshiftColumns().associate { it.name to it.datatype }
 
