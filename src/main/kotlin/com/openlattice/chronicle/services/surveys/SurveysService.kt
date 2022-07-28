@@ -312,7 +312,7 @@ class SurveysService(
                 //Special cases are at the beginning and end of list
                 //beginning from midnight to to timestmap
                 //end from last timestamp until now
-                //otherwise from last move to foreground until current move to background.
+                //otherwise from last move to foreground until current move to background. Beginning can be merged with reguular case
                 var currentStartTime = beginningOfDay
                 au.foldIndexed(0L) { index, s, a ->
                     when (a.eventType) {
@@ -322,8 +322,7 @@ class SurveysService(
                         }
                         ChronicleUsageEventType.ACTIVITY_PAUSED.value, ChronicleUsageEventType.MOVE_TO_BACKGROUND.value -> {
                             when (index) {
-                                0 -> s + ChronoUnit.SECONDS.between(currentStartTime, a.timestamp)
-                                au.size - 1 -> s + ChronoUnit.SECONDS.between(currentStartTime, a.timestamp)
+                                au.size - 1 -> s + ChronoUnit.SECONDS.between(a.timestamp,OffsetDateTime.now())
                                 else -> s + ChronoUnit.SECONDS.between(currentStartTime, a.timestamp)
                             }
                         }
