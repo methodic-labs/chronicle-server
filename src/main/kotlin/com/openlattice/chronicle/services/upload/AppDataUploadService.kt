@@ -51,7 +51,7 @@ class AppDataUploadService(
     private val studyManager: StudyManager,
 ) : AppDataUploadManager {
     private val logger = LoggerFactory.getLogger(AppDataUploadService::class.java)
-    
+
 
     /**
      * This routine implements once and only once append of client data.
@@ -427,11 +427,6 @@ class AppDataUploadService(
                 RandomStringUtils.randomAlphanumeric(10)
             )
         )
-    }
-
-
-    companion object {
-        private const val APP_USAGE_FREQUENCY = "appUsageFrequency"
     }
 }
 
