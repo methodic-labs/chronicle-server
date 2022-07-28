@@ -8,6 +8,8 @@ import com.geekbeast.postgres.RedshiftTableDefinition
 import com.geekbeast.util.StopWatch
 import com.google.common.collect.SetMultimap
 import com.openlattice.chronicle.android.ChronicleUsageEvent
+import com.openlattice.chronicle.android.fromInteractionType
+import com.openlattice.chronicle.constants.EdmConstants
 import com.openlattice.chronicle.constants.EdmConstants.*
 import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.participants.ParticipantStats
@@ -15,13 +17,11 @@ import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import com.openlattice.chronicle.services.legacy.LegacyEdmResolver
 import com.openlattice.chronicle.services.studies.StudyManager
 import com.openlattice.chronicle.storage.PostgresDataTables
-import com.openlattice.chronicle.storage.RedshiftColumns
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APPLICATION_LABEL
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_PACKAGE_NAME
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.EVENT_TYPE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.FQNS_TO_COLUMNS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.INTERACTION_TYPE
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PARTICIPANT_ID
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMESTAMP
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMEZONE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.USERNAME
@@ -40,6 +40,7 @@ import java.security.InvalidParameterException
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.util.*
+import kotlin.math.exp
 
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
@@ -49,7 +50,7 @@ import java.util.*
 class AppDataUploadService(
     private val storageResolver: StorageResolver,
     private val enrollmentManager: EnrollmentManager,
-    private val studyManager: StudyManager
+    private val studyManager: StudyManager,
 ) : AppDataUploadManager {
     private val logger = LoggerFactory.getLogger(AppDataUploadService::class.java)
 
@@ -78,7 +79,7 @@ class AppDataUploadService(
         studyId: UUID,
         participantId: String,
         sourceDeviceId: String,
-        data: List<ChronicleUsageEvent>
+        data: List<ChronicleUsageEvent>,
     ): Int {
         StopWatch(
             log = "logging ${data.size} entries for ${ChronicleServerUtil.STUDY_PARTICIPANT_DATASOURCE}",
@@ -121,19 +122,9 @@ class AppDataUploadService(
                 )
 
                 val mappedData = filter(mapToStorageModel(data))
+                val expectedSize = data.size
+                doWrite(flavor, hds, studyId, participantId, mappedData, expectedSize)
 
-                StopWatch(log = "Writing ${data.size} entites to DB ")
-                val written = when (flavor) {
-                    PostgresFlavor.VANILLA -> writeToPostgres(hds, studyId, participantId, mappedData)
-                    PostgresFlavor.REDSHIFT -> writeToRedshift(hds, studyId, participantId, mappedData)
-                    else -> throw InvalidParameterException("Only regular postgres and redshift are supported.")
-                }
-
-                //TODO: In reality we are likely to write less entities than were provided and are actually returning number processed so that client knows all is good
-                if (data.size != written) {
-                    //Should probably be an assertion as this should never happen.
-                    logger.warn("Wrote $written entities, but expected to write ${data.size} entities")
-                }
                 return data.size
             } catch (exception: Exception) {
                 logger.error(
@@ -164,7 +155,7 @@ class AppDataUploadService(
         studyId: UUID,
         participantId: String,
         sourceDeviceId: String,
-        data: List<SetMultimap<UUID, Any>>
+        data: List<SetMultimap<UUID, Any>>,
     ): Int {
         StopWatch(
             log = "logging ${data.size} entries for ${ChronicleServerUtil.STUDY_PARTICIPANT_DATASOURCE}",
@@ -207,20 +198,11 @@ class AppDataUploadService(
                 )
 
                 val mappedData = filter(mapLegacyDataToStorageModel(data))
+                val expectedSize = data.size
 
-                StopWatch(log = "Writing ${data.size} entites to DB ")
-                val written = when (flavor) {
-                    PostgresFlavor.VANILLA -> writeToPostgres(hds, studyId, participantId, mappedData)
-                    PostgresFlavor.REDSHIFT -> writeToRedshift(hds, studyId, participantId, mappedData)
-                    else -> throw InvalidParameterException("Only regular postgres and redshift are supported.")
-                }
+                doWrite(flavor, hds, studyId, participantId, mappedData, expectedSize)
 
-                //TODO: In reality we are likely to write less entities than were provided and are actually returning number processed so that client knows all is good
-                if (data.size != written) {
-                    //Should probably be an assertion as this should never happen.
-                    logger.warn("Wrote $written entities, but expected to write ${data.size} entities")
-                }
-                return data.size
+                return expectedSize
             } catch (exception: Exception) {
                 logger.error(
                     "error logging data" + ChronicleServerUtil.STUDY_PARTICIPANT_DATASOURCE,
@@ -233,6 +215,32 @@ class AppDataUploadService(
             }
         }
     }
+
+    private fun doWrite(
+        flavor: PostgresFlavor,
+        hds: HikariDataSource,
+        studyId: UUID,
+        participantId: String,
+        mappedData: Sequence<Map<String, UsageEventColumn>>,
+        expectedSize: Int,
+    ): Int {
+        val written = StopWatch(log = "Writing ${expectedSize} entites to DB ").use {
+            when (flavor) {
+                PostgresFlavor.VANILLA -> writeToPostgres(hds, studyId, participantId, mappedData)
+                PostgresFlavor.REDSHIFT -> writeToRedshift(hds, studyId, participantId, mappedData)
+                else -> throw InvalidParameterException("Only regular postgres and redshift are supported.")
+            }
+        }
+        //TODO: In reality we are likely to write less entities than were provided and are actually returning number processed so that client knows all is good
+        if (expectedSize != written) {
+            //Should probably be an assertion as this should never happen.
+            logger.warn("Wrote $written entities, but expected to write ${expectedSize} entities")
+        }
+
+        //Currently nothing is done with written, but here in case we need it in the future.
+        return written
+    }
+
 
     /**
      * This filters out events that have a null date logged and handles both String date time times from legacy events
@@ -248,7 +256,7 @@ class AppDataUploadService(
 
     private fun <T> getUsageEventColumn(
         pcd: PostgresColumnDefinition,
-        selector: () -> T
+        selector: () -> T,
     ): Pair<String, UsageEventColumn> {
         return pcd.name to UsageEventColumn(pcd, getInsertUsageEventColumnIndex(pcd), selector())
     }
@@ -260,6 +268,7 @@ class AppDataUploadService(
 //                getUsageEventColumn(PARTICIPANT_ID) { usageEvent.participantId },
                 getUsageEventColumn(APP_PACKAGE_NAME) { usageEvent.appPackageName },
                 getUsageEventColumn(INTERACTION_TYPE) { usageEvent.interactionType },
+                getUsageEventColumn(EVENT_TYPE) { usageEvent.eventType },
                 getUsageEventColumn(TIMESTAMP) { usageEvent.timestamp },
                 getUsageEventColumn(TIMEZONE) { usageEvent.timezone },
                 getUsageEventColumn(USERNAME) { usageEvent.user },
@@ -270,13 +279,20 @@ class AppDataUploadService(
 
     private fun mapLegacyDataToStorageModel(data: List<SetMultimap<UUID, Any>>): Sequence<Map<String, UsageEventColumn>> {
         return data.asSequence().map { usageEvent ->
-            USAGE_EVENT_COLUMNS.associate { fqn ->
+            val usageEventCols = USAGE_EVENT_COLUMNS.associateTo(mutableMapOf()) { fqn ->
                 val col = FQNS_TO_COLUMNS.getValue(fqn)
                 val colIndex = getInsertUsageEventColumnIndex(col)
                 val ptId = LegacyEdmResolver.getPropertyTypeId(fqn)
                 val value = usageEvent[ptId]?.iterator()?.next()
                 col.name to UsageEventColumn(col, colIndex, value)
             }
+
+            //Compute event type column for legacy clients.
+            val col = EVENT_TYPE
+            val colIndex = getInsertUsageEventColumnIndex(col)
+            val value = fromInteractionType((usageEventCols[INTERACTION_TYPE.name]?.value ?: "None") as String)
+            usageEventCols[col.name] = UsageEventColumn(col, colIndex, value)
+            usageEventCols
         }
     }
 
@@ -285,7 +301,7 @@ class AppDataUploadService(
         studyId: UUID,
         participantId: String,
         data: Sequence<Map<String, UsageEventColumn>>,
-        tempMergeTable: PostgresTableDefinition = CHRONICLE_USAGE_EVENTS.createTempTable()
+        tempMergeTable: PostgresTableDefinition = CHRONICLE_USAGE_EVENTS.createTempTable(),
     ): Int {
         return hds.connection.use { connection ->
             //Create the temporary merge table
@@ -328,7 +344,7 @@ class AppDataUploadService(
                                             else -> ps.setObject(colIndex, value)
                                         }
                                     }
-                                } catch(ex :Exception ) {
+                                } catch (ex: Exception) {
                                     logger.info("Error writing $usageEventCol", ex)
                                     throw ex
                                 }
@@ -368,7 +384,7 @@ class AppDataUploadService(
     private fun updateParticipantStats(
         data: Sequence<Map<String, UsageEventColumn>>,
         studyId: UUID,
-        participantId: String
+        participantId: String,
     ) {
         // unique dates
         val dates = data
@@ -410,7 +426,7 @@ class AppDataUploadService(
         hds: HikariDataSource,
         studyId: UUID,
         participantId: String,
-        data: Sequence<Map<String, UsageEventColumn>>
+        data: Sequence<Map<String, UsageEventColumn>>,
     ): Int {
         return writeToRedshift(
             hds,
@@ -433,7 +449,7 @@ class AppDataUploadService(
 private data class UsageEventColumn(
     val col: PostgresColumnDefinition,
     val colIndex: Int,
-    val value: Any?
+    val value: Any?,
 )
 
 private val USAGE_EVENT_COLUMNS = listOf(
