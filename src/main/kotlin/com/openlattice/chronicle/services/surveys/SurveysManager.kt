@@ -33,7 +33,7 @@ interface SurveysManager {
         surveyResponses: List<AppUsage>,
     )
 
-    fun getAppUsageData(
+    fun getAndroidAppUsageData(
         studyId: UUID,
         participantId: String,
         startDateTime: OffsetDateTime,

@@ -133,7 +133,7 @@ class SurveyController @Inject constructor(
     ): List<AppUsage> {
         val realStudyId = studyService.getStudyId(studyId)
         checkNotNull(realStudyId) { "invalid study id" }
-        return surveysService.getAppUsageData(realStudyId, participantId, startDateTime, endDateTime)
+        return surveysService.getAndroidAppUsageData(realStudyId, participantId, startDateTime, endDateTime)
     }
 
     @Timed
