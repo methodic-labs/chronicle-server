@@ -9,7 +9,6 @@ import com.geekbeast.util.StopWatch
 import com.google.common.collect.SetMultimap
 import com.openlattice.chronicle.android.ChronicleUsageEvent
 import com.openlattice.chronicle.android.fromInteractionType
-import com.openlattice.chronicle.constants.EdmConstants
 import com.openlattice.chronicle.constants.EdmConstants.*
 import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.participants.ParticipantStats
@@ -40,7 +39,6 @@ import java.security.InvalidParameterException
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.util.*
-import kotlin.math.exp
 
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
@@ -53,15 +51,7 @@ class AppDataUploadService(
     private val studyManager: StudyManager,
 ) : AppDataUploadManager {
     private val logger = LoggerFactory.getLogger(AppDataUploadService::class.java)
-
-    private fun parseDateTime(dateTime: String?): OffsetDateTime? {
-        if (dateTime == null) return null
-        return try {
-            OffsetDateTime.parse(dateTime)
-        } catch (ex: Exception) {
-            null
-        }
-    }
+    
 
     /**
      * This routine implements once and only once append of client data.
