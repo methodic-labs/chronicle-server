@@ -40,6 +40,7 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_SWITCHED_
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_TIMEZONE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_TITLE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DATE_WITH_TIMEZONE
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.EVENT_TYPE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.RUN_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMESTAMP
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMEZONE
@@ -65,6 +66,7 @@ class RedshiftDataTables {
                 PARTICIPANT_ID,
                 APP_PACKAGE_NAME,
                 INTERACTION_TYPE,
+                EVENT_TYPE,
                 TIMESTAMP,
                 TIMEZONE,
                 USERNAME,
@@ -167,10 +169,11 @@ class RedshiftDataTables {
          * 3. participant_id (text)
          * 4. app_package_name (text)
          * 5. interaction_type (text)
-         * 6. timestamp (timestamptz)
-         * 7. timezone (text)
-         * 8. user (text)
-         * 9. application_label (text)
+         * 6. event_type (int)
+         * 7. timestamp (timestamptz)
+         * 8. timezone (text)
+         * 9. user (text)
+         * 10. application_label (text)
          */
         fun getInsertIntoMergeUsageEventsTableSql(srcMergeTableName: String, includeOnConflict: Boolean = false): String {
             return if (includeOnConflict) {
@@ -193,8 +196,9 @@ class RedshiftDataTables {
         }
 
         fun getAppendTembTableSql(srcMergeTableName: String): String {
+
             return """
-                INSERT INTO ${CHRONICLE_USAGE_EVENTS.name} SELECT * FROM $srcMergeTableName
+                INSERT INTO ${CHRONICLE_USAGE_EVENTS.name} ($USAGE_EVENT_COLS) SELECT $USAGE_EVENT_COLS FROM $srcMergeTableName
             """.trimIndent()
         }
 
