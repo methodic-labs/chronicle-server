@@ -82,6 +82,7 @@ class RedshiftColumns {
         @JvmField val DATE_WITH_TIMEZONE = PostgresColumnDefinition("startdate_tzaware", PostgresDatatype.TIMESTAMPTZ).notNull()
         @JvmField val APP_TITLE = PostgresColumnDefinition("app_title", PostgresDatatype.TEXT).notNull()
         @JvmField val APP_FULL_NAME = PostgresColumnDefinition("app_full_name", PostgresDatatype.TEXT).notNull()
+        @JvmField val EVENT_TYPE = PostgresColumnDefinition("event_type", PostgresDatatype.INTEGER).notNull()
 
         //AUDIT
         @JvmField val SECURABLE_PRINCIPAL_ID = PostgresColumnDefinition("id", PostgresDatatype.TEXT_UUID).notNull()

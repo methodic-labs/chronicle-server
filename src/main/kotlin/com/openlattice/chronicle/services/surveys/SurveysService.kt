@@ -6,8 +6,8 @@ import com.geekbeast.postgres.PostgresArrays
 import com.geekbeast.postgres.PostgresDatatype
 import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
-import com.geekbeast.rhizome.KotlinDelegatedStringSet
 import com.hazelcast.core.HazelcastInstance
+import com.openlattice.chronicle.android.ChronicleUsageEventType
 import com.openlattice.chronicle.auditing.*
 import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.constants.EdmConstants
@@ -41,10 +41,7 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMEZONE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.USERNAME
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.CHRONICLE_USAGE_EVENTS
 import com.openlattice.chronicle.storage.StorageResolver
-import com.openlattice.chronicle.survey.AppUsage
-import com.openlattice.chronicle.survey.Questionnaire
-import com.openlattice.chronicle.survey.QuestionnaireResponse
-import com.openlattice.chronicle.survey.QuestionnaireUpdate
+import com.openlattice.chronicle.survey.*
 import com.openlattice.chronicle.util.ChronicleServerUtil.STUDY_PARTICIPANT
 import com.zaxxer.hikari.HikariDataSource
 import org.apache.olingo.commons.api.edm.FullQualifiedName
@@ -53,6 +50,8 @@ import org.springframework.stereotype.Service
 import java.sql.Connection
 import java.time.LocalDate
 import java.time.OffsetDateTime
+import java.time.ZoneOffset
+import java.time.temporal.ChronoUnit
 import java.util.*
 
 /**
@@ -78,6 +77,12 @@ class SurveysService(
         private val logger = LoggerFactory.getLogger(SurveysService::class.java)
         private val mapper = ObjectMappers.newJsonMapper()
 
+        private val DEVICE_USAGE_EVENT_TYPES = setOf(
+            ChronicleUsageEventType.MOVE_TO_BACKGROUND.value,
+            ChronicleUsageEventType.MOVE_TO_FOREGROUND.value,
+            ChronicleUsageEventType.ACTIVITY_PAUSED.value,
+            ChronicleUsageEventType.ACTIVITY_RESUMED.value
+        )
         private val APP_USAGE_SURVEY_COLS = APP_USAGE_SURVEY.columns.joinToString(",") { it.name }
         private val APP_USAGE_SURVEY_PARAMS = APP_USAGE_SURVEY.columns.joinToString(",") { "?" }
 
@@ -96,6 +101,7 @@ class SurveysService(
                 AND ${TIMESTAMP.name} < ?
                 AND ${INTERACTION_TYPE.name} = 'Move to Foreground'
                 AND (${USERNAME.name} IS NULL OR ${USERNAME.name} = '')
+            ORDER BY (${TIMESTAMP.name},${APP_PACKAGE_NAME.name})
         """.trimIndent()
 
         /**
@@ -292,6 +298,53 @@ class SurveysService(
         }
     }
 
+    /**
+     * This function filters app usage data that is below the threshold for reporting.
+     */
+    private fun filterAppUsageData(appUsage: List<AppUsage>): Map<String, Long> {
+        val beginningOfDay =
+            OffsetDateTime.now().toLocalDate().atStartOfDay(ZoneOffset.UTC.normalized()).toOffsetDateTime()
+
+        return appUsage
+            .filter { DEVICE_USAGE_EVENT_TYPES.contains(it.eventType) } // Filter out any usage events unrelated to calcualted time.
+            .groupBy { it.appPackageName }
+            .mapValues { (_, au) ->
+                //Special cases are at the beginning and end of list
+                //beginning from midnight to to timestmap
+                //end from last timestamp until now
+                //otherwise from last move to foreground until current move to background.
+                var currentStartTime = beginningOfDay
+                au.foldIndexed(0L) { index, s, a ->
+                    when (a.eventType) {
+                        ChronicleUsageEventType.ACTIVITY_RESUMED.value, ChronicleUsageEventType.MOVE_TO_FOREGROUND.value -> {
+                            currentStartTime = a.timestamp
+                            s
+                        }
+                        ChronicleUsageEventType.ACTIVITY_PAUSED.value, ChronicleUsageEventType.MOVE_TO_BACKGROUND.value -> {
+                            when (index) {
+                                0 -> s + ChronoUnit.SECONDS.between(currentStartTime, a.timestamp)
+                                au.size - 1 -> s + ChronoUnit.SECONDS.between(currentStartTime, a.timestamp)
+                                else -> s + ChronoUnit.SECONDS.between(currentStartTime, a.timestamp)
+                            }
+                        }
+                        else -> throw IllegalStateException("Unrecognized event type.")
+                    }
+                }
+            }
+    }
+
+    override fun getDeviceUsageData(
+        realStudyId: UUID,
+        participantId: String,
+        startDateTime: OffsetDateTime,
+        endDateTime: OffsetDateTime
+    ): DeviceUsage {
+        val appUsage = getAppUsageData(realStudyId, participantId, startDateTime, endDateTime)
+        val filtered = filterAppUsageData(appUsage)
+        val totalTime = filtered.values.sum()
+        return DeviceUsage(totalTime,filtered, mapOf())
+
+    }
     // Fetches data from UsageEvents table in redshift
     override fun getAppUsageData(
         studyId: UUID,
@@ -316,6 +369,7 @@ class SurveysService(
 
             }.filterNot { filtered.contains(it.appPackageName) }
 
+
             logger.info(
                 "fetched {} app usage entities spanning {} to {} $STUDY_PARTICIPANT",
                 result.size,
@@ -326,7 +380,6 @@ class SurveysService(
             )
 
             return result
-
         } catch (ex: Exception) {
             logger.error("unable to fetch data for app usage survey")
             throw ex

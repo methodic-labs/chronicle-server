@@ -54,6 +54,7 @@ class SurveyController @Inject constructor(
     override val authorizationManager: AuthorizationManager,
     override val auditingManager: AuditingManager,
 ) : SurveyApi, AuthorizingComponent {
+
     @Timed
     @GetMapping(
         path = [STUDY_ID_PATH + FILTERED_PATH],
@@ -101,6 +102,22 @@ class SurveyController @Inject constructor(
         ensureWriteAccess(AclKey(studyId))
         surveysService.allowAppForStudyAppUsageSurvey(studyId, appPackages)
         return ok
+    }
+
+    @Timed
+    @GetMapping(
+        path = [STUDY_ID_PATH + PARTICIPANT_PATH + PARTICIPANT_ID_PATH + APP_USAGE_PATH],
+        produces = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    override fun getDeviceUsageSurveyData(
+        @PathVariable(STUDY_ID) studyId: UUID,
+        @PathVariable(PARTICIPANT_ID) participantId: String,
+        @RequestParam(value = START_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) startDateTime: OffsetDateTime,
+        @RequestParam(value = END_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) endDateTime: OffsetDateTime,
+    ): DeviceUsage {
+        val realStudyId = studyService.getStudyId(studyId)
+        checkNotNull(realStudyId) { "invalid study id" }
+        return surveysService.getDeviceUsageData(realStudyId, participantId, startDateTime, endDateTime)
     }
 
     @Timed
