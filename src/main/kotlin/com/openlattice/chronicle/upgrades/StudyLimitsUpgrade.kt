@@ -33,6 +33,10 @@ class StudyLimitsUpgrade(
     private val upgradeService: UpgradeService,
 ) : PreHazelcastUpgradeService {
 
+    init {
+        upgradeService.registerUpgrade(this)
+    }
+
     companion object {
         private val logger = LoggerFactory.getLogger(StudyLimitsUpgrade::class.java)
         private val mapper: ObjectMapper = ObjectMappers.newJsonMapper()
@@ -70,7 +74,7 @@ class StudyLimitsUpgrade(
     }
 
     override fun runUpgrade() {
-        if( upgradeService.isUpgradeComplete(this)) { //Only run the upgrade once.
+        if (upgradeService.isUpgradeComplete(this)) { //Only run the upgrade once.
             return
         }
         val legacySettings = BasePostgresIterable(
@@ -79,6 +83,9 @@ class StudyLimitsUpgrade(
             ResultSetAdapters.legacyStudySettings(it)
         }.toMap()
         if (legacySettings.isEmpty()) {
+            storageResolver.getPlatformStorage().connection.use { c ->
+                upgradeService.completeUpgrade(c, this)
+            }
             return
         }
         val studyIds = BasePostgresIterable(
@@ -109,6 +116,7 @@ class StudyLimitsUpgrade(
             }
 
             upgradeStudyLimits(connection, studyIds)
+            upgradeService.completeUpgrade(connection, this)
             connection.commit()
             logger.info("Upgrade $upgradedCount studies.")
         }

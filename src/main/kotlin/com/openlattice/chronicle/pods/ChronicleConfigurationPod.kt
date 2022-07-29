@@ -56,4 +56,9 @@ class ChronicleConfigurationPod {
         return StudyLimitsUpgrade(storageResolver(), upgradeService())
     }
 
+    @Bean
+    fun appFilteringUpgrade(): PreHazelcastUpgradeService {
+        return AppFilteringUpgrade(storageResolver(), upgradeService())
+    }
+
 }

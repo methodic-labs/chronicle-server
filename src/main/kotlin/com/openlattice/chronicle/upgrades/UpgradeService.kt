@@ -54,6 +54,7 @@ class UpgradeService(private val storageResolver: StorageResolver) {
         connection.prepareStatement(UPDATE_UPGRADE_STATUS_SQL).use { ps ->
             ps.setString(1, upgradeStatus.name)
             ps.setString(2, upgradeClass)
+            ps.executeUpdate()
         }
     }
 
