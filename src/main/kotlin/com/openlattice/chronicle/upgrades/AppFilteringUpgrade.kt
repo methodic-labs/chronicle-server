@@ -24,7 +24,14 @@ import java.util.*
  *
  * @author Matthew Tamayo-Rios &lt;matthew@openlattice.com&gt;
  */
-class AppFilteringUpgrade(private val storageResolver: StorageResolver) : PreHazelcastUpgradeService {
+class AppFilteringUpgrade(
+    private val storageResolver: StorageResolver,
+    private val upgradeService: UpgradeService,
+) : PreHazelcastUpgradeService {
+
+    init {
+        upgradeService.registerUpgrade(this)
+    }
 
     companion object {
         private val logger = LoggerFactory.getLogger(AppFilteringUpgrade::class.java)

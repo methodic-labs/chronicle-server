@@ -23,6 +23,7 @@ import com.openlattice.chronicle.sources.AndroidDevice
 import com.openlattice.chronicle.study.*
 import com.openlattice.chronicle.timeusediary.TimeUseDiarySettings
 import org.apache.commons.lang3.RandomStringUtils
+import org.apache.commons.lang3.RandomUtils
 import org.apache.commons.text.CharacterPredicates
 import org.apache.commons.text.RandomStringGenerator
 import java.time.LocalDate
@@ -258,6 +259,7 @@ class TestDataFactory {
                     participantId,
                     RandomStringUtils.randomAlphanumeric(5),
                     RandomStringUtils.randomAlphanumeric(5),
+                    RandomUtils.nextInt(0,100),
                     OffsetDateTime.now(),
                     TimeZone.getDefault().id,
                     RandomStringUtils.randomAlphanumeric(5),

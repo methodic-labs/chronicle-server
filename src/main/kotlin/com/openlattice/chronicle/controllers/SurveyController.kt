@@ -16,6 +16,7 @@ import com.openlattice.chronicle.survey.*
 import com.openlattice.chronicle.survey.SurveyApi.Companion.APP_USAGE_PATH
 import com.openlattice.chronicle.survey.SurveyApi.Companion.CONTROLLER
 import com.openlattice.chronicle.survey.SurveyApi.Companion.DATA_PATH
+import com.openlattice.chronicle.survey.SurveyApi.Companion.DEVICE_USAGE_PATH
 import com.openlattice.chronicle.survey.SurveyApi.Companion.END_DATE
 import com.openlattice.chronicle.survey.SurveyApi.Companion.FILE_NAME
 import com.openlattice.chronicle.survey.SurveyApi.Companion.FILTERED_PATH
@@ -106,7 +107,7 @@ class SurveyController @Inject constructor(
 
     @Timed
     @GetMapping(
-        path = [STUDY_ID_PATH + PARTICIPANT_PATH + PARTICIPANT_ID_PATH + APP_USAGE_PATH],
+        path = [STUDY_ID_PATH + PARTICIPANT_PATH + PARTICIPANT_ID_PATH + DEVICE_USAGE_PATH],
         produces = [MediaType.APPLICATION_JSON_VALUE]
     )
     override fun getDeviceUsageSurveyData(

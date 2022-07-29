@@ -233,6 +233,7 @@ class ChronicleServerServicesPod {
     @Throws(IOException::class, ExecutionException::class)
     fun surveysManager(): SurveysManager {
         return SurveysService(
+            hazelcast,
             storageResolver,
             enrollmentManager(),
             scheduledTasksManager(),
@@ -330,6 +331,7 @@ class ChronicleServerServicesPod {
             authorizationService(),
             candidateService(),
             enrollmentManager(),
+            surveysManager(),
             idGenerationService(),
             studyLimitsManager(),
             auditingManager(),

@@ -34,6 +34,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.IOS_UNIQUE_DA
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.JOB_DEFINITION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.JOB_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LAST_NAME
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.LAST_UPDATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LAT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LEGACY_STUDY_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.LON
@@ -86,6 +87,8 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_FIRST_DAT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_LAST_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_UNIQUE_DATES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPDATED_AT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPGRADE_CLASS
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPGRADE_STATUS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_DATA
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_ID
 
@@ -296,14 +299,18 @@ class ChroniclePostgresTables {
 
         @JvmField
         val FILTERED_APPS = PostgresTableDefinition("filtered_apps")
-            .addColumns(STUDY_ID,RedshiftColumns.APP_PACKAGE_NAME)
-            .primaryKey(STUDY_ID,RedshiftColumns.APP_PACKAGE_NAME)
+            .addColumns(STUDY_ID, RedshiftColumns.APP_PACKAGE_NAME)
+            .primaryKey(STUDY_ID, RedshiftColumns.APP_PACKAGE_NAME)
 
         @JvmField
         val SYSTEM_APPS = PostgresTableDefinition("default_filtered_apps")
             .addColumns(RedshiftColumns.APP_PACKAGE_NAME)
             .primaryKey(RedshiftColumns.APP_PACKAGE_NAME)
 
+        @JvmField
+        val UPGRADES = PostgresTableDefinition("upgrades")
+            .addColumns(UPGRADE_CLASS, UPGRADE_STATUS, LAST_UPDATE)
+            .primaryKey(UPGRADE_CLASS)
         /**
          * Authorization tables
          *

@@ -8,6 +8,7 @@ import com.openlattice.chronicle.configuration.ChronicleConfiguration
 import com.openlattice.chronicle.configuration.TwilioConfiguration
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.upgrades.AppFilteringUpgrade
+import com.openlattice.chronicle.upgrades.StudyLimitsUpgrade
 import com.openlattice.chronicle.upgrades.UpgradeService
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -46,8 +47,13 @@ class ChronicleConfigurationPod {
     }
 
     @Bean
-    fun upgradeService(): PreHazelcastUpgradeService {
-        return AppFilteringUpgrade(storageResolver())
+    fun upgradeService() : UpgradeService {
+        return UpgradeService(storageResolver())
+    }
+
+    @Bean
+    fun studyLimitsUpgrade() : PreHazelcastUpgradeService {
+        return StudyLimitsUpgrade(storageResolver(), upgradeService())
     }
 
 }
