@@ -103,8 +103,8 @@ class DataDownloadService(
         ): Pair<String, Any> {
             val zoneId = ZoneId.of(rs.getString(timezoneColumn.name) ?: OutputConstants.DEFAULT_TIMEZONE)
             val odt = rs.getObject(timestampColumn.name, OffsetDateTime::class.java)
-            if(odt == null ) return timestampColumn.name to ""
-            else return timestampColumn.name to odt.toInstant().atZone(zoneId).toOffsetDateTime()
+            return if(odt == null ) timestampColumn.name to ""
+            else timestampColumn.name to odt.toInstant().atZone(zoneId).toOffsetDateTime()
         }
 
         fun associateObject(rs: ResultSet, pcd: PostgresColumnDefinition, clazz: Class<*>) =
