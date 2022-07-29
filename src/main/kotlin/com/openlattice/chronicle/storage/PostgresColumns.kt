@@ -2,6 +2,7 @@ package com.openlattice.chronicle.storage
 
 import com.geekbeast.postgres.PostgresColumnDefinition
 import com.geekbeast.postgres.PostgresDatatype
+import com.openlattice.chronicle.upgrades.UpgradeStatus
 import java.lang.reflect.Field
 import java.lang.reflect.Modifier
 
@@ -99,6 +100,9 @@ class PostgresColumns {
         @JvmField val URL = PostgresColumnDefinition("url", PostgresDatatype.TEXT)
         @JvmField val USER_DATA = PostgresColumnDefinition("user_data", PostgresDatatype.JSONB)
         @JvmField val USER_ID = PostgresColumnDefinition("user_id", PostgresDatatype.TEXT).notNull()
+        @JvmField val UPGRADE_CLASS = PostgresColumnDefinition("upgrade_class", PostgresDatatype.TEXT).notNull()
+        @JvmField val UPGRADE_STATUS = PostgresColumnDefinition("upgrade_status",PostgresDatatype.TEXT).notNull().withDefault("'${UpgradeStatus.Registered.name}'")
+        @JvmField val LAST_UPDATE = PostgresColumnDefinition("last_update",PostgresDatatype.TIMESTAMPTZ).notNull().withDefault("now()")
 
         @JvmField val NOTIFICATION_ID = PostgresColumnDefinition("notification_id", PostgresDatatype.UUID).notNull()
         @JvmField val MESSAGE_ID = PostgresColumnDefinition("message_id", PostgresDatatype.TEXT).unique()

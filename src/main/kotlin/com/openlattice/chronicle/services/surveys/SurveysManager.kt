@@ -1,10 +1,7 @@
 package com.openlattice.chronicle.services.surveys
 
 import com.openlattice.chronicle.data.LegacyChronicleQuestionnaire
-import com.openlattice.chronicle.survey.AppUsage
-import com.openlattice.chronicle.survey.Questionnaire
-import com.openlattice.chronicle.survey.QuestionnaireResponse
-import com.openlattice.chronicle.survey.QuestionnaireUpdate
+import com.openlattice.chronicle.survey.*
 import org.apache.olingo.commons.api.edm.FullQualifiedName
 import java.sql.Connection
 import java.time.OffsetDateTime
@@ -36,7 +33,7 @@ interface SurveysManager {
         surveyResponses: List<AppUsage>,
     )
 
-    fun getAppUsageData(
+    fun getAndroidAppUsageData(
         studyId: UUID,
         participantId: String,
         startDateTime: OffsetDateTime,
@@ -80,5 +77,11 @@ interface SurveysManager {
     fun filterAppForStudyAppUsageSurvey(studyId: UUID, appPackages: Set<String>)
     fun allowAppForStudyAppUsageSurvey(studyId: UUID, appPackages: Set<String>)
     fun initializeFilterdApps(connection: Connection, studyId: UUID)
+    fun getDeviceUsageData(
+        realStudyId: UUID,
+        participantId: String,
+        startDateTime: OffsetDateTime,
+        endDateTime: OffsetDateTime,
+    ): DeviceUsage
 
 }

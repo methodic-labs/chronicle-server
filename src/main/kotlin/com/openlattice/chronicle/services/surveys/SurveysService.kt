@@ -6,8 +6,8 @@ import com.geekbeast.postgres.PostgresArrays
 import com.geekbeast.postgres.PostgresDatatype
 import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
-import com.geekbeast.rhizome.KotlinDelegatedStringSet
 import com.hazelcast.core.HazelcastInstance
+import com.openlattice.chronicle.android.ChronicleUsageEventType
 import com.openlattice.chronicle.auditing.*
 import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.constants.EdmConstants
@@ -34,17 +34,19 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.RESPONSES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TITLE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APPLICATION_LABEL
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_CATEGORY
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_PACKAGE_NAME
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_USAGE_TIME
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.BUNDLE_IDENTIFIER
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.END_DATE_TIME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.INTERACTION_TYPE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMESTAMP
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMEZONE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.USERNAME
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.CHRONICLE_USAGE_EVENTS
+import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.IOS_SENSOR_DATA
 import com.openlattice.chronicle.storage.StorageResolver
-import com.openlattice.chronicle.survey.AppUsage
-import com.openlattice.chronicle.survey.Questionnaire
-import com.openlattice.chronicle.survey.QuestionnaireResponse
-import com.openlattice.chronicle.survey.QuestionnaireUpdate
+import com.openlattice.chronicle.survey.*
 import com.openlattice.chronicle.util.ChronicleServerUtil.STUDY_PARTICIPANT
 import com.zaxxer.hikari.HikariDataSource
 import org.apache.olingo.commons.api.edm.FullQualifiedName
@@ -53,6 +55,8 @@ import org.springframework.stereotype.Service
 import java.sql.Connection
 import java.time.LocalDate
 import java.time.OffsetDateTime
+import java.time.ZoneOffset
+import java.time.temporal.ChronoUnit
 import java.util.*
 
 /**
@@ -78,6 +82,13 @@ class SurveysService(
         private val logger = LoggerFactory.getLogger(SurveysService::class.java)
         private val mapper = ObjectMappers.newJsonMapper()
 
+        const val UNKNOWN_BUNDLE = "Unknown"
+        private val DEVICE_USAGE_EVENT_TYPES = setOf(
+            ChronicleUsageEventType.MOVE_TO_BACKGROUND.value,
+            ChronicleUsageEventType.MOVE_TO_FOREGROUND.value,
+            ChronicleUsageEventType.ACTIVITY_PAUSED.value,
+            ChronicleUsageEventType.ACTIVITY_RESUMED.value
+        )
         private val APP_USAGE_SURVEY_COLS = APP_USAGE_SURVEY.columns.joinToString(",") { it.name }
         private val APP_USAGE_SURVEY_PARAMS = APP_USAGE_SURVEY.columns.joinToString(",") { "?" }
 
@@ -96,6 +107,40 @@ class SurveysService(
                 AND ${TIMESTAMP.name} < ?
                 AND ${INTERACTION_TYPE.name} = 'Move to Foreground'
                 AND (${USERNAME.name} IS NULL OR ${USERNAME.name} = '')
+            ORDER BY (${TIMESTAMP.name},${APP_PACKAGE_NAME.name})
+        """.trimIndent()
+
+        const val TOTAL_USAGE_FIELD = "total_usage"
+        val GET_APP_USAGE_IOS_SQL = """
+            SELECT ${STUDY_ID.name}, ${PARTICIPANT_ID.name}, ${BUNDLE_IDENTIFIER.name}, sum(${APP_USAGE_TIME.name}) as $TOTAL_USAGE_FIELD
+            FROM ${IOS_SENSOR_DATA.name}
+            WHERE ${STUDY_ID.name} = ?
+                AND ${PARTICIPANT_ID.name} = ?
+                AND ${END_DATE_TIME.name} > ?
+                AND ${END_DATE_TIME.name} <= ?
+                AND ${APP_USAGE_TIME.name} > 0 
+                AND ${BUNDLE_IDENTIFIER.name} IS NOT NULL
+                AND ${BUNDLE_IDENTIFIER.name}
+        """.trimIndent()
+
+        const val CATEGORIES_FIELD = "categories"
+
+        /**
+         * 1. study id
+         * 2. participant id
+         * 3. start of time window
+         * 4. end of time window
+         */
+        val GET_DEVICE_USAGE_IOS_SQL = """
+            SELECT ${BUNDLE_IDENTIFIER.name}, ${APP_CATEGORY.name}, sum(${APP_USAGE_TIME.name}) as $TOTAL_USAGE_FIELD
+            FROM ${IOS_SENSOR_DATA.name}
+            WHERE ${STUDY_ID.name} = ?
+                AND ${PARTICIPANT_ID.name} = ?
+                AND ${END_DATE_TIME.name} > ?
+                AND ${END_DATE_TIME.name} <= ?
+                AND ${APP_USAGE_TIME.name} > 0 
+                AND ${APP_CATEGORY.name} IS NOT NULL
+            GROUP BY ($APP_CATEGORY, ${BUNDLE_IDENTIFIER.name})
         """.trimIndent()
 
         /**
@@ -292,8 +337,113 @@ class SurveysService(
         }
     }
 
+    /**
+     * This function filters app usage data that is below the threshold for reporting.
+     */
+    private fun computeAggregateUsage(appUsage: List<AppUsage>): Map<String, Double> {
+        val beginningOfDay =
+            OffsetDateTime.now().toLocalDate().atStartOfDay(ZoneOffset.UTC.normalized()).toOffsetDateTime()
+
+        return appUsage
+            .filter { DEVICE_USAGE_EVENT_TYPES.contains(it.eventType) } // Filter out any usage events unrelated to calcualted time.
+            .groupBy { it.appPackageName }
+            .mapValues { (_, au) ->
+                //Special cases are at the beginning and end of list
+                //beginning from midnight to to timestmap
+                //end from last timestamp until now
+                //otherwise from last move to foreground until current move to background. Beginning can be merged with reguular case
+                var currentStartTime = beginningOfDay
+                au.foldIndexed(0.0) { index, s, a ->
+                    when (a.eventType) {
+                        ChronicleUsageEventType.ACTIVITY_RESUMED.value, ChronicleUsageEventType.MOVE_TO_FOREGROUND.value -> {
+                            currentStartTime = a.timestamp
+                            s
+                        }
+                        ChronicleUsageEventType.ACTIVITY_PAUSED.value, ChronicleUsageEventType.MOVE_TO_BACKGROUND.value -> {
+                            when (index) {
+                                au.size - 1 -> s + ChronoUnit.SECONDS.between(a.timestamp, OffsetDateTime.now())
+                                else -> s + ChronoUnit.SECONDS.between(currentStartTime, a.timestamp)
+                            }
+                        }
+                        else -> throw IllegalStateException("Unrecognized event type.")
+                    }
+                }
+            }
+    }
+
+    /**
+     * @param studyId The study id
+     * @param participantId The id of the participant.
+     * @param startDateTime The start date time for the beginning of the window to retrieve
+     * @param endDateTime This parameter is currently ignroed because it maybe missing in early stages of data collection.
+     */
+    private fun getIosDeviceUsageData(
+        studyId: UUID,
+        participantId: String,
+        startDateTime: OffsetDateTime,
+        endDateTime: OffsetDateTime,
+    ): DeviceUsage {
+        try {
+
+            val (_, hds) = storageResolver.resolveAndGetFlavor(studyId)
+
+            //category = categoryByPackage[package]
+            val categoryByPackage = mutableMapOf<String, String>()
+
+            val result = BasePostgresIterable(
+                PreparedStatementHolderSupplier(hds, GET_DEVICE_USAGE_IOS_SQL) { ps ->
+                    ps.setString(1, studyId.toString())
+                    ps.setString(2, participantId)
+                    ps.setObject(3, startDateTime)
+                    ps.setObject(4, endDateTime)
+                }
+            ) { ResultSetAdapters.iosDeviceUsageByCategory(it) }
+                .groupBy { it.category }
+                .mapValues { (category, usageByCategory) ->
+                    usageByCategory.fold(0.0) { totalUsage, packageUsage ->
+                        categoryByPackage[packageUsage.bundleIdentifier ?: UNKNOWN_BUNDLE] = category
+                        totalUsage + packageUsage.usageInSeconds
+                    }
+                }
+
+
+            logger.info(
+                "fetched {} device usage categories spanning {} to {} $STUDY_PARTICIPANT",
+                result.size,
+                startDateTime,
+                endDateTime,
+                studyId,
+                participantId
+            )
+
+            return DeviceUsage(result.values.sum(), result, categoryByPackage)
+        } catch (ex: Exception) {
+            logger.error("unable to fetch data for app usage survey")
+            throw ex
+        }
+    }
+
+    override fun getDeviceUsageData(
+        realStudyId: UUID,
+        participantId: String,
+        startDateTime: OffsetDateTime,
+        endDateTime: OffsetDateTime,
+    ): DeviceUsage {
+        val appUsage = getAndroidAppUsageData(realStudyId, participantId, startDateTime, endDateTime)
+        val filtered = computeAggregateUsage(appUsage)
+        val totalTime = filtered.values.sum()
+        val androidDeviceUsage = DeviceUsage(totalTime, filtered, mapOf())
+        val iosDeviceUsage = getIosDeviceUsageData(realStudyId, participantId, startDateTime, endDateTime)
+        return DeviceUsage(
+            totalTime = androidDeviceUsage.totalTime + iosDeviceUsage.totalTime,
+            iosDeviceUsage.usageByPackage + androidDeviceUsage.usageByPackage,
+            androidDeviceUsage.categoryByPackage + iosDeviceUsage.categoryByPackage,
+            androidDeviceUsage.users + iosDeviceUsage.users
+        )
+    }
+
     // Fetches data from UsageEvents table in redshift
-    override fun getAppUsageData(
+    override fun getAndroidAppUsageData(
         studyId: UUID,
         participantId: String,
         startDateTime: OffsetDateTime,
@@ -316,6 +466,7 @@ class SurveysService(
 
             }.filterNot { filtered.contains(it.appPackageName) }
 
+
             logger.info(
                 "fetched {} app usage entities spanning {} to {} $STUDY_PARTICIPANT",
                 result.size,
@@ -326,7 +477,6 @@ class SurveysService(
             )
 
             return result
-
         } catch (ex: Exception) {
             logger.error("unable to fetch data for app usage survey")
             throw ex

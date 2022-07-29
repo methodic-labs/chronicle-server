@@ -6,41 +6,36 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.ACL_KEY
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APPLICATION_LABEL
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_DATETIME_END
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_DATETIME_START
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_DURATION_SECONDS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_ENGAGE_30S
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_FULL_NAME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_PACKAGE_NAME
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_RECORD_TYPE
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_SWITCHED_APP
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_TIMEZONE
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_TITLE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_USAGE_FLAGS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.AUDIT_EVENT_TYPE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DATA
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DATE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DAY
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DESCRIPTION
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DEVICE_USAGE_SENSOR_COLS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DURATION
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_DURATION_SECONDS
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.END_DATE_TIME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.END_TIME
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.EVENT_TYPE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.INTERACTION_TYPE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.KEYBOARD_METRICS_SENSOR_COLS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.MESSAGES_USAGE_SENSOR_COLS
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.NEW_APP
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.NEW_PERIOD
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.ORGANIZATION_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PHONE_USAGE_SENSOR_COLS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PRINCIPAL_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PRINCIPAL_TYPE
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_RECORD_TYPE
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.RUN_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.SECURABLE_PRINCIPAL_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.SHARED_SENSOR_COLS
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.START_DATE_TIME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.START_TIME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.STUDY_ID
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_SWITCHED_APP
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_TIMEZONE
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_TITLE
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DATE_WITH_TIMEZONE
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.RUN_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMESTAMP
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMEZONE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.USERNAME
@@ -65,6 +60,7 @@ class RedshiftDataTables {
                 PARTICIPANT_ID,
                 APP_PACKAGE_NAME,
                 INTERACTION_TYPE,
+                EVENT_TYPE,
                 TIMESTAMP,
                 TIMEZONE,
                 USERNAME,
@@ -167,10 +163,11 @@ class RedshiftDataTables {
          * 3. participant_id (text)
          * 4. app_package_name (text)
          * 5. interaction_type (text)
-         * 6. timestamp (timestamptz)
-         * 7. timezone (text)
-         * 8. user (text)
-         * 9. application_label (text)
+         * 6. event_type (int)
+         * 7. timestamp (timestamptz)
+         * 8. timezone (text)
+         * 9. user (text)
+         * 10. application_label (text)
          */
         fun getInsertIntoMergeUsageEventsTableSql(srcMergeTableName: String, includeOnConflict: Boolean = false): String {
             return if (includeOnConflict) {
@@ -193,8 +190,9 @@ class RedshiftDataTables {
         }
 
         fun getAppendTembTableSql(srcMergeTableName: String): String {
+
             return """
-                INSERT INTO ${CHRONICLE_USAGE_EVENTS.name} SELECT * FROM $srcMergeTableName
+                INSERT INTO ${CHRONICLE_USAGE_EVENTS.name} ($USAGE_EVENT_COLS) SELECT $USAGE_EVENT_COLS FROM $srcMergeTableName
             """.trimIndent()
         }
 

@@ -24,7 +24,14 @@ import java.util.*
  *
  * @author Matthew Tamayo-Rios &lt;matthew@openlattice.com&gt;
  */
-class AppFilteringUpgrade(private val storageResolver: StorageResolver) : PreHazelcastUpgradeService {
+class AppFilteringUpgrade(
+    private val storageResolver: StorageResolver,
+    private val upgradeService: UpgradeService,
+) : PreHazelcastUpgradeService {
+
+    init {
+        upgradeService.registerUpgrade(this)
+    }
 
     companion object {
         private val logger = LoggerFactory.getLogger(AppFilteringUpgrade::class.java)
@@ -33,27 +40,40 @@ class AppFilteringUpgrade(private val storageResolver: StorageResolver) : PreHaz
         /**
          * Queries for legacy study settings by id.
          */
-        private val RENAME_TABLE_SQL = "ALTER TABLE system_apps RENAME TO ${SYSTEM_APPS.name}"
+        private val COPY_SYSTEM_APP_SQL = "INSERT INTO ${SYSTEM_APPS.name} SELECT * FROM system_apps"
         private val INITIALIZE_STUDIES_SQL = """
-            INSERT INTO ${FILTERED_APPS.name} SELECT ${STUDY_ID.name}, ${RedshiftColumns.APP_PACKAGE_NAME} 
-            FROM $STUDIES.name} CROSS JOIN ${SYSTEM_APPS.name}
+            INSERT INTO ${FILTERED_APPS.name} SELECT ${STUDY_ID.name}, ${RedshiftColumns.APP_PACKAGE_NAME.name} 
+            FROM ${STUDIES.name} CROSS JOIN ${SYSTEM_APPS.name}
         """.trimIndent()
 
     }
 
     override fun runUpgrade() {
+        try {
+            doUpgrade()
+        } catch (ex: Exception) {
+            upgradeService.failUpgrade(this)
+            throw ex
+        }
+    }
+
+    private fun doUpgrade() {
+        if (upgradeService.isUpgradeComplete(this)) {
+            return
+        }
+
         storageResolver.getPlatformStorage().connection.use { connection ->
             connection.autoCommit = false
 
-            connection.createStatement().use { s -> s.execute(RENAME_TABLE_SQL) }
-            logger.info("Renamed default filtered apps table.")
+            connection.createStatement().use { s -> s.execute(COPY_SYSTEM_APP_SQL) }
+            logger.info("Copied over default filtered apps table.")
             //Populate studies with default filtered apps
             val count = connection.createStatement().use { s -> s.executeUpdate(INITIALIZE_STUDIES_SQL) }
 
+            upgradeService.completeUpgrade(connection, this)
             connection.commit()
             connection.autoCommit = false
             logger.info("Upgraded $count studies")
-
         }
     }
 }

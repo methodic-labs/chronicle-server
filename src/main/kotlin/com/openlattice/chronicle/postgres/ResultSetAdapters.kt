@@ -36,6 +36,7 @@ import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.participants.ParticipantStats
 import com.openlattice.chronicle.services.jobs.ChronicleJob
 import com.openlattice.chronicle.services.notifications.Notification
+import com.openlattice.chronicle.services.surveys.IosDeviceUsageByCategory
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACTIVE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ANDROID_FIRST_DATE
@@ -116,7 +117,11 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_UNIQUE_DA
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPDATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.URL
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APPLICATION_LABEL
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_CATEGORY
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_PACKAGE_NAME
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_USAGE_TIME
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.BUNDLE_IDENTIFIER
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.EVENT_TYPE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMESTAMP
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMEZONE
@@ -399,7 +404,17 @@ class ResultSetAdapters {
                 rs.getString(APPLICATION_LABEL.name),
                 timestamp.toInstant().atZone(zoneId).toOffsetDateTime(),
                 users = listOf(),
-                timezone
+                timezone = timezone,
+                eventType = rs.getInt(EVENT_TYPE.name)
+            )
+        }
+
+        @Throws(SQLException::class)
+        fun iosDeviceUsageByCategory(rs: ResultSet): IosDeviceUsageByCategory {
+            return IosDeviceUsageByCategory(
+                rs.getString(BUNDLE_IDENTIFIER.name),
+                rs.getString(APP_CATEGORY.name),
+                rs.getDouble(APP_USAGE_TIME.name)
             )
         }
 
