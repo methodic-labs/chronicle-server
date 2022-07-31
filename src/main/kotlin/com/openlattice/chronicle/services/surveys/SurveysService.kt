@@ -39,6 +39,7 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_PACKAGE_N
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_USAGE_TIME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.BUNDLE_IDENTIFIER
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.END_DATE_TIME
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.EVENT_TYPE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.INTERACTION_TYPE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMESTAMP
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMEZONE
@@ -99,7 +100,7 @@ class SurveysService(
          * 3) date
          */
         val GET_APP_USAGE_SQL = """
-            SELECT ${APP_PACKAGE_NAME.name}, ${APPLICATION_LABEL.name}, ${TIMESTAMP.name}, ${TIMEZONE.name}
+            SELECT ${APP_PACKAGE_NAME.name}, ${APPLICATION_LABEL.name}, ${TIMESTAMP.name}, ${TIMEZONE.name}, ${EVENT_TYPE.name}
             FROM ${CHRONICLE_USAGE_EVENTS.name}
             WHERE ${STUDY_ID.name} = ?
                 AND ${PARTICIPANT_ID.name} = ?
