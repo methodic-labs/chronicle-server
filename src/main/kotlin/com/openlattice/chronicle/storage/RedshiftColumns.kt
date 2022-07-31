@@ -51,7 +51,7 @@ class RedshiftColumns {
         @JvmField val DATE_LOGGED = PostgresColumnDefinition(EdmConstants.DATE_LOGGED_FQN.name, PostgresDatatype.TIMESTAMPTZ)
         @JvmField val DATE = PostgresColumnDefinition(EdmConstants.DATE_TIME_FQN.name, PostgresDatatype.TIMESTAMPTZ)
         @JvmField val END_DATE_TIME = PostgresColumnDefinition(EdmConstants.END_DATE_TIME_FQN.name, PostgresDatatype.TIMESTAMPTZ)
-        @JvmField  val MODEL = PostgresColumnDefinition(EdmConstants.MODEL_FQN.name, PostgresDatatype.TEXT)
+        @JvmField val MODEL = PostgresColumnDefinition(EdmConstants.MODEL_FQN.name, PostgresDatatype.TEXT)
         @JvmField val OL_ID = PostgresColumnDefinition(EdmConstants.OL_ID_FQN.name, PostgresDatatype.TEXT)
         @JvmField val PERSON_ID = PostgresColumnDefinition(EdmConstants.PERSON_ID_FQN.name, PostgresDatatype.TEXT)
 

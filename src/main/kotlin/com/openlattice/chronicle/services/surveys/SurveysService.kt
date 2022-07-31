@@ -107,7 +107,7 @@ class SurveysService(
                 AND ${TIMESTAMP.name} < ?
                 AND ${INTERACTION_TYPE.name} = 'Move to Foreground'
                 AND (${USERNAME.name} IS NULL OR ${USERNAME.name} = '')
-            ORDER BY (${TIMESTAMP.name},${APP_PACKAGE_NAME.name})
+            ORDER BY ${TIMESTAMP.name},${APP_PACKAGE_NAME.name}
         """.trimIndent()
 
         const val TOTAL_USAGE_FIELD = "total_usage"
