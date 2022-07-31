@@ -60,6 +60,8 @@ class ChronicleServerSecurityPod : Auth0SecurityPod() {
             .antMatchers(HttpMethod.GET, "/chronicle/v3/study/*/participant/*/verify").permitAll()
             .antMatchers(HttpMethod.GET, "/chronicle/v3/survey/*/participant/*/app-usage").permitAll()
             .antMatchers(HttpMethod.POST, "/chronicle/v3/survey/*/participant/*/app-usage").permitAll()
+            .antMatchers(HttpMethod.GET, "/chronicle/v3/survey/*/participant/*/device-usage").permitAll()
+            .antMatchers(HttpMethod.POST, "/chronicle/v3/survey/*/participant/*/device-usage").permitAll()
 
             .antMatchers( "/chronicle/**").authenticated()
 
