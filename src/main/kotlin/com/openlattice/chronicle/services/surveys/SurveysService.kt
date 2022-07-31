@@ -141,7 +141,7 @@ class SurveysService(
                 AND ${END_DATE_TIME.name} <= ?
                 AND ${APP_USAGE_TIME.name} > 0 
                 AND ${APP_CATEGORY.name} IS NOT NULL
-            GROUP BY ($APP_CATEGORY.name, ${BUNDLE_IDENTIFIER.name})
+            GROUP BY (${APP_CATEGORY.name}, ${BUNDLE_IDENTIFIER.name})
         """.trimIndent()
 
         /**
