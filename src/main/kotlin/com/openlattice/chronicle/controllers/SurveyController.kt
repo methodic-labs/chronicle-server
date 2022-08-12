@@ -12,6 +12,7 @@ import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.services.download.DataDownloadService
 import com.openlattice.chronicle.services.studies.StudyService
 import com.openlattice.chronicle.services.surveys.SurveysService
+import com.openlattice.chronicle.study.StudySettingType
 import com.openlattice.chronicle.survey.*
 import com.openlattice.chronicle.survey.SurveyApi.Companion.APP_USAGE_PATH
 import com.openlattice.chronicle.survey.SurveyApi.Companion.CONTROLLER
@@ -29,6 +30,7 @@ import com.openlattice.chronicle.survey.SurveyApi.Companion.QUESTIONNAIRE_PATH
 import com.openlattice.chronicle.survey.SurveyApi.Companion.START_DATE
 import com.openlattice.chronicle.survey.SurveyApi.Companion.STUDY_ID
 import com.openlattice.chronicle.survey.SurveyApi.Companion.STUDY_ID_PATH
+import com.openlattice.chronicle.survey.SurveyApi.Companion.THRESHOLD
 import com.openlattice.chronicle.survey.SurveyApi.Companion.TYPE
 import com.openlattice.chronicle.util.ChronicleServerUtil
 import org.springframework.format.annotation.DateTimeFormat
@@ -115,10 +117,22 @@ class SurveyController @Inject constructor(
         @PathVariable(PARTICIPANT_ID) participantId: String,
         @RequestParam(value = START_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) startDateTime: OffsetDateTime,
         @RequestParam(value = END_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) endDateTime: OffsetDateTime,
+        @RequestParam(THRESHOLD) thresholdInSeconds: Int?,
     ): DeviceUsage {
         val realStudyId = studyService.getStudyId(studyId)
         checkNotNull(realStudyId) { "invalid study id" }
-        return surveysService.getDeviceUsageData(realStudyId, participantId, startDateTime, endDateTime)
+        val deviceUsageData = surveysService.getDeviceUsageData(realStudyId, participantId, startDateTime, endDateTime)
+
+        val threshold = thresholdInSeconds ?: (studyService
+            .getStudySettings(studyId)
+            .getOrDefault(StudySettingType.Survey, SurveySettings()) as SurveySettings).appUsageThresholdInSeconds
+        val packagesToKeep = deviceUsageData.usageByPackage.filterValues { it <= threshold }.keys
+        val usageByPackage = deviceUsageData.usageByPackage - packagesToKeep
+        return DeviceUsage(
+            usageByPackage.values.sum(),
+            usageByPackage,
+            deviceUsageData.categoryByPackage - packagesToKeep
+        )
     }
 
     @Timed
@@ -131,10 +145,20 @@ class SurveyController @Inject constructor(
         @PathVariable(PARTICIPANT_ID) participantId: String,
         @RequestParam(value = START_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) startDateTime: OffsetDateTime,
         @RequestParam(value = END_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) endDateTime: OffsetDateTime,
+        @RequestParam(THRESHOLD) thresholdInSeconds: Int?,
     ): List<AppUsage> {
         val realStudyId = studyService.getStudyId(studyId)
         checkNotNull(realStudyId) { "invalid study id" }
-        return surveysService.getAndroidAppUsageData(realStudyId, participantId, startDateTime, endDateTime)
+        val appUsageData = surveysService.getAndroidAppUsageData(realStudyId, participantId, startDateTime, endDateTime)
+        val aggregate = surveysService.computeAggregateUsage(appUsageData)
+
+        val threshold = thresholdInSeconds ?: (studyService
+            .getStudySettings(studyId)
+            .getOrDefault(StudySettingType.Survey, SurveySettings()) as SurveySettings).appUsageThresholdInSeconds
+
+        //Only keep packages that exceed threshold usage time for query.
+        val packagesToKeep = aggregate.filterValues { it > threshold }.keys
+        return appUsageData.filter { packagesToKeep.contains(it.appPackageName) }
     }
 
     @Timed
