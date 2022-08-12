@@ -117,7 +117,7 @@ class SurveyController @Inject constructor(
         @PathVariable(PARTICIPANT_ID) participantId: String,
         @RequestParam(value = START_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) startDateTime: OffsetDateTime,
         @RequestParam(value = END_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) endDateTime: OffsetDateTime,
-        @RequestParam(THRESHOLD) thresholdInSeconds: Int?,
+        @RequestParam(THRESHOLD, required = false) thresholdInSeconds: Int?,
     ): DeviceUsage {
         val realStudyId = studyService.getStudyId(studyId)
         checkNotNull(realStudyId) { "invalid study id" }
@@ -145,7 +145,7 @@ class SurveyController @Inject constructor(
         @PathVariable(PARTICIPANT_ID) participantId: String,
         @RequestParam(value = START_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) startDateTime: OffsetDateTime,
         @RequestParam(value = END_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) endDateTime: OffsetDateTime,
-        @RequestParam(THRESHOLD) thresholdInSeconds: Int?,
+        @RequestParam(THRESHOLD, required = false) thresholdInSeconds: Int?,
     ): List<AppUsage> {
         val realStudyId = studyService.getStudyId(studyId)
         checkNotNull(realStudyId) { "invalid study id" }
