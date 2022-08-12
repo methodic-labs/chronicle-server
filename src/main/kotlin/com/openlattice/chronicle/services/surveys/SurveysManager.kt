@@ -84,4 +84,5 @@ interface SurveysManager {
         endDateTime: OffsetDateTime,
     ): DeviceUsage
 
+    fun computeAggregateUsage(appUsage: List<AppUsage>): Map<String, Double>
 }

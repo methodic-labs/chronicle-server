@@ -106,7 +106,10 @@ class SurveysService(
                 AND ${PARTICIPANT_ID.name} = ?
                 AND ${TIMESTAMP.name} >=  ?
                 AND ${TIMESTAMP.name} < ?
-                AND ${INTERACTION_TYPE.name} = 'Move to Foreground'
+                AND ( ${EVENT_TYPE.name}} = 1 
+                      OR ${EVENT_TYPE.name} = 2
+                      OR ${INTERACTION_TYPE.name} = 'Move to Foreground' 
+                      OR ${INTERACTION_TYPE.name} = 'Move to Background' )
                 AND (${USERNAME.name} IS NULL OR ${USERNAME.name} = '')
             ORDER BY ${TIMESTAMP.name},${APP_PACKAGE_NAME.name}
         """.trimIndent()
@@ -341,12 +344,12 @@ class SurveysService(
     /**
      * This function filters app usage data that is below the threshold for reporting.
      */
-    private fun computeAggregateUsage(appUsage: List<AppUsage>): Map<String, Double> {
+    override fun computeAggregateUsage(appUsage: List<AppUsage>): Map<String, Double> {
         val beginningOfDay =
             OffsetDateTime.now().toLocalDate().atStartOfDay(ZoneOffset.UTC.normalized()).toOffsetDateTime()
 
         return appUsage
-            .filter { DEVICE_USAGE_EVENT_TYPES.contains(it.eventType) } // Filter out any usage events unrelated to calcualted time.
+            .filter { DEVICE_USAGE_EVENT_TYPES.contains(it.eventType) } // Filter out any usage events unrelated to calculated time.
             .groupBy { it.appPackageName }
             .mapValues { (_, au) ->
                 //Special cases are at the beginning and end of list
@@ -354,6 +357,7 @@ class SurveysService(
                 //end from last timestamp until now
                 //otherwise from last move to foreground until current move to background. Beginning can be merged with reguular case
                 var currentStartTime = beginningOfDay
+
                 au.foldIndexed(0.0) { index, s, a ->
                     when (a.eventType) {
                         ChronicleUsageEventType.ACTIVITY_RESUMED.value, ChronicleUsageEventType.MOVE_TO_FOREGROUND.value -> {
@@ -464,7 +468,6 @@ class SurveysService(
                 }
             ) {
                 ResultSetAdapters.appUsage(it)
-
             }.filterNot { filtered.contains(it.appPackageName) }
 
 
