@@ -313,7 +313,7 @@ class SurveysService(
                 EdmConstants.DESCRIPTION_FQN to setOf(questionnaire.description)
             )
         }
-    }\\
+    }
 
 
     override fun submitLegacyQuestionnaire(
