@@ -313,7 +313,8 @@ class SurveysService(
                 EdmConstants.DESCRIPTION_FQN to setOf(questionnaire.description)
             )
         }
-    }
+    }\\
+
 
     override fun submitLegacyQuestionnaire(
         organizationId: UUID, studyId: UUID, participantId: String,
@@ -365,9 +366,14 @@ class SurveysService(
                             s
                         }
                         ChronicleUsageEventType.ACTIVITY_PAUSED.value, ChronicleUsageEventType.MOVE_TO_BACKGROUND.value -> {
-                            when (index) {
-                                au.size - 1 -> s + ChronoUnit.SECONDS.between(a.timestamp, OffsetDateTime.now())
-                                else -> s + ChronoUnit.SECONDS.between(currentStartTime, a.timestamp)
+                            if (currentStartTime == OffsetDateTime.MAX) {
+                                s
+                            } else {
+                                currentStartTime = OffsetDateTime.MAX
+                                when (index) {
+                                    au.size - 1 -> s //+ ChronoUnit.SECONDS.between(a.timestamp, OffsetDateTime.now())
+                                    else -> s + ChronoUnit.SECONDS.between(currentStartTime, a.timestamp).toDouble()
+                                }
                             }
                         }
                         else -> throw IllegalStateException("Unrecognized event type.")
@@ -435,10 +441,11 @@ class SurveysService(
         endDateTime: OffsetDateTime,
     ): DeviceUsage {
         val appUsage = getAndroidAppUsageData(realStudyId, participantId, startDateTime, endDateTime)
+        val iosDeviceUsage = getIosDeviceUsageData(realStudyId, participantId, startDateTime, endDateTime)
+
         val filtered = computeAggregateUsage(appUsage)
         val totalTime = filtered.values.sum()
         val androidDeviceUsage = DeviceUsage(totalTime, filtered, mapOf())
-        val iosDeviceUsage = getIosDeviceUsageData(realStudyId, participantId, startDateTime, endDateTime)
         return DeviceUsage(
             totalTime = androidDeviceUsage.totalTime + iosDeviceUsage.totalTime,
             iosDeviceUsage.usageByPackage + androidDeviceUsage.usageByPackage,
