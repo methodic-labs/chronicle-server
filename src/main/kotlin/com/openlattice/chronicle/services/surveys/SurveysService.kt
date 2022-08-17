@@ -106,7 +106,7 @@ class SurveysService(
                 AND ${PARTICIPANT_ID.name} = ?
                 AND ${TIMESTAMP.name} >=  ?
                 AND ${TIMESTAMP.name} < ?
-                AND ( ${EVENT_TYPE.name}} = 1 
+                AND ( ${EVENT_TYPE.name} = 1 
                       OR ${EVENT_TYPE.name} = 2
                       OR ${INTERACTION_TYPE.name} = 'Move to Foreground' 
                       OR ${INTERACTION_TYPE.name} = 'Move to Background' )
