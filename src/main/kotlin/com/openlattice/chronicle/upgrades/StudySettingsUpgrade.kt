@@ -84,7 +84,7 @@ class StudySettingsUpgrade(
             val count = connection.prepareStatement(UPDATE_STUDY_SETTINGS_SQL).use { ps ->
                 studySettings.forEach { studyId, studySettings ->
                     ps.setObject(1, studyId)
-                    ps.setObject(2, StudySettings(studySettings + defaultSetting))
+                    ps.setString(2, mapper.writeValueAsString(StudySettings(studySettings + defaultSetting)))
                     ps.addBatch()
                 }
                 ps.executeBatch().sum()
