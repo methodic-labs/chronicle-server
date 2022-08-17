@@ -48,7 +48,7 @@ class StudySettingsUpgrade(
          */
         private val LOAD_STUDY_SETTINGS_SQL = "SELECT ${STUDY_ID.name}, ${SETTINGS.name} FROM ${STUDIES.name}"
         private val UPDATE_STUDY_SETTINGS_SQL =
-            "UPDATE ${STUDIES.name} SET ${SETTINGS.name} = ? WHERE ${STUDY_ID.name} = ?"
+            "UPDATE ${STUDIES.name} SET ${SETTINGS.name} = ?::jsonb WHERE ${STUDY_ID.name} = ?"
     }
 
     override fun runUpgrade() {
