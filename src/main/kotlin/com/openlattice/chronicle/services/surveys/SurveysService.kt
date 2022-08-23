@@ -358,16 +358,12 @@ class SurveysService(
                 var currentStartTime = startDateTime
 
                 au.fold(0.0) { s, a ->
-                    //We always advanced currentStartTime to avoid double counting multiple sequential ACTIVITY_PAUSED_EVENTS.
-                    //This seems to usually happen when a system modal takes focus without backgrounding the application.
-                    currentStartTime = a.timestamp
-                    when (a.eventType) {
+                    val result = when (a.eventType) {
                         /*
                          * When an activity is resumed start counter waiting for the activity to terminate. Even if it
                          * is the last event, it will be fine as we just won't count the time for an unpaired event.
                          */
                         ChronicleUsageEventType.ACTIVITY_RESUMED.value, ChronicleUsageEventType.MOVE_TO_FOREGROUND.value -> {
-
                             s
                         }
                         /*
@@ -380,6 +376,10 @@ class SurveysService(
 
                         else -> throw IllegalStateException("Unrecognized event type.")
                     }
+                    //We always advanced currentStartTime to avoid double counting multiple sequential ACTIVITY_PAUSED_EVENTS.
+                    //This seems to usually happen when a system modal takes focus without backgrounding the application.
+                    currentStartTime = a.timestamp
+                    result
                 }
             }
     }
