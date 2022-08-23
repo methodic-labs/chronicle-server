@@ -345,37 +345,39 @@ class SurveysService(
     /**
      * This function filters app usage data that is below the threshold for reporting.
      */
-    override fun computeAggregateUsage(appUsage: List<AppUsage>): Map<String, Double> {
-        val beginningOfDay =
-            OffsetDateTime.now().toLocalDate().atStartOfDay(ZoneOffset.UTC.normalized()).toOffsetDateTime()
+    override fun computeAggregateUsage(
+        startDateTime: OffsetDateTime,
+        appUsage: List<AppUsage>,
+    ): Map<String, Double> {
 
         return appUsage
             .filter { DEVICE_USAGE_EVENT_TYPES.contains(it.eventType) } // Filter out any usage events unrelated to calculated time.
             .groupBy { it.appPackageName }
             .mapValues { (_, au) ->
-                //Special cases are at the beginning and end of list
-                //beginning from midnight to to timestmap
-                //end from last timestamp until now
-                //otherwise from last move to foreground until current move to background. Beginning can be merged with reguular case
-                var currentStartTime = beginningOfDay
+                //We start counting usage from the beginning of the block when it the first event isn't an activity resumed.
+                var currentStartTime = startDateTime
 
-                au.foldIndexed(0.0) { index, s, a ->
+                au.fold(0.0) { s, a ->
+                    //We always advanced currentStartTime to avoid double counting multiple sequential ACTIVITY_PAUSED_EVENTS.
+                    //This seems to usually happen when a system modal takes focus without backgrounding the application.
+                    currentStartTime = a.timestamp
                     when (a.eventType) {
+                        /*
+                         * When an activity is resumed start counter waiting for the activity to terminate. Even if it
+                         * is the last event, it will be fine as we just won't count the time for an unpaired event.
+                         */
                         ChronicleUsageEventType.ACTIVITY_RESUMED.value, ChronicleUsageEventType.MOVE_TO_FOREGROUND.value -> {
-                            currentStartTime = a.timestamp
+
                             s
                         }
+                        /*
+                         * When an activity is paused our backgrounded add the total time it was used for in the
+                         * current time block.
+                         */
                         ChronicleUsageEventType.ACTIVITY_PAUSED.value, ChronicleUsageEventType.MOVE_TO_BACKGROUND.value -> {
-                            if (currentStartTime == OffsetDateTime.MAX) {
-                                s
-                            } else {
-                                currentStartTime = OffsetDateTime.MAX
-                                when (index) {
-                                    au.size - 1 -> s //+ ChronoUnit.SECONDS.between(a.timestamp, OffsetDateTime.now())
-                                    else -> s + ChronoUnit.SECONDS.between(currentStartTime, a.timestamp).toDouble()
-                                }
-                            }
+                            s + ChronoUnit.SECONDS.between(currentStartTime, a.timestamp).toDouble()
                         }
+
                         else -> throw IllegalStateException("Unrecognized event type.")
                     }
                 }
@@ -443,7 +445,7 @@ class SurveysService(
         val appUsage = getAndroidAppUsageData(realStudyId, participantId, startDateTime, endDateTime)
         val iosDeviceUsage = getIosDeviceUsageData(realStudyId, participantId, startDateTime, endDateTime)
 
-        val filtered = computeAggregateUsage(appUsage)
+        val filtered = computeAggregateUsage(startDateTime, appUsage)
         val totalTime = filtered.values.sum()
         val androidDeviceUsage = DeviceUsage(totalTime, filtered, mapOf())
         return DeviceUsage(

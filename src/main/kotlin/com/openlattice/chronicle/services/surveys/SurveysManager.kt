@@ -5,6 +5,7 @@ import com.openlattice.chronicle.survey.*
 import org.apache.olingo.commons.api.edm.FullQualifiedName
 import java.sql.Connection
 import java.time.OffsetDateTime
+import java.time.ZoneOffset
 import java.util.*
 
 
@@ -84,5 +85,11 @@ interface SurveysManager {
         endDateTime: OffsetDateTime,
     ): DeviceUsage
 
-    fun computeAggregateUsage(appUsage: List<AppUsage>): Map<String, Double>
+    fun computeAggregateUsage(
+        startDateTime: OffsetDateTime = OffsetDateTime.now()
+            .toLocalDate()
+            .atStartOfDay(ZoneOffset.UTC.normalized())
+            .toOffsetDateTime(),
+        appUsage: List<AppUsage>,
+    ): Map<String, Double>
 }

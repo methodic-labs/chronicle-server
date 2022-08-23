@@ -150,7 +150,7 @@ class SurveyController @Inject constructor(
         val realStudyId = studyService.getStudyId(studyId)
         checkNotNull(realStudyId) { "invalid study id" }
         val appUsageData = surveysService.getAndroidAppUsageData(realStudyId, participantId, startDateTime, endDateTime)
-        val aggregate = surveysService.computeAggregateUsage(appUsageData)
+        val aggregate = surveysService.computeAggregateUsage(startDateTime, appUsageData)
 
         val threshold = thresholdInSeconds ?: (studyService
             .getStudySettings(studyId)
