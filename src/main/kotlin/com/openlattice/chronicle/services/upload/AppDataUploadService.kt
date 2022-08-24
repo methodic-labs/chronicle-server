@@ -224,7 +224,7 @@ class AppDataUploadService(
         //TODO: In reality we are likely to write less entities than were provided and are actually returning number processed so that client knows all is good
         if (expectedSize != written) {
             //Should probably be an assertion as this should never happen.
-            logger.warn("Wrote $written entities, but expected to write ${expectedSize} entities")
+            logger.warn("Wrote $written entities, but expected to write $expectedSize entities")
         }
 
         //Currently nothing is done with written, but here in case we need it in the future.
@@ -240,7 +240,12 @@ class AppDataUploadService(
         return mappedData.filter { mappedUsageEventCols ->
             val eventDate = mappedUsageEventCols[FQNS_TO_COLUMNS.getValue(DATE_LOGGED_FQN).name]?.value
             val dateLogged = odtFromUsageEventColumn(eventDate)
-            dateLogged != null
+
+            val appPackageName = checkNotNull( mappedUsageEventCols[APP_PACKAGE_NAME.name]?.value as String?) {
+                "Application package name cannot be null."
+            }
+
+            dateLogged != null && !appPackageName.startsWith("[shutdown]")
         }
     }
 
