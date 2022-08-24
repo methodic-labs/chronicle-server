@@ -224,7 +224,7 @@ class AppDataUploadService(
         //TODO: In reality we are likely to write less entities than were provided and are actually returning number processed so that client knows all is good
         if (expectedSize != written) {
             //Should probably be an assertion as this should never happen.
-            logger.warn("Wrote $written entities, but expected to write ${expectedSize} entities")
+            logger.warn("Wrote $written entities, but expected to write $expectedSize entities")
         }
 
         //Currently nothing is done with written, but here in case we need it in the future.
