@@ -240,7 +240,12 @@ class AppDataUploadService(
         return mappedData.filter { mappedUsageEventCols ->
             val eventDate = mappedUsageEventCols[FQNS_TO_COLUMNS.getValue(DATE_LOGGED_FQN).name]?.value
             val dateLogged = odtFromUsageEventColumn(eventDate)
-            dateLogged != null
+
+            val appPackageName = checkNotNull( mappedUsageEventCols[APP_PACKAGE_NAME.name]?.value as String?) {
+                "Application package name cannot be null."
+            }
+
+            dateLogged != null && !appPackageName.startsWith("[shutdown]")
         }
     }
 
