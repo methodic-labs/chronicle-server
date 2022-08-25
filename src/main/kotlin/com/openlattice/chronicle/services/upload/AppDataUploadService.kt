@@ -350,6 +350,7 @@ class AppDataUploadService(
                     }
 
                 connection.createStatement().use { stmt ->
+                    stmt.execute("LOCK ${CHRONICLE_USAGE_EVENTS.name}") // LOCK the table to avoid serialization errors.
                     stmt.execute(getDeleteTempTableEntriesSql(tempMergeTable.name))
                     stmt.executeUpdate(getAppendTembTableSql(tempMergeTable.name))
                 }
