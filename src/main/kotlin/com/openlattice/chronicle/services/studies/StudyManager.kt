@@ -50,4 +50,5 @@ interface StudyManager {
     fun countStudyParticipants(studyIds: Set<UUID>): Map<UUID, Long>
 
     fun updateLastDevicePing( studyId: UUID,participantId: String, sourceDevice:SourceDevice)
+    fun updateLastDevicePing(studyId: UUID, participantId: String)
 }

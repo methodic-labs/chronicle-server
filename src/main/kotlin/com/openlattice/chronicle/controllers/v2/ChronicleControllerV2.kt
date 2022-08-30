@@ -94,7 +94,9 @@ class ChronicleControllerV2 : ChronicleApi {
     ): ParticipationStatus {
         val realStudyId = studyService.getStudyId(studyId)
         checkNotNull(realStudyId) { "invalid study id"}
-        return enrollmentManager.getParticipationStatus(realStudyId, participantId)
+        val participationStatus = enrollmentManager.getParticipationStatus(realStudyId, participantId)
+        studyService.updateLastDevicePing(studyId, participantId)
+        return participationStatus
     }
 
     @Timed

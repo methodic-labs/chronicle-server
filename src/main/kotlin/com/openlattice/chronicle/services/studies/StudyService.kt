@@ -301,6 +301,7 @@ class StudyService(
 
         private val PARTICIPANT_STATS_COLUMNS = PARTICIPANT_STATS.columns.joinToString { it.name }
         private val PARTICIPANT_STATS_PARAMS = PARTICIPANT_STATS.columns.joinToString { "?" }
+
         //On insertion conflict we should only update non-null values.
         private val PARTICIPANT_STATS_UPDATE_PARAMS = (PARTICIPANT_STATS.columns - PARTICIPANT_STATS.primaryKey)
             .joinToString { "${it.name} = COALESCE(EXCLUDED.${it.name},${PARTICIPANT_STATS.name}.${it.name})" }
@@ -732,13 +733,40 @@ class StudyService(
     }
 
     override fun updateLastDevicePing(studyId: UUID, participantId: String, sourceDevice: SourceDevice) {
-        val participantStats = when (sourceDevice ) {
-            is AndroidDevice -> ParticipantStats(studyId = studyId, participantId = participantId, androidLastPing = OffsetDateTime.now() )
-            is IOSDevice -> ParticipantStats(studyId = studyId, participantId = participantId, androidLastPing = OffsetDateTime.now() )
+        val participantStats = when (sourceDevice) {
+            is AndroidDevice -> ParticipantStats(
+                studyId = studyId,
+                participantId = participantId,
+                androidLastPing = OffsetDateTime.now()
+            )
+            is IOSDevice -> ParticipantStats(
+                studyId = studyId,
+                participantId = participantId,
+                androidLastPing = OffsetDateTime.now()
+            )
             else -> throw UnsupportedOperationException("${sourceDevice.javaClass.name} is not a supported datasource.")
         }
 
         insertOrUpdateParticipantStats(participantStats)
+    }
+
+    override fun updateLastDevicePing(studyId: UUID, participantId: String) {
+        //If device hasn't enrolled yet, we should just return without updating last ping.
+        val participantStats = getParticipantStats(studyId, participantId)  ?: return
+
+        if (participantStats.androidLastPing != null) {
+            insertOrUpdateParticipantStats(
+                ParticipantStats(
+                    studyId,
+                    participantId,
+                    androidLastPing = OffsetDateTime.now()
+                )
+            )
+        }
+
+        if (participantStats.iosLastPing != null) {
+            insertOrUpdateParticipantStats(ParticipantStats(studyId, participantId, iosLastPing = OffsetDateTime.now()))
+        }
     }
 
     private fun selectStudyParticipants(studyId: UUID): Iterable<Participant> {

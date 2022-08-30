@@ -315,68 +315,92 @@ class AppDataUploadService(
                         //Should only need to set these once for prepared statement.
                         ps.setString(1, studyId.toString())
                         ps.setString(2, participantId)
+                        StopWatch(
+                            log = "Inserting entries for ${ChronicleServerUtil.STUDY_PARTICIPANT} ",
+                            level = Level.INFO,
+                            logger = logger,
+                            studyId,
+                            participantId
+                        ).use {
+                            data.forEach { usageEventCols ->
+                                usageEventCols.values.forEach { usageEventCol ->
 
-                        data.forEach { usageEventCols ->
-                            usageEventCols.values.forEach { usageEventCol ->
+                                    val col = usageEventCol.col
+                                    val colIndex = usageEventCol.colIndex
+                                    val value = usageEventCol.value
 
-                                val col = usageEventCol.col
-                                val colIndex = usageEventCol.colIndex
-                                val value = usageEventCol.value
-
-                                try {
-                                    //Set insert value to null, if value was not provided.
-                                    if (value == null) {
-                                        ps.setObject(colIndex, null)
-                                    } else {
-                                        when (col.datatype) {
-                                            PostgresDatatype.TEXT -> ps.setString(colIndex, value as String)
-                                            PostgresDatatype.TIMESTAMPTZ -> {
-                                                val odt = odtFromUsageEventColumn(value)
-                                                ps.setObject(
-                                                    colIndex,
-                                                    odt
-                                                )
-                                                //We need to keep track the min and max event timestamps for this batch
-                                                if (odt != null && col.name == TIMESTAMP.name) {
-                                                    if (odt.isBefore(minEventTimestamp)) {
-                                                        minEventTimestamp = odt
-                                                    }
-                                                    if (odt.isAfter(maxEventTimestamp)) {
-                                                        maxEventTimestamp = odt
+                                    try {
+                                        //Set insert value to null, if value was not provided.
+                                        if (value == null) {
+                                            ps.setObject(colIndex, null)
+                                        } else {
+                                            when (col.datatype) {
+                                                PostgresDatatype.TEXT -> ps.setString(colIndex, value as String)
+                                                PostgresDatatype.TIMESTAMPTZ -> {
+                                                    val odt = odtFromUsageEventColumn(value)
+                                                    ps.setObject(
+                                                        colIndex,
+                                                        odt
+                                                    )
+                                                    //We need to keep track the min and max event timestamps for this batch
+                                                    if (odt != null && col.name == TIMESTAMP.name) {
+                                                        if (odt.isBefore(minEventTimestamp)) {
+                                                            minEventTimestamp = odt
+                                                        }
+                                                        if (odt.isAfter(maxEventTimestamp)) {
+                                                            maxEventTimestamp = odt
+                                                        }
                                                     }
                                                 }
+                                                PostgresDatatype.BIGINT -> ps.setLong(colIndex, value as Long)
+                                                else -> ps.setObject(colIndex, value)
                                             }
-                                            PostgresDatatype.BIGINT -> ps.setLong(colIndex, value as Long)
-                                            else -> ps.setObject(colIndex, value)
                                         }
+                                    } catch (ex: Exception) {
+                                        logger.info("Error writing $usageEventCol", ex)
+                                        throw ex
                                     }
-                                } catch (ex: Exception) {
-                                    logger.info("Error writing $usageEventCol", ex)
-                                    throw ex
                                 }
+                                ps.setObject(UPLOAD_AT_INDEX, uploadedAt)
+                                ps.addBatch()
                             }
-                            ps.setObject(UPLOAD_AT_INDEX, uploadedAt)
-                            ps.addBatch()
+                            ps.executeBatch().sum()
                         }
-                        ps.executeBatch().sum()
                     }
 
 
                 val tempTableName = "duplicate_events_${RandomStringUtils.randomAlphanumeric(10)}"
 
+
                 //Create a table that contains any duplicate values introduced by this latest upload for the minimum upload_at value
-                connection.prepareStatement(createTempTableOfDuplicates(tempTableName)).use { ps ->
-                    ps.setString(1, studyId.toString())
-                    ps.setString(2, participantId)
-                    ps.setObject(3, minEventTimestamp)
-                    ps.setObject(3, maxEventTimestamp)
-                    ps.execute()
+                StopWatch(
+                    log = "Creating duplicates table for ${ChronicleServerUtil.STUDY_PARTICIPANT} ",
+                    level = Level.INFO,
+                    logger = logger,
+                    studyId,
+                    participantId
+                ).use {
+                    connection.prepareStatement(createTempTableOfDuplicates(tempTableName)).use { ps ->
+                        ps.setString(1, studyId.toString())
+                        ps.setString(2, participantId)
+                        ps.setObject(3, minEventTimestamp)
+                        ps.setObject(4, maxEventTimestamp)
+                        ps.execute()
+                    }
                 }
 
                 //Delete the duplicates, if any from chronicle_usage_events and drop the temporary table.
-                connection.createStatement().use { stmt ->
-                    stmt.execute(getDeleteUsageEventsFromTempTable(tempTableName))
-                    stmt.execute("DROP TABLE $tempTableName")
+                StopWatch(
+                    log = "Deleting duplicates for ${ChronicleServerUtil.STUDY_PARTICIPANT} ",
+                    level = Level.INFO,
+                    logger = logger,
+                    studyId,
+                    participantId
+                ).use {
+                    connection.createStatement().use { stmt ->
+                        stmt.execute(getDeleteUsageEventsFromTempTable(tempTableName))
+                        stmt.execute("DROP TABLE $tempTableName")
+                    }
                 }
 
                 updateParticipantStats(data, studyId, participantId)
