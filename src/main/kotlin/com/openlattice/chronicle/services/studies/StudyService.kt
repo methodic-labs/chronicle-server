@@ -700,9 +700,11 @@ class StudyService(
                 ps.setObject(++index, stats.studyId)
                 ps.setString(++index, stats.participantId)
 
+                ps.setObject(++index, stats.androidLastPing)
                 ps.setObject(++index, stats.androidFirstDate)
                 ps.setObject(++index, stats.androidLastDate)
                 ps.setArray(++index, androidDatesArr)
+                ps.setObject(++index, stats.iosLastPing)
                 ps.setObject(++index, stats.iosFirstDate)
                 ps.setObject(++index, stats.iosLastDate)
                 ps.setArray(++index, iosDatesArr)
