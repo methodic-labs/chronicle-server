@@ -193,15 +193,19 @@ class RedshiftDataTables {
          * @param tempTableName The
          */
         fun createTempTableOfDuplicates(tempTableName: String): String {
-            val groupByCols = (CHRONICLE_USAGE_EVENTS.columns - UPLOADED_AT).joinToString(",") { it.name }
-
             return """
-                CREATE TEMPORARY TABLE $tempTableName AS 
-                    SELECT $groupByCols, min(${UPLOADED_AT.name}) as ${UPLOADED_AT.name} FROM ${CHRONICLE_USAGE_EVENTS.name}
-                        WHERE ${STUDY_ID.name} = ? AND ${PARTICIPANT_ID.name} = ? AND
-                            ${TIMESTAMP.name} >= ? AND ${TIMESTAMP.name} <= ? 
-                        GROUP BY $groupByCols
-                        HAVING count(${UPLOADED_AT.name}) > 1
+                CREATE TEMPORARY TABLE $tempTableName (LIKE ${CHRONICLE_USAGE_EVENTS.name}) 
+            """.trimIndent()
+        }
+
+        fun buildTempTableOfDuplicates(tempTableName: String): String {
+            val groupByCols = (CHRONICLE_USAGE_EVENTS.columns - UPLOADED_AT).joinToString(",") { it.name }
+            return """
+                INSERT INTO $tempTableName SELECT $groupByCols, min(${UPLOADED_AT.name}) as ${UPLOADED_AT.name} FROM ${CHRONICLE_USAGE_EVENTS.name}
+                                        WHERE ${STUDY_ID.name} = ? AND ${PARTICIPANT_ID.name} = ? AND
+                                            ${TIMESTAMP.name} >= ? AND ${TIMESTAMP.name} <= ? 
+                                        GROUP BY $groupByCols
+                                        HAVING count(${UPLOADED_AT.name}) > 1
             """.trimIndent()
         }
 

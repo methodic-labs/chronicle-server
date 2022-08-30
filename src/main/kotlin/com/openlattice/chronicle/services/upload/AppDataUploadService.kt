@@ -23,6 +23,7 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMEZONE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.UPLOADED_AT
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.USERNAME
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.CHRONICLE_USAGE_EVENTS
+import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.buildTempTableOfDuplicates
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.createTempTableOfDuplicates
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.getAppendTempTableSql
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.getDeleteUsageEventsFromTempTable
@@ -322,7 +323,7 @@ class AppDataUploadService(
                     studyId,
                     participantId
                 )
-
+                connection.autoCommit = false
                 val wc = connection
                     .prepareStatement(getInsertIntoUsageEventsTableSql(tempInsertTableName, includeOnConflict))
                     .use { ps ->
@@ -379,14 +380,24 @@ class AppDataUploadService(
                                 ps.addBatch()
                             }
                             val insertCount = ps.executeBatch().sum()
-                            connection.createStatement().use { stmt ->
-                                stmt.execute(getAppendTempTableSql(tempInsertTableName));
-                                stmt.execute("DROP TABLE $tempInsertTableName")
-                            }
+                            connection.commit()
+                            connection.autoCommit = true
                             insertCount
                         }
                     }
 
+                StopWatch(
+                    log = "Merging entries for ${ChronicleServerUtil.STUDY_PARTICIPANT} ",
+                    level = Level.INFO,
+                    logger = logger,
+                    studyId,
+                    participantId
+                ).use {
+                    connection.createStatement().use { stmt ->
+                        stmt.execute(getAppendTempTableSql(tempInsertTableName));
+                        stmt.execute("DROP TABLE $tempInsertTableName")
+                    }
+                }
 
                 val tempTableName = "duplicate_events_${RandomStringUtils.randomAlphanumeric(10)}"
 
@@ -399,7 +410,9 @@ class AppDataUploadService(
                     studyId,
                     participantId
                 ).use {
-                    connection.prepareStatement(createTempTableOfDuplicates(tempTableName)).use { ps ->
+                    connection.createStatement()
+                        .use { stmt -> stmt.execute(createTempTableOfDuplicates(tempTableName)) }
+                    connection.prepareStatement(buildTempTableOfDuplicates(tempTableName)).use { ps ->
                         ps.setString(1, studyId.toString())
                         ps.setString(2, participantId)
                         ps.setObject(3, minEventTimestamp)
