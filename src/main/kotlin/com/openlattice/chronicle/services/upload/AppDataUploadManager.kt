@@ -2,6 +2,7 @@ package com.openlattice.chronicle.services.upload
 
 import com.google.common.collect.SetMultimap
 import com.openlattice.chronicle.android.ChronicleUsageEvent
+import java.time.OffsetDateTime
 import java.util.*
 
 /**
@@ -9,16 +10,18 @@ import java.util.*
  */
 interface AppDataUploadManager {
     fun upload(
-            studyId: UUID,
-            participantId: String,
-            sourceDeviceId: String,
-            data: List<SetMultimap<UUID, Any>>
+        studyId: UUID,
+        participantId: String,
+        sourceDeviceId: String,
+        data: List<SetMultimap<UUID, Any>>,
+        uploadedAt: OffsetDateTime = OffsetDateTime.now(),
     ): Int
 
     fun uploadAndroidUsageEvents(
         studyId: UUID,
         participantId: String,
         sourceDeviceId: String,
-        data: List<ChronicleUsageEvent>
+        data: List<ChronicleUsageEvent>,
+        uploadedAt: OffsetDateTime = OffsetDateTime.now(),
     ): Int
 }

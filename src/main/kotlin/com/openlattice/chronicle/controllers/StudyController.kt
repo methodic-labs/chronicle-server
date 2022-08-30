@@ -33,6 +33,8 @@ import com.openlattice.chronicle.services.jobs.JobService
 import com.openlattice.chronicle.services.studies.StudyService
 import com.openlattice.chronicle.services.upload.AppDataUploadService
 import com.openlattice.chronicle.services.upload.SensorDataUploadService
+import com.openlattice.chronicle.sources.AndroidDevice
+import com.openlattice.chronicle.sources.IOSDevice
 import com.openlattice.chronicle.sources.SourceDevice
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.study.*
@@ -119,7 +121,9 @@ class StudyController @Inject constructor(
     ): UUID {
         val realStudyId = studyService.getStudyId(studyId)
         checkNotNull(realStudyId) { "invalid study id" }
-        return enrollmentService.registerDatasource(realStudyId, participantId, datasourceId, sourceDevice)
+        val id = enrollmentService.registerDatasource(realStudyId, participantId, datasourceId, sourceDevice)
+        studyService.updateLastDevicePing(realStudyId, participantId, sourceDevice)
+        return id
     }
 
     @Timed
@@ -207,14 +211,14 @@ class StudyController @Inject constructor(
     )
     override fun updateStudyAppleSettings(
         @PathVariable(STUDY_ID) studyId: UUID,
-        @RequestBody sensorSetting: SensorSetting
+        @RequestBody sensorSetting: SensorSetting,
     ): OK {
         ensureAdminAccess()
 
         //We don't need to resolve real study id as this won't ever be called from legacy clients.
         val study = studyService.getStudy(studyId)
         val studySettings = study.settings.toMutableMap()
-        studySettings[ StudySettingType.Sensor ] = sensorSetting
+        studySettings[StudySettingType.Sensor] = sensorSetting
         updateStudy(studyId, StudyUpdate(settings = StudySettings(studySettings)))
 
         return ok

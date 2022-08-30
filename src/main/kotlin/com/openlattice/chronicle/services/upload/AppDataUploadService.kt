@@ -3,8 +3,6 @@ package com.openlattice.chronicle.services.upload
 import com.geekbeast.configuration.postgres.PostgresFlavor
 import com.geekbeast.postgres.PostgresColumnDefinition
 import com.geekbeast.postgres.PostgresDatatype
-import com.geekbeast.postgres.PostgresTableDefinition
-import com.geekbeast.postgres.RedshiftTableDefinition
 import com.geekbeast.util.StopWatch
 import com.google.common.collect.SetMultimap
 import com.openlattice.chronicle.android.ChronicleUsageEvent
@@ -15,7 +13,6 @@ import com.openlattice.chronicle.participants.ParticipantStats
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import com.openlattice.chronicle.services.legacy.LegacyEdmResolver
 import com.openlattice.chronicle.services.studies.StudyManager
-import com.openlattice.chronicle.storage.PostgresDataTables
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APPLICATION_LABEL
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_PACKAGE_NAME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.EVENT_TYPE
@@ -23,11 +20,12 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.FQNS_TO_COLUM
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.INTERACTION_TYPE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMESTAMP
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMEZONE
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.UPLOADED_AT
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.USERNAME
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.CHRONICLE_USAGE_EVENTS
-import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.getAppendTembTableSql
-import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.getDeleteTempTableEntriesSql
-import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.getInsertIntoMergeUsageEventsTableSql
+import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.createTempTableOfDuplicates
+import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.getDeleteUsageEventsFromTempTable
+import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.getInsertIntoUsageEventsTableSql
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.getInsertUsageEventColumnIndex
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.util.ChronicleServerUtil
@@ -50,7 +48,10 @@ class AppDataUploadService(
     private val enrollmentManager: EnrollmentManager,
     private val studyManager: StudyManager,
 ) : AppDataUploadManager {
-    private val logger = LoggerFactory.getLogger(AppDataUploadService::class.java)
+    companion object {
+        private val logger = LoggerFactory.getLogger(AppDataUploadService::class.java)
+        private val UPLOAD_AT_INDEX = getInsertUsageEventColumnIndex(UPLOADED_AT)
+    }
 
 
     /**
@@ -70,6 +71,7 @@ class AppDataUploadService(
         participantId: String,
         sourceDeviceId: String,
         data: List<ChronicleUsageEvent>,
+        uploadedAt: OffsetDateTime,
     ): Int {
         StopWatch(
             log = "logging ${data.size} entries for ${ChronicleServerUtil.STUDY_PARTICIPANT_DATASOURCE}",
@@ -113,7 +115,7 @@ class AppDataUploadService(
 
                 val mappedData = filter(mapToStorageModel(data))
                 val expectedSize = data.size
-                doWrite(flavor, hds, studyId, participantId, mappedData, expectedSize)
+                doWrite(flavor, hds, studyId, participantId, mappedData, expectedSize, uploadedAt)
 
                 return data.size
             } catch (exception: Exception) {
@@ -146,6 +148,7 @@ class AppDataUploadService(
         participantId: String,
         sourceDeviceId: String,
         data: List<SetMultimap<UUID, Any>>,
+        uploadedAt: OffsetDateTime,
     ): Int {
         StopWatch(
             log = "logging ${data.size} entries for ${ChronicleServerUtil.STUDY_PARTICIPANT_DATASOURCE}",
@@ -190,7 +193,7 @@ class AppDataUploadService(
                 val mappedData = filter(mapLegacyDataToStorageModel(data))
                 val expectedSize = data.size
 
-                doWrite(flavor, hds, studyId, participantId, mappedData, expectedSize)
+                doWrite(flavor, hds, studyId, participantId, mappedData, expectedSize, uploadedAt)
 
                 return expectedSize
             } catch (exception: Exception) {
@@ -213,11 +216,12 @@ class AppDataUploadService(
         participantId: String,
         mappedData: Sequence<Map<String, UsageEventColumn>>,
         expectedSize: Int,
+        uploadedAt: OffsetDateTime,
     ): Int {
         val written = StopWatch(log = "Writing ${expectedSize} entites to DB ").use {
             when (flavor) {
-                PostgresFlavor.VANILLA -> writeToPostgres(hds, studyId, participantId, mappedData)
-                PostgresFlavor.REDSHIFT -> writeToRedshift(hds, studyId, participantId, mappedData)
+                PostgresFlavor.VANILLA -> writeToPostgres(hds, studyId, participantId, mappedData, uploadedAt)
+                PostgresFlavor.REDSHIFT -> writeToRedshift(hds, studyId, participantId, mappedData, uploadedAt)
                 else -> throw InvalidParameterException("Only regular postgres and redshift are supported.")
             }
         }
@@ -226,6 +230,7 @@ class AppDataUploadService(
             //Should probably be an assertion as this should never happen.
             logger.warn("Wrote $written entities, but expected to write $expectedSize entities")
         }
+
 
         //Currently nothing is done with written, but here in case we need it in the future.
         return written
@@ -241,7 +246,7 @@ class AppDataUploadService(
             val eventDate = mappedUsageEventCols[FQNS_TO_COLUMNS.getValue(DATE_LOGGED_FQN).name]?.value
             val dateLogged = odtFromUsageEventColumn(eventDate)
 
-            val appPackageName = checkNotNull( mappedUsageEventCols[APP_PACKAGE_NAME.name]?.value as String?) {
+            val appPackageName = checkNotNull(mappedUsageEventCols[APP_PACKAGE_NAME.name]?.value as String?) {
                 "Application package name cannot be null."
             }
 
@@ -296,22 +301,16 @@ class AppDataUploadService(
         studyId: UUID,
         participantId: String,
         data: Sequence<Map<String, UsageEventColumn>>,
-        tempMergeTable: PostgresTableDefinition = CHRONICLE_USAGE_EVENTS.createTempTable(),
+        uploadedAt: OffsetDateTime,
+        includeOnConflict: Boolean = false,
     ): Int {
         return hds.connection.use { connection ->
             //Create the temporary merge table
             try {
-                connection.autoCommit = false
-
-                connection.createStatement().use { stmt -> stmt.execute(tempMergeTable.createTableQuery()) }
-
+                var minEventTimestamp: OffsetDateTime = OffsetDateTime.MAX
+                var maxEventTimestamp: OffsetDateTime = OffsetDateTime.MIN
                 val wc = connection
-                    .prepareStatement(
-                        getInsertIntoMergeUsageEventsTableSql(
-                            tempMergeTable.name,
-                            tempMergeTable !is RedshiftTableDefinition
-                        )
-                    )
+                    .prepareStatement(getInsertIntoUsageEventsTableSql(CHRONICLE_USAGE_EVENTS.name, includeOnConflict))
                     .use { ps ->
                         //Should only need to set these once for prepared statement.
                         ps.setString(1, studyId.toString())
@@ -331,10 +330,22 @@ class AppDataUploadService(
                                     } else {
                                         when (col.datatype) {
                                             PostgresDatatype.TEXT -> ps.setString(colIndex, value as String)
-                                            PostgresDatatype.TIMESTAMPTZ -> ps.setObject(
-                                                colIndex,
-                                                odtFromUsageEventColumn(value)
-                                            )
+                                            PostgresDatatype.TIMESTAMPTZ -> {
+                                                val odt = odtFromUsageEventColumn(value)
+                                                ps.setObject(
+                                                    colIndex,
+                                                    odt
+                                                )
+                                                //We need to keep track the min and max event timestamps for this batch
+                                                if (odt != null && col.name == TIMESTAMP.name) {
+                                                    if (odt.isBefore(minEventTimestamp)) {
+                                                        minEventTimestamp = odt
+                                                    }
+                                                    if (odt.isAfter(maxEventTimestamp)) {
+                                                        maxEventTimestamp = odt
+                                                    }
+                                                }
+                                            }
                                             PostgresDatatype.BIGINT -> ps.setLong(colIndex, value as Long)
                                             else -> ps.setObject(colIndex, value)
                                         }
@@ -344,25 +355,36 @@ class AppDataUploadService(
                                     throw ex
                                 }
                             }
+                            ps.setObject(UPLOAD_AT_INDEX, uploadedAt)
                             ps.addBatch()
                         }
                         ps.executeBatch().sum()
                     }
 
-                connection.createStatement().use { stmt ->
-                    stmt.execute("LOCK ${CHRONICLE_USAGE_EVENTS.name}") // LOCK the table to avoid serialization errors.
-                    stmt.execute(getDeleteTempTableEntriesSql(tempMergeTable.name))
-                    stmt.executeUpdate(getAppendTembTableSql(tempMergeTable.name))
+
+                val tempTableName = "duplicate_events_${RandomStringUtils.randomAlphanumeric(10)}"
+
+                //Create a table that contains any duplicate values introduced by this latest upload for the minimum upload_at value
+                connection.prepareStatement(createTempTableOfDuplicates(tempTableName)).use { ps ->
+                    ps.setString(1, studyId.toString())
+                    ps.setString(2, participantId)
+                    ps.setObject(3, minEventTimestamp)
+                    ps.setObject(3, maxEventTimestamp)
+                    ps.execute()
                 }
-                connection.commit()
+
+                //Delete the duplicates, if any from chronicle_usage_events and drop the temporary table.
+                connection.createStatement().use { stmt ->
+                    stmt.execute(getDeleteUsageEventsFromTempTable(tempTableName))
+                    stmt.execute("DROP TABLE $tempTableName")
+                }
 
                 updateParticipantStats(data, studyId, participantId)
 
-                connection.autoCommit = true
+
                 return@use wc
             } catch (ex: Exception) {
                 logger.error("Unable to save data to redshift.", ex)
-                connection.rollback()
                 throw ex
             }
         }
@@ -405,6 +427,7 @@ class AppDataUploadService(
         val participantStats = ParticipantStats(
             studyId = studyId,
             participantId = participantId,
+            androidLastPing = OffsetDateTime.now(),
             androidUniqueDates = uniqueDates,
             androidFirstDate = minDate,
             androidLastDate = maxDate,
@@ -423,15 +446,14 @@ class AppDataUploadService(
         studyId: UUID,
         participantId: String,
         data: Sequence<Map<String, UsageEventColumn>>,
+        uploadedAt: OffsetDateTime,
     ): Int {
         return writeToRedshift(
             hds,
             studyId,
             participantId,
             data,
-            PostgresDataTables.CHRONICLE_USAGE_EVENTS.createTempTableWithSuffix(
-                RandomStringUtils.randomAlphanumeric(10)
-            )
+            uploadedAt
         )
     }
 }

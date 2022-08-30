@@ -7,10 +7,7 @@ import com.geekbeast.rhizome.pods.ConfigurationLoader
 import com.openlattice.chronicle.configuration.ChronicleConfiguration
 import com.openlattice.chronicle.configuration.TwilioConfiguration
 import com.openlattice.chronicle.storage.StorageResolver
-import com.openlattice.chronicle.upgrades.AppFilteringUpgrade
-import com.openlattice.chronicle.upgrades.StudyLimitsUpgrade
-import com.openlattice.chronicle.upgrades.StudySettingsUpgrade
-import com.openlattice.chronicle.upgrades.UpgradeService
+import com.openlattice.chronicle.upgrades.*
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import javax.inject.Inject
@@ -48,12 +45,12 @@ class ChronicleConfigurationPod {
     }
 
     @Bean
-    fun upgradeService() : UpgradeService {
+    fun upgradeService(): UpgradeService {
         return UpgradeService(storageResolver())
     }
 
     @Bean
-    fun studyLimitsUpgrade() : PreHazelcastUpgradeService {
+    fun studyLimitsUpgrade(): PreHazelcastUpgradeService {
         return StudyLimitsUpgrade(storageResolver(), upgradeService())
     }
 
@@ -63,8 +60,17 @@ class ChronicleConfigurationPod {
     }
 
     @Bean
-    fun studySettingsUpgrade() :PreHazelcastUpgradeService {
+    fun studySettingsUpgrade(): PreHazelcastUpgradeService {
         return StudySettingsUpgrade(storageResolver(), upgradeService())
     }
 
+    @Bean
+    fun uploadAtUpgrade(): PreHazelcastUpgradeService {
+        return UploadAtUpgrade(storageResolver(), upgradeService())
+    }
+
+    @Bean
+    fun participantStatsUpgrade(): PreHazelcastUpgradeService {
+        return ParticipantStatsUpgrade(storageResolver(), upgradeService())
+    }
 }

@@ -165,6 +165,7 @@ class EnrollmentService(
                 ps.executeUpdate()
             }
         }
+
         if (insertCount > 0) {
             return deviceId
         }

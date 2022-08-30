@@ -32,6 +32,9 @@ import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import com.openlattice.chronicle.services.notifications.NotificationService
 import com.openlattice.chronicle.services.studies.processors.StudyPhoneNumberGetter
 import com.openlattice.chronicle.services.surveys.SurveysManager
+import com.openlattice.chronicle.sources.AndroidDevice
+import com.openlattice.chronicle.sources.IOSDevice
+import com.openlattice.chronicle.sources.SourceDevice
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.LEGACY_STUDY_IDS
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.ORGANIZATION_STUDIES
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.PARTICIPANT_STATS
@@ -298,7 +301,9 @@ class StudyService(
 
         private val PARTICIPANT_STATS_COLUMNS = PARTICIPANT_STATS.columns.joinToString { it.name }
         private val PARTICIPANT_STATS_PARAMS = PARTICIPANT_STATS.columns.joinToString { "?" }
-        private val PARTICIPANT_STATS_UPDATE_PARAMS = PARTICIPANT_STATS.columns.joinToString { "${it.name} = ?" }
+        //On insertion conflict we should only update non-null values.
+        private val PARTICIPANT_STATS_UPDATE_PARAMS = (PARTICIPANT_STATS.columns - PARTICIPANT_STATS.primaryKey)
+            .joinToString { "${it.name} = COALESCE(EXCLUDED.${it.name},${PARTICIPANT_STATS.name}.${it.name})" }
 
         /**
          * PreparedStatement bind order
@@ -724,6 +729,16 @@ class StudyService(
 
     override fun countStudyParticipants(studyIds: Set<UUID>): Map<UUID, Long> {
         return studyLimitsMgr.countStudyParticipants(studyIds)
+    }
+
+    override fun updateLastDevicePing(studyId: UUID, participantId: String, sourceDevice: SourceDevice) {
+        val participantStats = when (sourceDevice ) {
+            is AndroidDevice -> ParticipantStats(studyId = studyId, participantId = participantId, androidLastPing = OffsetDateTime.now() )
+            is IOSDevice -> ParticipantStats(studyId = studyId, participantId = participantId, androidLastPing = OffsetDateTime.now() )
+            else -> throw UnsupportedOperationException("${sourceDevice.javaClass.name} is not a supported datasource.")
+        }
+
+        insertOrUpdateParticipantStats(participantStats)
     }
 
     private fun selectStudyParticipants(studyId: UUID): Iterable<Participant> {
