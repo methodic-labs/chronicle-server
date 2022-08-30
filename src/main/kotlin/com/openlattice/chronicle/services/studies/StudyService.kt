@@ -329,7 +329,7 @@ class StudyService(
         """.trimIndent()
 
         val INSERT_OR_UPDATE_PARTICIPANT_STATS = """
-            INSERT INTO ${PARTICIPANT_STATS.name}
+            INSERT INTO ${PARTICIPANT_STATS.name} ($PARTICIPANT_STATS_COLUMNS)
             VALUES ($PARTICIPANT_STATS_PARAMS)
             ON CONFLICT (${STUDY_ID.name}, ${PARTICIPANT_ID.name}) 
             DO UPDATE SET $PARTICIPANT_STATS_UPDATE_PARAMS
@@ -379,6 +379,13 @@ class StudyService(
                 }
                 .buildAndRun()
         }
+
+        """
+           CREATE TEMPORARY TABLE t2 AS SELECT study_id,participant_id,app_package_name,interaction_type,event_type,event_timestamp,timezone,username,application_label, min(uploaded_at as uploaded_at FROM chronicle_usage_events
+        WHERE event_timestamp >= '-infinity' AND event_timestamp <= 'infinity' 
+        GROUP BY study_id,participant_id,app_package_name,interaction_type,event_type,event_timestamp,timezone,username,application_label
+        HAVING count(uploaded_at) > 1
+        """.trimIndent()
         authorizationService.ensureAceIsLoaded(aclKey, Principals.getCurrentUser())
         return study.id
     }
@@ -697,6 +704,20 @@ class StudyService(
 
                 var index = 0
 
+                STUDY_ID,
+                PARTICIPANT_ID,
+                PostgresColumns.ANDROID_LAST_PING,
+                PostgresColumns.ANDROID_FIRST_DATE,
+                PostgresColumns.ANDROID_LAST_DATE,
+                PostgresColumns.ANDROID_UNIQUE_DATES,
+                PostgresColumns.IOS_LAST_PING,
+                PostgresColumns.IOS_FIRST_DATE,
+                PostgresColumns.IOS_LAST_DATE,
+                PostgresColumns.IOS_UNIQUE_DATES,
+                PostgresColumns.TUD_FIRST_DATE,
+                PostgresColumns.TUD_LAST_DATE,
+                PostgresColumns.TUD_UNIQUE_DATES
+
                 ps.setObject(++index, stats.studyId)
                 ps.setString(++index, stats.participantId)
 
@@ -708,6 +729,7 @@ class StudyService(
                 ps.setObject(++index, stats.iosFirstDate)
                 ps.setObject(++index, stats.iosLastDate)
                 ps.setArray(++index, iosDatesArr)
+
                 ps.setObject(++index, stats.tudFirstDate)
                 ps.setObject(++index, stats.tudLastDate)
                 ps.setObject(++index, tudDatesArr)

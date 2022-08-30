@@ -197,7 +197,7 @@ class RedshiftDataTables {
 
             return """
                 CREATE TEMPORARY TABLE $tempTableName AS 
-                    SELECT $groupByCols, min(${UPLOADED_AT.name} as ${UPLOADED_AT.name} FROM ${CHRONICLE_USAGE_EVENTS.name}
+                    SELECT $groupByCols, min(${UPLOADED_AT.name}) as ${UPLOADED_AT.name} FROM ${CHRONICLE_USAGE_EVENTS.name}
                         WHERE ${STUDY_ID.name} = ? AND ${PARTICIPANT_ID.name} = ? AND
                             ${TIMESTAMP.name} >= ? AND ${TIMESTAMP.name} <= ? 
                         GROUP BY $groupByCols
