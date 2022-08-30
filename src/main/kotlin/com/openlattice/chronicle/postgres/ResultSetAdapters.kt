@@ -41,6 +41,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACTIVE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ANDROID_FIRST_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ANDROID_LAST_DATE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.ANDROID_LAST_PING
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ANDROID_UNIQUE_DATES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.BODY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CANDIDATE_ID
@@ -64,6 +65,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.FIRST_NAME
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.HTML
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.IOS_FIRST_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.IOS_LAST_DATE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.IOS_LAST_PING
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.IOS_UNIQUE_DATES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.JOB_DEFINITION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.JOB_ID
@@ -500,9 +502,11 @@ class ResultSetAdapters {
             return ParticipantStats(
                 rs.getObject(STUDY_ID.name, UUID::class.java),
                 rs.getString(PARTICIPANT_ID.name),
+                rs.getObject(ANDROID_LAST_PING.name, OffsetDateTime::class.java),
                 rs.getObject(ANDROID_FIRST_DATE.name, OffsetDateTime::class.java),
                 rs.getObject(ANDROID_LAST_DATE.name, OffsetDateTime::class.java),
                 androidDates.map { it.toLocalDate() }.toSet(),
+                rs.getObject(IOS_LAST_PING.name, OffsetDateTime::class.java),
                 rs.getObject(IOS_FIRST_DATE.name, OffsetDateTime::class.java),
                 rs.getObject(IOS_LAST_DATE.name, OffsetDateTime::class.java),
                 iosDates.map { it.toLocalDate() }.toSet(),

@@ -426,6 +426,7 @@ class AppDataUploadService(
         val participantStats = ParticipantStats(
             studyId = studyId,
             participantId = participantId,
+            androidLastPing = OffsetDateTime.now(),
             androidUniqueDates = uniqueDates,
             androidFirstDate = minDate,
             androidLastDate = maxDate,

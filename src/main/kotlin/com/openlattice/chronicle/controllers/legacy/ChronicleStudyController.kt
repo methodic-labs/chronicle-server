@@ -3,12 +3,13 @@ package com.openlattice.chronicle.controllers.legacy
 import com.codahale.metrics.annotation.Timed
 import com.google.common.base.Optional
 import com.openlattice.chronicle.ChronicleStudyApi
-import com.openlattice.chronicle.data.ChronicleAppsUsageDetails
-import com.openlattice.chronicle.data.LegacyChronicleQuestionnaire
 import com.openlattice.chronicle.data.ParticipationStatus
+import com.openlattice.chronicle.participants.ParticipantStats
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import com.openlattice.chronicle.services.studies.StudyService
 import com.openlattice.chronicle.services.surveys.SurveysManager
+import com.openlattice.chronicle.sources.AndroidDevice
+import com.openlattice.chronicle.sources.IOSDevice
 import com.openlattice.chronicle.sources.SourceDevice
 import org.apache.olingo.commons.api.edm.FullQualifiedName
 import org.springframework.http.MediaType
@@ -16,8 +17,8 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestMethod
-import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import java.time.OffsetDateTime
 import java.util.UUID
 import javax.inject.Inject
 
@@ -46,11 +47,13 @@ class ChronicleStudyController : ChronicleStudyApi {
         @PathVariable(ChronicleStudyApi.STUDY_ID) studyId: UUID,
         @PathVariable(ChronicleStudyApi.PARTICIPANT_ID) participantId: String,
         @PathVariable(ChronicleStudyApi.DATASOURCE_ID) datasourceId: String,
-        @RequestBody datasource: Optional<SourceDevice>
+        @RequestBody sourceDevice: Optional<SourceDevice>
     ): UUID {
         val realStudyId = studyService.getStudyId(studyId)
         checkNotNull(realStudyId) { "invalid study id" }
-        return enrollmentManager.registerDatasource(realStudyId, participantId, datasourceId, datasource.get())
+        val id = enrollmentManager.registerDatasource(realStudyId, participantId, datasourceId, sourceDevice.get())
+        studyService.updateLastDevicePing(realStudyId, participantId, sourceDevice.get())
+        return id
     }
 
     @Timed
