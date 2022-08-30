@@ -1,7 +1,6 @@
 package com.openlattice.chronicle.controllers
 
 import com.codahale.metrics.annotation.Timed
-import com.geekbeast.rhizome.jobs.HazelcastJobService
 import com.hazelcast.core.HazelcastInstance
 import com.openlattice.chronicle.admin.AdminApi
 import com.openlattice.chronicle.admin.AdminApi.Companion.CONTROLLER
@@ -51,7 +50,7 @@ class AdminController(
     @GetMapping(value = [REDSHIFT])
     override fun moveToRedshift() {
         ensureAdminAccess()
-        appDataUploadService.moveToRedshift()
+        appDataUploadService.moveToEventStorage()
     }
 
     @Timed

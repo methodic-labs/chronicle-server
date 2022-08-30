@@ -89,7 +89,7 @@ class AppDataUploadService(
     init {
         executor.run {
             while (true) {
-                moveToRedshift()
+                moveToEventStorage()
                 Thread.sleep(5 * 60 * 1000)
             }
         }
@@ -292,7 +292,7 @@ class AppDataUploadService(
         return written
     }
 
-    override fun moveToRedshift() {
+    override fun moveToEventStorage() {
         logger.info("Moving data from aurora to redshift.")
         val queueEntriesByFlavor: MutableMap<PostgresFlavor, MutableList<UsageEventQueueEntry>> = mutableMapOf()
         try {
@@ -308,7 +308,11 @@ class AppDataUploadService(
                     }
                     writeToRedshift(
                         storageResolver.getEventStorageWithFlavor(PostgresFlavor.REDSHIFT),
-                        queueEntriesByFlavor.getOrPut(PostgresFlavor.REDSHIFT) { mutableListOf() },
+                        queueEntriesByFlavor.getOrPut(PostgresFlavor.REDSHIFT) { mutableListOf() }
+                    )
+                    writeToPostgres(
+                        storageResolver.getEventStorageWithFlavor(PostgresFlavor.VANILLA),
+                        queueEntriesByFlavor.getOrPut(PostgresFlavor.REDSHIFT) { mutableListOf() }
                     )
                 }
                 platform.commit()
@@ -384,6 +388,7 @@ class AppDataUploadService(
         data: List<UsageEventQueueEntry>,
         includeOnConflict: Boolean = false,
     ): Int {
+        if( data.isEmpty() ) return 0
         return hds.connection.use { connection ->
             //Create the temporary merge table
             try {

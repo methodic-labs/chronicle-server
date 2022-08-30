@@ -25,5 +25,5 @@ interface AppDataUploadManager {
         uploadedAt: OffsetDateTime = OffsetDateTime.now(),
     ): Int
 
-    fun moveToRedshift()
+    fun moveToEventStorage()
 }
