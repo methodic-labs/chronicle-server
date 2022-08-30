@@ -56,6 +56,7 @@ class RedshiftColumns {
         @JvmField val PERSON_ID = PostgresColumnDefinition(EdmConstants.PERSON_ID_FQN.name, PostgresDatatype.TEXT)
 
         @JvmField val RECORDED_DATE_TIME = PostgresColumnDefinition(EdmConstants.RECORDED_DATE_TIME_FQN.name, PostgresDatatype.TIMESTAMPTZ)
+        @JvmField val UPLOADED_AT = PostgresColumnDefinition("uploaded_at", PostgresDatatype.TIMESTAMPTZ).withDefault("now()")
         @JvmField val START_DATE_TIME = PostgresColumnDefinition(EdmConstants.START_DATE_TIME_FQN.name, PostgresDatatype.TIMESTAMPTZ)
         @JvmField val STATUS = PostgresColumnDefinition(EdmConstants.STATUS_FQN.name, PostgresDatatype.TEXT)
 
