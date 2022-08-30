@@ -331,7 +331,7 @@ class AppDataUploadService(
                         ps.setString(1, studyId.toString())
                         ps.setString(2, participantId)
                         StopWatch(
-                            log = "Inserting entries for ${ChronicleServerUtil.STUDY_PARTICIPANT} ",
+                            log = "Inserting ${data.count()} entries for ${ChronicleServerUtil.STUDY_PARTICIPANT} ",
                             level = Level.INFO,
                             logger = logger,
                             studyId,
