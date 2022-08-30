@@ -91,6 +91,8 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_UNIQUE_DA
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPDATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPGRADE_CLASS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPGRADE_STATUS
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPLOADED_AT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.USAGE_EVENTS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_DATA
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_ID
 
@@ -379,6 +381,16 @@ class ChroniclePostgresTables {
                 DELETED_ROWS,
             )
             .primaryKey(JOB_ID)
+
+        @JvmField
+        val UPLOAD_BUFFER = PostgresTableDefinition("upload_buffer")
+            .addColumns(
+                STUDY_ID,
+                PARTICIPANT_ID,
+                USAGE_EVENTS,
+                UPLOADED_AT
+            )
+            .primaryKey(STUDY_ID, PARTICIPANT_ID)
 
         init {
             ORGANIZATION_STUDIES

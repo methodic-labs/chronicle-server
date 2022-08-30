@@ -202,7 +202,7 @@ class RedshiftDataTables {
             val groupByCols = (CHRONICLE_USAGE_EVENTS.columns - UPLOADED_AT).joinToString(",") { it.name }
             return """
                 INSERT INTO $tempTableName ($groupByCols,${UPLOADED_AT.name}) SELECT $groupByCols, min(${UPLOADED_AT.name}) as ${UPLOADED_AT.name} FROM ${CHRONICLE_USAGE_EVENTS.name}
-                                        WHERE ${STUDY_ID.name} = ? AND ${PARTICIPANT_ID.name} = ? AND
+                                        WHERE ${STUDY_ID.name} = ANY(?) AND ${PARTICIPANT_ID.name} = ANY(?) AND
                                             ${TIMESTAMP.name} >= ? AND ${TIMESTAMP.name} <= ? 
                                         GROUP BY $groupByCols
                                         HAVING count(${UPLOADED_AT.name}) > 1
@@ -247,6 +247,10 @@ class RedshiftDataTables {
         fun getInsertUsageEventColumnIndex(
             column: PostgresColumnDefinition,
         ): Int = INSERT_USAGE_EVENT_COLUMN_INDICES.getValue(column.name)
+
+        fun getInsertUsageEventColumnIndex(
+            columnName: String
+        ): Int = INSERT_USAGE_EVENT_COLUMN_INDICES.getValue(columnName)
 
         fun getInsertUsageStatColumnIndex(
             column: PostgresColumnDefinition,

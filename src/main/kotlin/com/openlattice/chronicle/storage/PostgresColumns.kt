@@ -105,6 +105,8 @@ class PostgresColumns {
         @JvmField val UPGRADE_CLASS = PostgresColumnDefinition("upgrade_class", PostgresDatatype.TEXT).notNull()
         @JvmField val UPGRADE_STATUS = PostgresColumnDefinition("upgrade_status",PostgresDatatype.TEXT).notNull().withDefault("'${UpgradeStatus.Registered.name}'")
         @JvmField val LAST_UPDATE = PostgresColumnDefinition("last_update",PostgresDatatype.TIMESTAMPTZ).notNull().withDefault("now()")
+        @JvmField val USAGE_EVENTS = PostgresColumnDefinition("usage_events", PostgresDatatype.JSONB).notNull()
+        @JvmField val UPLOADED_AT = PostgresColumnDefinition("uploaded_at", PostgresDatatype.TIMESTAMPTZ).withDefault("now()")
 
         @JvmField val NOTIFICATION_ID = PostgresColumnDefinition("notification_id", PostgresDatatype.UUID).notNull()
         @JvmField val MESSAGE_ID = PostgresColumnDefinition("message_id", PostgresDatatype.TEXT).unique()

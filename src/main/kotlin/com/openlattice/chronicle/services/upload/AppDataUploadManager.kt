@@ -24,4 +24,6 @@ interface AppDataUploadManager {
         data: List<ChronicleUsageEvent>,
         uploadedAt: OffsetDateTime = OffsetDateTime.now(),
     ): Int
+
+    fun moveToRedshift()
 }

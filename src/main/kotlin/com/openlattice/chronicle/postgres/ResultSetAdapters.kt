@@ -37,6 +37,7 @@ import com.openlattice.chronicle.participants.ParticipantStats
 import com.openlattice.chronicle.services.jobs.ChronicleJob
 import com.openlattice.chronicle.services.notifications.Notification
 import com.openlattice.chronicle.services.surveys.IosDeviceUsageByCategory
+import com.openlattice.chronicle.services.upload.UsageEventQueueEntry
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACTIVE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ANDROID_FIRST_DATE
@@ -117,7 +118,9 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_FIRST_DAT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_LAST_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_UNIQUE_DATES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPDATED_AT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPLOADED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.URL
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.USAGE_EVENTS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APPLICATION_LABEL
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_CATEGORY
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_PACKAGE_NAME
@@ -328,7 +331,7 @@ class ResultSetAdapters {
 
 
         @Throws(SQLException::class)
-        fun legacyStudySettings(rs: ResultSet): Pair<UUID, Pair<String,Map<String, Any>>> {
+        fun legacyStudySettings(rs: ResultSet): Pair<UUID, Pair<String, Map<String, Any>>> {
             val studyId = studyId(rs)
             val settings = mapper.readValue<Map<String, Any>>(rs.getString(SETTINGS.name))
             return studyId to (title(rs) to settings)
@@ -529,6 +532,16 @@ class ResultSetAdapters {
         @Throws(SQLException::class)
         fun submissionId(rs: ResultSet): UUID {
             return UUID.fromString(rs.getString(SUBMISSION_ID.name))
+        }
+
+        @Throws(SQLException::class)
+        fun usageEventQueueEntry(rs: ResultSet): UsageEventQueueEntry {
+            return UsageEventQueueEntry(
+                rs.getObject(STUDY_ID.name, UUID::class.java),
+                rs.getString(PARTICIPANT_ID.name),
+                mapper.readValue(rs.getString(USAGE_EVENTS.name)),
+                rs.getObject(UPLOADED_AT.name, OffsetDateTime::class.java)
+            )
         }
     }
 }
