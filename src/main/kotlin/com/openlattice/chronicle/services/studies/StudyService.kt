@@ -704,20 +704,6 @@ class StudyService(
 
                 var index = 0
 
-                STUDY_ID,
-                PARTICIPANT_ID,
-                PostgresColumns.ANDROID_LAST_PING,
-                PostgresColumns.ANDROID_FIRST_DATE,
-                PostgresColumns.ANDROID_LAST_DATE,
-                PostgresColumns.ANDROID_UNIQUE_DATES,
-                PostgresColumns.IOS_LAST_PING,
-                PostgresColumns.IOS_FIRST_DATE,
-                PostgresColumns.IOS_LAST_DATE,
-                PostgresColumns.IOS_UNIQUE_DATES,
-                PostgresColumns.TUD_FIRST_DATE,
-                PostgresColumns.TUD_LAST_DATE,
-                PostgresColumns.TUD_UNIQUE_DATES
-
                 ps.setObject(++index, stats.studyId)
                 ps.setString(++index, stats.participantId)
 
