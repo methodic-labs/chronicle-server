@@ -24,6 +24,7 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.UPLOADED_AT
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.USERNAME
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.CHRONICLE_USAGE_EVENTS
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.createTempTableOfDuplicates
+import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.getAppendTempTableSql
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.getDeleteUsageEventsFromTempTable
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.getInsertIntoUsageEventsTableSql
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.getInsertUsageEventColumnIndex
@@ -309,8 +310,11 @@ class AppDataUploadService(
             try {
                 var minEventTimestamp: OffsetDateTime = OffsetDateTime.MAX
                 var maxEventTimestamp: OffsetDateTime = OffsetDateTime.MIN
+                val tempInsertTable = CHRONICLE_USAGE_EVENTS.createTempTable()
+                connection.createStatement().use { stmt-> stmt.execute(tempInsertTable.createTableQuery()) }
+
                 val wc = connection
-                    .prepareStatement(getInsertIntoUsageEventsTableSql(CHRONICLE_USAGE_EVENTS.name, includeOnConflict))
+                    .prepareStatement(getInsertIntoUsageEventsTableSql(tempInsertTable.name, includeOnConflict))
                     .use { ps ->
                         //Should only need to set these once for prepared statement.
                         ps.setString(1, studyId.toString())
@@ -364,7 +368,12 @@ class AppDataUploadService(
                                 ps.setObject(UPLOAD_AT_INDEX, uploadedAt)
                                 ps.addBatch()
                             }
-                            ps.executeBatch().sum()
+                            val insertCount  = ps.executeBatch().sum()
+                            connection.createStatement().use { stmt ->
+                                stmt.execute(getAppendTempTableSql(tempInsertTable.name));
+                                stmt.execute("DROP TABLE ${tempInsertTable.name}")
+                            }
+                            insertCount
                         }
                     }
 
