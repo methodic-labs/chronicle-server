@@ -75,9 +75,9 @@ class AppDataUploadService(
                 """.trimIndent()
 
         private fun getMoveSql(batchSize: Int = 65536) = """
-                DELETE FROM ${UPLOAD_BUFFER.name} WHERE (study_id, participant_id) IN (
+                DELETE FROM ${UPLOAD_BUFFER.name} WHERE (${STUDY_ID.name}, ${PARTICIPANT_ID.name}) IN (
                     SELECT ${STUDY_ID.name},${PARTICIPANT_ID.name},${USAGE_EVENTS.name} 
-                    FROM $UPLOAD_BUFFER
+                    FROM ${UPLOAD_BUFFER.name}
                     ORDER BY ${STUDY_ID.name},${PARTICIPANT_ID.name}
                     FOR UPDATE SKIP LOCKED
                     LIMIT $batchSize
