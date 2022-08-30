@@ -45,7 +45,7 @@ class UploadAtUpgrade(
             ALTER TABLE ${CHRONICLE_USAGE_EVENTS.name} ADD COLUMN ${UPLOADED_AT.name} ${UPLOADED_AT.datatype.sql()} default now()
         """.trimIndent()
         private val INITIALIZE_UPLOAD_AT = """
-            UPDATE ${CHRONICLE_USAGE_EVENTS.name} SET upload_at = '-infinity'
+            UPDATE ${CHRONICLE_USAGE_EVENTS.name} SET ${UPLOADED_AT.name} = '-infinity'
         """.trimIndent()
 
     }
@@ -71,9 +71,12 @@ class UploadAtUpgrade(
             val count = connection.createStatement().use { s -> s.executeUpdate(INITIALIZE_UPLOAD_AT) }
 
             logger.info("Initialized upload_at for $count events")
-            upgradeService.completeUpgrade(connection, this)
             connection.commit()
             connection.autoCommit = true
+        }
+
+        storageResolver.getPlatformStorage().connection.use { connection ->
+            upgradeService.completeUpgrade(connection, this)
         }
     }
 }
