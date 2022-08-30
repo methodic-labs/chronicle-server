@@ -377,6 +377,7 @@ class AppDataUploadService(
                                     }
                                 }
                                 ps.setObject(UPLOAD_AT_INDEX, uploadedAt)
+                                logger.info("Added batch for ${ChronicleServerUtil.STUDY_PARTICIPANT}", studyId, participantId)
                                 ps.addBatch()
                             }
                             val insertCount = ps.executeBatch().sum()
