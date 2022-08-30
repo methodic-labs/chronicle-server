@@ -250,7 +250,7 @@ class AppDataUploadService(
                 "Application package name cannot be null."
             }
 
-            dateLogged != null && !appPackageName.startsWith("[shutdown]")
+            dateLogged != null && !appPackageName.contains("[")
         }
     }
 
