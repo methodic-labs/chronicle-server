@@ -331,7 +331,7 @@ class AppDataUploadService(
                         ps.setString(1, studyId.toString())
                         ps.setString(2, participantId)
                         StopWatch(
-                            log = "Inserting ${data.count()} entries for ${ChronicleServerUtil.STUDY_PARTICIPANT} ",
+                            log = "Inserting entries for ${ChronicleServerUtil.STUDY_PARTICIPANT} ",
                             level = Level.INFO,
                             logger = logger,
                             studyId,
@@ -382,6 +382,7 @@ class AppDataUploadService(
                             }
                             val insertCount = ps.executeBatch().sum()
                             connection.commit()
+                            logger.info("Inserted $insertCount entities for ${ChronicleServerUtil.STUDY_PARTICIPANT}",studyId, participantId)
                             connection.autoCommit = true
                             insertCount
                         }
