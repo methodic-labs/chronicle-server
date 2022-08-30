@@ -310,11 +310,14 @@ class AppDataUploadService(
             try {
                 var minEventTimestamp: OffsetDateTime = OffsetDateTime.MAX
                 var maxEventTimestamp: OffsetDateTime = OffsetDateTime.MIN
-                val tempInsertTable = CHRONICLE_USAGE_EVENTS.createTempTable()
-                connection.createStatement().use { stmt-> stmt.execute(tempInsertTable.createTableQuery()) }
+                val tempInsertTableName = "staging_events_${RandomStringUtils.randomAlphanumeric(10)}"
+
+                connection.createStatement().use { stmt ->
+                    stmt.execute("CREATE TEMPORARY TABLE $tempInsertTableName LIKE ${CHRONICLE_USAGE_EVENTS.name}")
+                }
 
                 val wc = connection
-                    .prepareStatement(getInsertIntoUsageEventsTableSql(tempInsertTable.name, includeOnConflict))
+                    .prepareStatement(getInsertIntoUsageEventsTableSql(tempInsertTableName, includeOnConflict))
                     .use { ps ->
                         //Should only need to set these once for prepared statement.
                         ps.setString(1, studyId.toString())
@@ -368,10 +371,10 @@ class AppDataUploadService(
                                 ps.setObject(UPLOAD_AT_INDEX, uploadedAt)
                                 ps.addBatch()
                             }
-                            val insertCount  = ps.executeBatch().sum()
+                            val insertCount = ps.executeBatch().sum()
                             connection.createStatement().use { stmt ->
-                                stmt.execute(getAppendTempTableSql(tempInsertTable.name));
-                                stmt.execute("DROP TABLE ${tempInsertTable.name}")
+                                stmt.execute(getAppendTempTableSql(tempInsertTableName));
+                                stmt.execute("DROP TABLE $tempInsertTableName")
                             }
                             insertCount
                         }
