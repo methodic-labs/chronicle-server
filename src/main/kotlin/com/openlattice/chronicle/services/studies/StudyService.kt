@@ -696,19 +696,19 @@ class StudyService(
 
                 var index = 0
 
-                for (i in 0..1) {
-                    ps.setObject(++index, stats.studyId)
-                    ps.setString(++index, stats.participantId)
-                    ps.setObject(++index, stats.androidFirstDate)
-                    ps.setObject(++index, stats.androidLastDate)
-                    ps.setArray(++index, androidDatesArr)
-                    ps.setObject(++index, stats.iosFirstDate)
-                    ps.setObject(++index, stats.iosLastDate)
-                    ps.setArray(++index, iosDatesArr)
-                    ps.setObject(++index, stats.tudFirstDate)
-                    ps.setObject(++index, stats.tudLastDate)
-                    ps.setObject(++index, tudDatesArr)
-                }
+                ps.setObject(++index, stats.studyId)
+                ps.setString(++index, stats.participantId)
+
+                ps.setObject(++index, stats.androidFirstDate)
+                ps.setObject(++index, stats.androidLastDate)
+                ps.setArray(++index, androidDatesArr)
+                ps.setObject(++index, stats.iosFirstDate)
+                ps.setObject(++index, stats.iosLastDate)
+                ps.setArray(++index, iosDatesArr)
+                ps.setObject(++index, stats.tudFirstDate)
+                ps.setObject(++index, stats.tudLastDate)
+                ps.setObject(++index, tudDatesArr)
+
                 ps.executeUpdate()
             }
         }
