@@ -314,7 +314,7 @@ class AppDataUploadService(
 
 
                 connection.createStatement().use { stmt ->
-                    stmt.execute("CREATE TEMPORARY TABLE $tempInsertTableName LIKE ${CHRONICLE_USAGE_EVENTS.name}")
+                    stmt.execute("CREATE TEMPORARY TABLE $tempInsertTableName (LIKE ${CHRONICLE_USAGE_EVENTS.name})")
                 }
 
                 logger.info(
@@ -322,7 +322,7 @@ class AppDataUploadService(
                     studyId,
                     participantId
                 )
-                
+
                 val wc = connection
                     .prepareStatement(getInsertIntoUsageEventsTableSql(tempInsertTableName, includeOnConflict))
                     .use { ps ->
