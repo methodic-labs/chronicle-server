@@ -312,10 +312,17 @@ class AppDataUploadService(
                 var maxEventTimestamp: OffsetDateTime = OffsetDateTime.MIN
                 val tempInsertTableName = "staging_events_${RandomStringUtils.randomAlphanumeric(10)}"
 
+
                 connection.createStatement().use { stmt ->
                     stmt.execute("CREATE TEMPORARY TABLE $tempInsertTableName LIKE ${CHRONICLE_USAGE_EVENTS.name}")
                 }
 
+                logger.info(
+                    "Created temporary table for ${ChronicleServerUtil.STUDY_PARTICIPANT} upload",
+                    studyId,
+                    participantId
+                )
+                
                 val wc = connection
                     .prepareStatement(getInsertIntoUsageEventsTableSql(tempInsertTableName, includeOnConflict))
                     .use { ps ->
