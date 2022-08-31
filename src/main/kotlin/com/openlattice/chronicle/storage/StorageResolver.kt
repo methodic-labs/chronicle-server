@@ -57,13 +57,13 @@ class StorageResolver constructor(
 
     fun getEventStorageWithFlavor(requiredFlavor: PostgresFlavor = PostgresFlavor.REDSHIFT): HikariDataSource {
         val (flavor, hds) = getDefaultEventStorage()
-        check(flavor == PostgresFlavor.ANY || flavor == requiredFlavor) { "Configured flavor $flavor does not much required flavor $requiredFlavor" }
+        check(flavor == PostgresFlavor.ANY || flavor == requiredFlavor) { "Configured flavor $flavor does not match required flavor $requiredFlavor" }
         return hds
     }
 
     fun getPlatformStorage(requiredFlavor: PostgresFlavor = PostgresFlavor.VANILLA): HikariDataSource {
         val (flavor, hds) = getDefaultPlatformStorage()
-        check(flavor == PostgresFlavor.ANY || flavor == requiredFlavor) { "Configured flavor $flavor does not much required flavor $requiredFlavor" }
+        check(flavor == PostgresFlavor.ANY || flavor == requiredFlavor) { "Configured flavor $flavor does not match required flavor $requiredFlavor" }
         return hds
     }
 

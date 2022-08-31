@@ -306,14 +306,18 @@ class AppDataUploadService(
                             queueEntriesByFlavor.getOrPut(flavor) { mutableListOf() }.add(usageEventQueueEntry)
                         }
                     }
-                    writeToRedshift(
-                        storageResolver.getEventStorageWithFlavor(PostgresFlavor.REDSHIFT),
-                        queueEntriesByFlavor.getOrPut(PostgresFlavor.REDSHIFT) { mutableListOf() }
-                    )
-                    writeToPostgres(
-                        storageResolver.getEventStorageWithFlavor(PostgresFlavor.VANILLA),
-                        queueEntriesByFlavor.getOrPut(PostgresFlavor.REDSHIFT) { mutableListOf() }
-                    )
+                    queueEntriesByFlavor.forEach { (postgresFlavor, usageEventQueueEntries) ->
+                        when (postgresFlavor) {
+                            PostgresFlavor.REDSHIFT -> writeToRedshift(
+                                storageResolver.getEventStorageWithFlavor(PostgresFlavor.REDSHIFT),
+                                usageEventQueueEntries
+                            )
+                            PostgresFlavor.VANILLA -> writeToPostgres(
+                                storageResolver.getEventStorageWithFlavor(PostgresFlavor.VANILLA),
+                                usageEventQueueEntries
+                            )
+                        }
+                    }
                 }
                 platform.commit()
                 platform.autoCommit = true
@@ -388,7 +392,7 @@ class AppDataUploadService(
         data: List<UsageEventQueueEntry>,
         includeOnConflict: Boolean = false,
     ): Int {
-        if( data.isEmpty() ) return 0
+        if (data.isEmpty()) return 0
         return hds.connection.use { connection ->
             //Create the temporary merge table
             try {
