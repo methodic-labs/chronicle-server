@@ -9,7 +9,7 @@ import com.openlattice.chronicle.admin.AdminApi.Companion.ID_PATH
 import com.openlattice.chronicle.admin.AdminApi.Companion.NAME
 import com.openlattice.chronicle.admin.AdminApi.Companion.NAME_PATH
 import com.openlattice.chronicle.admin.AdminApi.Companion.PRINCIPALS
-import com.openlattice.chronicle.admin.AdminApi.Companion.REDSHIFT
+import com.openlattice.chronicle.admin.AdminApi.Companion.EVENT_STORAGE
 import com.openlattice.chronicle.admin.AdminApi.Companion.RELOAD_CACHE
 import com.openlattice.chronicle.auditing.AuditingManager
 import com.openlattice.chronicle.authorization.AuthorizationManager
@@ -47,8 +47,8 @@ class AdminController(
     @Inject
     private lateinit var appDataUploadService: AppDataUploadService
     @Timed
-    @GetMapping(value = [REDSHIFT])
-    override fun moveToRedshift() {
+    @GetMapping(value = [EVENT_STORAGE])
+    override fun moveToEventStorage() {
         ensureAdminAccess()
         appDataUploadService.moveToEventStorage()
     }
