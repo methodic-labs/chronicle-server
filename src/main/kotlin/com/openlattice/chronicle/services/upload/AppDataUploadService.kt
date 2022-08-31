@@ -309,6 +309,8 @@ class AppDataUploadService(
                                 .addAll(usageEventQueueEntries.toEventQueryEntryList())
                         }
                     }
+                    logger.info("Total number of entries for redshift: ${queueEntriesByFlavor.getValue(PostgresFlavor.REDSHIFT).size}")
+                    logger.info("Total number of entries for postgres: ${queueEntriesByFlavor.getValue(PostgresFlavor.VANILLA).size}")
                     queueEntriesByFlavor.forEach { (postgresFlavor, usageEventQueueEntries) ->
                         if (usageEventQueueEntries.isEmpty()) return@forEach
                         when (postgresFlavor) {
