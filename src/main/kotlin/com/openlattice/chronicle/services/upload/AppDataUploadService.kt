@@ -69,7 +69,7 @@ class AppDataUploadService(
             MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(1))
 
         private val INSERT_USAGE_EVENTS_SQL = """
-                    INSERT INTO ${UPLOAD_BUFFER.name} (${STUDY_ID.name},${PARTICIPANT_ID.name},${USAGE_EVENTS.name}, ${PostgresColumns.UPLOADED_AT.name}) VALUES (?,?,?,?)
+                    INSERT INTO ${UPLOAD_BUFFER.name} (${STUDY_ID.name},${PARTICIPANT_ID.name},${USAGE_EVENTS.name}, ${PostgresColumns.UPLOADED_AT.name}) VALUES (?,?,?::jsonb,?)
                     ON CONFLICT (${STUDY_ID.name}, ${PARTICIPANT_ID.name}) 
                     DO UPDATE SET ${USAGE_EVENTS.name} = ${UPLOAD_BUFFER.name}.${USAGE_EVENTS.name} || EXCLUDED.${USAGE_EVENTS.name}
                 """.trimIndent()
