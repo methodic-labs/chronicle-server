@@ -87,7 +87,7 @@ class AppDataUploadService(
     }
 
     init {
-        executor.run {
+        executor.execute {
             while (true) {
                 moveToEventStorage()
                 Thread.sleep(5 * 60 * 1000)
@@ -293,7 +293,7 @@ class AppDataUploadService(
     }
 
     override fun moveToEventStorage() {
-        logger.info("Moving data from aurora to redshift.")
+        logger.info("Moving data from aurora to event storage.")
         val queueEntriesByFlavor: MutableMap<PostgresFlavor, MutableList<UsageEventQueueEntry>> = mutableMapOf()
         try {
             storageResolver.getPlatformStorage().connection.use { platform ->
@@ -307,6 +307,7 @@ class AppDataUploadService(
                         }
                     }
                     queueEntriesByFlavor.forEach { (postgresFlavor, usageEventQueueEntries) ->
+                        if(usageEventQueueEntries.isEmpty()) return@forEach
                         when (postgresFlavor) {
                             PostgresFlavor.REDSHIFT -> writeToRedshift(
                                 storageResolver.getEventStorageWithFlavor(PostgresFlavor.REDSHIFT),
@@ -322,6 +323,7 @@ class AppDataUploadService(
                 platform.commit()
                 platform.autoCommit = true
             }
+            logger.info("Successfully moved data to event storage.")
         } catch (ex: Exception) {
             logger.info("Unable to move data from aurora to redshift.", ex)
             throw ex
