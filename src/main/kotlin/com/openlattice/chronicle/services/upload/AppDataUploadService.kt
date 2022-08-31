@@ -71,6 +71,7 @@ class AppDataUploadService(
         private val INSERT_USAGE_EVENTS_SQL = """
                     INSERT INTO ${UPLOAD_BUFFER.name} (${STUDY_ID.name},${PARTICIPANT_ID.name},${USAGE_EVENTS.name}, ${PostgresColumns.UPLOADED_AT.name}) VALUES (?,?,?::jsonb,?)
                 """.trimIndent()
+
         //                    ON CONFLICT (${STUDY_ID.name}, ${PARTICIPANT_ID.name})
 //                    DO UPDATE SET ${USAGE_EVENTS.name} = ${UPLOAD_BUFFER.name}.${USAGE_EVENTS.name} || EXCLUDED.${USAGE_EVENTS.name}
         private fun getMoveSql(batchSize: Int = 65536) = """
@@ -309,8 +310,8 @@ class AppDataUploadService(
                                 .addAll(usageEventQueueEntries.toEventQueryEntryList())
                         }
                     }
-                    logger.info("Total number of entries for redshift: ${queueEntriesByFlavor.getValue(PostgresFlavor.REDSHIFT).size}")
-                    logger.info("Total number of entries for postgres: ${queueEntriesByFlavor.getValue(PostgresFlavor.VANILLA).size}")
+                    logger.info("Total number of entries for redshift: ${(queueEntriesByFlavor[PostgresFlavor.REDSHIFT] ?: listOf()).size}")
+                    logger.info("Total number of entries for postgres: ${(queueEntriesByFlavor[PostgresFlavor.VANILLA] ?: listOf()).size}")
                     queueEntriesByFlavor.forEach { (postgresFlavor, usageEventQueueEntries) ->
                         if (usageEventQueueEntries.isEmpty()) return@forEach
                         when (postgresFlavor) {
