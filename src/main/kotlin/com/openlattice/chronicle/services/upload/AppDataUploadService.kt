@@ -304,9 +304,10 @@ class AppDataUploadService(
                 platform.createStatement().use { stmt ->
                     stmt.executeQuery(getMoveSql()).use { rs ->
                         while (rs.next()) {
-                            val usageEventQueueEntry: UsageEventQueueEntry = ResultSetAdapters.usageEventQueueEntry(rs)
-                            val (flavor, _) = storageResolver.resolveAndGetFlavor(usageEventQueueEntry.studyId)
-                            queueEntriesByFlavor.getOrPut(flavor) { mutableListOf() }.add(usageEventQueueEntry)
+                            val usageEventQueueEntries = ResultSetAdapters.usageEventQueueEntries(rs)
+                            val (flavor, _) = storageResolver.resolveAndGetFlavor(usageEventQueueEntries.studyId)
+                            queueEntriesByFlavor.getOrPut(flavor) { mutableListOf() }
+                                .addAll(usageEventQueueEntries.toEventQueryEntryList())
                         }
                     }
                     queueEntriesByFlavor.forEach { (postgresFlavor, usageEventQueueEntries) ->
@@ -612,6 +613,16 @@ class AppDataUploadService(
     }
 }
 
+data class UsageEventQueueEntries(
+    val studyId: UUID,
+    val participantId: String,
+    val data: List<Map<String, UsageEventColumn>>,
+    val uploadedAt: OffsetDateTime,
+) {
+    fun toEventQueryEntryList(): List<UsageEventQueueEntry> {
+        return data.map { UsageEventQueueEntry(studyId, participantId, it, uploadedAt) }
+    }
+}
 
 data class UsageEventQueueEntry(
     val studyId: UUID,
