@@ -75,7 +75,7 @@ class AppDataUploadService(
 //                    DO UPDATE SET ${USAGE_EVENTS.name} = ${UPLOAD_BUFFER.name}.${USAGE_EVENTS.name} || EXCLUDED.${USAGE_EVENTS.name}
         private fun getMoveSql(batchSize: Int = 65536) = """
                 DELETE FROM ${UPLOAD_BUFFER.name} WHERE (${STUDY_ID.name}, ${PARTICIPANT_ID.name}) IN (
-                    SELECT DISTINCT ${STUDY_ID.name},${PARTICIPANT_ID.name} 
+                    SELECT ${STUDY_ID.name},${PARTICIPANT_ID.name} 
                     FROM ${UPLOAD_BUFFER.name}
                     ORDER BY ${STUDY_ID.name},${PARTICIPANT_ID.name}
                     FOR UPDATE SKIP LOCKED
