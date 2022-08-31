@@ -264,7 +264,6 @@ class AppDataUploadService(
             logger = logger,
         ).use {
             storageResolver.getPlatformStorage().connection.use { connection ->
-
                 connection.prepareStatement(INSERT_USAGE_EVENTS_SQL).use { ps ->
                     ps.setObject(1, studyId)
                     ps.setString(2, participantId)
@@ -274,6 +273,9 @@ class AppDataUploadService(
                 }
             }
         }
+
+        updateParticipantStats(dataList, studyId, participantId)
+
 //        val written = StopWatch(log = "Writing ${expectedSize} entites to DB ").use {
 //            when (flavor) {
 //                PostgresFlavor.VANILLA -> writeToPostgres(hds, studyId, participantId, mappedData, uploadedAt)
@@ -281,10 +283,11 @@ class AppDataUploadService(
 //                else -> throw InvalidParameterException("Only regular postgres and redshift are supported.")
 //            }
 //        }
+
         //TODO: In reality we are likely to write less entities than were provided and are actually returning number processed so that client knows all is good
-        if (expectedSize != written) {
+        if (expectedSize != dataList.size) {
             //Should probably be an assertion as this should never happen.
-            logger.warn("Wrote $written entities, but expected to write $expectedSize entities")
+            logger.warn("Wrote ${dataList.size} entities, but expected to write $expectedSize entities")
         }
 
 
@@ -307,7 +310,7 @@ class AppDataUploadService(
                         }
                     }
                     queueEntriesByFlavor.forEach { (postgresFlavor, usageEventQueueEntries) ->
-                        if(usageEventQueueEntries.isEmpty()) return@forEach
+                        if (usageEventQueueEntries.isEmpty()) return@forEach
                         when (postgresFlavor) {
                             PostgresFlavor.REDSHIFT -> writeToRedshift(
                                 storageResolver.getEventStorageWithFlavor(PostgresFlavor.REDSHIFT),
