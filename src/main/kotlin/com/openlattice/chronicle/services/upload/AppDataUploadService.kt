@@ -70,10 +70,9 @@ class AppDataUploadService(
 
         private val INSERT_USAGE_EVENTS_SQL = """
                     INSERT INTO ${UPLOAD_BUFFER.name} (${STUDY_ID.name},${PARTICIPANT_ID.name},${USAGE_EVENTS.name}, ${PostgresColumns.UPLOADED_AT.name}) VALUES (?,?,?::jsonb,?)
-//                    ON CONFLICT (${STUDY_ID.name}, ${PARTICIPANT_ID.name}) 
-//                    DO UPDATE SET ${USAGE_EVENTS.name} = ${UPLOAD_BUFFER.name}.${USAGE_EVENTS.name} || EXCLUDED.${USAGE_EVENTS.name}
                 """.trimIndent()
-
+        //                    ON CONFLICT (${STUDY_ID.name}, ${PARTICIPANT_ID.name})
+//                    DO UPDATE SET ${USAGE_EVENTS.name} = ${UPLOAD_BUFFER.name}.${USAGE_EVENTS.name} || EXCLUDED.${USAGE_EVENTS.name}
         private fun getMoveSql(batchSize: Int = 65536) = """
                 DELETE FROM ${UPLOAD_BUFFER.name} WHERE (${STUDY_ID.name}, ${PARTICIPANT_ID.name}) IN (
                     SELECT DISTINCT ${STUDY_ID.name},${PARTICIPANT_ID.name} 
