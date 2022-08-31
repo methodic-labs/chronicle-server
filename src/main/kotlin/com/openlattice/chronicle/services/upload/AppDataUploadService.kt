@@ -1,5 +1,9 @@
 package com.openlattice.chronicle.services.upload
 
+import com.amazonaws.services.s3.AmazonS3
+import com.amazonaws.services.s3.model.PutObjectRequest
+import com.fasterxml.jackson.annotation.JsonProperty
+import com.fasterxml.jackson.dataformat.csv.CsvMapper
 import com.geekbeast.configuration.postgres.PostgresFlavor
 import com.geekbeast.mappers.mappers.ObjectMappers
 import com.geekbeast.postgres.PostgresArrays
@@ -9,6 +13,7 @@ import com.geekbeast.util.StopWatch
 import com.google.common.collect.SetMultimap
 import com.google.common.util.concurrent.ListeningExecutorService
 import com.google.common.util.concurrent.MoreExecutors
+import com.openlattice.chronicle.android.ChronicleSample
 import com.openlattice.chronicle.android.ChronicleUsageEvent
 import com.openlattice.chronicle.android.fromInteractionType
 import com.openlattice.chronicle.constants.EdmConstants.*
@@ -59,6 +64,7 @@ class AppDataUploadService(
     private val storageResolver: StorageResolver,
     private val enrollmentManager: EnrollmentManager,
     private val studyManager: StudyManager,
+    private val s3: AmazonS3,
 ) : AppDataUploadManager {
     companion object {
         private val logger = LoggerFactory.getLogger(AppDataUploadService::class.java)
@@ -393,6 +399,13 @@ class AppDataUploadService(
         }
     }
 
+    private fun stageInS3() {
+        val tempInsertTableName = "staging_events_${RandomStringUtils.randomAlphanumeric(10)}"
+        PutObjectRequest()
+        s3.putObject("methodic-redshift",tempInsertTableName, "")
+
+
+    }
     private fun writeToRedshift(
         hds: HikariDataSource,
         data: List<UsageEventQueueEntry>,
@@ -612,6 +625,18 @@ class AppDataUploadService(
         )
     }
 }
+data class UsageEventRow(
+    val study_id: UUID,
+    val participant_id: String,
+    val app_package_name: String,
+    val interaction_type: String,
+    val event_type: Int = fromInteractionType(interaction_type) ,
+    val event_timestamp: OffsetDateTime,
+    val timezone: String,
+    val username: String,
+    val application_label: String,
+    val uploaded_at: OffsetDateTime
+)
 
 data class UsageEventQueueEntries(
     val studyId: UUID,

@@ -19,6 +19,7 @@
  */
 package com.openlattice.chronicle.pods
 
+import com.amazonaws.services.s3.AmazonS3
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.geekbeast.auth0.*
 import com.geekbeast.authentication.Auth0Configuration
@@ -125,6 +126,8 @@ class ChronicleServerServicesPod {
     @Inject
     private lateinit var mailServiceConfig: MailServiceConfig
 
+    @Inject private lateinit var s3 : AmazonS3
+
     @Bean
     fun defaultObjectMapper(): ObjectMapper {
         val mapper = ObjectMappers.getJsonMapper()
@@ -225,7 +228,8 @@ class ChronicleServerServicesPod {
         return AppDataUploadService(
             storageResolver,
             enrollmentManager(),
-            studyService()
+            studyService(),
+            s3,
         )
     }
 
