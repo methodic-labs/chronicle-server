@@ -390,7 +390,7 @@ class ChroniclePostgresTables {
                 USAGE_EVENTS,
                 UPLOADED_AT
             )
-            .primaryKey(STUDY_ID, PARTICIPANT_ID)
+
 
         init {
             ORGANIZATION_STUDIES
@@ -411,6 +411,13 @@ class ChroniclePostgresTables {
             )
             FILTERED_APPS.addIndexes(
                 PostgresColumnsIndexDefinition(FILTERED_APPS, STUDY_ID).ifNotExists()
+            )
+            UPLOAD_BUFFER.addIndexes(
+                PostgresColumnsIndexDefinition(
+                    UPLOAD_BUFFER,
+                    STUDY_ID,
+                    PARTICIPANT_ID
+                ).ifNotExists()
             )
         }
     }
