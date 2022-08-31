@@ -405,8 +405,8 @@ class AppDataUploadService(
                 var minEventTimestamp: OffsetDateTime = OffsetDateTime.MAX
                 var maxEventTimestamp: OffsetDateTime = OffsetDateTime.MIN
                 val tempInsertTableName = "staging_events_${RandomStringUtils.randomAlphanumeric(10)}"
-                val studies = data.map { it.studyId.toString() }
-                val participants = data.map { it.participantId }
+                val studies = data.map { it.studyId.toString() }.toSet()
+                val participants = data.map { it.participantId }.toSet()
 
                 connection.createStatement().use { stmt ->
                     stmt.execute("CREATE TEMPORARY TABLE $tempInsertTableName (LIKE ${CHRONICLE_USAGE_EVENTS.name})")
