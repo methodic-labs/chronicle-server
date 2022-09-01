@@ -424,20 +424,20 @@ class AppDataUploadService(
 //                    participants
 //                )
 
-                // There are two prepared statements one for the data array from 0 up to 8192 elements.
-                // After 8192 elements the insert prepared statement covers all the chunks except the last chunk of 8192 elements
-                // finalInsert won't be used subList.size is never unequal to the insertBatchSize (shoudl only happen for data.size > 8192 and data.size % 8192 != 0
+                // There are two prepared statements one for the data array from 0 up to RS_BATCH_SIZE elements.
+                // After RS_BATCH_SIZE elements the insert prepared statement covers all the chunks except the last chunk of RS_BATCH_SIZE elements
+                // finalInsert won't be used subList.size is never unequal to the insertBatchSize (shoudl only happen for data.size > RS_BATCH_SIZE and data.size % RS_BATCH_SIZE != 0
 
-                val insertBatchSize = min(data.size, 8192)
+                val insertBatchSize = min(data.size, RS_BATCH_SIZE)
                 logger.info("Preparing primary insert statement with batch size $insertBatchSize")
                 val insertSql = buildMultilineInsert(
                     insertBatchSize,
                     includeOnConflict
                 )
 
-                val dr = data.size % 8192
+                val dr = data.size % RS_BATCH_SIZE
 
-                val finalInsertSql = if (data.size > 8192 && dr != 0) {
+                val finalInsertSql = if (data.size > RS_BATCH_SIZE && dr != 0) {
                     logger.info("Preparing secondary insert statement with batch size $dr")
                     buildMultilineInsert(
                         dr,
@@ -447,7 +447,7 @@ class AppDataUploadService(
                     insertSql
                 }
 
-                val wc = data.chunked(8192).sumOf { subList ->
+                val wc = data.chunked(RS_BATCH_SIZE).sumOf { subList ->
                     logger.info("Processing sublist of length ${subList.size}")
                     connection.prepareStatement(if (subList.size == insertBatchSize) insertSql else finalInsertSql)
                         .use { ps ->
