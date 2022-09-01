@@ -429,6 +429,7 @@ class AppDataUploadService(
                 // finalInsert won't be used subList.size is never unequal to the insertBatchSize (shoudl only happen for data.size > 32767 and data.size % 32767 != 0
 
                 val insertBatchSize = min(data.size, 32767)
+                logger.info("Preparing primary insert statement with batch size $insertBatchSize")
                 val insert = connection.prepareStatement(
                     buildMultilineInsert(
                         insertBatchSize,
@@ -437,7 +438,9 @@ class AppDataUploadService(
                 )
 
                 val dr = data.size % 32767
+
                 val finalInsert = if (data.size > 32767 && dr != 0) {
+                    logger.info("Preparing secondary insert statement with batch size $dr")
                     connection.prepareStatement(
                         buildMultilineInsert(
                             dr,
