@@ -191,14 +191,16 @@ class RedshiftDataTables {
          */
         fun buildMultilineInsert(numLines: Int, includeOnConflict: Boolean) : String {
             val columns = CHRONICLE_USAGE_EVENTS.columns.joinToString(",") { it.name }
-            val header = "INSERT INTO ${CHRONICLE_USAGE_EVENTS.name} ($columns) VALUES\n"
+            val header = "INSERT INTO ${CHRONICLE_USAGE_EVENTS.name} ($columns) VALUES"
             val params = CHRONICLE_USAGE_EVENTS.columns.joinToString(",") { "?" }
-            val line = "($params)\n"
+            val line = "($params)"
+            val lines = (1..numLines).joinToString(",\n" ) { line }
+
             check( (header.length + (line.length * numLines )) < 16777216 )
             return if(includeOnConflict) {
-                "$header ${line.repeat(numLines)} ON CONFLICT DO NOTHING"
+                "$header\n$lines ON CONFLICT DO NOTHING"
             } else {
-                "$header ${line.repeat(numLines)}"
+                "$header\n$lines"
             }
         }
 
