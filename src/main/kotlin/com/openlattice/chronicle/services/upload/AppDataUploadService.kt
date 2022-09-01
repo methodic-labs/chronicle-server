@@ -430,125 +430,107 @@ class AppDataUploadService(
 
                 val insertBatchSize = min(data.size, 32767)
                 logger.info("Preparing primary insert statement with batch size $insertBatchSize")
-                val insert = connection.prepareStatement(
-                    buildMultilineInsert(
-                        insertBatchSize,
-                        includeOnConflict
-                    )
+                val insertSql = buildMultilineInsert(
+                    insertBatchSize,
+                    includeOnConflict
                 )
 
                 val dr = data.size % 32767
 
-                val finalInsert = if (data.size > 32767 && dr != 0) {
+                val finalInsertSql = if (data.size > 32767 && dr != 0) {
                     logger.info("Preparing secondary insert statement with batch size $dr")
-                    connection.prepareStatement(
-                        buildMultilineInsert(
-                            dr,
-                            includeOnConflict
-                        )
+                    buildMultilineInsert(
+                        dr,
+                        includeOnConflict
                     )
                 } else {
-                    insert
+                    insertSql
                 }
 
-                val wc = try {
-                    data.chunked(32767).sumOf { subList ->
-                        logger.info("Processing sublist of length ${subList.size}")
-                        val ps = if (subList.size == insertBatchSize) insert else finalInsert
+                val wc = data.chunked(32767).sumOf { subList ->
+                    logger.info("Processing sublist of length ${subList.size}")
+                    connection.prepareStatement(if (subList.size == insertBatchSize) insertSql else finalInsertSql)
+                        .use { ps ->
 //                    .prepareStatement(getInsertIntoUsageEventsTableSql(tempInsertTableName, includeOnConflict))
 
-                        //Should only need to set these once for prepared statement.
-                        StopWatch(
-                            log = "Inserting ${data.size} entries into ${CHRONICLE_USAGE_EVENTS.name} with studies = {} and participants = {}",
-                            level = Level.INFO,
-                            logger = logger,
-                            studies,
-                            participants
-                        ).use {
-                            var indexBase = 0
-                            subList.forEach { usageEventCols ->
-                                ps.setString(indexBase + 1, usageEventCols.studyId.toString())
-                                ps.setString(indexBase + 2, usageEventCols.participantId)
-                                usageEventCols.data.values.forEach { usageEventCol ->
-                                    //TODO: If we ever change the columns, we need to do a lookup for colIndex by name every time.
-                                    val colIndex = indexBase + usageEventCol.colIndex
-                                    val value = usageEventCol.value
-
-                                    try {
-                                        //Set insert value to null, if value was not provided.
-                                        if (value == null) {
-                                            ps.setObject(colIndex, null)
-                                        } else {
-                                            when (usageEventCol.datatype) {
-                                                PostgresDatatype.TEXT -> ps.setString(colIndex, value as String)
-                                                PostgresDatatype.TIMESTAMPTZ -> {
-                                                    val odt = odtFromUsageEventColumn(value)
-                                                    ps.setObject(
-                                                        colIndex,
-                                                        odt
-                                                    )
-                                                    //We need to keep track the min and max event timestamps for this batch
-                                                    if (odt != null && usageEventCol.name == TIMESTAMP.name) {
-                                                        if (odt.isBefore(minEventTimestamp)) {
-                                                            minEventTimestamp = odt
-                                                        }
-                                                        if (odt.isAfter(maxEventTimestamp)) {
-                                                            maxEventTimestamp = odt
-                                                        }
-                                                    }
-                                                }
-                                                PostgresDatatype.INTEGER -> ps.setInt(colIndex, value as Int)
-                                                PostgresDatatype.BIGINT -> ps.setLong(colIndex, value as Long)
-                                                else -> ps.setObject(colIndex, value)
-                                            }
-                                        }
-                                    } catch (ex: Exception) {
-                                        logger.info("Error writing $usageEventCol", ex)
-                                        throw ex
-                                    }
-                                }
-                                ps.setObject(indexBase + UPLOAD_AT_INDEX, usageEventCols.uploadedAt)
-                                indexBase += CHRONICLE_USAGE_EVENTS.columns.size
-                                logger.info(
-                                    "Added batch for ${ChronicleServerUtil.STUDY_PARTICIPANT}",
-                                    usageEventCols.studyId,
-                                    usageEventCols.participantId
-                                )
-                                insert.addBatch()
-                            }
-                        }
-
-                        StopWatch(
-                            log = "Executing update on ${data.size} entries into ${CHRONICLE_USAGE_EVENTS.name} with studies = {} and participants = {}",
-                            level = Level.INFO,
-                            logger = logger,
-                            studies,
-                            participants
-                        ).use {
-                            val insertCount = insert.executeBatch().sum() + if (finalInsert !== insert) {
-                                val fCount = finalInsert.executeUpdate()
-                                finalInsert.close()
-                                fCount
-                            } else {
-                                0
-                            }
-
-//                            connection.commit()
-                            logger.info(
-                                "Inserted $insertCount entities for ${CHRONICLE_USAGE_EVENTS.name} studies = {}, participantIds = {}",
+                            //Should only need to set these once for prepared statement.
+                            StopWatch(
+                                log = "Inserting ${data.size} entries into ${CHRONICLE_USAGE_EVENTS.name} with studies = {} and participants = {}",
+                                level = Level.INFO,
+                                logger = logger,
                                 studies,
                                 participants
-                            )
-//                            connection.autoCommit = true
-                            insertCount
+                            ).use {
+                                var indexBase = 0
+                                subList.forEach { usageEventCols ->
+                                    ps.setString(indexBase + 1, usageEventCols.studyId.toString())
+                                    ps.setString(indexBase + 2, usageEventCols.participantId)
+                                    usageEventCols.data.values.forEach { usageEventCol ->
+                                        //TODO: If we ever change the columns, we need to do a lookup for colIndex by name every time.
+                                        val colIndex = indexBase + usageEventCol.colIndex
+                                        val value = usageEventCol.value
+
+                                        try {
+                                            //Set insert value to null, if value was not provided.
+                                            if (value == null) {
+                                                ps.setObject(colIndex, null)
+                                            } else {
+                                                when (usageEventCol.datatype) {
+                                                    PostgresDatatype.TEXT -> ps.setString(colIndex, value as String)
+                                                    PostgresDatatype.TIMESTAMPTZ -> {
+                                                        val odt = odtFromUsageEventColumn(value)
+                                                        ps.setObject(
+                                                            colIndex,
+                                                            odt
+                                                        )
+                                                        //We need to keep track the min and max event timestamps for this batch
+                                                        if (odt != null && usageEventCol.name == TIMESTAMP.name) {
+                                                            if (odt.isBefore(minEventTimestamp)) {
+                                                                minEventTimestamp = odt
+                                                            }
+                                                            if (odt.isAfter(maxEventTimestamp)) {
+                                                                maxEventTimestamp = odt
+                                                            }
+                                                        }
+                                                    }
+                                                    PostgresDatatype.INTEGER -> ps.setInt(colIndex, value as Int)
+                                                    PostgresDatatype.BIGINT -> ps.setLong(colIndex, value as Long)
+                                                    else -> ps.setObject(colIndex, value)
+                                                }
+                                            }
+                                        } catch (ex: Exception) {
+                                            logger.info("Error writing $usageEventCol", ex)
+                                            throw ex
+                                        }
+                                    }
+                                    ps.setObject(indexBase + UPLOAD_AT_INDEX, usageEventCols.uploadedAt)
+                                    indexBase += CHRONICLE_USAGE_EVENTS.columns.size
+//                                    logger.info(
+//                                        "Added batch for ${ChronicleServerUtil.STUDY_PARTICIPANT}",
+//                                        usageEventCols.studyId,
+//                                        usageEventCols.participantId
+//                                    )
+
+                                }
+
+                                StopWatch(
+                                    log = "Executing update on ${data.size} entries into ${CHRONICLE_USAGE_EVENTS.name} with studies = {} and participants = {}",
+                                    level = Level.INFO,
+                                    logger = logger,
+                                    studies,
+                                    participants
+                                ).use {
+                                    val insertCount = ps.executeUpdate()
+                                    logger.info(
+                                        "Inserted $insertCount entities for ${CHRONICLE_USAGE_EVENTS.name} studies = {}, participantIds = {}",
+                                        studies,
+                                        participants
+                                    )
+                                    insertCount
+                                }
+                            }
+
                         }
-                    }
-                } catch (ex: Exception) {
-                    insert.close()
-                    if (finalInsert !== insert) {
-                        finalInsert.close()
-                    }
-                    throw ex
                 }
 
 
