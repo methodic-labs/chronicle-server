@@ -50,6 +50,7 @@ import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.util.*
 import java.util.concurrent.Executors
+import kotlin.math.min
 
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
@@ -403,6 +404,7 @@ class AppDataUploadService(
         includeOnConflict: Boolean = false,
     ): Int {
         if (data.isEmpty()) return 0
+
         return hds.connection.use { connection ->
             //Create the temporary merge table
             try {
@@ -422,11 +424,35 @@ class AppDataUploadService(
 //                    participants
 //                )
 
-//                connection.autoCommit = false
-                val wc = connection
+                // There are two prepared statements one for the data array from 0 up to 32767 elements.
+                // After 32767 elements the insert prepared statement covers all the chunks except the last chunk of 32767 elements
+                // finalInsert won't be used subList.size is never unequal to the insertBatchSize (shoudl only happen for data.size > 32767 and data.size % 32767 != 0
+
+                val insertBatchSize = min(data.size, 32767)
+                val insert = connection.prepareStatement(
+                    buildMultilineInsert(
+                        insertBatchSize,
+                        includeOnConflict
+                    )
+                )
+
+                val dr = data.size % 32767
+                val finalInsert = if (data.size > 32767 && dr != 0) {
+                    connection.prepareStatement(
+                        buildMultilineInsert(
+                            dr,
+                            includeOnConflict
+                        )
+                    )
+                } else {
+                    insert
+                }
+
+                val wc = try {
+                    data.chunked(32767).sumOf { subList ->
+                        val ps = if (subList.size == insertBatchSize) insert else finalInsert
 //                    .prepareStatement(getInsertIntoUsageEventsTableSql(tempInsertTableName, includeOnConflict))
-                    .prepareStatement(buildMultilineInsert(data.size, includeOnConflict))
-                    .use { ps ->
+
                         //Should only need to set these once for prepared statement.
                         StopWatch(
                             log = "Inserting ${data.size} entries into ${CHRONICLE_USAGE_EVENTS.name} with studies = {} and participants = {}",
@@ -436,7 +462,7 @@ class AppDataUploadService(
                             participants
                         ).use {
                             var indexBase = 0
-                            data.forEach { usageEventCols ->
+                            subList.forEach { usageEventCols ->
                                 ps.setString(indexBase + 1, usageEventCols.studyId.toString())
                                 ps.setString(indexBase + 2, usageEventCols.participantId)
                                 usageEventCols.data.values.forEach { usageEventCol ->
@@ -480,8 +506,8 @@ class AppDataUploadService(
                                 ps.setObject(indexBase + UPLOAD_AT_INDEX, usageEventCols.uploadedAt)
                                 indexBase += CHRONICLE_USAGE_EVENTS.columns.size
 //                              logger.info("Added batch for ${ChronicleServerUtil.STUDY_PARTICIPANT}", studyId, participantId)
+                                insert.addBatch()
                             }
-
                         }
 
                         StopWatch(
@@ -491,7 +517,14 @@ class AppDataUploadService(
                             studies,
                             participants
                         ).use {
-                            val insertCount = ps.executeUpdate()
+                            val insertCount = insert.executeBatch().sum() + if (finalInsert !== insert) {
+                                val fCount = finalInsert.executeUpdate()
+                                finalInsert.close()
+                                fCount
+                            } else {
+                                0
+                            }
+
 //                            connection.commit()
                             logger.info(
                                 "Inserted $insertCount entities for ${CHRONICLE_USAGE_EVENTS.name} studies = {}, participantIds = {}",
@@ -502,6 +535,14 @@ class AppDataUploadService(
                             insertCount
                         }
                     }
+                } catch (ex: Exception) {
+                    insert.close()
+                    if (finalInsert !== insert) {
+                        finalInsert.close()
+                    }
+                    throw ex
+                }
+
 
 //                StopWatch(
 //                    log = "Merging entries for $tempInsertTableName with studies = {} and participants = {}",
