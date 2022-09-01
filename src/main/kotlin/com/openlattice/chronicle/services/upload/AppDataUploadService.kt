@@ -508,7 +508,11 @@ class AppDataUploadService(
                                 }
                                 ps.setObject(indexBase + UPLOAD_AT_INDEX, usageEventCols.uploadedAt)
                                 indexBase += CHRONICLE_USAGE_EVENTS.columns.size
-//                              logger.info("Added batch for ${ChronicleServerUtil.STUDY_PARTICIPANT}", studyId, participantId)
+                                logger.info(
+                                    "Added batch for ${ChronicleServerUtil.STUDY_PARTICIPANT}",
+                                    usageEventCols.studyId,
+                                    usageEventCols.participantId
+                                )
                                 insert.addBatch()
                             }
                         }
