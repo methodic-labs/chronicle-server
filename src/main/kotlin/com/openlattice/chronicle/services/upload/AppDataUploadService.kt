@@ -514,7 +514,7 @@ class AppDataUploadService(
                                 }
 
                                 StopWatch(
-                                    log = "Executing update on ${data.size} entries into ${CHRONICLE_USAGE_EVENTS.name} with studies = {} and participants = {}",
+                                    log = "Executing update on ${subList.size} entries into ${CHRONICLE_USAGE_EVENTS.name} with studies = {} and participants = {}",
                                     level = Level.INFO,
                                     logger = logger,
                                     studies,
