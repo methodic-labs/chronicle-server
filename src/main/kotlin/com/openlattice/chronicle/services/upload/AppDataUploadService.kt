@@ -304,7 +304,7 @@ class AppDataUploadService(
             storageResolver.getPlatformStorage().connection.use { platform ->
                 platform.autoCommit = false
                 platform.createStatement().use { stmt ->
-                    stmt.executeQuery(getMoveSql(2)).use { rs ->
+                    stmt.executeQuery(getMoveSql(128)).use { rs ->
                         while (rs.next()) {
                             val usageEventQueueEntries = ResultSetAdapters.usageEventQueueEntries(rs)
                             val (flavor, _) = storageResolver.resolveAndGetFlavor(usageEventQueueEntries.studyId)
