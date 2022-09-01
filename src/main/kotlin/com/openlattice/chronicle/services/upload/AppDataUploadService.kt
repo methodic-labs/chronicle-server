@@ -453,6 +453,7 @@ class AppDataUploadService(
 
                 val wc = try {
                     data.chunked(32767).sumOf { subList ->
+                        logger.info("Processing sublist of length ${subList.size}")
                         val ps = if (subList.size == insertBatchSize) insert else finalInsert
 //                    .prepareStatement(getInsertIntoUsageEventsTableSql(tempInsertTableName, includeOnConflict))
 
