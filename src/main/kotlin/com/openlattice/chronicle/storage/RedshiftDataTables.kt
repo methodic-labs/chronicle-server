@@ -185,6 +185,25 @@ class RedshiftDataTables {
         }
 
         /**
+         * Builds a multi-line prepared statement for inserting batches of data into redshift.
+         * @param numLines The number of lines containing usage events to insert
+         * @param includeOnConflict Whether or not it should include the on conflict statement
+         */
+        fun buildMultilineInsert(numLines: Int, includeOnConflict: Boolean) : String {
+            val columns = CHRONICLE_USAGE_EVENTS.columns.joinToString(",") { it.name }
+            val header = "INSERT INTO ${CHRONICLE_USAGE_EVENTS.name} ($columns) VALUES\n"
+            val params = CHRONICLE_USAGE_EVENTS.columns.joinToString(",") { "?" }
+            val line = "($params)\n"
+            check( (header.length + (line.length * numLines )) < 16777216 )
+            return if(includeOnConflict) {
+                "$header ${line.repeat(numLines)} ON CONFLICT DO NOTHING"
+            } else {
+                "$header ${line.repeat(numLines)}"
+            }
+        }
+
+
+        /**
          * Generates sql for creating a temp table of duplicates that may have been inserted into redshift.
          * 1. study id
          * 2. participant id

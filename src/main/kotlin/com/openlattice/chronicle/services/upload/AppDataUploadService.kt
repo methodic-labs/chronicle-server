@@ -33,6 +33,7 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMEZONE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.UPLOADED_AT
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.USERNAME
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.CHRONICLE_USAGE_EVENTS
+import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.buildMultilineInsert
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.buildTempTableOfDuplicates
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.createTempTableOfDuplicates
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.getAppendTempTableSql
@@ -295,6 +296,7 @@ class AppDataUploadService(
         return written
     }
 
+
     override fun moveToEventStorage() {
         logger.info("Moving data from aurora to event storage.")
         val queueEntriesByFlavor: MutableMap<PostgresFlavor, MutableList<UsageEventQueueEntry>> = mutableMapOf()
@@ -410,35 +412,36 @@ class AppDataUploadService(
                 val studies = data.map { it.studyId.toString() }.toSet()
                 val participants = data.map { it.participantId }.toSet()
 
-                connection.createStatement().use { stmt ->
-                    stmt.execute("CREATE TEMPORARY TABLE $tempInsertTableName (LIKE ${CHRONICLE_USAGE_EVENTS.name})")
-                }
+//                connection.createStatement().use { stmt ->
+//                    stmt.execute("CREATE TEMPORARY TABLE $tempInsertTableName (LIKE ${CHRONICLE_USAGE_EVENTS.name})")
+//                }
+//
+//                logger.info(
+//                    "Created temporary table $tempInsertTableName for upload with studies = {} and participants = {}",
+//                    studies,
+//                    participants
+//                )
 
-                logger.info(
-                    "Created temporary table $tempInsertTableName for upload with studies = {} and participants = {}",
-                    studies,
-                    participants
-                )
-
-                connection.autoCommit = false
+//                connection.autoCommit = false
                 val wc = connection
-                    .prepareStatement(getInsertIntoUsageEventsTableSql(tempInsertTableName, includeOnConflict))
+//                    .prepareStatement(getInsertIntoUsageEventsTableSql(tempInsertTableName, includeOnConflict))
+                    .prepareStatement(buildMultilineInsert(data.size, includeOnConflict))
                     .use { ps ->
                         //Should only need to set these once for prepared statement.
-
                         StopWatch(
-                            log = "Inserting entries for $tempInsertTableName with studies = {} and participants = {}",
+                            log = "Inserting entries into ${CHRONICLE_USAGE_EVENTS.name} with studies = {} and participants = {}",
                             level = Level.INFO,
                             logger = logger,
                             studies,
                             participants
                         ).use {
+                            var indexBase = 0
                             data.forEach { usageEventCols ->
-                                ps.setString(1, usageEventCols.studyId.toString())
-                                ps.setString(2, usageEventCols.participantId)
+                                ps.setString(indexBase + 1, usageEventCols.studyId.toString())
+                                ps.setString(indexBase + 2, usageEventCols.participantId)
                                 usageEventCols.data.values.forEach { usageEventCol ->
                                     //TODO: If we ever change the columns, we need to do a lookup for colIndex by name every time.
-                                    val colIndex = usageEventCol.colIndex
+                                    val colIndex = indexBase + usageEventCol.colIndex
                                     val value = usageEventCol.value
 
                                     try {
@@ -474,35 +477,35 @@ class AppDataUploadService(
                                         throw ex
                                     }
                                 }
-                                ps.setObject(UPLOAD_AT_INDEX, usageEventCols.uploadedAt)
+                                ps.setObject(indexBase + UPLOAD_AT_INDEX, usageEventCols.uploadedAt)
+                                indexBase += CHRONICLE_USAGE_EVENTS.columns.size
 //                              logger.info("Added batch for ${ChronicleServerUtil.STUDY_PARTICIPANT}", studyId, participantId)
-                                ps.addBatch()
                             }
-                            val insertCount = ps.executeBatch().sum()
-                            connection.commit()
+                            val insertCount = ps.executeUpdate()
+//                            connection.commit()
                             logger.info(
                                 "Inserted $insertCount entities for $tempInsertTableName studies = {}, participantIds = {}",
                                 studies,
                                 participants
                             )
-                            connection.autoCommit = true
+//                            connection.autoCommit = true
                             insertCount
                         }
                     }
 
-                StopWatch(
-                    log = "Merging entries for $tempInsertTableName with studies = {} and participants = {}",
-                    level = Level.INFO,
-                    logger = logger,
-                    studies,
-                    participants
-                ).use {
-                    connection.createStatement().use { stmt ->
-                        stmt.execute(getAppendTempTableSql(tempInsertTableName));
-                        stmt.execute("DROP TABLE $tempInsertTableName")
-                    }
-                }
-
+//                StopWatch(
+//                    log = "Merging entries for $tempInsertTableName with studies = {} and participants = {}",
+//                    level = Level.INFO,
+//                    logger = logger,
+//                    studies,
+//                    participants
+//                ).use {
+//                    connection.createStatement().use { stmt ->
+//                        stmt.execute(getAppendTempTableSql(tempInsertTableName));
+//                        stmt.execute("DROP TABLE $tempInsertTableName")
+//                    }
+//                }
+//
                 val tempTableName = "duplicate_events_${RandomStringUtils.randomAlphanumeric(10)}"
 
 
