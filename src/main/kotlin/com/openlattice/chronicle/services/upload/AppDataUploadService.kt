@@ -66,7 +66,7 @@ class AppDataUploadService(
         private val logger = LoggerFactory.getLogger(AppDataUploadService::class.java)
         private val UPLOAD_AT_INDEX = getInsertUsageEventColumnIndex(UPLOADED_AT)
         private val mapper = ObjectMappers.getJsonMapper()
-        private const val RS_BATCH_SIZE = 8192
+        private const val RS_BATCH_SIZE = 3276
         private val executor: ListeningExecutorService =
             MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(1))
 
