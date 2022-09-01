@@ -408,7 +408,7 @@ class AppDataUploadService(
             try {
                 var minEventTimestamp: OffsetDateTime = OffsetDateTime.MAX
                 var maxEventTimestamp: OffsetDateTime = OffsetDateTime.MIN
-                val tempInsertTableName = "staging_events_${RandomStringUtils.randomAlphanumeric(10)}"
+//                val tempInsertTableName = "staging_events_${RandomStringUtils.randomAlphanumeric(10)}"
                 val studies = data.map { it.studyId.toString() }.toSet()
                 val participants = data.map { it.participantId }.toSet()
 
@@ -429,7 +429,7 @@ class AppDataUploadService(
                     .use { ps ->
                         //Should only need to set these once for prepared statement.
                         StopWatch(
-                            log = "Inserting entries into ${CHRONICLE_USAGE_EVENTS.name} with studies = {} and participants = {}",
+                            log = "Inserting ${data.size} entries into ${CHRONICLE_USAGE_EVENTS.name} with studies = {} and participants = {}",
                             level = Level.INFO,
                             logger = logger,
                             studies,
@@ -481,10 +481,20 @@ class AppDataUploadService(
                                 indexBase += CHRONICLE_USAGE_EVENTS.columns.size
 //                              logger.info("Added batch for ${ChronicleServerUtil.STUDY_PARTICIPANT}", studyId, participantId)
                             }
+
+                        }
+
+                        StopWatch(
+                            log = "Executing update on ${data.size} entries into ${CHRONICLE_USAGE_EVENTS.name} with studies = {} and participants = {}",
+                            level = Level.INFO,
+                            logger = logger,
+                            studies,
+                            participants
+                        ).use {
                             val insertCount = ps.executeUpdate()
 //                            connection.commit()
                             logger.info(
-                                "Inserted $insertCount entities for $tempInsertTableName studies = {}, participantIds = {}",
+                                "Inserted $insertCount entities for ${CHRONICLE_USAGE_EVENTS.name} studies = {}, participantIds = {}",
                                 studies,
                                 participants
                             )
