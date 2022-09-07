@@ -19,6 +19,7 @@
  */
 package com.openlattice.chronicle.controllers
 
+import com.fasterxml.jackson.databind.JsonMappingException
 import com.geekbeast.controllers.exceptions.wrappers.ErrorsDTO
 import com.geekbeast.controllers.util.ApiExceptions
 import com.openlattice.chronicle.auditing.AuditEventType
@@ -29,6 +30,7 @@ import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.controllers.ChronicleServerExceptionHandler
 import com.openlattice.chronicle.ids.IdConstants
+import org.apache.commons.io.IOUtils
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -113,6 +115,11 @@ class ChronicleServerExceptionHandler @Inject constructor(override val auditingM
             )
     }
 
+    @ExceptionHandler(JsonMappingException::class)
+    fun handleJsonExceptions( req: HttpServletRequest, e:Exception) {
+        logException(req, e)
+        logger.error("Body that caused error if available: " + IOUtils.toString(req.reader) )
+    }
     @ExceptionHandler(Exception::class)
     fun handleOtherExceptions(req: HttpServletRequest, e: Exception): ResponseEntity<ErrorsDTO> {
         logException(req, e)
