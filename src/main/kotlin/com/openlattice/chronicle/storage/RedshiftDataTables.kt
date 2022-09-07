@@ -38,6 +38,7 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.START_TIME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMESTAMP
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMEZONE
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.UPLOADED_AT
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.USERNAME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.WEEKDAY_MONDAY_FRIDAY
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.WEEKDAY_MONDAY_THURSDAY
@@ -65,6 +66,7 @@ class RedshiftDataTables {
                 TIMEZONE,
                 USERNAME,
                 APPLICATION_LABEL,
+                UPLOADED_AT
             )
             .addDataSourceNames(REDSHIFT_DATASOURCE_NAME)
 
@@ -134,7 +136,8 @@ class RedshiftDataTables {
             )
             .addDataSourceNames(REDSHIFT_DATASOURCE_NAME)
 
-        private val INSERT_SENSOR_DATA_COL_INDICES = IOS_SENSOR_DATA.columns.mapIndexed { index, col -> col.name to index + 1 }.toMap()
+        private val INSERT_SENSOR_DATA_COL_INDICES =
+            IOS_SENSOR_DATA.columns.mapIndexed { index, col -> col.name to index + 1 }.toMap()
 
         fun getInsertSensorDataColumnIndex(col: PostgresColumnDefinition): Int {
             return INSERT_SENSOR_DATA_COL_INDICES.getValue(col.name)
@@ -154,7 +157,7 @@ class RedshiftDataTables {
 
         /**
          * Inserts a row into the usage events table.
-         * @param srcMergeTableName The name of table that will serve as the source to merge into the
+         * @param tableName The name of table that will serve as the source to merge into the
          * CHRONICLE_USAGE_EVENTS table.
          *
          * The bina parameters for this query are in the following order:
@@ -169,27 +172,74 @@ class RedshiftDataTables {
          * 9. user (text)
          * 10. application_label (text)
          */
-        fun getInsertIntoMergeUsageEventsTableSql(srcMergeTableName: String, includeOnConflict: Boolean = false): String {
+        fun getInsertIntoUsageEventsTableSql(tableName: String, includeOnConflict: Boolean = false): String {
             return if (includeOnConflict) {
                 """
-                    INSERT INTO $srcMergeTableName (${USAGE_EVENT_COLS}) VALUES (${USAGE_EVENT_PARAMS}) ON CONFLICT DO NOTHING
+                    INSERT INTO $tableName (${USAGE_EVENT_COLS}) VALUES (${USAGE_EVENT_PARAMS}) ON CONFLICT DO NOTHING
                     """.trimIndent()
             } else {
                 """
-                    INSERT INTO $srcMergeTableName (${USAGE_EVENT_COLS}) VALUES (${USAGE_EVENT_PARAMS}) 
+                    INSERT INTO $tableName (${USAGE_EVENT_COLS}) VALUES (${USAGE_EVENT_PARAMS}) 
                     """.trimIndent()
             }
         }
 
-        fun getDeleteTempTableEntriesSql(srcMergeTableName: String): String {
+        /**
+         * Builds a multi-line prepared statement for inserting batches of data into redshift.
+         * @param numLines The number of lines containing usage events to insert
+         * @param includeOnConflict Whether or not it should include the on conflict statement
+         */
+        fun buildMultilineInsert(numLines: Int, includeOnConflict: Boolean) : String {
+            val columns = CHRONICLE_USAGE_EVENTS.columns.joinToString(",") { it.name }
+            val header = "INSERT INTO ${CHRONICLE_USAGE_EVENTS.name} ($columns) VALUES"
+            val params = CHRONICLE_USAGE_EVENTS.columns.joinToString(",") { "?" }
+            val line = "($params)"
+            val lines = (1..numLines).joinToString(",\n" ) { line }
+
+            check( (header.length + (line.length * numLines )) < 16777216 )
+            return if(includeOnConflict) {
+                "$header\n$lines ON CONFLICT DO NOTHING"
+            } else {
+                "$header\n$lines"
+            }
+        }
+
+
+        /**
+         * Generates sql for creating a temp table of duplicates that may have been inserted into redshift.
+         * 1. study id
+         * 2. participant id
+         * 3. event_timestamp lowerbound
+         * 4. event_timestamp upperbound.
+         * @param tempTableName The
+         */
+        fun createTempTableOfDuplicates(tempTableName: String): String {
             return """
-            DELETE FROM ${CHRONICLE_USAGE_EVENTS.name} 
-                USING $srcMergeTableName 
-                WHERE ${getMergeClause(srcMergeTableName)} 
+                CREATE TEMPORARY TABLE $tempTableName (LIKE ${CHRONICLE_USAGE_EVENTS.name}) 
             """.trimIndent()
         }
 
-        fun getAppendTembTableSql(srcMergeTableName: String): String {
+        fun buildTempTableOfDuplicates(tempTableName: String): String {
+            val groupByCols = (CHRONICLE_USAGE_EVENTS.columns - UPLOADED_AT).joinToString(",") { it.name }
+            return """
+                INSERT INTO $tempTableName ($groupByCols,${UPLOADED_AT.name}) SELECT $groupByCols, min(${UPLOADED_AT.name}) as ${UPLOADED_AT.name} FROM ${CHRONICLE_USAGE_EVENTS.name}
+                                        WHERE ${STUDY_ID.name} = ANY(?) AND ${PARTICIPANT_ID.name} = ANY(?) AND
+                                            ${TIMESTAMP.name} >= ? AND ${TIMESTAMP.name} <= ? 
+                                        GROUP BY $groupByCols
+                                        HAVING count(${UPLOADED_AT.name}) > 1
+            """.trimIndent()
+        }
+
+
+        fun getDeleteUsageEventsFromTempTable(tempTableName: String): String {
+            return """
+            DELETE FROM ${CHRONICLE_USAGE_EVENTS.name} 
+                USING $tempTableName 
+                WHERE ${getMergeClause(tempTableName)} 
+            """.trimIndent()
+        }
+
+        fun getAppendTempTableSql(srcMergeTableName: String): String {
 
             return """
                 INSERT INTO ${CHRONICLE_USAGE_EVENTS.name} ($USAGE_EVENT_COLS) SELECT $USAGE_EVENT_COLS FROM $srcMergeTableName
@@ -210,16 +260,21 @@ class RedshiftDataTables {
         """.trimIndent()
 
         val INSERT_USAGE_EVENT_COLUMN_INDICES: Map<String, Int> =
-            CHRONICLE_USAGE_EVENTS.columns.mapIndexed { index, pcd -> pcd.name to (index + 1) }.toMap() //remeber postgres is 1 based index
+            CHRONICLE_USAGE_EVENTS.columns.mapIndexed { index, pcd -> pcd.name to (index + 1) }
+                .toMap() //remeber postgres is 1 based index
         val INSERT_USAGE_STATS_COLUMN_INDICES: Map<String, Int> =
             CHRONICLE_USAGE_STATS.columns.mapIndexed { index, pcd -> pcd.name to (index + 1) }.toMap()
 
         fun getInsertUsageEventColumnIndex(
-            column: PostgresColumnDefinition
+            column: PostgresColumnDefinition,
         ): Int = INSERT_USAGE_EVENT_COLUMN_INDICES.getValue(column.name)
 
+        fun getInsertUsageEventColumnIndex(
+            columnName: String
+        ): Int = INSERT_USAGE_EVENT_COLUMN_INDICES.getValue(columnName)
+
         fun getInsertUsageStatColumnIndex(
-            column: PostgresColumnDefinition
+            column: PostgresColumnDefinition,
         ): Int = INSERT_USAGE_STATS_COLUMN_INDICES.getValue(column.name)
     }
 }

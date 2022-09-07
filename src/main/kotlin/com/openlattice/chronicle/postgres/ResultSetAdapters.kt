@@ -37,10 +37,14 @@ import com.openlattice.chronicle.participants.ParticipantStats
 import com.openlattice.chronicle.services.jobs.ChronicleJob
 import com.openlattice.chronicle.services.notifications.Notification
 import com.openlattice.chronicle.services.surveys.IosDeviceUsageByCategory
+import com.openlattice.chronicle.services.upload.UsageEventColumn
+import com.openlattice.chronicle.services.upload.UsageEventQueueEntries
+import com.openlattice.chronicle.services.upload.UsageEventQueueEntry
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACTIVE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ANDROID_FIRST_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ANDROID_LAST_DATE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.ANDROID_LAST_PING
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ANDROID_UNIQUE_DATES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.BODY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.CANDIDATE_ID
@@ -64,6 +68,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.FIRST_NAME
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.HTML
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.IOS_FIRST_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.IOS_LAST_DATE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.IOS_LAST_PING
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.IOS_UNIQUE_DATES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.JOB_DEFINITION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.JOB_ID
@@ -115,7 +120,9 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_FIRST_DAT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_LAST_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_UNIQUE_DATES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPDATED_AT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPLOADED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.URL
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.USAGE_EVENTS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APPLICATION_LABEL
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_CATEGORY
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_PACKAGE_NAME
@@ -129,7 +136,6 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.USERNAME
 import com.openlattice.chronicle.study.Study
 import com.openlattice.chronicle.study.StudyFeature
 import com.openlattice.chronicle.study.StudyLimits
-import com.openlattice.chronicle.study.StudySettings
 import com.openlattice.chronicle.survey.AppUsage
 import com.openlattice.chronicle.survey.Questionnaire
 import org.slf4j.LoggerFactory
@@ -326,7 +332,7 @@ class ResultSetAdapters {
 
 
         @Throws(SQLException::class)
-        fun legacyStudySettings(rs: ResultSet): Pair<UUID, Pair<String,Map<String, Any>>> {
+        fun legacyStudySettings(rs: ResultSet): Pair<UUID, Pair<String, Map<String, Any>>> {
             val studyId = studyId(rs)
             val settings = mapper.readValue<Map<String, Any>>(rs.getString(SETTINGS.name))
             return studyId to (title(rs) to settings)
@@ -500,9 +506,11 @@ class ResultSetAdapters {
             return ParticipantStats(
                 rs.getObject(STUDY_ID.name, UUID::class.java),
                 rs.getString(PARTICIPANT_ID.name),
+                rs.getObject(ANDROID_LAST_PING.name, OffsetDateTime::class.java),
                 rs.getObject(ANDROID_FIRST_DATE.name, OffsetDateTime::class.java),
                 rs.getObject(ANDROID_LAST_DATE.name, OffsetDateTime::class.java),
                 androidDates.map { it.toLocalDate() }.toSet(),
+                rs.getObject(IOS_LAST_PING.name, OffsetDateTime::class.java),
                 rs.getObject(IOS_FIRST_DATE.name, OffsetDateTime::class.java),
                 rs.getObject(IOS_LAST_DATE.name, OffsetDateTime::class.java),
                 iosDates.map { it.toLocalDate() }.toSet(),
@@ -525,6 +533,15 @@ class ResultSetAdapters {
         @Throws(SQLException::class)
         fun submissionId(rs: ResultSet): UUID {
             return UUID.fromString(rs.getString(SUBMISSION_ID.name))
+        }
+
+        @Throws(SQLException::class)
+        fun usageEventQueueEntries(rs: ResultSet): UsageEventQueueEntries {
+            val studyId = rs.getObject(STUDY_ID.name, UUID::class.java)
+            val participantId = rs.getString(PARTICIPANT_ID.name)
+            val data = mapper.readValue<List<Map<String, UsageEventColumn>>>(rs.getString(USAGE_EVENTS.name))
+            val uploadedAt = rs.getObject(UPLOADED_AT.name, OffsetDateTime::class.java)
+            return UsageEventQueueEntries(studyId, participantId, data, uploadedAt)
         }
     }
 }

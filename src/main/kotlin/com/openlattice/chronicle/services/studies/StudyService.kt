@@ -32,6 +32,9 @@ import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import com.openlattice.chronicle.services.notifications.NotificationService
 import com.openlattice.chronicle.services.studies.processors.StudyPhoneNumberGetter
 import com.openlattice.chronicle.services.surveys.SurveysManager
+import com.openlattice.chronicle.sources.AndroidDevice
+import com.openlattice.chronicle.sources.IOSDevice
+import com.openlattice.chronicle.sources.SourceDevice
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.LEGACY_STUDY_IDS
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.ORGANIZATION_STUDIES
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.PARTICIPANT_STATS
@@ -298,7 +301,10 @@ class StudyService(
 
         private val PARTICIPANT_STATS_COLUMNS = PARTICIPANT_STATS.columns.joinToString { it.name }
         private val PARTICIPANT_STATS_PARAMS = PARTICIPANT_STATS.columns.joinToString { "?" }
-        private val PARTICIPANT_STATS_UPDATE_PARAMS = PARTICIPANT_STATS.columns.joinToString { "${it.name} = ?" }
+
+        //On insertion conflict we should only update non-null values.
+        private val PARTICIPANT_STATS_UPDATE_PARAMS = (PARTICIPANT_STATS.columns - PARTICIPANT_STATS.primaryKey)
+            .joinToString { "${it.name} = COALESCE(EXCLUDED.${it.name},${PARTICIPANT_STATS.name}.${it.name})" }
 
         /**
          * PreparedStatement bind order
@@ -323,7 +329,7 @@ class StudyService(
         """.trimIndent()
 
         val INSERT_OR_UPDATE_PARTICIPANT_STATS = """
-            INSERT INTO ${PARTICIPANT_STATS.name}
+            INSERT INTO ${PARTICIPANT_STATS.name} ($PARTICIPANT_STATS_COLUMNS)
             VALUES ($PARTICIPANT_STATS_PARAMS)
             ON CONFLICT (${STUDY_ID.name}, ${PARTICIPANT_ID.name}) 
             DO UPDATE SET $PARTICIPANT_STATS_UPDATE_PARAMS
@@ -373,6 +379,13 @@ class StudyService(
                 }
                 .buildAndRun()
         }
+
+        """
+           CREATE TEMPORARY TABLE t2 AS SELECT study_id,participant_id,app_package_name,interaction_type,event_type,event_timestamp,timezone,username,application_label, min(uploaded_at as uploaded_at FROM chronicle_usage_events
+        WHERE event_timestamp >= '-infinity' AND event_timestamp <= 'infinity' 
+        GROUP BY study_id,participant_id,app_package_name,interaction_type,event_type,event_timestamp,timezone,username,application_label
+        HAVING count(uploaded_at) > 1
+        """.trimIndent()
         authorizationService.ensureAceIsLoaded(aclKey, Principals.getCurrentUser())
         return study.id
     }
@@ -691,19 +704,22 @@ class StudyService(
 
                 var index = 0
 
-                for (i in 0..1) {
-                    ps.setObject(++index, stats.studyId)
-                    ps.setString(++index, stats.participantId)
-                    ps.setObject(++index, stats.androidFirstDate)
-                    ps.setObject(++index, stats.androidLastDate)
-                    ps.setArray(++index, androidDatesArr)
-                    ps.setObject(++index, stats.iosFirstDate)
-                    ps.setObject(++index, stats.iosLastDate)
-                    ps.setArray(++index, iosDatesArr)
-                    ps.setObject(++index, stats.tudFirstDate)
-                    ps.setObject(++index, stats.tudLastDate)
-                    ps.setObject(++index, tudDatesArr)
-                }
+                ps.setObject(++index, stats.studyId)
+                ps.setString(++index, stats.participantId)
+
+                ps.setObject(++index, stats.androidLastPing)
+                ps.setObject(++index, stats.androidFirstDate)
+                ps.setObject(++index, stats.androidLastDate)
+                ps.setArray(++index, androidDatesArr)
+                ps.setObject(++index, stats.iosLastPing)
+                ps.setObject(++index, stats.iosFirstDate)
+                ps.setObject(++index, stats.iosLastDate)
+                ps.setArray(++index, iosDatesArr)
+
+                ps.setObject(++index, stats.tudFirstDate)
+                ps.setObject(++index, stats.tudLastDate)
+                ps.setObject(++index, tudDatesArr)
+
                 ps.executeUpdate()
             }
         }
@@ -724,6 +740,43 @@ class StudyService(
 
     override fun countStudyParticipants(studyIds: Set<UUID>): Map<UUID, Long> {
         return studyLimitsMgr.countStudyParticipants(studyIds)
+    }
+
+    override fun updateLastDevicePing(studyId: UUID, participantId: String, sourceDevice: SourceDevice) {
+        val participantStats = when (sourceDevice) {
+            is AndroidDevice -> ParticipantStats(
+                studyId = studyId,
+                participantId = participantId,
+                androidLastPing = OffsetDateTime.now()
+            )
+            is IOSDevice -> ParticipantStats(
+                studyId = studyId,
+                participantId = participantId,
+                androidLastPing = OffsetDateTime.now()
+            )
+            else -> throw UnsupportedOperationException("${sourceDevice.javaClass.name} is not a supported datasource.")
+        }
+
+        insertOrUpdateParticipantStats(participantStats)
+    }
+
+    override fun updateLastDevicePing(studyId: UUID, participantId: String) {
+        //If device hasn't enrolled yet, we should just return without updating last ping.
+        val participantStats = getParticipantStats(studyId, participantId)  ?: return
+
+        if (participantStats.androidLastPing != null) {
+            insertOrUpdateParticipantStats(
+                ParticipantStats(
+                    studyId,
+                    participantId,
+                    androidLastPing = OffsetDateTime.now()
+                )
+            )
+        }
+
+        if (participantStats.iosLastPing != null) {
+            insertOrUpdateParticipantStats(ParticipantStats(studyId, participantId, iosLastPing = OffsetDateTime.now()))
+        }
     }
 
     private fun selectStudyParticipants(studyId: UUID): Iterable<Participant> {

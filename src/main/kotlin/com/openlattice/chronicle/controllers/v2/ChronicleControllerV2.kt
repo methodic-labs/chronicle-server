@@ -5,17 +5,21 @@ import com.google.common.base.Optional
 import com.google.common.collect.SetMultimap
 import com.openlattice.chronicle.api.ChronicleApi
 import com.openlattice.chronicle.data.ParticipationStatus
+import com.openlattice.chronicle.participants.ParticipantStats
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import com.openlattice.chronicle.services.legacy.LegacyEdmResolver
 import com.openlattice.chronicle.services.settings.OrganizationSettingsManager
 import com.openlattice.chronicle.services.studies.StudyService
 import com.openlattice.chronicle.services.surveys.SurveysManager
 import com.openlattice.chronicle.services.upload.AppDataUploadManager
+import com.openlattice.chronicle.sources.AndroidDevice
+import com.openlattice.chronicle.sources.IOSDevice
 import com.openlattice.chronicle.sources.SourceDevice
 import org.apache.olingo.commons.api.edm.FullQualifiedName
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.*
 import java.security.InvalidParameterException
+import java.time.OffsetDateTime
 import java.util.*
 import javax.inject.Inject
 
@@ -51,17 +55,14 @@ class ChronicleControllerV2 : ChronicleApi {
             @PathVariable(ChronicleApi.STUDY_ID) studyId: UUID,
             @PathVariable(ChronicleApi.PARTICIPANT_ID) participantId: String,
             @PathVariable(ChronicleApi.DATASOURCE_ID) datasourceId: String,
-            @RequestBody datasource: Optional<SourceDevice>
+            @RequestBody sourceDevice: Optional<SourceDevice>
     ): UUID {
         val realStudyId = studyService.getStudyId(studyId)
         checkNotNull(realStudyId) { "invalid study id" }
-        if (datasource.isPresent) {
-            return enrollmentManager.registerDatasource(
-                    realStudyId,
-                    participantId,
-                    datasourceId,
-                    datasource.get()
-            )
+        return if (sourceDevice.isPresent) {
+            val id = enrollmentManager.registerDatasource(realStudyId, participantId, datasourceId, sourceDevice.get())
+            studyService.updateLastDevicePing(realStudyId, participantId, sourceDevice.get())
+            id
         } else {
             throw InvalidParameterException("Datasource must be specified when enrolling.")
         }
@@ -93,7 +94,9 @@ class ChronicleControllerV2 : ChronicleApi {
     ): ParticipationStatus {
         val realStudyId = studyService.getStudyId(studyId)
         checkNotNull(realStudyId) { "invalid study id"}
-        return enrollmentManager.getParticipationStatus(realStudyId, participantId)
+        val participationStatus = enrollmentManager.getParticipationStatus(realStudyId, participantId)
+        studyService.updateLastDevicePing(studyId, participantId)
+        return participationStatus
     }
 
     @Timed

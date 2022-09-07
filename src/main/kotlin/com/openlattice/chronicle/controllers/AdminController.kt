@@ -1,7 +1,6 @@
 package com.openlattice.chronicle.controllers
 
 import com.codahale.metrics.annotation.Timed
-import com.geekbeast.rhizome.jobs.HazelcastJobService
 import com.hazelcast.core.HazelcastInstance
 import com.openlattice.chronicle.admin.AdminApi
 import com.openlattice.chronicle.admin.AdminApi.Companion.CONTROLLER
@@ -10,6 +9,7 @@ import com.openlattice.chronicle.admin.AdminApi.Companion.ID_PATH
 import com.openlattice.chronicle.admin.AdminApi.Companion.NAME
 import com.openlattice.chronicle.admin.AdminApi.Companion.NAME_PATH
 import com.openlattice.chronicle.admin.AdminApi.Companion.PRINCIPALS
+import com.openlattice.chronicle.admin.AdminApi.Companion.EVENT_STORAGE
 import com.openlattice.chronicle.admin.AdminApi.Companion.RELOAD_CACHE
 import com.openlattice.chronicle.auditing.AuditingManager
 import com.openlattice.chronicle.authorization.AuthorizationManager
@@ -17,6 +17,7 @@ import com.openlattice.chronicle.authorization.AuthorizingComponent
 import com.openlattice.chronicle.authorization.Principal
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.hazelcast.HazelcastMap
+import com.openlattice.chronicle.services.upload.AppDataUploadService
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings
 import org.slf4j.LoggerFactory
 import org.springframework.web.bind.annotation.GetMapping
@@ -42,6 +43,15 @@ class AdminController(
 
     @Inject
     private lateinit var hazelcast: HazelcastInstance
+
+    @Inject
+    private lateinit var appDataUploadService: AppDataUploadService
+    @Timed
+    @GetMapping(value = [EVENT_STORAGE])
+    override fun moveToEventStorage() {
+        ensureAdminAccess()
+        appDataUploadService.moveToEventStorage()
+    }
 
     @Timed
     @GetMapping(value = [RELOAD_CACHE])

@@ -4,6 +4,7 @@ import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.participants.ParticipantStats
 import com.openlattice.chronicle.sensorkit.SensorType
+import com.openlattice.chronicle.sources.SourceDevice
 import com.openlattice.chronicle.study.Study
 import com.openlattice.chronicle.study.StudySetting
 import com.openlattice.chronicle.study.StudySettingType
@@ -47,4 +48,7 @@ interface StudyManager {
     fun countStudyParticipants(connection: Connection, studyIds: Set<UUID>): Map<UUID, Long>
     fun countStudyParticipants(studyId: UUID): Long
     fun countStudyParticipants(studyIds: Set<UUID>): Map<UUID, Long>
+
+    fun updateLastDevicePing( studyId: UUID,participantId: String, sourceDevice:SourceDevice)
+    fun updateLastDevicePing(studyId: UUID, participantId: String)
 }

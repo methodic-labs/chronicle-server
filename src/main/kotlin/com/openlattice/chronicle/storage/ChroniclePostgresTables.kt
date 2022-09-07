@@ -6,6 +6,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACTIVE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ANDROID_FIRST_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ANDROID_LAST_DATE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.ANDROID_LAST_PING
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ANDROID_UNIQUE_DATES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_USERS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.BASE
@@ -30,6 +31,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.FEATURES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.FIRST_NAME
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.IOS_FIRST_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.IOS_LAST_DATE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.IOS_LAST_PING
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.IOS_UNIQUE_DATES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.JOB_DEFINITION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.JOB_ID
@@ -89,6 +91,8 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_UNIQUE_DA
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPDATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPGRADE_CLASS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPGRADE_STATUS
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPLOADED_AT
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.USAGE_EVENTS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_DATA
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_ID
 
@@ -275,9 +279,11 @@ class ChroniclePostgresTables {
             .addColumns(
                 STUDY_ID,
                 PARTICIPANT_ID,
+                ANDROID_LAST_PING,
                 ANDROID_FIRST_DATE,
                 ANDROID_LAST_DATE,
                 ANDROID_UNIQUE_DATES,
+                IOS_LAST_PING,
                 IOS_FIRST_DATE,
                 IOS_LAST_DATE,
                 IOS_UNIQUE_DATES,
@@ -376,6 +382,16 @@ class ChroniclePostgresTables {
             )
             .primaryKey(JOB_ID)
 
+        @JvmField
+        val UPLOAD_BUFFER = PostgresTableDefinition("upload_buffer")
+            .addColumns(
+                STUDY_ID,
+                PARTICIPANT_ID,
+                USAGE_EVENTS,
+                UPLOADED_AT
+            )
+
+
         init {
             ORGANIZATION_STUDIES
                 .addIndexes(PostgresColumnsIndexDefinition(ORGANIZATION_STUDIES, ORGANIZATION_ID).ifNotExists())
@@ -395,6 +411,13 @@ class ChroniclePostgresTables {
             )
             FILTERED_APPS.addIndexes(
                 PostgresColumnsIndexDefinition(FILTERED_APPS, STUDY_ID).ifNotExists()
+            )
+            UPLOAD_BUFFER.addIndexes(
+                PostgresColumnsIndexDefinition(
+                    UPLOAD_BUFFER,
+                    STUDY_ID,
+                    PARTICIPANT_ID
+                ).ifNotExists()
             )
         }
     }

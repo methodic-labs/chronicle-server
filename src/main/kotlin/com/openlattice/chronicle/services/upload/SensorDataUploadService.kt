@@ -456,6 +456,7 @@ class SensorDataUploadService(
             androidLastDate = currentStats?.androidLastDate,
             androidUniqueDates = currentStats?.androidUniqueDates ?: setOf(),
             iosUniqueDates = uniqueDates,
+            iosLastPing = OffsetDateTime.now(),
             iosFirstDate = minDate,
             iosLastDate = maxDate,
             tudFirstDate = currentStats?.tudFirstDate,
