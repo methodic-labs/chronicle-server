@@ -38,6 +38,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import java.util.*
 import javax.inject.Inject
+import javax.servlet.http.HttpServletRequest
 
 @RestControllerAdvice
 class ChronicleServerExceptionHandler @Inject constructor(override val auditingManager: AuditingManager) :
@@ -47,8 +48,8 @@ class ChronicleServerExceptionHandler @Inject constructor(override val auditingM
         StudyRegistrationNotFoundException::class,
         StudyNotFoundException::class
     )
-    fun handleNotFoundException(e: Exception): ResponseEntity<ErrorsDTO> {
-        logger.error(ERROR_MSG, e)
+    fun handleNotFoundException(req: HttpServletRequest, e: Exception): ResponseEntity<ErrorsDTO> {
+        logException(req, e)
         val principal = Principals.getCurrentSecurablePrincipal()
         val principals = Principals.getCurrentPrincipals()
         val event = when (e) {
@@ -86,8 +87,8 @@ class ChronicleServerExceptionHandler @Inject constructor(override val auditingM
     }
 
     @ExceptionHandler(IllegalArgumentException::class, HttpMessageNotReadableException::class)
-    fun handleIllegalArgumentException(e: Exception): ResponseEntity<ErrorsDTO> {
-        logger.error(ERROR_MSG, e)
+    fun handleIllegalArgumentException(req:HttpServletRequest, e: Exception): ResponseEntity<ErrorsDTO> {
+        logException(req, e)
         return ResponseEntity(
             ErrorsDTO(ApiExceptions.ILLEGAL_ARGUMENT_EXCEPTION, e.message!!),
             HttpStatus.BAD_REQUEST
@@ -95,8 +96,8 @@ class ChronicleServerExceptionHandler @Inject constructor(override val auditingM
     }
 
     @ExceptionHandler(IllegalStateException::class)
-    fun handleIllegalStateException(e: Exception): ResponseEntity<ErrorsDTO> {
-        logger.error(ERROR_MSG, e)
+    fun handleIllegalStateException(req:HttpServletRequest,e: Exception): ResponseEntity<ErrorsDTO> {
+        logException(req, e)
         return ResponseEntity(
             ErrorsDTO(ApiExceptions.ILLEGAL_STATE_EXCEPTION, e.message!!),
             HttpStatus.INTERNAL_SERVER_ERROR
@@ -104,26 +105,29 @@ class ChronicleServerExceptionHandler @Inject constructor(override val auditingM
     }
 
     @ExceptionHandler(AccessDeniedException::class)
-    fun handleUnauthorizedExceptions(e: AccessDeniedException): ResponseEntity<ErrorsDTO> {
-        logger.error(ERROR_MSG, e)
-        return ResponseEntity(
-            ErrorsDTO(ApiExceptions.FORBIDDEN_EXCEPTION, e.message!!),
-            HttpStatus.UNAUTHORIZED
-        )
+    fun handleUnauthorizedExceptions(req: HttpServletRequest, e: AccessDeniedException): ResponseEntity<ErrorsDTO> {
+        logException(req, e)
+            return ResponseEntity(
+                ErrorsDTO(ApiExceptions.FORBIDDEN_EXCEPTION, e.message!!),
+                HttpStatus.UNAUTHORIZED
+            )
     }
 
     @ExceptionHandler(Exception::class)
-    fun handleOtherExceptions(e: Exception): ResponseEntity<ErrorsDTO> {
-        logger.error(ERROR_MSG, e)
+    fun handleOtherExceptions(req: HttpServletRequest, e: Exception): ResponseEntity<ErrorsDTO> {
+        logException(req, e)
         return ResponseEntity(
             ErrorsDTO(ApiExceptions.OTHER_EXCEPTION, e.javaClass.simpleName + ": " + e.message),
             HttpStatus.INTERNAL_SERVER_ERROR
         )
     }
 
+    private fun logException(req: HttpServletRequest, e: Exception) {
+        logger.error("Encountered exception handling request of type ${req.method} to URL ${req.requestURL}", e)
+    }
+
     companion object {
         private val logger = LoggerFactory.getLogger(ChronicleServerExceptionHandler::class.java)
-        private const val ERROR_MSG = ""
     }
 }
 
