@@ -120,6 +120,7 @@ class ChronicleServerExceptionHandler @Inject constructor(override val auditingM
         logException(req, e)
         logger.error("Body that caused error if available: " + IOUtils.toString(req.reader) )
     }
+
     @ExceptionHandler(Exception::class)
     fun handleOtherExceptions(req: HttpServletRequest, e: Exception): ResponseEntity<ErrorsDTO> {
         logException(req, e)

@@ -50,6 +50,7 @@ import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.util.*
 import java.util.concurrent.Executors
+import java.util.concurrent.Semaphore
 import kotlin.math.min
 
 /**
@@ -66,6 +67,7 @@ class AppDataUploadService(
         private val logger = LoggerFactory.getLogger(AppDataUploadService::class.java)
         private val UPLOAD_AT_INDEX = getInsertUsageEventColumnIndex(UPLOADED_AT)
         private val mapper = ObjectMappers.getJsonMapper()
+        private val semaphore = Semaphore(10)
         private const val RS_BATCH_SIZE = 3276
         private val executor: ListeningExecutorService =
             MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(1))
@@ -299,9 +301,10 @@ class AppDataUploadService(
 
 
     override fun moveToEventStorage() {
-        logger.info("Moving data from aurora to event storage.")
-        val queueEntriesByFlavor: MutableMap<PostgresFlavor, MutableList<UsageEventQueueEntry>> = mutableMapOf()
         try {
+            if (!semaphore.tryAcquire()) return
+            logger.info("Moving data from aurora to event storage.")
+            val queueEntriesByFlavor: MutableMap<PostgresFlavor, MutableList<UsageEventQueueEntry>> = mutableMapOf()
             storageResolver.getPlatformStorage().connection.use { platform ->
                 platform.autoCommit = false
                 platform.createStatement().use { stmt ->
@@ -336,6 +339,8 @@ class AppDataUploadService(
         } catch (ex: Exception) {
             logger.info("Unable to move data from aurora to redshift.", ex)
             throw ex
+        } finally {
+            semaphore.release()
         }
     }
 
