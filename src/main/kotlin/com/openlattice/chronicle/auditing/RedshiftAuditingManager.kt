@@ -1,6 +1,7 @@
 package com.openlattice.chronicle.auditing
 
 import com.geekbeast.mappers.mappers.ObjectMappers
+import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.AUDIT_BUFFER
 import com.openlattice.chronicle.storage.RedshiftColumns
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PRINCIPAL_TYPE
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.AUDIT
@@ -11,7 +12,7 @@ import java.sql.PreparedStatement
  *
  * @author Matthew Tamayo-Rios &lt;matthew@openlattice.com&gt;
  */
-class RedshiftAuditingManager(storageResolver: StorageResolver) : AuditingManager {
+class RedshiftAuditingManager(private val storageResolver: StorageResolver) : AuditingManager {
     private val auditStorage = storageResolver.getAuditStorage()
     private val mapper = ObjectMappers.newJsonMapper()
 
@@ -19,7 +20,7 @@ class RedshiftAuditingManager(storageResolver: StorageResolver) : AuditingManage
         private val AUDIT_COLS = listOf(
             RedshiftColumns.ACL_KEY,
             RedshiftColumns.SECURABLE_PRINCIPAL_ID,
-            PRINCIPAL_TYPE,
+            RedshiftColumns.PRINCIPAL_TYPE,
             RedshiftColumns.PRINCIPAL_ID,
             RedshiftColumns.AUDIT_EVENT_TYPE,
             RedshiftColumns.DESCRIPTION,
@@ -42,13 +43,12 @@ class RedshiftAuditingManager(storageResolver: StorageResolver) : AuditingManage
          * 10. timestamp
          */
         private val INSERT_AUDIT_SQL = """
-        INSERT INTO ${AUDIT.name} ($AUDIT_COLS) VALUES (?,?,?,?,?,?,?,?,?,?)   
+        INSERT INTO ${AUDIT_BUFFER.name} ($AUDIT_COLS) VALUES (?,?,?,?,?,?,?,?,?,?)   
         """.trimIndent()
     }
 
     override fun recordEvents(events: List<AuditableEvent>): Int {
-        val (flavor, hds) = auditStorage
-        return hds.connection.use { connection ->
+        return storageResolver.getPlatformStorage().connection.use { connection ->
             connection.prepareStatement(INSERT_AUDIT_SQL).use { ps ->
                 events.forEach { event ->
                     bind(ps, event)

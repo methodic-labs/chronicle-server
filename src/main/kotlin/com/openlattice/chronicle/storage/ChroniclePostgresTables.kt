@@ -2,6 +2,7 @@ package com.openlattice.chronicle.storage
 
 import com.geekbeast.postgres.PostgresColumnsIndexDefinition
 import com.geekbeast.postgres.PostgresTableDefinition
+import com.geekbeast.postgres.RedshiftTableDefinition
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACTIVE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ANDROID_FIRST_DATE
@@ -95,6 +96,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPLOADED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.USAGE_EVENTS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_DATA
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_ID
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.AUDIT_EVENT_TYPE
 
 /**
  *
@@ -391,6 +393,20 @@ class ChroniclePostgresTables {
                 UPLOADED_AT
             )
 
+        @JvmField
+        val AUDIT_BUFFER = PostgresTableDefinition("audit_buffer")
+            .addColumns(
+                RedshiftColumns.ACL_KEY,
+                RedshiftColumns.SECURABLE_PRINCIPAL_ID,
+                RedshiftColumns.PRINCIPAL_TYPE,
+                RedshiftColumns.PRINCIPAL_ID,
+                RedshiftColumns.AUDIT_EVENT_TYPE,
+                RedshiftColumns.STUDY_ID,
+                RedshiftColumns.ORGANIZATION_ID,
+                RedshiftColumns.DESCRIPTION,
+                RedshiftColumns.DATA,
+                RedshiftColumns.TIMESTAMP
+            )
 
         init {
             ORGANIZATION_STUDIES
@@ -417,6 +433,12 @@ class ChroniclePostgresTables {
                     UPLOAD_BUFFER,
                     STUDY_ID,
                     PARTICIPANT_ID
+                ).ifNotExists()
+            )
+            AUDIT_BUFFER.addIndexes(
+                PostgresColumnsIndexDefinition(
+                    AUDIT_BUFFER,
+                    RedshiftColumns.TIMESTAMP
                 ).ifNotExists()
             )
         }
