@@ -33,12 +33,10 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMEZONE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.UPLOADED_AT
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.USERNAME
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.CHRONICLE_USAGE_EVENTS
-import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.buildMultilineInsert
+import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.buildMultilineInsertUsageEvents
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.buildTempTableOfDuplicates
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.createTempTableOfDuplicates
-import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.getAppendTempTableSql
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.getDeleteUsageEventsFromTempTable
-import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.getInsertIntoUsageEventsTableSql
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.getInsertUsageEventColumnIndex
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.util.ChronicleServerUtil
@@ -415,19 +413,9 @@ class AppDataUploadService(
             try {
                 var minEventTimestamp: OffsetDateTime = OffsetDateTime.MAX
                 var maxEventTimestamp: OffsetDateTime = OffsetDateTime.MIN
-//                val tempInsertTableName = "staging_events_${RandomStringUtils.randomAlphanumeric(10)}"
+
                 val studies = data.map { it.studyId.toString() }.toSet()
                 val participants = data.map { it.participantId }.toSet()
-
-//                connection.createStatement().use { stmt ->
-//                    stmt.execute("CREATE TEMPORARY TABLE $tempInsertTableName (LIKE ${CHRONICLE_USAGE_EVENTS.name})")
-//                }
-//
-//                logger.info(
-//                    "Created temporary table $tempInsertTableName for upload with studies = {} and participants = {}",
-//                    studies,
-//                    participants
-//                )
 
                 // There are two prepared statements one for the data array from 0 up to RS_BATCH_SIZE elements.
                 // After RS_BATCH_SIZE elements the insert prepared statement covers all the chunks except the last chunk of RS_BATCH_SIZE elements
@@ -435,7 +423,7 @@ class AppDataUploadService(
 
                 val insertBatchSize = min(data.size, RS_BATCH_SIZE)
                 logger.info("Preparing primary insert statement with batch size $insertBatchSize")
-                val insertSql = buildMultilineInsert(
+                val insertSql = buildMultilineInsertUsageEvents(
                     insertBatchSize,
                     includeOnConflict
                 )
@@ -444,7 +432,7 @@ class AppDataUploadService(
 
                 val finalInsertSql = if (data.size > RS_BATCH_SIZE && dr != 0) {
                     logger.info("Preparing secondary insert statement with batch size $dr")
-                    buildMultilineInsert(
+                    buildMultilineInsertUsageEvents(
                         dr,
                         includeOnConflict
                     )
@@ -456,7 +444,6 @@ class AppDataUploadService(
                     logger.info("Processing sublist of length ${subList.size}")
                     connection.prepareStatement(if (subList.size == insertBatchSize) insertSql else finalInsertSql)
                         .use { ps ->
-//                    .prepareStatement(getInsertIntoUsageEventsTableSql(tempInsertTableName, includeOnConflict))
 
                             //Should only need to set these once for prepared statement.
                             StopWatch(

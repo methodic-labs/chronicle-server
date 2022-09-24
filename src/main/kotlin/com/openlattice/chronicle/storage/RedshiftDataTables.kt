@@ -2,6 +2,7 @@ package com.openlattice.chronicle.storage
 
 import com.geekbeast.postgres.PostgresColumnDefinition
 import com.geekbeast.postgres.RedshiftTableDefinition
+import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.MAX_BIND_PARAMETERS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.ACL_KEY
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APPLICATION_LABEL
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_DATETIME_END
@@ -189,14 +190,47 @@ class RedshiftDataTables {
          * @param numLines The number of lines containing usage events to insert
          * @param includeOnConflict Whether or not it should include the on conflict statement
          */
-        fun buildMultilineInsert(numLines: Int, includeOnConflict: Boolean) : String {
+        fun buildMultilineInsertUsageEvents(numLines: Int, includeOnConflict: Boolean) : String {
+            check( (CHRONICLE_USAGE_EVENTS.columns.size*numLines) < MAX_BIND_PARAMETERS) {
+                "Maximum number of postgres bind parameters would be exceeded with this amount of lines"
+            }
             val columns = CHRONICLE_USAGE_EVENTS.columns.joinToString(",") { it.name }
             val header = "INSERT INTO ${CHRONICLE_USAGE_EVENTS.name} ($columns) VALUES"
             val params = CHRONICLE_USAGE_EVENTS.columns.joinToString(",") { "?" }
             val line = "($params)"
             val lines = (1..numLines).joinToString(",\n" ) { line }
 
-            check( (header.length + (line.length * numLines )) < 16777216 )
+            check( (header.length + (line.length * numLines )) < 16777216 ) {
+                "SQL exceeds maximum length allowed for redshift."
+            }
+
+            return if(includeOnConflict) {
+                "$header\n$lines ON CONFLICT DO NOTHING"
+            } else {
+                "$header\n$lines"
+            }
+        }
+
+        /**
+         * Builds a multi-line prepared statement for inserting batches of audit events into redshift.
+         * @param numLines The number of lines containing usage events to insert
+         * @param includeOnConflict Whether or not it should include the on conflict statement
+         */
+        fun buildMultilineInsertAuditEvents(numLines: Int, includeOnConflict: Boolean) : String {
+            check( (AUDIT.columns.size*numLines) < MAX_BIND_PARAMETERS) {
+                "Maximum number of postgres bind parameters would be exceeded with this amount of lines"
+            }
+
+            val columns = AUDIT.columns.joinToString(",") { it.name }
+            val header = "INSERT INTO ${AUDIT.name} ($columns) VALUES"
+            val params = AUDIT.columns.joinToString(",") { "?" }
+            val line = "($params)"
+            val lines = (1..numLines).joinToString(",\n" ) { line }
+
+            check( (header.length + (line.length * numLines )) < 16777216 ) {
+                "SQL exceeds maximum length allowed for redshift."
+            }
+
             return if(includeOnConflict) {
                 "$header\n$lines ON CONFLICT DO NOTHING"
             } else {

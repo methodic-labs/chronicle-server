@@ -104,7 +104,7 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.AUDIT_EVENT_T
  */
 class ChroniclePostgresTables {
     companion object {
-
+        const val MAX_BIND_PARAMETERS = 32767
         @JvmField
         val NOTIFICATIONS = PostgresTableDefinition("notifications")
             .addColumns(
