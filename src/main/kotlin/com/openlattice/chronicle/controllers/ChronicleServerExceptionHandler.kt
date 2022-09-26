@@ -89,7 +89,15 @@ class ChronicleServerExceptionHandler @Inject constructor(override val auditingM
     }
 
     @ExceptionHandler(IllegalArgumentException::class, HttpMessageNotReadableException::class)
-    fun handleIllegalArgumentException(req:HttpServletRequest, e: Exception): ResponseEntity<ErrorsDTO> {
+    fun handleIllegalArgumentException(req: HttpServletRequest, e: Exception): ResponseEntity<ErrorsDTO> {
+        when (e) {
+            is HttpMessageNotReadableException -> logger.error(
+                "Body that caused error if available: " + IOUtils.toString(
+                    e.httpInputMessage.body
+                )
+            )
+            else -> logger.error("Body is not available.")
+        }
         logException(req, e)
         return ResponseEntity(
             ErrorsDTO(ApiExceptions.ILLEGAL_ARGUMENT_EXCEPTION, e.message!!),
@@ -98,7 +106,7 @@ class ChronicleServerExceptionHandler @Inject constructor(override val auditingM
     }
 
     @ExceptionHandler(IllegalStateException::class)
-    fun handleIllegalStateException(req:HttpServletRequest,e: Exception): ResponseEntity<ErrorsDTO> {
+    fun handleIllegalStateException(req: HttpServletRequest, e: Exception): ResponseEntity<ErrorsDTO> {
         logException(req, e)
         return ResponseEntity(
             ErrorsDTO(ApiExceptions.ILLEGAL_STATE_EXCEPTION, e.message!!),
@@ -109,16 +117,16 @@ class ChronicleServerExceptionHandler @Inject constructor(override val auditingM
     @ExceptionHandler(AccessDeniedException::class)
     fun handleUnauthorizedExceptions(req: HttpServletRequest, e: AccessDeniedException): ResponseEntity<ErrorsDTO> {
         logException(req, e)
-            return ResponseEntity(
-                ErrorsDTO(ApiExceptions.FORBIDDEN_EXCEPTION, e.message!!),
-                HttpStatus.UNAUTHORIZED
-            )
+        return ResponseEntity(
+            ErrorsDTO(ApiExceptions.FORBIDDEN_EXCEPTION, e.message!!),
+            HttpStatus.UNAUTHORIZED
+        )
     }
-
+    
     @ExceptionHandler(JsonMappingException::class)
-    fun handleJsonExceptions( req: HttpServletRequest, e:Exception) {
+    fun handleJsonExceptions(req: HttpServletRequest, e: JsonMappingException) {
+        logger.error("Body that caused error if available: " + e.originalMessage)
         logException(req, e)
-        logger.error("Body that caused error if available: " + IOUtils.toString(req.reader) )
     }
 
     @ExceptionHandler(Exception::class)
