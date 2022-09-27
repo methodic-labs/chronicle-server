@@ -69,7 +69,7 @@ class RedshiftAuditingManager(private val storageResolver: StorageResolver) : Au
     init {
         executor.execute {
             while (true) {
-                StopWatch("Moving audit {} events").use {
+                StopWatch("Moving audit events").use {
                     moveToRedshift()
                 }
                 Thread.sleep(60 * 1000)
