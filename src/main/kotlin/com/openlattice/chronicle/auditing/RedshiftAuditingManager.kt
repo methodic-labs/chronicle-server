@@ -104,7 +104,7 @@ class RedshiftAuditingManager(private val storageResolver: StorageResolver) : Au
                                 PostgresDatatype.TEXT,
                                 PostgresDatatype.TEXT_UUID,
                                 PostgresDatatype.VARCHAR_MAX,
-                                PostgresDatatype.TEXT_128 -> rs.getString(col.name)
+                                PostgresDatatype.TEXT_256 -> rs.getString(col.name)
                                 PostgresDatatype.TIMESTAMPTZ -> rs.getObject(col.name, OffsetDateTime::class.java)
                                 else -> throw InvalidParameterException("Unexpected column datatype ${col.datatype}")
                             }
