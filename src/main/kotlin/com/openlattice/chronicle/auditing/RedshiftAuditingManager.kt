@@ -142,9 +142,10 @@ class RedshiftAuditingManager(private val storageResolver: StorageResolver) : Au
 
                         subList.forEach { auditRow ->
                             auditRow.forEachIndexed { index, elem ->
+                                val pgIndex = index + 1
                                 when (elem) {
-                                    is String -> ps.setString(index, elem)
-                                    is OffsetDateTime -> ps.setObject(index, elem)
+                                    is String -> ps.setString(pgIndex, elem)
+                                    is OffsetDateTime -> ps.setObject(pgIndex, elem)
                                     else -> throw InvalidParameterException("Unexpected class in audit row.")
                                 }
                             }
