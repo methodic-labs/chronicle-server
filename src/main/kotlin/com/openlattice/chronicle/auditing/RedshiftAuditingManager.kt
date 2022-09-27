@@ -55,7 +55,7 @@ class RedshiftAuditingManager(private val storageResolver: StorageResolver) : Au
         """.trimIndent()
 
         private fun getMoveSql(batchSize: Int = 65536) = """
-                DELETE FROM ${AUDIT_BUFFER.name} WHERE (${RedshiftColumns.STUDY_ID.name}, ${RedshiftColumns.PARTICIPANT_ID.name}) IN (
+                DELETE FROM ${AUDIT_BUFFER.name} WHERE ${RedshiftColumns.TIMESTAMP.name} IN (
                     SELECT ${RedshiftColumns.TIMESTAMP.name}
                     FROM ${AUDIT_BUFFER.name}
                     ORDER BY ${RedshiftColumns.TIMESTAMP.name}
