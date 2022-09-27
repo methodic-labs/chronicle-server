@@ -5,12 +5,8 @@ import com.geekbeast.mappers.mappers.ObjectMappers
 import com.geekbeast.postgres.PostgresDatatype
 import com.geekbeast.util.StopWatch
 import com.google.common.util.concurrent.MoreExecutors
-import com.openlattice.chronicle.services.upload.AppDataUploadService
-import com.openlattice.chronicle.storage.ChroniclePostgresTables
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.AUDIT_BUFFER
 import com.openlattice.chronicle.storage.RedshiftColumns
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PRINCIPAL_TYPE
-import com.openlattice.chronicle.storage.RedshiftDataTables
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.AUDIT
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.buildMultilineInsertAuditEvents
 import com.openlattice.chronicle.storage.StorageResolver
@@ -20,7 +16,6 @@ import java.sql.PreparedStatement
 import java.time.OffsetDateTime
 import java.util.concurrent.Executors
 import java.util.concurrent.Semaphore
-import java.util.function.Supplier
 import kotlin.math.min
 
 /**
@@ -36,7 +31,7 @@ class RedshiftAuditingManager(private val storageResolver: StorageResolver) : Au
         private val executor = MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(1))
         private val logger = LoggerFactory.getLogger(RedshiftAuditingManager::class.java)
         private val AUDIT_COLS = AUDIT.columns.joinToString(",") { it.name }
-        private const val RS_BATCH_SIZE = 32767 / 9 // 32767 / AUDIT.columns.size
+        private const val RS_BATCH_SIZE = 32767 / 10 // 32767 / AUDIT.columns.size
 
         /**
          * 1. acl key
@@ -89,13 +84,13 @@ class RedshiftAuditingManager(private val storageResolver: StorageResolver) : Au
         }
     }
 
-    private fun moveToRedshift() :Int {
+    private fun moveToRedshift(): Int {
         val includeOnConflict = (auditStorage.first == PostgresFlavor.VANILLA)
         return try {
             if (!sempahore.tryAcquire()) return 0
             storageResolver.getPlatformStorage().connection.use { connection ->
                 connection.autoCommit = false
-                val auditEvents = mutableListOf<List<Any>>()
+                val auditEvents = mutableListOf<List<Any?>>()
                 connection.createStatement().executeQuery(getMoveSql(1024)).use { rs ->
                     while (rs.next()) {
                         auditEvents.add(AUDIT.columns.map { col ->
@@ -131,14 +126,14 @@ class RedshiftAuditingManager(private val storageResolver: StorageResolver) : Au
                 auditStorage.second.connection.use { auditConnection ->
                     auditConnection.autoCommit = false
                     val insertPs = auditConnection.prepareStatement(insertSql)
-                    var finalPs = insertPs
+                    var finalPs: PreparedStatement? = null
                     auditEvents.chunked(RS_BATCH_SIZE).forEach { subList ->
                         val ps = if (subList.size == insertBatchSize) {
                             insertPs
                         } else {
                             finalPs = auditConnection.prepareStatement(finalInsertSql)
                             finalPs
-                        }
+                        }!!
 
                         subList.forEach { auditRow ->
                             auditRow.forEachIndexed { index, elem ->
@@ -155,8 +150,7 @@ class RedshiftAuditingManager(private val storageResolver: StorageResolver) : Au
                             ps.addBatch()
                     }
 
-                    val movedRows =
-                        insertPs.executeBatch().sum() + (if (finalPs !== insertPs) finalPs.executeUpdate() else 0)
+                    val movedRows = insertPs.executeBatch().sum() + (finalPs?.executeUpdate() ?: 0)
                     logger.info("Moved $movedRows audit events to redshift.")
                     auditConnection.commit()
                     connection.commit()
