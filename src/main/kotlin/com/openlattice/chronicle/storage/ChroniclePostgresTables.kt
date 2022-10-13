@@ -424,8 +424,8 @@ class ChroniclePostgresTables {
                     WHERE ${UPLOAD_TYPE.name} = ${uploadType.name}
                     ORDER BY ${RedshiftColumns.STUDY_ID.name},${RedshiftColumns.PARTICIPANT_ID.name}
                     FOR UPDATE SKIP LOCKED
-                    LIMIT $batchSize
-                    )
+                    LIMIT $batchSize)
+                    AND ${UPLOAD_TYPE.name} = ${uploadType.name}
                 RETURNING *
                 """.trimIndent()
 

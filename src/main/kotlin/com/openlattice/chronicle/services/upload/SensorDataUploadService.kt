@@ -111,7 +111,6 @@ class SensorDataUploadService(
 
     companion object {
         private val logger = LoggerFactory.getLogger(SensorDataUploadService::class.java)
-        private val UPLOAD_TYPE_TEXT = UploadType.IOS.name
         internal val mapper: ObjectMapper = ObjectMappers.newJsonMapper()
 
         private val SENSOR_DATA_COLUMNS = IOS_SENSOR_DATA.columns.joinToString(",") { it.name }
@@ -180,10 +179,6 @@ class SensorDataUploadService(
 
         //Make sure device knows everything was flushed to db successfully.
         return data.size
-    }
-
-    private fun getTotalNumberOfSamples(mappedSensorData: MappedSensorData): Int {
-        return mappedSensorData.data.values.sumOf { samplesList -> samplesList.sumOf { sampleList -> sampleList.size } }
     }
 
     private fun moveToEventStorage() {
