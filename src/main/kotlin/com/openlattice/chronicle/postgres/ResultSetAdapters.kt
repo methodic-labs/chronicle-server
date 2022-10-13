@@ -34,12 +34,11 @@ import com.openlattice.chronicle.notifications.NotificationType
 import com.openlattice.chronicle.organizations.Organization
 import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.participants.ParticipantStats
+import com.openlattice.chronicle.sensorkit.SensorDataSample
 import com.openlattice.chronicle.services.jobs.ChronicleJob
 import com.openlattice.chronicle.services.notifications.Notification
 import com.openlattice.chronicle.services.surveys.IosDeviceUsageByCategory
-import com.openlattice.chronicle.services.upload.UsageEventColumn
-import com.openlattice.chronicle.services.upload.UsageEventQueueEntries
-import com.openlattice.chronicle.services.upload.UsageEventQueueEntry
+import com.openlattice.chronicle.services.upload.*
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACTIVE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ANDROID_FIRST_DATE
@@ -103,6 +102,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJ
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_OBJECT_TYPE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SECURABLE_PRINCIPAL_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SETTINGS
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.SOURCE_DEVICE_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STARTED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STATUS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STORAGE
@@ -122,7 +122,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_UNIQUE_DA
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPDATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPLOADED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.URL
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.USAGE_EVENTS
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPLOAD_DATA
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APPLICATION_LABEL
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_CATEGORY
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_PACKAGE_NAME
@@ -539,9 +539,19 @@ class ResultSetAdapters {
         fun usageEventQueueEntries(rs: ResultSet): UsageEventQueueEntries {
             val studyId = rs.getObject(STUDY_ID.name, UUID::class.java)
             val participantId = rs.getString(PARTICIPANT_ID.name)
-            val data = mapper.readValue<List<Map<String, UsageEventColumn>>>(rs.getString(USAGE_EVENTS.name))
+            val data = mapper.readValue<List<Map<String, UsageEventColumn>>>(rs.getString(UPLOAD_DATA.name))
             val uploadedAt = rs.getObject(UPLOADED_AT.name, OffsetDateTime::class.java)
             return UsageEventQueueEntries(studyId, participantId, data, uploadedAt)
+        }
+
+        @Throws(SQLException::class)
+        fun sensorDataSamples(rs: ResultSet): SensorDataEntries {
+            val studyId = rs.getObject(STUDY_ID.name, UUID::class.java)
+            val participantId = rs.getString(PARTICIPANT_ID.name)
+            val samples = mapper.readValue<List<SensorDataSample>>(rs.getString(UPLOAD_DATA.name))
+            val uploadedAt = rs.getObject(UPLOADED_AT.name, OffsetDateTime::class.java)
+            val sourceDeviceId = rs.getString(SOURCE_DEVICE_ID.name)
+            return SensorDataEntries(studyId, participantId, samples, uploadedAt, sourceDeviceId)
         }
     }
 }

@@ -19,8 +19,10 @@ import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import com.openlattice.chronicle.services.legacy.LegacyEdmResolver
 import com.openlattice.chronicle.services.studies.StudyManager
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.UPLOAD_BUFFER
+import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.getMoveSql
 import com.openlattice.chronicle.storage.PostgresColumns
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.USAGE_EVENTS
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPLOAD_TYPE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPLOAD_DATA
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APPLICATION_LABEL
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_PACKAGE_NAME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.EVENT_TYPE
@@ -70,22 +72,18 @@ class AppDataUploadService(
         private val executor: ListeningExecutorService =
             MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(1))
 
+        /**
+         * 1. study id
+         * 2. participant id
+         * 3. upload data
+         * 4. uploaded at
+         *
+         */
         private val INSERT_USAGE_EVENTS_SQL = """
-                    INSERT INTO ${UPLOAD_BUFFER.name} (${STUDY_ID.name},${PARTICIPANT_ID.name},${USAGE_EVENTS.name}, ${PostgresColumns.UPLOADED_AT.name}) VALUES (?,?,?::jsonb,?)
+                    INSERT INTO ${UPLOAD_BUFFER.name} (${STUDY_ID.name},${PARTICIPANT_ID.name},${UPLOAD_DATA.name}, ${PostgresColumns.UPLOADED_AT.name}, ${UPLOAD_TYPE.name}) 
+                    VALUES (?,?,?::jsonb,?,${UploadType.ANDROID.name})
                 """.trimIndent()
 
-        //                    ON CONFLICT (${STUDY_ID.name}, ${PARTICIPANT_ID.name})
-//                    DO UPDATE SET ${USAGE_EVENTS.name} = ${UPLOAD_BUFFER.name}.${USAGE_EVENTS.name} || EXCLUDED.${USAGE_EVENTS.name}
-        private fun getMoveSql(batchSize: Int = 65536) = """
-                DELETE FROM ${UPLOAD_BUFFER.name} WHERE (${STUDY_ID.name}, ${PARTICIPANT_ID.name}) IN (
-                    SELECT ${STUDY_ID.name},${PARTICIPANT_ID.name} 
-                    FROM ${UPLOAD_BUFFER.name}
-                    ORDER BY ${STUDY_ID.name},${PARTICIPANT_ID.name}
-                    FOR UPDATE SKIP LOCKED
-                    LIMIT $batchSize
-                    )
-                RETURNING *
-                """.trimIndent()
     }
 
     init {
@@ -306,12 +304,12 @@ class AppDataUploadService(
             storageResolver.getPlatformStorage().connection.use { platform ->
                 platform.autoCommit = false
                 platform.createStatement().use { stmt ->
-                    stmt.executeQuery(getMoveSql(128)).use { rs ->
+                    stmt.executeQuery(getMoveSql(128, UploadType.ANDROID)).use { rs ->
                         while (rs.next()) {
                             val usageEventQueueEntries = ResultSetAdapters.usageEventQueueEntries(rs)
                             val (flavor, _) = storageResolver.resolveAndGetFlavor(usageEventQueueEntries.studyId)
                             queueEntriesByFlavor.getOrPut(flavor) { mutableListOf() }
-                                .addAll(usageEventQueueEntries.toEventQueryEntryList())
+                                .addAll(usageEventQueueEntries.toEntryList())
                         }
                     }
                     logger.info("Total number of entries for redshift: ${(queueEntriesByFlavor[PostgresFlavor.REDSHIFT] ?: listOf()).size}")
@@ -657,7 +655,7 @@ data class UsageEventQueueEntries(
     val data: List<Map<String, UsageEventColumn>>,
     val uploadedAt: OffsetDateTime,
 ) {
-    fun toEventQueryEntryList(): List<UsageEventQueueEntry> {
+    fun toEntryList(): List<UsageEventQueueEntry> {
         return data.map { UsageEventQueueEntry(studyId, participantId, it, uploadedAt) }
     }
 }

@@ -424,7 +424,7 @@ class ChronicleServerServicesPod {
 
     @Bean
     fun sensorDataUploadService(): SensorDataUploadService {
-        return SensorDataUploadService(storageResolver, enrollmentManager(), studyService())
+        return SensorDataUploadService(storageResolver, studyService())
     }
 
     @Bean

@@ -27,6 +27,7 @@ import com.openlattice.chronicle.sensorkit.SensorDataSample
 import com.openlattice.chronicle.sensorkit.SensorSetting
 import com.openlattice.chronicle.sensorkit.SensorType
 import com.openlattice.chronicle.services.download.DataDownloadService
+import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import com.openlattice.chronicle.services.enrollment.EnrollmentService
 import com.openlattice.chronicle.services.jobs.ChronicleJob
 import com.openlattice.chronicle.services.jobs.JobService
@@ -95,6 +96,7 @@ class StudyController @Inject constructor(
     val sensorDataUploadService: SensorDataUploadService,
     val appDataUploadService: AppDataUploadService,
     val downloadService: DataDownloadService,
+    val enrollmentManager: EnrollmentManager,
     override val authorizationManager: AuthorizationManager,
     override val auditingManager: AuditingManager,
     val chronicleJobService: JobService,
@@ -422,6 +424,29 @@ class StudyController @Inject constructor(
         @PathVariable(SOURCE_DEVICE_ID) sourceDeviceId: String,
         @RequestBody data: List<SensorDataSample>,
     ): Int {
+        val status = enrollmentManager.getParticipationStatus(studyId, participantId)
+        if (ParticipationStatus.NOT_ENROLLED == status) {
+            logger.warn(
+                "participant is not enrolled, ignoring sensor data upload" + ChronicleServerUtil.STUDY_PARTICIPANT_DATASOURCE,
+                studyId,
+                participantId,
+                sourceDeviceId
+            )
+            //Don't accumulate an infinite amount of data if a participant accidentally leaves their device running.
+            return data.size
+        }
+
+        val deviceEnrolled = enrollmentManager.isKnownDatasource(studyId, participantId, sourceDeviceId)
+
+        if (!deviceEnrolled) {
+            logger.error(
+                "data source not found, ignoring sensor data upload" + ChronicleServerUtil.STUDY_PARTICIPANT_DATASOURCE,
+                studyId,
+                participantId,
+                sourceDeviceId
+            )
+            return data.size
+        }
         return sensorDataUploadService.upload(studyId, participantId, sourceDeviceId, data)
     }
 
