@@ -157,7 +157,7 @@ class SensorDataUploadService(
                     ps.setObject(1, studyId)
                     ps.setString(2, participantId)
                     ps.setString(3, mapper.writeValueAsString(data))
-                    ps.setString(4, SOURCE_DEVICE_ID)
+                    ps.setString(4, sourceDeviceId)
                     ps.executeUpdate()
                 }
             }
