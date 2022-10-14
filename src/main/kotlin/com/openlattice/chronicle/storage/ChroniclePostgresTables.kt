@@ -421,11 +421,11 @@ class ChroniclePostgresTables {
                 DELETE FROM ${UPLOAD_BUFFER.name} WHERE (${RedshiftColumns.STUDY_ID.name}, ${RedshiftColumns.PARTICIPANT_ID.name}) IN (
                     SELECT ${RedshiftColumns.STUDY_ID.name},${RedshiftColumns.PARTICIPANT_ID.name} 
                     FROM ${UPLOAD_BUFFER.name}
-                    WHERE ${UPLOAD_TYPE.name} = ${uploadType.name}
+                    WHERE ${UPLOAD_TYPE.name} = '${uploadType.name}'
                     ORDER BY ${RedshiftColumns.STUDY_ID.name},${RedshiftColumns.PARTICIPANT_ID.name}
                     FOR UPDATE SKIP LOCKED
                     LIMIT $batchSize)
-                    AND ${UPLOAD_TYPE.name} = ${uploadType.name}
+                    AND ${UPLOAD_TYPE.name} = '${uploadType.name}'
                 RETURNING *
                 """.trimIndent()
 

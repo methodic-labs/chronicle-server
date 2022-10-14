@@ -81,7 +81,7 @@ class AppDataUploadService(
          */
         private val INSERT_USAGE_EVENTS_SQL = """
                     INSERT INTO ${UPLOAD_BUFFER.name} (${STUDY_ID.name},${PARTICIPANT_ID.name},${UPLOAD_DATA.name}, ${PostgresColumns.UPLOADED_AT.name}, ${UPLOAD_TYPE.name}) 
-                    VALUES (?,?,?::jsonb,?,${UploadType.Android.name})
+                    VALUES (?,?,?::jsonb,?,'${UploadType.Android.name}')
                 """.trimIndent()
 
     }
