@@ -113,23 +113,11 @@ class SensorDataUploadService(
         private val logger = LoggerFactory.getLogger(SensorDataUploadService::class.java)
         internal val mapper: ObjectMapper = ObjectMappers.newJsonMapper()
 
-        private val SENSOR_DATA_COLUMNS = IOS_SENSOR_DATA.columns.joinToString(",") { it.name }
-        private val SENSOR_DATA_COLS_BIND = IOS_SENSOR_DATA.columns.joinToString(",") { "?" }
-
         private val semaphore = Semaphore(10)
         private val RS_BATCH_SIZE = (65536 / IOS_SENSOR_DATA.columns.size)
         private val executor: ListeningExecutorService =
             MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(1))
 
-
-        // TODO: specify bind order
-        /**
-         * PreparedStatement bind order
-         * 1)
-         */
-        private val INSERT_SENSOR_DATA_SQL = """
-            INSERT INTO ${IOS_SENSOR_DATA.name} ($SENSOR_DATA_COLUMNS) VALUES ($SENSOR_DATA_COLS_BIND)
-        """.trimIndent()
 
         /**
          * 1. study id
@@ -184,7 +172,7 @@ class SensorDataUploadService(
     private fun moveToEventStorage() {
         try {
             if (!semaphore.tryAcquire()) return
-            logger.info("Moving data from aurora to event storage.")
+            logger.info("Moving ios data from aurora to event storage.")
             val queueEntriesByFlavor: MutableMap<PostgresFlavor, MutableList<SensorDataRow>> = mutableMapOf()
             storageResolver.getPlatformStorage().connection.use { platform ->
                 platform.autoCommit = false
@@ -219,7 +207,7 @@ class SensorDataUploadService(
                 platform.commit()
                 platform.autoCommit = true
             }
-            logger.info("Successfully moved data to event storage.")
+            logger.info("Successfully moved ios data to event storage.")
         } catch (ex: Exception) {
             logger.info("Unable to move data from aurora to redshift.", ex)
             throw ex
