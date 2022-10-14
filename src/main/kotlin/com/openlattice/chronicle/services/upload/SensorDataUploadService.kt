@@ -128,7 +128,7 @@ class SensorDataUploadService(
          */
         private val INSERT_UPLOAD_BUFFER_SQL = """
             INSERT INTO ${ChroniclePostgresTables.UPLOAD_BUFFER.name} (${STUDY_ID.name},${PARTICIPANT_ID.name},${UPLOAD_DATA.name}, ${UPLOADED_AT.name}, ${UPLOAD_TYPE.name}, ${SOURCE_DEVICE_ID.name}) 
-            VALUES (?,?,?::jsonb,now(),${UploadType.Ios.name},?)
+            VALUES (?,?,?::jsonb,now(),'${UploadType.Ios.name}',?)
         """.trimIndent()
     }
 
