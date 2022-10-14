@@ -2,7 +2,7 @@ package com.openlattice.chronicle.storage
 
 import com.geekbeast.postgres.PostgresColumnsIndexDefinition
 import com.geekbeast.postgres.PostgresTableDefinition
-import com.geekbeast.postgres.RedshiftTableDefinition
+import com.openlattice.chronicle.services.upload.UploadType
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACTIVE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ANDROID_FIRST_DATE
@@ -93,10 +93,10 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPDATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPGRADE_CLASS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPGRADE_STATUS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPLOADED_AT
-import com.openlattice.chronicle.storage.PostgresColumns.Companion.USAGE_EVENTS
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPLOAD_TYPE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPLOAD_DATA
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_DATA
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.USER_ID
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.AUDIT_EVENT_TYPE
 
 /**
  *
@@ -105,6 +105,7 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.AUDIT_EVENT_T
 class ChroniclePostgresTables {
     companion object {
         const val MAX_BIND_PARAMETERS = 32767
+
         @JvmField
         val NOTIFICATIONS = PostgresTableDefinition("notifications")
             .addColumns(
@@ -389,8 +390,10 @@ class ChroniclePostgresTables {
             .addColumns(
                 STUDY_ID,
                 PARTICIPANT_ID,
-                USAGE_EVENTS,
-                UPLOADED_AT
+                UPLOAD_DATA,
+                UPLOADED_AT,
+                UPLOAD_TYPE,
+                SOURCE_DEVICE_ID
             )
 
         @JvmField
@@ -407,6 +410,24 @@ class ChroniclePostgresTables {
                 RedshiftColumns.DATA,
                 RedshiftColumns.TIMESTAMP
             )
+
+        /**
+         * Constructs the move SQL.
+         *
+         * TODO: Make this a prepared statement.s
+         */
+        @JvmStatic
+        fun getMoveSql(batchSize: Int = 65536, uploadType: UploadType) = """
+                DELETE FROM ${UPLOAD_BUFFER.name} WHERE (${RedshiftColumns.STUDY_ID.name}, ${RedshiftColumns.PARTICIPANT_ID.name}) IN (
+                    SELECT ${RedshiftColumns.STUDY_ID.name},${RedshiftColumns.PARTICIPANT_ID.name} 
+                    FROM ${UPLOAD_BUFFER.name}
+                    WHERE ${UPLOAD_TYPE.name} = ${uploadType.name}
+                    ORDER BY ${RedshiftColumns.STUDY_ID.name},${RedshiftColumns.PARTICIPANT_ID.name}
+                    FOR UPDATE SKIP LOCKED
+                    LIMIT $batchSize)
+                    AND ${UPLOAD_TYPE.name} = ${uploadType.name}
+                RETURNING *
+                """.trimIndent()
 
         init {
             ORGANIZATION_STUDIES

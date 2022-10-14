@@ -212,6 +212,32 @@ class RedshiftDataTables {
         }
 
         /**
+         * Builds a multi-line prepared statement for inserting batches of data into redshift.
+         * @param numLines The number of lines containing usage events to insert
+         * @param includeOnConflict Whether or not it should include the on conflict statement
+         */
+        fun buildMultilineInsertSensorEvents(numLines: Int, includeOnConflict: Boolean) : String {
+            check( (IOS_SENSOR_DATA.columns.size*numLines) < MAX_BIND_PARAMETERS) {
+                "Maximum number of postgres bind parameters would be exceeded with this amount of lines"
+            }
+            val columns = IOS_SENSOR_DATA.columns.joinToString(",") { it.name }
+            val header = "INSERT INTO ${IOS_SENSOR_DATA.name} ($columns) VALUES"
+            val params = IOS_SENSOR_DATA.columns.joinToString(",") { "?" }
+            val line = "($params)"
+            val lines = (1..numLines).joinToString(",\n" ) { line }
+
+            check( (header.length + (line.length * numLines )) < 16777216 ) {
+                "SQL exceeds maximum length allowed for redshift."
+            }
+
+            return if(includeOnConflict) {
+                "$header\n$lines ON CONFLICT DO NOTHING"
+            } else {
+                "$header\n$lines"
+            }
+        }
+
+        /**
          * Builds a multi-line prepared statement for inserting batches of audit events into redshift.
          * @param numLines The number of lines containing usage events to insert
          * @param includeOnConflict Whether or not it should include the on conflict statement
