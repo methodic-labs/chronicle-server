@@ -140,7 +140,7 @@ class SensorDataUploadService(
          */
         private val INSERT_UPLOAD_BUFFER_SQL = """
             INSERT INTO ${ChroniclePostgresTables.UPLOAD_BUFFER.name} (${STUDY_ID.name},${PARTICIPANT_ID.name},${UPLOAD_DATA.name}, ${UPLOADED_AT.name}, ${UPLOAD_TYPE.name}, ${SOURCE_DEVICE_ID.name}) 
-            VALUES (?,?,?::jsonb,now(),?,${UploadType.IOS.name},?)
+            VALUES (?,?,?::jsonb,now(),?,${UploadType.Ios.name},?)
         """.trimIndent()
     }
 
@@ -189,7 +189,7 @@ class SensorDataUploadService(
             storageResolver.getPlatformStorage().connection.use { platform ->
                 platform.autoCommit = false
                 platform.createStatement().use { stmt ->
-                    stmt.executeQuery(getMoveSql(128, UploadType.IOS)).use { rs ->
+                    stmt.executeQuery(getMoveSql(128, UploadType.Ios)).use { rs ->
                         while (rs.next()) {
                             val sensorDataSamples = ResultSetAdapters.sensorDataSamples(rs)
                             val (flavor, _) = storageResolver.resolveAndGetFlavor(sensorDataSamples.studyId)
