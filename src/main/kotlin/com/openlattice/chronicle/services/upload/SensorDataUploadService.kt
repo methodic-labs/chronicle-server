@@ -114,7 +114,7 @@ class SensorDataUploadService(
         internal val mapper: ObjectMapper = ObjectMappers.newJsonMapper()
 
         private val semaphore = Semaphore(10)
-        private val RS_BATCH_SIZE = (65536 / IOS_SENSOR_DATA.columns.size)
+        private val RS_BATCH_SIZE = (32767 / IOS_SENSOR_DATA.columns.size)
         private val executor: ListeningExecutorService =
             MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(1))
 
@@ -231,7 +231,7 @@ class SensorDataUploadService(
                 val insertBatchSize = min(data.size, RS_BATCH_SIZE)
 
                 logger.info("Preparing primary insert statement (sensor data) with batch size $insertBatchSize")
-                val insertSql = RedshiftDataTables.buildMultilineInsertUsageEvents(
+                val insertSql = buildMultilineInsertSensorEvents(
                     insertBatchSize,
                     includeOnConflict
                 )
@@ -261,7 +261,7 @@ class SensorDataUploadService(
                             val sourceDeviceId = it.sourceDeviceId
 
                             logger.info(
-                                "Moving ${data.size} items to even for storage (ios) " + ChronicleServerUtil.STUDY_PARTICIPANT_DATASOURCE,
+                                "Moving ${sensorDataRows.size} items to even for storage (ios) " + ChronicleServerUtil.STUDY_PARTICIPANT_DATASOURCE,
                                 studyId,
                                 participantId,
                                 sourceDeviceId
