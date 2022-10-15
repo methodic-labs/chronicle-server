@@ -188,6 +188,7 @@ class SensorDataUploadService(
 
                     logger.info("Total number of entries for redshift: ${(queueEntriesByFlavor[PostgresFlavor.REDSHIFT] ?: listOf()).size}")
                     logger.info("Total number of entries for postgres: ${(queueEntriesByFlavor[PostgresFlavor.VANILLA] ?: listOf()).size}")
+
                     queueEntriesByFlavor.forEach { (postgresFlavor, sensorDataEntries) ->
                         if (sensorDataEntries.isEmpty()) return@forEach
                         when (postgresFlavor) {
@@ -249,19 +250,22 @@ class SensorDataUploadService(
 
                 val s = try {
                     data.chunked(insertBatchSize).forEach { sensorDataRows ->
+                        var offset = 0
                         val ps = if (insertBatchSize == sensorDataRows.size) {
                             pps
                         } else {
                             fps
                         }
-                        var offset = 0
+
+                        logger.info("Writing row of size ${sensorDataRows.size} to ios event storage.")
+
                         data.forEach {
                             val studyId = it.studyId
                             val participantId = it.participantId
                             val sourceDeviceId = it.sourceDeviceId
 
-                            logger.info(
-                                "Moving ${sensorDataRows.size} items to even for storage (ios) " + ChronicleServerUtil.STUDY_PARTICIPANT_DATASOURCE,
+                            logger.trace(
+                                "Writing row to storage (ios) " + ChronicleServerUtil.STUDY_PARTICIPANT_DATASOURCE,
                                 studyId,
                                 participantId,
                                 sourceDeviceId
@@ -608,14 +612,6 @@ internal data class SensorDataColumn(
     val colIndex: Int = RedshiftDataTables.getInsertSensorDataColumnIndex(col)
 }
 
-internal data class MappedSensorData(
-    val studyId: UUID,
-    val participantId: String,
-    val data: Map<SensorType, List<List<SensorDataColumn>>>,
-    val uploadedAt: OffsetDateTime,
-    val sourceDeviceId: String,
-)
-
 internal data class SensorDataRow(
     val studyId: UUID,
     val participantId: String,
@@ -645,9 +641,5 @@ data class SensorDataEntries(
                 )
             }
         }
-    }
-
-    internal fun toMappedData(): MappedSensorData {
-        return MappedSensorData(studyId, participantId, mapSensorDataToStorage(data), uploadedAt, sourceDeviceId)
     }
 }
