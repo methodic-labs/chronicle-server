@@ -20,6 +20,7 @@ import com.openlattice.chronicle.sensorkit.SensorSourceDevice
 import com.openlattice.chronicle.sensorkit.SensorType
 import com.openlattice.chronicle.services.studies.StudyService
 import com.openlattice.chronicle.storage.ChroniclePostgresTables
+import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.MAX_BIND_PARAMETERS
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.getMoveSql
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SOURCE_DEVICE_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPLOADED_AT
@@ -114,7 +115,7 @@ class SensorDataUploadService(
         internal val mapper: ObjectMapper = ObjectMappers.newJsonMapper()
 
         private val semaphore = Semaphore(10)
-        private val RS_BATCH_SIZE = (32767 / IOS_SENSOR_DATA.columns.size)
+        private val RS_BATCH_SIZE = (MAX_BIND_PARAMETERS / IOS_SENSOR_DATA.columns.size)
         private val executor: ListeningExecutorService =
             MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(1))
 
@@ -259,7 +260,7 @@ class SensorDataUploadService(
 
                         logger.info("Writing row of size ${sensorDataRows.size} to ios event storage.")
 
-                        data.forEach {
+                        sensorDataRows.forEach {
                             val studyId = it.studyId
                             val participantId = it.participantId
                             val sourceDeviceId = it.sourceDeviceId
