@@ -309,11 +309,7 @@ class TimeUseDiaryService(
         val prevDayStartTime = responsesByCode.getValue(TimeUseDiaryQuestionCodes.DAY_START_TIME).response.first() //HH:MM format
         val prevDayEndTime= responsesByCode.getValue(TimeUseDiaryQuestionCodes.DAY_END_TIME).response.first()
 
-        val todayWakeUpTime = if( responsesByCode.containsKey(TimeUseDiaryQuestionCodes.TODAY_WAKEUP_TIME) ) {
-            responsesByCode.getValue(TimeUseDiaryQuestionCodes.TODAY_WAKEUP_TIME).response.first()
-        } else {
-            OffsetDateTime.MIN.toString()
-        }
+        val todayWakeUpTime = responsesByCode.get(TimeUseDiaryQuestionCodes.TODAY_WAKEUP_TIME)?.response?.first()
 
         val prevDayStartDateTime = LocalTime.parse(prevDayStartTime).atDate(LocalDate.now().minusDays(1))
         val prevDayEndDateTime = LocalTime.parse(prevDayEndTime).atDate(LocalDate.now().minusDays(1))
@@ -322,7 +318,7 @@ class TimeUseDiaryService(
         val timeRangeMapping = mapOf(
             TimeUseDiaryColumTitles.WAKE_UP_YESTERDAY to prevDayStartDateTime.toLocalTime().format(formatter),
             TimeUseDiaryColumTitles.BED_TIME_YESTERDAY to prevDayEndDateTime.toLocalTime().format(formatter),
-            TimeUseDiaryColumTitles.WAKE_UP_TODAY to todayWakeUpDateTime.toLocalTime().format(formatter),
+            TimeUseDiaryColumTitles.WAKE_UP_TODAY to (todayWakeUpDateTime?.toLocalTime()?.format(formatter) ?: ""),
             TimeUseDiaryColumTitles.DAY_TIME_HOURS to ChronoUnit.HOURS.between(prevDayStartDateTime, prevDayEndDateTime),
             TimeUseDiaryColumTitles.SLEEP_HOURS to ChronoUnit.HOURS.between(prevDayEndDateTime, todayWakeUpDateTime)
         )
