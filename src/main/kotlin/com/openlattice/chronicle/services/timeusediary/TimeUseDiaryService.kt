@@ -308,7 +308,12 @@ class TimeUseDiaryService(
 
         val prevDayStartTime = responsesByCode.getValue(TimeUseDiaryQuestionCodes.DAY_START_TIME).response.first() //HH:MM format
         val prevDayEndTime= responsesByCode.getValue(TimeUseDiaryQuestionCodes.DAY_END_TIME).response.first()
-        val todayWakeUpTime = responsesByCode.getValue(TimeUseDiaryQuestionCodes.TODAY_WAKEUP_TIME).response.first()
+
+        val todayWakeUpTime = if( responsesByCode.containsKey(TimeUseDiaryQuestionCodes.TODAY_WAKEUP_TIME) ) {
+            responsesByCode.getValue(TimeUseDiaryQuestionCodes.TODAY_WAKEUP_TIME).response.first()
+        } else {
+            OffsetDateTime.MIN.toString()
+        }
 
         val prevDayStartDateTime = LocalTime.parse(prevDayStartTime).atDate(LocalDate.now().minusDays(1))
         val prevDayEndDateTime = LocalTime.parse(prevDayEndTime).atDate(LocalDate.now().minusDays(1))
