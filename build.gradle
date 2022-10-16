@@ -75,7 +75,7 @@ if (CS_XMS == 'null' || CS_XMS == null || CS_XMS == "") {
 }
 
 if (CS_XMX == 'null' || CS_XMX == null || CS_XMX == "") {
-    CS_XMX = '-Xms4g'
+    CS_XMX = '-Xmx4g'
 }
 
 if (CS_ARGS == 'null' || CS_ARGS == null || CS_ARGS == "") {
