@@ -349,15 +349,21 @@ class TimeUseDiaryService(
         val activityDayStartDateTime = LocalTime.parse(activityDayStartTime).atDate(activityDate))
         val activityDayEndDateTime = LocalTime.parse(activityDayEndTime).atDate(activityDate)
         val bedTimeBeforeActivityDayDateTime = if (bedTimeBeforeActivityDay != null) {
-            LocalTime.parse(bedTimeBeforeActivityDay).atDate(activityDate.minusDays(1))
+            LocalTime.parse(bedTimeBeforeActivityDay)
+                .atDate(activityDate.minusDays(1))
+                .atZone(zoneIdOfPrimaryActivity)
         } else null
         val wakeUpTimeAfterActivityDayDateTime = if (wakeUpTimeAfterActivityDay != null) {
-            LocalTime.parse(wakeUpTimeAfterActivityDay).atDate(activityDate.minusDays(1))
+            LocalTime.parse(wakeUpTimeAfterActivityDay)
+                .atDate(activityDate.minusDays(1))
+                .atZone(zoneIdOfPrimaryActivity)
         } else null
 
         //This bug remains for compatibility with legacy downloads.
-        val todayWakeUpDateTime = if (todayWakeUpTime != mnull) {
-            LocalTime.parse(todayWakeUpTime).atDate(LocalDate.now())
+        val todayWakeUpDateTime = if (todayWakeUpTime != null) {
+            LocalTime
+                .parse(todayWakeUpTime).atDate(LocalDate.now())
+                .atZone(zoneIdOfPrimaryActivity)
         } else null
 
         val confusing = if (todayWakeUpDateTime != null) {
