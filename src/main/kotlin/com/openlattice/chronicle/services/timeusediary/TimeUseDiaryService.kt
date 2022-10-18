@@ -310,9 +310,13 @@ class TimeUseDiaryService(
     private fun getNightTimeDataColumnMapping(rs: ResultSet): List<Map<String, Any>> {
         val defaultColumnMapping = getDefaultColumnMapping(rs)
 
-
         val responses: List<TimeUseDiaryResponse> = mapper.readValue(rs.getString(SUBMISSION.name))
         val responsesByCode = responses.associateBy { it.code }
+
+        val zoneIdOfPrimaryActivity =
+            responsesByCode.getValue(TimeUseDiaryQuestionCodes.PRIMARY_ACTIVITY).startDateTime.toZonedDateTime().zone
+        val activityDate =
+            LocalDate.parse(responsesByCode.getValue(TimeUseDiaryQuestionCodes.ACTIVITY_DATE).response.first())
 
         val activityDayStartTime =
             responsesByCode.getValue(TimeUseDiaryQuestionCodes.DAY_START_TIME).response.first() //HH:MM format
@@ -342,15 +346,21 @@ class TimeUseDiaryService(
          * time shifts happens.
          */
 
-        val activityDayStartDateTime = LocalTime.parse(activityDayStartTime).atDate(LocalDate.now().minusDays(1))
-        val activityDayEndDateTime = LocalTime.parse(activityDayEndTime).atDate(LocalDate.now().minusDays(1))
-        val bedTimeBeforeActivityDayDateTime =
-            LocalTime.parse(bedTimeBeforeActivityDay).atDate(LocalDate.now().minusDays(1))
-        val wakeUpTimeAfterActivityDayDateTime =
-            LocalTime.parse(wakeUpTimeAfterActivityDay).atDate(LocalDate.now().minusDays(1))
-        val todayWakeUpDateTime = LocalTime.parse(todayWakeUpTime).atDate(LocalDate.now())
+        val activityDayStartDateTime = LocalTime.parse(activityDayStartTime).atDate(activityDate))
+        val activityDayEndDateTime = LocalTime.parse(activityDayEndTime).atDate(activityDate)
+        val bedTimeBeforeActivityDayDateTime = if (bedTimeBeforeActivityDay != null) {
+            LocalTime.parse(bedTimeBeforeActivityDay).atDate(activityDate.minusDays(1))
+        } else null
+        val wakeUpTimeAfterActivityDayDateTime = if (wakeUpTimeAfterActivityDay != null) {
+            LocalTime.parse(wakeUpTimeAfterActivityDay).atDate(activityDate.minusDays(1))
+        } else null
 
-        val confusing = if (todayWakeUpTime != null) {
+        //This bug remains for compatibility with legacy downloads.
+        val todayWakeUpDateTime = if (todayWakeUpTime != mnull) {
+            LocalTime.parse(todayWakeUpTime).atDate(LocalDate.now())
+        } else null
+
+        val confusing = if (todayWakeUpDateTime != null) {
             mapOf(
                 TimeUseDiaryColumTitles.WAKE_UP_TODAY to (todayWakeUpDateTime?.toLocalTime()?.format(formatter) ?: ""),
                 TimeUseDiaryColumTitles.SLEEP_HOURS to ChronoUnit.HOURS.between(
@@ -359,7 +369,7 @@ class TimeUseDiaryService(
                 ),
             )
         } else {
-            if (bedTimeBeforeActivityDay != null) {
+            if (bedTimeBeforeActivityDayDateTime != null) {
                 mapOf(
                     TimeUseDiaryColumTitles.BEDTIME_AFTER_ACTIVITY_DAY to (bedTimeBeforeActivityDayDateTime?.toLocalTime()
                         ?.format(formatter) ?: ""),
