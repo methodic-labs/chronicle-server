@@ -288,7 +288,7 @@ class TimeUseDiaryService(
             val unmappedColumnTitles: MutableSet<String> = mutableSetOf()
 
             val timeRangeColumnMapping = additionalColumTitles.associateWith { title ->
-                val questionCode = TimeUseDiaryColumTitles.columnTitleToQuestionCodeMap.getValue(title)
+                val questionCode = TimeUseDiaryColumTitles.columnTitleToQuestionCodeMap[title] ?: return@associateWith "UNMAPPED"
                 if (!responsesByCode.containsKey(questionCode)) {
                     unmappedColumnTitles.add(title)
                     setOf()
@@ -340,7 +340,7 @@ class TimeUseDiaryService(
         }
 
         //Get the actual date times, by parsing out the times at the current date.
-        
+
         val activityDayStartDateTime = LocalTime
             .parse(activityDayStartTime)
             .atDate(activityDate)
@@ -409,9 +409,14 @@ class TimeUseDiaryService(
         ) + sleepHoursMapping
 
         val additionalColumTitles =
-            TimeUseDiaryDownloadDataType.NightTime.downloadColumnTitles - defaultColumnMapping.keys - timeRangeMapping.keys
+            TimeUseDiaryDownloadDataType.NightTime.downloadColumnTitles - defaultColumnMapping.keys - timeRangeMapping.keys - if (todayWakeUpTime == null) {
+                setOf(TimeUseDiaryColumTitles.WAKE_UP_TODAY)
+            } else {
+                setOf()
+            }
+
         val additionalColumnMapping = additionalColumTitles.associateWith { title ->
-            val code = TimeUseDiaryColumTitles.columnTitleToQuestionCodeMap.getValue(title)
+            val code = TimeUseDiaryColumTitles.columnTitleToQuestionCodeMap[title] ?: return@associateWith setOf("UNMAPPED")
             responsesByCode[code]?.response ?: setOf()
         }
 
