@@ -333,7 +333,7 @@ class TimeUseDiaryService(
 
         //Make sure we got a valid combination
         check((todayWakeUpTime != null) || ((bedTimeBeforeActivityDay != null) xor (wakeUpTimeAfterActivityDay != null))) {
-            "Either bed time before activity day or wake up time after activitry day must be provide, but not both"
+            "Either bed time before activity day or wake up time after activity day must be provided, but not both"
         }
 
         //Get the actual date times, by parsing out the times at the current date.
@@ -355,7 +355,7 @@ class TimeUseDiaryService(
         } else null
         val wakeUpTimeAfterActivityDayDateTime = if (wakeUpTimeAfterActivityDay != null) {
             LocalTime.parse(wakeUpTimeAfterActivityDay)
-                .atDate(activityDate.minusDays(1))
+                .atDate(activityDate.plusDays(1))
                 .atZone(zoneIdOfPrimaryActivity)
         } else null
 
@@ -366,9 +366,9 @@ class TimeUseDiaryService(
                 .atZone(zoneIdOfPrimaryActivity)
         } else null
 
-        val confusing = if (todayWakeUpDateTime != null) {
+        val sleepColumnsSelection = if (todayWakeUpDateTime != null) {
             mapOf(
-                TimeUseDiaryColumTitles.WAKE_UP_TODAY to (todayWakeUpDateTime?.toLocalTime()?.format(formatter) ?: ""),
+                TimeUseDiaryColumTitles.WAKE_UP_TODAY to (todayWakeUpDateTime.toLocalTime()?.format(formatter) ?: ""),
                 TimeUseDiaryColumTitles.SLEEP_HOURS to ChronoUnit.HOURS.between(
                     activityDayEndDateTime,
                     todayWakeUpDateTime
@@ -404,7 +404,7 @@ class TimeUseDiaryService(
                 activityDayEndDateTime
             ),
             TimeUseDiaryColumTitles.SLEEP_HOURS to ChronoUnit.HOURS.between(activityDayEndDateTime, todayWakeUpDateTime)
-        ) + confusing
+        ) + sleepColumnsSelection
 
         val additionalColumTitles =
             TimeUseDiaryDownloadDataType.NightTime.downloadColumnTitles - defaultColumnMapping.keys - timeRangeMapping.keys
