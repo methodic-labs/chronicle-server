@@ -367,7 +367,7 @@ class TimeUseDiaryService(
                 .atZone(zoneIdOfPrimaryActivity)
         } else null
 
-        val sleepColumnsSelection = if (todayWakeUpDateTime != null) {
+        val sleepHoursMapping = if (todayWakeUpDateTime != null) {
             mapOf(
                 TimeUseDiaryColumTitles.WAKE_UP_TODAY to (todayWakeUpDateTime.toLocalTime()?.format(formatter) ?: ""),
                 TimeUseDiaryColumTitles.SLEEP_HOURS to ChronoUnit.HOURS.between(
@@ -406,8 +406,7 @@ class TimeUseDiaryService(
                 activityDayStartDateTime,
                 activityDayEndDateTime
             ),
-            TimeUseDiaryColumTitles.SLEEP_HOURS to ChronoUnit.HOURS.between(activityDayEndDateTime, todayWakeUpDateTime)
-        ) + sleepColumnsSelection
+        ) + sleepHoursMapping
 
         val additionalColumTitles =
             TimeUseDiaryDownloadDataType.NightTime.downloadColumnTitles - defaultColumnMapping.keys - timeRangeMapping.keys
