@@ -314,7 +314,7 @@ class TimeUseDiaryService(
         val responsesByCode = responses.associateBy { it.code }
 
         val zoneIdOfPrimaryActivity =
-            responsesByCode.getValue(TimeUseDiaryQuestionCodes.PRIMARY_ACTIVITY).startDateTime.toZonedDateTime().zone
+            responsesByCode.getValue(TimeUseDiaryQuestionCodes.PRIMARY_ACTIVITY).startDateTime!!.toZonedDateTime().zone
         val activityDate =
             LocalDate.parse(responsesByCode.getValue(TimeUseDiaryQuestionCodes.ACTIVITY_DATE).response.first())
 
@@ -332,21 +332,16 @@ class TimeUseDiaryService(
         val todayWakeUpTime = responsesByCode[TimeUseDiaryQuestionCodes.TODAY_WAKEUP_TIME]?.response?.first()
 
         //Make sure we got a valid combination
-        check((todayWakeUpTime != null) || ((bedTimeBeforeActivityDay != null) xor (wakeUpTimeAfterActivityDay != null))) {
+        check(
+            ((bedTimeBeforeActivityDay == null) && (wakeUpTimeAfterActivityDay == null) && (todayWakeUpTime != null))
+                    || ((bedTimeBeforeActivityDay != null) xor (wakeUpTimeAfterActivityDay != null))
+        ) {
             "Either bed time before activity day or wake up time after activity day must be provided, but not both"
         }
 
         //Get the actual date times, by parsing out the times at the current date.
-        /**
-         * TODO: There are multiple bugs here.
-         * 1. We use LocalDate which is UTC to generate date times. This means that for certain time zones things
-         * may appear to be across different days. Related to bug #2 when timezones shift they never shift in UTC so
-         * the parsed local dates will be invalid.
-         * 2. We do hours in between two UTC dates. This is guaranteed to break when daylight savings or other similar
-         * time shifts happens.
-         */
-
-        val activityDayStartDateTime = LocalTime.parse(activityDayStartTime).atDate(activityDate))
+        
+        val activityDayStartDateTime = LocalTime.parse(activityDayStartTime).atDate(activityDate)
         val activityDayEndDateTime = LocalTime.parse(activityDayEndTime).atDate(activityDate)
         val bedTimeBeforeActivityDayDateTime = if (bedTimeBeforeActivityDay != null) {
             LocalTime.parse(bedTimeBeforeActivityDay)
@@ -377,14 +372,14 @@ class TimeUseDiaryService(
         } else {
             if (bedTimeBeforeActivityDayDateTime != null) {
                 mapOf(
-                    TimeUseDiaryColumTitles.BEDTIME_AFTER_ACTIVITY_DAY to (bedTimeBeforeActivityDayDateTime?.toLocalTime()
+                    TimeUseDiaryColumTitles.BEDTIME_AFTER_ACTIVITY_DAY to (bedTimeBeforeActivityDayDateTime.toLocalTime()
                         ?.format(formatter) ?: ""),
                     TimeUseDiaryColumTitles.SLEEP_HOURS to ChronoUnit.HOURS.between(
                         bedTimeBeforeActivityDayDateTime,
                         activityDayStartDateTime
                     )
                 )
-            } else {
+            } else if (wakeUpTimeAfterActivityDayDateTime != null) {
                 mapOf(
                     TimeUseDiaryColumTitles.WAKE_UP_TIME_AFTER_ACTIVITY_DAY to (wakeUpTimeAfterActivityDayDateTime?.toLocalTime()
                         ?.format(formatter) ?: ""),
@@ -393,6 +388,8 @@ class TimeUseDiaryService(
                         wakeUpTimeAfterActivityDayDateTime
                     )
                 )
+            } else {
+                throw IllegalStateException("This should never happen due null checks above, but is needed to make compiler happy.")
             }
         }
 
