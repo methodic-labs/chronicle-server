@@ -341,8 +341,14 @@ class TimeUseDiaryService(
 
         //Get the actual date times, by parsing out the times at the current date.
         
-        val activityDayStartDateTime = LocalTime.parse(activityDayStartTime).atDate(activityDate)
-        val activityDayEndDateTime = LocalTime.parse(activityDayEndTime).atDate(activityDate)
+        val activityDayStartDateTime = LocalTime
+            .parse(activityDayStartTime)
+            .atDate(activityDate)
+            .atZone(zoneIdOfPrimaryActivity)
+        val activityDayEndDateTime = LocalTime
+            .parse(activityDayEndTime)
+            .atDate(activityDate)
+            .atZone(zoneIdOfPrimaryActivity)
         val bedTimeBeforeActivityDayDateTime = if (bedTimeBeforeActivityDay != null) {
             LocalTime.parse(bedTimeBeforeActivityDay)
                 .atDate(activityDate.minusDays(1))
