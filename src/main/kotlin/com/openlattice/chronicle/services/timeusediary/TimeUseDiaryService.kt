@@ -239,10 +239,10 @@ class TimeUseDiaryService(
 
     private fun getDefaultColumnMapping(rs: ResultSet): Map<String, Any> {
         return mapOf(
-            TimeUseDiaryColumTitles.PARTICIPANT_ID to rs.getString(PARTICIPANT_ID.name),
-            TimeUseDiaryColumTitles.TIMESTAMP to rs.getObject(SUBMISSION_DATE.name, OffsetDateTime::class.java),
-            TimeUseDiaryColumTitles.STUDY_ID to rs.getObject(STUDY_ID.name),
-            TimeUseDiaryColumTitles.SUBMISSION_ID to rs.getObject(SUBMISSION_ID.name)
+            TimeUseDiaryColumnTitles.PARTICIPANT_ID to rs.getString(PARTICIPANT_ID.name),
+            TimeUseDiaryColumnTitles.TIMESTAMP to rs.getObject(SUBMISSION_DATE.name, OffsetDateTime::class.java),
+            TimeUseDiaryColumnTitles.STUDY_ID to rs.getObject(STUDY_ID.name),
+            TimeUseDiaryColumnTitles.SUBMISSION_ID to rs.getObject(SUBMISSION_ID.name)
         )
     }
 
@@ -278,17 +278,17 @@ class TimeUseDiaryService(
             val responsesByCode: Map<String, TimeUseDiaryResponse> = responses.associateBy { it.code }
 
             val mappedColumns = mapOf(
-                TimeUseDiaryColumTitles.ACTIVITY_DURATION to ChronoUnit.MINUTES.between(startDateTime, endDateTime),
-                TimeUseDiaryColumTitles.ACTIVITY_COUNTER to ++counter,
-                TimeUseDiaryColumTitles.ACTIVITY_START_TIME to startDateTime!!.toLocalTime().format(formatter),
-                TimeUseDiaryColumTitles.ACTIVITY_END_TIME to endDateTime!!.toLocalTime().format(formatter)
+                TimeUseDiaryColumnTitles.ACTIVITY_DURATION to ChronoUnit.MINUTES.between(startDateTime, endDateTime),
+                TimeUseDiaryColumnTitles.ACTIVITY_COUNTER to ++counter,
+                TimeUseDiaryColumnTitles.ACTIVITY_START_TIME to startDateTime!!.toLocalTime().format(formatter),
+                TimeUseDiaryColumnTitles.ACTIVITY_END_TIME to endDateTime!!.toLocalTime().format(formatter)
             ) + defaultColumnMapping
 
             val additionalColumTitles = TimeUseDiaryDownloadDataType.DayTime.downloadColumnTitles - mappedColumns.keys
             val unmappedColumnTitles: MutableSet<String> = mutableSetOf()
 
             val timeRangeColumnMapping = additionalColumTitles.associateWith { title ->
-                val questionCode = TimeUseDiaryColumTitles.columnTitleToQuestionCodeMap[title] ?: return@associateWith "UNMAPPED"
+                val questionCode = TimeUseDiaryColumnTitles.columnTitleToQuestionCodeMap[title] ?: return@associateWith "UNMAPPED"
                 if (!responsesByCode.containsKey(questionCode)) {
                     unmappedColumnTitles.add(title)
                     setOf()
@@ -298,7 +298,7 @@ class TimeUseDiaryService(
             }
 
             val nonTimeRangeColumnMapping = unmappedColumnTitles.associateWith { title ->
-                val questionCode = TimeUseDiaryColumTitles.columnTitleToQuestionCodeMap.getValue(title)
+                val questionCode = TimeUseDiaryColumnTitles.columnTitleToQuestionCodeMap.getValue(title)
                 responsesWithoutStartDateTime[questionCode]?.response ?: setOf()
             }
 
@@ -369,8 +369,8 @@ class TimeUseDiaryService(
 
         val sleepHoursMapping = if (todayWakeUpDateTime != null) {
             mapOf(
-                TimeUseDiaryColumTitles.WAKE_UP_TODAY to (todayWakeUpDateTime.toLocalTime()?.format(formatter) ?: ""),
-                TimeUseDiaryColumTitles.SLEEP_HOURS to ChronoUnit.HOURS.between(
+                TimeUseDiaryColumnTitles.WAKE_UP_TODAY to (todayWakeUpDateTime.toLocalTime()?.format(formatter) ?: ""),
+                TimeUseDiaryColumnTitles.SLEEP_HOURS to ChronoUnit.HOURS.between(
                     activityDayEndDateTime,
                     todayWakeUpDateTime
                 ),
@@ -378,18 +378,18 @@ class TimeUseDiaryService(
         } else {
             if (bedTimeBeforeActivityDayDateTime != null) {
                 mapOf(
-                    TimeUseDiaryColumTitles.BEDTIME_AFTER_ACTIVITY_DAY to (bedTimeBeforeActivityDayDateTime.toLocalTime()
+                    TimeUseDiaryColumnTitles.BEDTIME_AFTER_ACTIVITY_DAY to (bedTimeBeforeActivityDayDateTime.toLocalTime()
                         ?.format(formatter) ?: ""),
-                    TimeUseDiaryColumTitles.SLEEP_HOURS to ChronoUnit.HOURS.between(
+                    TimeUseDiaryColumnTitles.SLEEP_HOURS to ChronoUnit.HOURS.between(
                         bedTimeBeforeActivityDayDateTime,
                         activityDayStartDateTime
                     )
                 )
             } else if (wakeUpTimeAfterActivityDayDateTime != null) {
                 mapOf(
-                    TimeUseDiaryColumTitles.WAKE_UP_TIME_AFTER_ACTIVITY_DAY to (wakeUpTimeAfterActivityDayDateTime?.toLocalTime()
+                    TimeUseDiaryColumnTitles.WAKE_UP_TIME_AFTER_ACTIVITY_DAY to (wakeUpTimeAfterActivityDayDateTime?.toLocalTime()
                         ?.format(formatter) ?: ""),
-                    TimeUseDiaryColumTitles.SLEEP_HOURS to ChronoUnit.HOURS.between(
+                    TimeUseDiaryColumnTitles.SLEEP_HOURS to ChronoUnit.HOURS.between(
                         activityDayEndDateTime,
                         wakeUpTimeAfterActivityDayDateTime
                     )
@@ -400,9 +400,9 @@ class TimeUseDiaryService(
         }
 
         val timeRangeMapping = mapOf(
-            TimeUseDiaryColumTitles.WAKE_UP_YESTERDAY to activityDayStartDateTime.toLocalTime().format(formatter),
-            TimeUseDiaryColumTitles.BED_TIME_YESTERDAY to activityDayEndDateTime.toLocalTime().format(formatter),
-            TimeUseDiaryColumTitles.DAY_TIME_HOURS to ChronoUnit.HOURS.between(
+            TimeUseDiaryColumnTitles.WAKE_UP_YESTERDAY to activityDayStartDateTime.toLocalTime().format(formatter),
+            TimeUseDiaryColumnTitles.BED_TIME_YESTERDAY to activityDayEndDateTime.toLocalTime().format(formatter),
+            TimeUseDiaryColumnTitles.DAY_TIME_HOURS to ChronoUnit.HOURS.between(
                 activityDayStartDateTime,
                 activityDayEndDateTime
             ),
@@ -410,13 +410,13 @@ class TimeUseDiaryService(
 
         val additionalColumTitles =
             TimeUseDiaryDownloadDataType.NightTime.downloadColumnTitles - defaultColumnMapping.keys - timeRangeMapping.keys - if (todayWakeUpTime == null) {
-                setOf(TimeUseDiaryColumTitles.WAKE_UP_TODAY)
+                setOf(TimeUseDiaryColumnTitles.WAKE_UP_TODAY)
             } else {
                 setOf()
             }
 
         val additionalColumnMapping = additionalColumTitles.associateWith { title ->
-            val code = TimeUseDiaryColumTitles.columnTitleToQuestionCodeMap[title] ?: return@associateWith setOf("UNMAPPED")
+            val code = TimeUseDiaryColumnTitles.columnTitleToQuestionCodeMap[title] ?: return@associateWith setOf("UNMAPPED")
             responsesByCode[code]?.response ?: setOf()
         }
 
