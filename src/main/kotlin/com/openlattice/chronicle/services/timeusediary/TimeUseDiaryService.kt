@@ -197,7 +197,7 @@ class TimeUseDiaryService(
                     }
                 }
             }
-            return TimeUseDiaryPostgresDownloadWrapper(postgresIterable).withColumnAdvice(downloadType.downloadColumnTitles.toList())
+            return TimeUseDiaryPostgresDownloadWrapper(postgresIterable).withColumnAdvice(downloadType.downloadColAlsoumnTitles.toList())
         } catch (ex: Exception) {
             logger.error("Error downloading TUD data", ex)
             return listOf()
@@ -340,7 +340,7 @@ class TimeUseDiaryService(
         }
 
         //Get the actual date times, by parsing out the times at the current date.
-        
+
         val activityDayStartDateTime = LocalTime.parse(activityDayStartTime).atDate(activityDate)
         val activityDayEndDateTime = LocalTime.parse(activityDayEndTime).atDate(activityDate)
         val bedTimeBeforeActivityDayDateTime = if (bedTimeBeforeActivityDay != null) {
