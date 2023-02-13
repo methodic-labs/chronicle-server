@@ -41,6 +41,7 @@ import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.createTemp
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.getDeleteUsageEventsFromTempTable
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.getInsertUsageEventColumnIndex
 import com.openlattice.chronicle.storage.StorageResolver
+import com.openlattice.chronicle.storage.odtFromUsageEventColumn
 import com.openlattice.chronicle.util.ChronicleServerUtil
 import com.zaxxer.hikari.HikariDataSource
 import org.apache.commons.lang3.RandomStringUtils
@@ -587,14 +588,6 @@ class AppDataUploadService(
         }
     }
 
-    private fun odtFromUsageEventColumn(value: Any?): OffsetDateTime? {
-        if (value == null) return null
-        return when (value) {
-            is String -> OffsetDateTime.parse(value)
-            is OffsetDateTime -> value
-            else -> throw UnsupportedOperationException("${value.javaClass.canonicalName} is not a supported date time class.")
-        }
-    }
 
     private fun updateParticipantStats(
         data: List<Map<String, UsageEventColumn>>,
