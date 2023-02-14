@@ -41,12 +41,14 @@ class MoveToEventStorageTask : HazelcastFixedRateTask<MoveToEventStorageTaskDepe
     }
 
     override fun runTask() {
+        val f = executor.submit {
+            moveToEventStorage()
+        }
         try {
-            executor.submit {
-                moveToEventStorage()
-            }.get(1, TimeUnit.HOURS)
+            f.get(1, TimeUnit.HOURS)
         } catch (timeoutException: TimeoutException) {
             logger.error("Timed out after one hour when moving events to event storage.", timeoutException)
+            f.cancel(true)
         } catch (ex: Exception) {
             logger.error("Exception when moving events to event storage.", ex)
         }
