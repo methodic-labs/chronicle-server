@@ -70,8 +70,7 @@ class AppDataUploadService(
         private val mapper = ObjectMappers.getJsonMapper()
         private val semaphore = Semaphore(10)
         private const val RS_BATCH_SIZE = 3276
-        private val executor: ListeningExecutorService =
-            MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(1))
+
 
         /**
          * 1. study id
@@ -88,12 +87,12 @@ class AppDataUploadService(
     }
 
     init {
-        executor.execute {
-            while (true) {
-                moveToEventStorage()
-                Thread.sleep(5 * 60 * 1000)
-            }
-        }
+//        executor.execute {
+//            while (true) {
+//                moveToEventStorage()
+//                Thread.sleep(5 * 60 * 1000)
+//            }
+//        }
     }
 
     /**

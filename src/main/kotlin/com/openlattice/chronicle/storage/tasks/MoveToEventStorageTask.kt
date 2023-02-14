@@ -6,8 +6,9 @@ import com.geekbeast.postgres.PostgresDatatype
 import com.geekbeast.tasks.HazelcastFixedRateTask
 import com.geekbeast.tasks.Task
 import com.geekbeast.util.StopWatch
+import com.google.common.util.concurrent.ListeningExecutorService
+import com.google.common.util.concurrent.MoreExecutors
 import com.openlattice.chronicle.postgres.ResultSetAdapters
-import com.openlattice.chronicle.services.upload.AppDataUploadService
 import com.openlattice.chronicle.services.upload.UploadType
 import com.openlattice.chronicle.services.upload.UsageEventQueueEntry
 import com.openlattice.chronicle.storage.ChroniclePostgresTables
@@ -19,7 +20,9 @@ import org.apache.commons.lang3.RandomStringUtils
 import org.slf4j.LoggerFactory
 import org.slf4j.event.Level
 import java.time.OffsetDateTime
+import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 import kotlin.math.min
 
 /**
@@ -32,16 +35,27 @@ class MoveToEventStorageTask : HazelcastFixedRateTask<MoveToEventStorageTaskDepe
         private const val PERIOD = 30000L
         private val UPLOAD_AT_INDEX = RedshiftDataTables.getInsertUsageEventColumnIndex(RedshiftColumns.UPLOADED_AT)
         private val logger = LoggerFactory.getLogger(MoveToEventStorageTask::class.java)
+
+        private val executor: ListeningExecutorService =
+            MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(3))
     }
 
     override fun runTask() {
-        moveToEventStorage()
+        try {
+            executor.submit {
+                moveToEventStorage()
+            }.get(1, TimeUnit.HOURS)
+        } catch (timeoutException: TimeoutException) {
+            logger.error("Timed out after one hour when moving events to event storage.", timeoutException)
+        } catch (ex: Exception) {
+            logger.error("Exception when moving events to event storage.", ex)
+        }
     }
 
     override fun getName(): String = Task.MOVE_TO_EVENT_STORAGE.name
 
     private fun moveToEventStorage() {
-        with(getDependency() ) {
+        with(getDependency()) {
             try {
                 logger.info("Moving data from aurora to event storage.")
                 val queueEntriesByFlavor: MutableMap<PostgresFlavor, MutableList<UsageEventQueueEntry>> = mutableMapOf()
@@ -234,13 +248,14 @@ class MoveToEventStorageTask : HazelcastFixedRateTask<MoveToEventStorageTaskDepe
                 ).use {
                     connection.createStatement()
                         .use { stmt -> stmt.execute(RedshiftDataTables.createTempTableOfDuplicates(tempTableName)) }
-                    connection.prepareStatement(RedshiftDataTables.buildTempTableOfDuplicates(tempTableName)).use { ps ->
-                        ps.setArray(1, PostgresArrays.createTextArray(connection, studies))
-                        ps.setArray(2, PostgresArrays.createTextArray(connection, participants))
-                        ps.setObject(3, minEventTimestamp)
-                        ps.setObject(4, maxEventTimestamp)
-                        ps.execute()
-                    }
+                    connection.prepareStatement(RedshiftDataTables.buildTempTableOfDuplicates(tempTableName))
+                        .use { ps ->
+                            ps.setArray(1, PostgresArrays.createTextArray(connection, studies))
+                            ps.setArray(2, PostgresArrays.createTextArray(connection, participants))
+                            ps.setObject(3, minEventTimestamp)
+                            ps.setObject(4, maxEventTimestamp)
+                            ps.execute()
+                        }
                 }
 
                 //Delete the duplicates, if any from chronicle_usage_events and drop the temporary table.
@@ -255,13 +270,6 @@ class MoveToEventStorageTask : HazelcastFixedRateTask<MoveToEventStorageTaskDepe
                         stmt.execute(RedshiftDataTables.getDeleteUsageEventsFromTempTable(tempTableName))
                         stmt.execute("DROP TABLE $tempTableName")
                     }
-                }
-
-                //TODO: Make this more efficient
-                data.groupBy { it.studyId to it.participantId }.forEach { (key, qe) ->
-                    val (studyId, participantId) = key
-                    //TODO
-                    //updateParticipantStats(qe.map { it.data }, studyId, participantId)
                 }
 
                 return@use wc
@@ -288,7 +296,8 @@ class MoveToEventStorageTask : HazelcastFixedRateTask<MoveToEventStorageTaskDepe
 
     override fun getTimeUnit(): TimeUnit = TimeUnit.MILLISECONDS
 
-    override fun getDependenciesClass(): Class<out MoveToEventStorageTaskDependencies> = MoveToEventStorageTaskDependencies::class.java
+    override fun getDependenciesClass(): Class<out MoveToEventStorageTaskDependencies> =
+        MoveToEventStorageTaskDependencies::class.java
 
 
 }
