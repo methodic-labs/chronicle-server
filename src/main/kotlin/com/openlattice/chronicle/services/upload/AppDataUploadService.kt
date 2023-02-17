@@ -41,6 +41,7 @@ import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.createTemp
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.getDeleteUsageEventsFromTempTable
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.getInsertUsageEventColumnIndex
 import com.openlattice.chronicle.storage.StorageResolver
+import com.openlattice.chronicle.storage.odtFromUsageEventColumn
 import com.openlattice.chronicle.util.ChronicleServerUtil
 import com.zaxxer.hikari.HikariDataSource
 import org.apache.commons.lang3.RandomStringUtils
@@ -69,8 +70,7 @@ class AppDataUploadService(
         private val mapper = ObjectMappers.getJsonMapper()
         private val semaphore = Semaphore(10)
         private const val RS_BATCH_SIZE = 3276
-        private val executor: ListeningExecutorService =
-            MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(1))
+
 
         /**
          * 1. study id
@@ -87,12 +87,12 @@ class AppDataUploadService(
     }
 
     init {
-        executor.execute {
-            while (true) {
-                moveToEventStorage()
-                Thread.sleep(5 * 60 * 1000)
-            }
-        }
+//        executor.execute {
+//            while (true) {
+//                moveToEventStorage()
+//                Thread.sleep(5 * 60 * 1000)
+//            }
+//        }
     }
 
     /**
@@ -587,14 +587,6 @@ class AppDataUploadService(
         }
     }
 
-    private fun odtFromUsageEventColumn(value: Any?): OffsetDateTime? {
-        if (value == null) return null
-        return when (value) {
-            is String -> OffsetDateTime.parse(value)
-            is OffsetDateTime -> value
-            else -> throw UnsupportedOperationException("${value.javaClass.canonicalName} is not a supported date time class.")
-        }
-    }
 
     private fun updateParticipantStats(
         data: List<Map<String, UsageEventColumn>>,

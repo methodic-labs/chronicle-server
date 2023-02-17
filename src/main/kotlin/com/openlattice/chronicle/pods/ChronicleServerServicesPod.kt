@@ -73,6 +73,8 @@ import com.openlattice.chronicle.services.upload.AppDataUploadManager
 import com.openlattice.chronicle.services.upload.AppDataUploadService
 import com.openlattice.chronicle.services.upload.SensorDataUploadService
 import com.openlattice.chronicle.storage.StorageResolver
+import com.openlattice.chronicle.storage.tasks.MoveToEventStorageTask
+import com.openlattice.chronicle.storage.tasks.MoveToEventStorageTaskDependencies
 import com.openlattice.chronicle.studies.tasks.StudyLimitsEnforcementTask
 import com.openlattice.chronicle.studies.tasks.StudyLimitsEnforcementTaskDependencies
 import com.openlattice.chronicle.tasks.PostConstructInitializerTaskDependencies
@@ -444,6 +446,15 @@ class ChronicleServerServicesPod {
             studyLimitsManager(),
             studyService()
         )
+    }
+
+    @Bean
+    fun moveToEventStorageTaskDependencies() :MoveToEventStorageTaskDependencies {
+        return MoveToEventStorageTaskDependencies(storageResolver)
+    }
+    @Bean
+    fun moveToEventStorageTask() : MoveToEventStorageTask {
+        return MoveToEventStorageTask()
     }
 
     companion object {

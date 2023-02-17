@@ -46,6 +46,7 @@ class AdminController(
 
     @Inject
     private lateinit var appDataUploadService: AppDataUploadService
+
     @Timed
     @GetMapping(value = [EVENT_STORAGE])
     override fun moveToEventStorage() {
