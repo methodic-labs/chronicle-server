@@ -18,7 +18,7 @@ interface StudyLimitsManager {
     /**
      * Allocates enrollment capacity for this transaction. It used SELECT FOR UPDATE to lock rows
      * in the limits table, preventing other threads from allocating enrollment. This is necessary
-     * because you two researchers adding at the same time could end up going over the limit.
+     * because two researchers adding at the same time could end up going over the limit.
      */
     fun lockStudyForEnrollments(connection: Connection, studyId: UUID)
     fun getEnrollmentCapacity(studyId: UUID): Int
