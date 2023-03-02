@@ -32,7 +32,7 @@ import kotlin.math.min
 class MoveToEventStorageTask : HazelcastFixedRateTask<MoveToEventStorageTaskDependencies> {
     companion object {
         private const val RS_BATCH_SIZE = 3276
-        private const val PERIOD = 30000L
+        private const val PERIOD = 5*60000L
         private val UPLOAD_AT_INDEX = RedshiftDataTables.getInsertUsageEventColumnIndex(RedshiftColumns.UPLOADED_AT)
         private val logger = LoggerFactory.getLogger(MoveToEventStorageTask::class.java)
 

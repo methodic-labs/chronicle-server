@@ -51,7 +51,7 @@ class NotificationService(
         private val logger = LoggerFactory.getLogger(NotificationService::class.java)
 
         const val INITIAL_STATUS = "queued"
-        private val NOTIFICAITON_COLUMNS = NOTIFICATIONS.columns.joinToString(",") { it.name }
+        private val NOTIFICATION_COLUMNS = NOTIFICATIONS.columns.joinToString(",") { it.name }
 
         private val UPDATE_NOTIFICATION_COLUMNS = listOf(
             UPDATED_AT,
@@ -59,7 +59,7 @@ class NotificationService(
         ).joinToString(",") { it.name }
 
         private val INSERT_NOTIFICATION_SQL = """
-            INSERT INTO ${NOTIFICATIONS.name} (${NOTIFICAITON_COLUMNS}) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+            INSERT INTO ${NOTIFICATIONS.name} (${NOTIFICATION_COLUMNS}) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
         """.trimIndent()
 
         private val GET_NOTIFICATION_ID_FROM_MESSAGE_ID_SQL =
