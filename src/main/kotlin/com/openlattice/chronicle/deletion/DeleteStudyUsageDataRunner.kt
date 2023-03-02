@@ -1,5 +1,6 @@
 package com.openlattice.chronicle.deletion
 
+import com.geekbeast.configuration.postgres.PostgresFlavor
 import com.geekbeast.rhizome.jobs.JobStatus
 import com.openlattice.chronicle.auditing.AuditEventType
 import com.openlattice.chronicle.auditing.AuditableEvent
@@ -33,7 +34,7 @@ class DeleteStudyUsageDataRunner(
         // delete usage data from redshift with separate connection
         val (flavor, eventHds) = storageResolver.getDefaultEventStorage()
         val deletedRows = eventHds.connection.use { eventConnection ->
-            deleteChronicleStudyUsageData(eventConnection, job.definition as DeleteStudyUsageData)
+            deleteChronicleStudyUsageData(flavor, eventConnection, job.definition as DeleteStudyUsageData)
         }
 
         // update jobData to include deletedRows
@@ -60,10 +61,17 @@ class DeleteStudyUsageDataRunner(
 
 
     // Delete chronicle study usage data from event storage and return count of deleted rows
-    private fun deleteChronicleStudyUsageData(connection: Connection, jobDefinition: DeleteStudyUsageData): Long {
+    private fun deleteChronicleStudyUsageData(
+        flavor: PostgresFlavor,
+        connection: Connection,
+        jobDefinition: DeleteStudyUsageData
+    ): Long {
         logger.info("Deleting usage data with studyId = {}", jobDefinition.studyId)
         return connection.prepareStatement(DELETE_CHRONICLE_STUDY_USAGE_DATA_SQL).use { ps ->
-            ps.setObject(1, jobDefinition.studyId)
+            when(flavor){
+                PostgresFlavor.REDSHIFT -> ps.setString(1, jobDefinition.studyId.toString())
+                else -> ps.setObject(1, jobDefinition.studyId)
+            }
             ps.executeUpdate().toLong()
         }
     }
