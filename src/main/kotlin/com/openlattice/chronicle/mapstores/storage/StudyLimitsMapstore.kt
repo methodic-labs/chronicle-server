@@ -27,7 +27,9 @@ class StudyLimitsMapstore(val hds: HikariDataSource) :
         ps.setObject(index, value.participantLimit)
         ps.setObject(index + 1, mapper.writeValueAsString(value.studyDuration))
         ps.setObject(index + 2, mapper.writeValueAsString(value.dataRetentionDuration))
-        ps.setArray(index + 3, PostgresArrays.createTextArray(ps.connection, value.features.map { it.name }))
+        ps.setObject(index+ 3, value.studyEnds)
+        ps.setObject(index+ 4, value.studyDataExpires)
+        ps.setArray(index + 5, PostgresArrays.createTextArray(ps.connection, value.features.map { it.name }))
     }
 
     override fun mapToKey(rs: ResultSet): UUID = rs.getObject(STUDY_ID.name, UUID::class.java)
