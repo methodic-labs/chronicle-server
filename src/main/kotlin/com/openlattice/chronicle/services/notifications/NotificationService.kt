@@ -31,6 +31,7 @@ import java.util.concurrent.ExecutionException
 
 
 /**
+ * @author Matthew Tamayo-Rios <matthew@getmethodic.com>
  * @author Todd Bergman <todd@openlattice.com>
  */
 
@@ -149,11 +150,55 @@ class NotificationService(
 
     }
 
+    override fun sendResearcherNotifications(
+        connection: Connection,
+        studyId: UUID,
+        researcherNotifications: List<ResearcherNotification>
+    ): Int {
+        val notifications: List<Notification> =
+            researcherNotifications.asSequence().mapNotNull { researcherNotification ->
+                //val messageText = "Chronicle device enrollment:  Please download app from your app store and click on ${notificationDetails.url} to enroll your device."
+                researcherNotification.emails.map { email ->
+                    val notificationId = idGenerationService.getNextId()
+                    Notification(
+                        notificationId,
+                        studyId,
+                        "",
+                        status = INITIAL_STATUS,
+                        messageId = "",
+                        notificationType = researcherNotification.notificationType,
+                        deliveryType = DeliveryType.EMAIL,
+                        body = researcherNotification.message,
+                        destination = checkNotNull(email) { "Email cannot be null for email delivery type." }
+                    )
+                } + researcherNotification.phoneNumbers.map { phoneNumber ->
+                    val notificationId = idGenerationService.getNextId()
+                    Notification(
+                        notificationId,
+                        studyId,
+                        "",
+                        status = INITIAL_STATUS,
+                        messageId = "",
+                        notificationType = researcherNotification.notificationType,
+                        deliveryType = DeliveryType.SMS,
+                        body = researcherNotification.message,
+                        destination = phoneNumber
+                    )
+                }
+            }.flatten().toList()
+        logger.info("preparing to send batch of ${notifications.size} messages to participants")
+        insertNotifications(connection, notifications)
+        notifications.forEach {
+            jobService.createJob(connection, ChronicleJob(definition = it))
+        }
+        return notifications.size
+    }
+
     override fun sendNotifications(
         connection: Connection,
         studyId: UUID,
         participantNotifications: List<ParticipantNotification>,
-    ) : Int  {
+    ): Int {
         val notifications: List<Notification> =
             participantNotifications.asSequence().mapNotNull { participantNotification ->
                 //val messageText = "Chronicle device enrollment:  Please download app from your app store and click on ${notificationDetails.url} to enroll your device."
@@ -193,12 +238,14 @@ class NotificationService(
                     sendNotifications(conn, studyId, participantNotifications)
                 }
                 .audit {
-                    listOf(AuditableEvent(
-                        AclKey(studyId),
-                        eventType = AuditEventType.QUEUE_NOTIFICATIONS,
-                        description = "Queued $it notifications.",
-                        study = studyId,
-                    ))
+                    listOf(
+                        AuditableEvent(
+                            AclKey(studyId),
+                            eventType = AuditEventType.QUEUE_NOTIFICATIONS,
+                            description = "Queued $it notifications.",
+                            study = studyId,
+                        )
+                    )
                 }
                 .buildAndRun()
         }
