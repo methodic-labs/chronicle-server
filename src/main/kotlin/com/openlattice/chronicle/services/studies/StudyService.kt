@@ -9,10 +9,8 @@ import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
 import com.hazelcast.core.HazelcastInstance
 import com.openlattice.chronicle.auditing.*
-import com.openlattice.chronicle.authorization.AclKey
-import com.openlattice.chronicle.authorization.AuthorizationManager
+import com.openlattice.chronicle.authorization.*
 import com.openlattice.chronicle.authorization.Permission.READ
-import com.openlattice.chronicle.authorization.SecurableObjectType
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.hazelcast.HazelcastMap
@@ -390,17 +388,36 @@ class StudyService(
         return study.id
     }
 
+    override fun expireStudies(studyIds: Set<UUID>) {
+        studyIds.forEach { studyId ->
+            val aclKey = AclKey(studyId)
+            //Ensure admin role still has access to the study by default.
+            authorizationService.addPermission(aclKey, Principals.getAdminRole(), EnumSet.allOf(Permission::class.java))
+
+            authorizationService
+                .getAllSecurableObjectPermissions(aclKey)
+                .aces.filterNot { it.principal == Principals.getAdminRole() }
+                .forEach { ace ->
+                    authorizationService.removePermission(aclKey, ace.principal, EnumSet.copyOf(ace.permissions))
+                }
+        }
+    }
+
     override fun createStudy(connection: Connection, study: Study) {
         insertStudy(connection, study)
         insertOrgStudy(connection, study)
         studyLimitsMgr.initializeStudyLimits(connection, study.id)
         surveysManager.initializeFilterdApps(connection, study.id)
+        val aclKey = AclKey(study.id)
         authorizationService.createUnnamedSecurableObject(
             connection = connection,
-            aclKey = AclKey(study.id),
+            aclKey = aclKey,
             principal = Principals.getCurrentUser(),
             objectType = SecurableObjectType.Study
         )
+
+        //Give admins access to the study by default.
+        authorizationService.addPermission(aclKey, Principals.getAdminRole(), EnumSet.allOf(Permission::class.java))
     }
 
     private fun insertStudy(connection: Connection, study: Study): Int {
@@ -762,7 +779,7 @@ class StudyService(
 
     override fun updateLastDevicePing(studyId: UUID, participantId: String) {
         //If device hasn't enrolled yet, we should just return without updating last ping.
-        val participantStats = getParticipantStats(studyId, participantId)  ?: return
+        val participantStats = getParticipantStats(studyId, participantId) ?: return
 
         if (participantStats.androidLastPing != null) {
             insertOrUpdateParticipantStats(

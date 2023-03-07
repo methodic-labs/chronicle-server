@@ -51,4 +51,5 @@ interface StudyManager {
 
     fun updateLastDevicePing( studyId: UUID,participantId: String, sourceDevice:SourceDevice)
     fun updateLastDevicePing(studyId: UUID, participantId: String)
+    fun expireStudies(studyIds: Set<UUID>)
 }

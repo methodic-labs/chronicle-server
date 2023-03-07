@@ -26,6 +26,7 @@ import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
 import com.google.common.collect.*
 import com.google.common.util.concurrent.MoreExecutors
+import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.authorization.processors.*
 import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
@@ -287,7 +288,6 @@ class HazelcastAuthorizationService(
         if (permissions.contains(Permission.OWNER)) {
             ensureAclKeysHaveOtherUserOwners(setOf(key), setOf(principal))
         }
-
 
         aces.executeOnKey(AceKey(key, principal), PermissionRemover(permissions))
     }
@@ -634,7 +634,8 @@ class HazelcastAuthorizationService(
     /** Private Helpers **/
 
     private fun ensureAclKeysHaveOtherUserOwners(aclKeys: Set<AclKey>, principals: Set<Principal>) {
-        val userPrincipals = principals.stream().filter { p: Principal -> p.type == PrincipalType.USER }
+        val userPrincipals = principals.stream()
+            .filter { p: Principal -> p.type == PrincipalType.USER || p == Principals.getAdminRole() }
             .collect(Collectors.toSet())
         if (userPrincipals.size > 0) {
 
@@ -642,7 +643,10 @@ class HazelcastAuthorizationService(
                 hasAnyAclKeys(aclKeys),
                 hasExactPermissions(EnumSet.of(Permission.OWNER)),
                 Predicates.not<AceKey, AceValue>(hasAnyPrincipals(userPrincipals)),
-                hasPrincipalType(PrincipalType.USER)
+                Predicates.or<AceKey, AceValue>(
+                    hasPrincipalType(PrincipalType.USER),
+                    hasPrincipal(Principals.getAdminRole())
+                )
             )
 
             val allOtherUserOwnersCount: Long = aces.aggregate(
