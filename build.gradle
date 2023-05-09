@@ -47,7 +47,7 @@ ext.connectionUrl = 'scm:git:https://github.com/methodic-labs/chronicle-server.g
 ext.developerConnectionUrl = 'scm:git:https://github.com/methodic-labs/chronicle-server.git'
 
 distTar {
-    archiveName "$baseName" + ".tgz"
+    archiveFileName = "$archiveBaseName" + ".tgz"
 }
 
 if(!project.hasProperty('developmentMode')) {
@@ -121,8 +121,8 @@ spotbugs {
 
 spotbugsMain {
     reports {
-        xml.enabled = false
-        html.enabled = true
+        xml.required = false
+        html.required = true
     }
 }
 
@@ -159,8 +159,8 @@ licenseReport {
 
 tasks.withType(Checkstyle) {
     reports {
-        xml.enabled = false
-        html.enabled = true
+        xml.required = false
+        html.required = true
     }
 }
 
@@ -186,9 +186,7 @@ dependencies {
     implementation group: "com.twilio.sdk", name: "twilio", version: "8.21.0"
     implementation "org.dmfs:lib-recur:0.10.2"
 
-    implementation (group: "org.slf4j", name: "slf4j-api", version: "1.8.0-beta4") {
-        force = true
-    }
+    implementation (group: "org.slf4j", name: "slf4j-api", version: "${slf4j_version}")
 
 
     if (project.hasProperty('developmentMode') && project.developmentMode) {
