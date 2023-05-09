@@ -56,8 +56,7 @@ class StudyLimitsEnforcementTask : HazelcastFixedRateTask<StudyLimitsEnforcement
                 "Deleting the following studies as they are outside of the retention period: {}",
                 studiesToDelete
             )
-            deps.studyService.deleteStudies(
-                connection,
+            deps.studyService.expireStudies(
                 studiesToDelete
             )
         }

@@ -277,17 +277,17 @@ class StudyController @Inject constructor(
         // val currentUserEmail = getUser(managementApi, Principals.getCurrentUser().id).email
         val deleteStudyDataJob = ChronicleJob(
             id = idGenerationService.getNextId(),
-            contact = "test@openlattice.com",
+            contact = "support@getmethodic.com",
             definition = DeleteStudyUsageData(studyId)
         )
         val deleteStudyTUDSubmissionJob = ChronicleJob(
             id = idGenerationService.getNextId(),
-            contact = "test@openlattice.com",
+            contact = "support@getmethodic.com",
             definition = DeleteStudyTUDSubmissionData(studyId)
         )
         val deleteStudyAppUsageSurveyJob = ChronicleJob(
             id = idGenerationService.getNextId(),
-            contact = "test@openlattice.com",
+            contact = "support@getmethodic.com",
             definition = DeleteStudyAppUsageSurveyData(studyId)
         )
         val jobList = listOf(
