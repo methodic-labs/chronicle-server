@@ -93,6 +93,7 @@ import com.openlattice.chronicle.util.ChronicleServerUtil
 import com.zaxxer.hikari.HikariDataSource
 import org.slf4j.LoggerFactory
 import org.slf4j.event.Level
+import java.security.InvalidParameterException
 import java.sql.Connection
 import java.sql.PreparedStatement
 import java.time.LocalDate
@@ -203,6 +204,7 @@ class SensorDataUploadService(
                                 sensorDataEntries,
                                 true
                             )
+                            else -> throw InvalidParameterException("Invalid postgres flavor: ${postgresFlavor.name}")
                         }
                     }
                 }

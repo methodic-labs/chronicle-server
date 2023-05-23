@@ -325,6 +325,7 @@ class AppDataUploadService(
                                 storageResolver.getEventStorageWithFlavor(PostgresFlavor.VANILLA),
                                 usageEventQueueEntries
                             )
+                            else -> throw InvalidParameterException("Invalid postgres flavor: ${postgresFlavor.name}")
                         }
                     }
                 }
