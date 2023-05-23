@@ -29,6 +29,7 @@ import com.openlattice.chronicle.converters.TimeUseDiaryDownloadCsvHttpMessageCo
 import com.openlattice.chronicle.converters.YamlHttpMessageConverter
 import com.openlattice.chronicle.services.twilio.TwilioService
 import com.ryantenney.metrics.spring.config.annotation.EnableMetrics
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.ComponentScan
 import org.springframework.context.annotation.Configuration
@@ -66,11 +67,11 @@ import javax.inject.Inject
 @EnableMetrics(proxyTargetClass = true)
 class ChronicleServerMvcPod : WebMvcConfigurationSupport() {
     @Inject
-    private val defaultObjectMapper: ObjectMapper? = null
+    private lateinit var defaultObjectMapper: ObjectMapper
 
     @Inject
     private lateinit var chronicleServerSecurityPod: ChronicleServerSecurityPod
-    
+
     override fun configureMessageConverters(converters: MutableList<HttpMessageConverter<*>>) {
         super.addDefaultHttpMessageConverters(converters)
         for (converter in converters) {

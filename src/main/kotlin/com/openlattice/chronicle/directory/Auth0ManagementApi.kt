@@ -42,7 +42,7 @@ interface Auth0ManagementApi {
         @Query(PAGE) page: Int,
         @Query(PER_PAGE) perPage: Int,
         @Query(SEARCH_ENGINE) searchEngine: String
-    ): Set<User>
+    ): Set<User>?
 
     @DELETE("$USERS/$USER_ID_PATH")
     fun deleteUser(@Path(USER_ID) userId: String): OK

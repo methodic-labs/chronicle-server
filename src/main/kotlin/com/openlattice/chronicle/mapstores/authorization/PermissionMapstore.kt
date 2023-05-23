@@ -36,6 +36,7 @@ import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.SECUR
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
 import com.openlattice.chronicle.util.tests.TestDataFactory
 import com.zaxxer.hikari.HikariDataSource
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings
 import org.springframework.stereotype.Component
 import java.sql.Array
 import java.sql.PreparedStatement
@@ -55,6 +56,7 @@ class PermissionMapstore(
 ) : AbstractBasePostgresMapstore<AceKey, AceValue>(HazelcastMap.PERMISSIONS, PERMISSIONS, hds) {
 
     @Throws(SQLException::class)
+    @SuppressFBWarnings(value = ["NP_PARAMETER_MUST_BE_NONNULL_BUT_MARKED_AS_NULLABLE"], justification = "https://github.com/spotbugs/spotbugs/issues/927")
     override fun bind(
         ps: PreparedStatement,
         key: AceKey,
