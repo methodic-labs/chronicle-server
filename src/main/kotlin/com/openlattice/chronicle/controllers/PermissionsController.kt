@@ -49,6 +49,7 @@ import javax.inject.Inject
 
 @RestController
 @RequestMapping(PermissionsApi.CONTROLLER)
+@SuppressFBWarnings(value = ["NP_PARAMETER_MUST_BE_NONNULL_BUT_MARKED_AS_NULLABLE","NP_NULL_PARAM_DEREF","RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE"], justification = "https://github.com/spotbugs/spotbugs/issues/927")
 class PermissionsController @Inject constructor(
     val securePrincipalsManager: SecurePrincipalsManager,
     override val auditingManager: AuditingManager,
@@ -150,7 +151,6 @@ class PermissionsController @Inject constructor(
         consumes = [MediaType.APPLICATION_JSON_VALUE],
         produces = [MediaType.APPLICATION_JSON_VALUE]
     )
-    @SuppressFBWarnings(value = ["NP_PARAMETER_MUST_BE_NONNULL_BUT_MARKED_AS_NULLABLE"], justification = "https://github.com/spotbugs/spotbugs/issues/927")
     override fun getAclExplanation(@RequestBody aclKey: AclKey): Collection<AclExplanation> {
         ensureOwnerAccess(aclKey)
 

@@ -50,13 +50,13 @@ import java.util.stream.Collectors
  * @author Matthew Tamayo-Rios &lt;matthew@openlattice.com&gt;
  */
 @Component
+@SuppressFBWarnings(value = ["NP_PARAMETER_MUST_BE_NONNULL_BUT_MARKED_AS_NULLABLE"], justification = "https://github.com/spotbugs/spotbugs/issues/927")
 class PermissionMapstore(
     hds: HikariDataSource,
     private val eventBus: EventBus
 ) : AbstractBasePostgresMapstore<AceKey, AceValue>(HazelcastMap.PERMISSIONS, PERMISSIONS, hds) {
 
     @Throws(SQLException::class)
-    @SuppressFBWarnings(value = ["NP_PARAMETER_MUST_BE_NONNULL_BUT_MARKED_AS_NULLABLE"], justification = "https://github.com/spotbugs/spotbugs/issues/927")
     override fun bind(
         ps: PreparedStatement,
         key: AceKey,
