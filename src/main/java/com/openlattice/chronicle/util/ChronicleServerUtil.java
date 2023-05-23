@@ -26,9 +26,9 @@ public class ChronicleServerUtil {
 
     public static String ORG_STUDY_PARTICIPANT            = " - orgId = {}, studyId = {}, participantId = {}";
     public static String ORG_STUDY_PARTICIPANT_DATASOURCE = " - orgId = {}, studyId = {}, participantId = {}, dataSourceId = {}";
-    public static String STUDY_PARTICIPANT_DATASOURCE = " - studyId = {}, participantId = {}, dataSourceId = {}";
-    public static String STUDY_PARTICIPANT = " - studyId = {}, participantId = {}";
-    public static String STUDY_PARTICIPANTS = " - studyId = {}, participantIds = {}";
+    public static final String STUDY_PARTICIPANT_DATASOURCE = " - studyId = {}, participantId = {}, dataSourceId = {}";
+    public static final String STUDY_PARTICIPANT = " - studyId = {}, participantId = {}";
+    public static final String STUDY_PARTICIPANTS = " - studyId = {}, participantIds = {}";
 
     public static String getFirstValueOrNull( Map<FullQualifiedName, Set<Object>> entity, FullQualifiedName fqn ) {
         if ( entity.getOrDefault( fqn, Set.of() ).isEmpty() ) {

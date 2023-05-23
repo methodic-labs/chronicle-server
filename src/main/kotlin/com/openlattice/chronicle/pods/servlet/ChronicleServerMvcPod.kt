@@ -69,8 +69,9 @@ class ChronicleServerMvcPod : WebMvcConfigurationSupport() {
     private val defaultObjectMapper: ObjectMapper? = null
 
     @Inject
-    private val chronicleServerSecurityPod: ChronicleServerSecurityPod? = null
-    override fun configureMessageConverters(converters: MutableList<HttpMessageConverter<*>?>) {
+    private lateinit var chronicleServerSecurityPod: ChronicleServerSecurityPod
+    
+    override fun configureMessageConverters(converters: MutableList<HttpMessageConverter<*>>) {
         super.addDefaultHttpMessageConverters(converters)
         for (converter in converters) {
             if (converter is MappingJackson2HttpMessageConverter) {

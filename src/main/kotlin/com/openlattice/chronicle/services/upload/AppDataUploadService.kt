@@ -7,8 +7,6 @@ import com.geekbeast.postgres.PostgresColumnDefinition
 import com.geekbeast.postgres.PostgresDatatype
 import com.geekbeast.util.StopWatch
 import com.google.common.collect.SetMultimap
-import com.google.common.util.concurrent.ListeningExecutorService
-import com.google.common.util.concurrent.MoreExecutors
 import com.openlattice.chronicle.android.ChronicleUsageEvent
 import com.openlattice.chronicle.android.fromInteractionType
 import com.openlattice.chronicle.constants.EdmConstants.*
@@ -47,10 +45,10 @@ import com.zaxxer.hikari.HikariDataSource
 import org.apache.commons.lang3.RandomStringUtils
 import org.slf4j.LoggerFactory
 import org.slf4j.event.Level
+import java.security.InvalidParameterException
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.util.*
-import java.util.concurrent.Executors
 import java.util.concurrent.Semaphore
 import kotlin.math.min
 
