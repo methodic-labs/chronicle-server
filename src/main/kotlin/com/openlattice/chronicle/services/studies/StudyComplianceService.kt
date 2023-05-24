@@ -115,7 +115,11 @@ class StudyComplianceService(
             return
         }
 
-        val sql = buildSql(RedshiftDataTables.IOS_SENSOR_DATA.name, RedshiftColumns.RECORDED_DATE.name,enabledStudiesSettings)
+        val sql = buildSql(
+            RedshiftDataTables.IOS_SENSOR_DATA.name,
+            RedshiftColumns.RECORDED_DATE.name,
+            enabledStudiesSettings
+        )
         getStudyParticipantsWithoutUploads(sql, enabledStudiesSettings)
     }
 

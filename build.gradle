@@ -103,8 +103,8 @@ applicationDefaultJvmArgs += [ "--add-modules", "java.base",
                                "--add-opens","java.management/sun.management=ALL-UNNAMED",
                                "--add-opens", "jdk.management/com.ibm.lang.management.internal=ALL-UNNAMED",
                                "--add-opens","jdk.management/com.sun.management.internal=ALL-UNNAMED"]
-sourceCompatibility = JavaVersion.VERSION_11
-targetCompatibility = JavaVersion.VERSION_11
+sourceCompatibility = JavaVersion.VERSION_17
+targetCompatibility = JavaVersion.VERSION_17
 
 jacoco {
     toolVersion = "${jacoco_tool_version}"
@@ -240,7 +240,7 @@ tasks.withType(Test) {
 
 tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
     kotlinOptions {
-        jvmTarget = "11"
+        jvmTarget = "17"
         freeCompilerArgs += '-Xjvm-default=compatibility'
     }
 }
