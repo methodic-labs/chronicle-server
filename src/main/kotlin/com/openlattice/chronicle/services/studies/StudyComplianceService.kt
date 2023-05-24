@@ -2,16 +2,20 @@ package com.openlattice.chronicle.services.studies
 
 import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
+import com.geekbeast.postgres.streams.StatementHolderSupplier
 import com.hazelcast.core.HazelcastInstance
-import com.openlattice.chronicle.auditing.AuditingComponent
-import com.openlattice.chronicle.auditing.AuditingManager
+import com.openlattice.chronicle.auditing.*
+import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.authorization.AuthorizationManager
 import com.openlattice.chronicle.hazelcast.HazelcastMap
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
+import com.openlattice.chronicle.notifications.DeliveryType
+import com.openlattice.chronicle.notifications.NotificationType
 import com.openlattice.chronicle.notifications.StudyNotificationSettings
 import com.openlattice.chronicle.services.candidates.CandidateManager
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import com.openlattice.chronicle.services.notifications.NotificationService
+import com.openlattice.chronicle.services.notifications.ResearcherNotification
 import com.openlattice.chronicle.services.surveys.SurveysManager
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.STUDIES
 import com.openlattice.chronicle.storage.PostgresColumns
@@ -65,7 +69,7 @@ class StudyComplianceService(
         """.trimIndent()
     }
 
-    fun getStudyParticipantsWithNoUploads() {
+    fun getStudyParticipantsWithNoAndroidUploads() {
         val enabledStudies: List<UUID> = getStudiesWithNotificationsEnabled()
         if (enabledStudies.isEmpty()) {
             logger.info("No partcipants without data uploads in the specified timeframes.")
@@ -75,10 +79,54 @@ class StudyComplianceService(
             studySettings.value[StudySettingType.Notifications] != null
         }
 
+        //Build the SQL to query all study participants that have not uploaded data within prescribed time.
         val sql = NO_DATA_STUDIES_SQL + enabledStudiesSettings.map {
             val notificationSettings = it.value.getValue(StudySettingType.Notifications) as StudyNotificationSettings
             toInterval(it.key, notificationSettings.noDataUploaded)
         }.joinToString(" AND ") + NO_DATA_STUDIES_SUFFIX
+
+
+        val participantsByStudy =
+            BasePostgresIterable(StatementHolderSupplier(storageResolver.getEventStorageWithFlavor(), sql)) { rs ->
+                UUID.fromString(rs.getString(RedshiftColumns.STUDY_ID.name)) to rs.getString(RedshiftColumns.PARTICIPANT_ID.name)
+            }.groupBy({ (studyId, _) -> studyId }, { (_, participantId) -> participantId })
+
+        //For each study look up research contact email
+        participantsByStudy.forEach { (studyId, participantIds) ->
+            val study = studyService.getStudy(studyId)
+            val studyEmails = study.contact.split(",").toSet()
+            val phoneNumbers = study.phoneNumber.split(",").toSet()
+            val researcherNotification = ResearcherNotification(
+                studyEmails,
+                phoneNumbers,
+                NotificationType.PASSIVE_DATA_COLLECTION_COMPLIANCE,
+                EnumSet.of(DeliveryType.EMAIL, DeliveryType.SMS),
+                buildMessage(
+                    studyId,
+                    study.title,
+                    (enabledStudiesSettings.getValue(studyId)
+                        .getValue(StudySettingType.Notifications) as StudyNotificationSettings).noDataUploaded
+                )
+            )
+            storageResolver.getPlatformStorage().connection.use { connection ->
+                AuditedTransactionBuilder<Unit>(connection, auditingManager)
+                    .transaction { conn ->
+                        notificationService.sendResearcherNotifications(conn, studyId, listOf(researcherNotification))
+                    }
+                    .audit {
+                        listOf(
+                            AuditableEvent(
+                                AclKey(studyId),
+                                eventType = AuditEventType.QUEUE_NOTIFICATIONS,
+                                description = "Queued $it notifications.",
+                                study = studyId,
+                            )
+                        )
+                    }
+                    .buildAndRun()
+            }
+
+        }
 
     }
 
@@ -91,6 +139,24 @@ class StudyComplianceService(
         }.toList()
     }
 
+    private fun buildMessage(studyId: UUID, studyTitle: String, studyDuration: StudyDuration): String {
+        var msg = """
+            The following participants in $studyTitle ($studyId) have not uploaded any data in the last 
+        """.trimIndent()
+
+        if (studyDuration.years > 0) {
+            msg += "${studyDuration.years} years "
+        }
+
+        if (studyDuration.months > 0) {
+            msg += "${studyDuration.months} months "
+        }
+
+        if (studyDuration.days > 0) {
+            msg += "${studyDuration.days} days "
+        }
+        return msg
+    }
 
     private fun toInterval(studyId: UUID, studyDuration: StudyDuration): String {
         return """
