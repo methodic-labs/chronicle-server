@@ -23,6 +23,7 @@ import com.openlattice.chronicle.storage.RedshiftColumns
 import com.openlattice.chronicle.storage.RedshiftDataTables
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.study.StudyDuration
+import com.openlattice.chronicle.study.StudySetting
 import com.openlattice.chronicle.study.StudySettingType
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
@@ -58,34 +59,70 @@ class StudyComplianceService(
             SELECT ${PostgresColumns.STUDY_ID} FROM ${STUDIES.name}
             WHERE ${PostgresColumns.NOTIFICATIONS_ENABLED.name} = true
         """.trimIndent()
-        private val NO_DATA_STUDIES_SQL = """
-            SELECT ${RedshiftColumns.STUDY_ID.name},${RedshiftColumns.PARTICIPANT_ID.name}
-            FROM ${RedshiftDataTables.CHRONICLE_USAGE_EVENTS.name} 
-            WHERE
-        """
-        private val NO_DATA_STUDIES_SUFFIX = """
+
+        val NO_DATA_STUDIES_SUFFIX = """
             GROUP BY (${RedshiftColumns.STUDY_ID.name},${RedshiftColumns.PARTICIPANT_ID.name})
             HAVING count(*) = 0
         """.trimIndent()
+
+        fun getNoDataUploadSql(dataTable: String): String {
+            return """
+            SELECT ${RedshiftColumns.STUDY_ID.name},${RedshiftColumns.PARTICIPANT_ID.name}
+            FROM $dataTable
+            WHERE
+        """.trimIndent()
+        }
+
+        private fun getIntervalSql(studyId: UUID, studyDuration: StudyDuration, timestampColumn: String): String {
+            return """
+            (${RedshiftColumns.STUDY_ID.name} = $studyId AND $timestampColumn >= '${studyDuration.years} years ${studyDuration.months} months ${studyDuration.days} days'::interval)
+        """.trimIndent()
+        }
+    }
+
+    fun buildSql(
+        dataTable: String,
+        timestampColumn: String,
+        enabledStudiesSettings: Map<UUID, Map<StudySettingType, StudySetting>>
+    ): String {
+        //Build the SQL to query all study participants that have not uploaded data within prescribed time.
+        return getNoDataUploadSql(dataTable) + enabledStudiesSettings.map {
+            val notificationSettings = it.value.getValue(StudySettingType.Notifications) as StudyNotificationSettings
+            getIntervalSql(it.key, notificationSettings.noDataUploaded, timestampColumn)
+        }.joinToString(" AND ") + NO_DATA_STUDIES_SUFFIX
+
     }
 
     fun getStudyParticipantsWithNoAndroidUploads() {
-        val enabledStudies: List<UUID> = getStudiesWithNotificationsEnabled()
-        if (enabledStudies.isEmpty()) {
+        val enabledStudiesSettings = getStudiesWithNotificationsEnabled()
+        if (enabledStudiesSettings.isEmpty()) {
             logger.info("No partcipants without data uploads in the specified timeframes.")
             return
         }
-        val enabledStudiesSettings = studyService.getStudySettings(enabledStudies).filter { studySettings ->
-            studySettings.value[StudySettingType.Notifications] != null
+        val sql = buildSql(
+            RedshiftDataTables.CHRONICLE_USAGE_EVENTS.name,
+            RedshiftColumns.TIMESTAMP.name,
+            enabledStudiesSettings
+        )
+        getStudyParticipantsWithoutUploads(sql, enabledStudiesSettings)
+    }
+
+    fun getStudyParticipantsWithNoIosUploads() {
+        val enabledStudiesSettings = getStudiesWithNotificationsEnabled()
+
+        if (enabledStudiesSettings.isEmpty()) {
+            logger.info("No partcipants without data uploads in the specified timeframes.")
+            return
         }
 
-        //Build the SQL to query all study participants that have not uploaded data within prescribed time.
-        val sql = NO_DATA_STUDIES_SQL + enabledStudiesSettings.map {
-            val notificationSettings = it.value.getValue(StudySettingType.Notifications) as StudyNotificationSettings
-            toInterval(it.key, notificationSettings.noDataUploaded)
-        }.joinToString(" AND ") + NO_DATA_STUDIES_SUFFIX
+        val sql = buildSql(RedshiftDataTables.IOS_SENSOR_DATA.name, RedshiftColumns.RECORDED_DATE.name,enabledStudiesSettings)
+        getStudyParticipantsWithoutUploads(sql, enabledStudiesSettings)
+    }
 
-
+    fun getStudyParticipantsWithoutUploads(
+        sql: String,
+        enabledStudiesSettings: Map<UUID, Map<StudySettingType, StudySetting>>
+    ) {
         val participantsByStudy =
             BasePostgresIterable(StatementHolderSupplier(storageResolver.getEventStorageWithFlavor(), sql)) { rs ->
                 UUID.fromString(rs.getString(RedshiftColumns.STUDY_ID.name)) to rs.getString(RedshiftColumns.PARTICIPANT_ID.name)
@@ -130,13 +167,18 @@ class StudyComplianceService(
 
     }
 
-    private fun getStudiesWithNotificationsEnabled(): List<UUID> {
-        return BasePostgresIterable(PreparedStatementHolderSupplier(
+
+    private fun getStudiesWithNotificationsEnabled(): Map<UUID, Map<StudySettingType, StudySetting>> {
+        return studyService.getStudySettings(BasePostgresIterable(PreparedStatementHolderSupplier(
             storageResolver.getPlatformStorage(),
             NOTIFICATION_ENABLED_STUDIES, 1024
         ) {}) { rs ->
             rs.getObject(PostgresColumns.STUDY_ID.name, UUID::class.java)
         }.toList()
+        )
+            .filter { studySettings ->
+                studySettings.value[StudySettingType.Notifications] != null
+            }
     }
 
     private fun buildMessage(studyId: UUID, studyTitle: String, studyDuration: StudyDuration): String {
@@ -158,9 +200,5 @@ class StudyComplianceService(
         return msg
     }
 
-    private fun toInterval(studyId: UUID, studyDuration: StudyDuration): String {
-        return """
-            (${RedshiftColumns.STUDY_ID.name} = $studyId AND ${RedshiftColumns.TIMESTAMP.name} > '${studyDuration.years} years ${studyDuration.months} months ${studyDuration.days} days'::interval)
-        """.trimIndent()
-    }
+
 }
