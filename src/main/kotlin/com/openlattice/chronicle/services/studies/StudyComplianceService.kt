@@ -1,5 +1,6 @@
 package com.openlattice.chronicle.services.studies
 
+import com.geekbeast.configuration.postgres.PostgresFlavor
 import com.geekbeast.postgres.PostgresArrays
 import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
@@ -32,6 +33,7 @@ import com.openlattice.chronicle.study.StudySetting
 import com.openlattice.chronicle.study.StudySettingType
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import java.security.InvalidParameterException
 import java.util.*
 import javax.inject.Inject
 
@@ -73,9 +75,19 @@ class StudyComplianceService(
         """.trimIndent()
         }
 
-        private fun getIntervalSql(studyId: UUID, studyDuration: StudyDuration, timestampColumn: String): String {
+        private fun getIntervalSql(
+            studyId: UUID,
+            studyDuration: StudyDuration,
+            timestampColumn: String,
+            flavor: PostgresFlavor
+        ): String {
+            val nowFunction = when(flavor) {
+                PostgresFlavor.REDSHIFT -> "GETDATE()"
+                PostgresFlavor.VANILLA -> "now()"
+                else -> "now()"
+            }
             return """
-            (${RedshiftColumns.STUDY_ID.name} = $studyId AND $timestampColumn >= '${studyDuration.years} years ${studyDuration.months} months ${studyDuration.days} days'::interval)
+            (${RedshiftColumns.STUDY_ID.name} = '$studyId' AND $timestampColumn >= $nowFunction - '${studyDuration.years} years ${studyDuration.months} months ${studyDuration.days} days'::interval) 
         """.trimIndent()
         }
 
@@ -83,12 +95,13 @@ class StudyComplianceService(
             dataTable: String,
             timestampColumn: String,
             enabledStudiesSettings: Map<UUID, Map<StudySettingType, StudySetting>>,
+            flavor: PostgresFlavor
         ): String {
             //Build the SQL to query all study participants that have not uploaded data within prescribed time.
             return getNoDataUploadSql(dataTable) + enabledStudiesSettings.map {
                 val notificationSettings =
                     it.value.getValue(StudySettingType.Notifications) as StudyNotificationSettings
-                getIntervalSql(it.key, notificationSettings.noDataUploaded, timestampColumn)
+                getIntervalSql(it.key, notificationSettings.noDataUploaded, timestampColumn, flavor)
             }.joinToString(" AND ") + NO_DATA_STUDIES_SUFFIX
 
         }
@@ -121,11 +134,14 @@ class StudyComplianceService(
             return mapOf()
         }
 
+        //One thing that will break here is that we are grouping studies by their flavor so if we ever store some studies
+        //on postgres and some on redshift, we will need to fix that logic here.
         val androidUploadViolations = getStudyParticipantsWithoutUploads(
             buildSql(
                 RedshiftDataTables.CHRONICLE_USAGE_EVENTS.name,
                 RedshiftColumns.TIMESTAMP.name,
-                enabledStudiesSettings
+                enabledStudiesSettings,
+                storageResolver.getDefaultEventStorage().first
             ), enabledStudiesSettings
         )
 
@@ -133,7 +149,8 @@ class StudyComplianceService(
             buildSql(
                 RedshiftDataTables.IOS_SENSOR_DATA.name,
                 RedshiftColumns.RECORDED_DATE.name,
-                enabledStudiesSettings
+                enabledStudiesSettings,
+                storageResolver.getDefaultEventStorage().first
             ),
             enabledStudiesSettings
         )
@@ -152,7 +169,12 @@ class StudyComplianceService(
         sql: String,
         enabledStudiesSettings: Map<UUID, Map<StudySettingType, StudySetting>>,
     ): Map<UUID, List<Pair<String, ComplianceViolation>>> {
-        return BasePostgresIterable(StatementHolderSupplier(storageResolver.getEventStorageWithFlavor(), sql)) { rs ->
+        return BasePostgresIterable(
+            StatementHolderSupplier(
+                storageResolver.getDefaultEventStorage().second,
+                sql
+            )
+        ) { rs ->
             UUID.fromString(rs.getString(RedshiftColumns.STUDY_ID.name)) to rs.getString(RedshiftColumns.PARTICIPANT_ID.name)
         }.groupBy({ (studyId, _) -> studyId }) { (studyId, participantId) ->
             val violation = ComplianceViolation(
@@ -182,6 +204,7 @@ class StudyComplianceService(
                     )
                 }
             )
+            .filter { it.settings.containsKey(StudySettingType.Notifications) }
             .associateBy({ it.id }, { it.settings })
 //        return studyService.getStudySettings(
 //            BasePostgresIterable(
