@@ -53,7 +53,7 @@ class StudyComplianceService(
         private val ACTIVE_PARTICIPANTS = """
             SELECT ${PostgresColumns.STUDY_ID.name}, ${PostgresColumns.PARTICIPANT_ID.name}
             FROM ${ChroniclePostgresTables.STUDY_PARTICIPANTS.name}
-            WHERE ${PostgresColumns.PARTICIPATION_STATUS.name} = ${ParticipationStatus.ENROLLED}
+            WHERE ${PostgresColumns.PARTICIPATION_STATUS.name} = '${ParticipationStatus.ENROLLED}'
         """.trimIndent()
 
         //Will retrieve all studies that notifications enabled.
