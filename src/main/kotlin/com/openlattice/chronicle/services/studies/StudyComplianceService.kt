@@ -32,6 +32,7 @@ class StudyComplianceService(
     companion object {
         private val logger = LoggerFactory.getLogger(StudyComplianceService::class.java)
 
+
         private val ACTIVE_PARTICIPANTS = """
             SELECT ${PostgresColumns.STUDY_ID.name}, ${PostgresColumns.PARTICIPANT_ID.name}
             FROM ${ChroniclePostgresTables.STUDY_PARTICIPANTS.name}
@@ -50,10 +51,10 @@ class StudyComplianceService(
 
         val NO_DATA_STUDIES_SUFFIX = """
             GROUP BY (${RedshiftColumns.STUDY_ID.name},${RedshiftColumns.PARTICIPANT_ID.name})
-            HAVING count(*) = 0
+            HAVING count(*) > 0
         """.trimIndent()
 
-        fun getNoDataUploadSql(dataTable: String): String {
+        fun getDataUploadedSql(dataTable: String): String {
             return """
             SELECT ${RedshiftColumns.STUDY_ID.name},${RedshiftColumns.PARTICIPANT_ID.name}
             FROM $dataTable
@@ -65,7 +66,7 @@ class StudyComplianceService(
             studyId: UUID,
             studyDuration: StudyDuration,
             timestampColumn: String,
-            flavor: PostgresFlavor
+            flavor: PostgresFlavor,
         ): String {
             val nowFunction = when (flavor) {
                 PostgresFlavor.REDSHIFT -> "GETDATE()"
@@ -81,20 +82,25 @@ class StudyComplianceService(
             dataTable: String,
             timestampColumn: String,
             enabledStudiesSettings: Map<UUID, Map<StudySettingType, StudySetting>>,
-            flavor: PostgresFlavor
+            filterByInterval: Boolean = true,
+            flavor: PostgresFlavor,
         ): String {
             //Build the SQL to query all study participants that have not uploaded data within prescribed time.
-            return getNoDataUploadSql(dataTable) + enabledStudiesSettings.map {
+            return getDataUploadedSql(dataTable) + enabledStudiesSettings.map { (studyId, studySettings) ->
                 val notificationSettings =
-                    it.value.getValue(StudySettingType.Notifications) as StudyNotificationSettings
-                getIntervalSql(it.key, notificationSettings.noDataUploaded, timestampColumn, flavor)
-            }.joinToString(" AND ") + NO_DATA_STUDIES_SUFFIX
+                    studySettings.getValue(StudySettingType.Notifications) as StudyNotificationSettings
+                if (filterByInterval) {
+                    getIntervalSql(studyId, notificationSettings.noDataUploaded, timestampColumn, flavor)
+                } else {
+                    "${RedshiftColumns.STUDY_ID.name} = '$studyId'"
+                }
+            }.joinToString(" OR ") + NO_DATA_STUDIES_SUFFIX
 
         }
 
         fun getDurationPolicy(
             studyId: UUID,
-            enabledStudiesSettings: Map<UUID, Map<StudySettingType, StudySetting>>
+            enabledStudiesSettings: Map<UUID, Map<StudySettingType, StudySetting>>,
         ): StudyDuration {
             return (enabledStudiesSettings
                 .getValue(studyId)
@@ -122,52 +128,44 @@ class StudyComplianceService(
 
         val activeParticipants = getActiveStudyParticipants()
 
+
         //One thing that will break here is that we are grouping studies by their flavor so if we ever store some studies
         //on postgres and some on redshift, we will need to fix that logic here.
-        val androidUploadViolations = getStudyParticipantsWithoutUploads(
+        val androidUploadViolations = getStudyParticipantsWithoutRecentUploads(
             buildSql(
                 RedshiftDataTables.CHRONICLE_USAGE_EVENTS.name,
                 RedshiftColumns.TIMESTAMP.name,
                 enabledStudiesSettings,
+                true,
                 storageResolver.getDefaultEventStorage().first
-            ), enabledStudiesSettings
-        ) //Remove any studies without any active participants.
-            .filterKeys { activeParticipants.containsKey(it) }
-            .mapValues { (studyId, violations) ->
-                //Remove any participants that aren't actively enrolled in study
-                violations.filter {
-                    activeParticipants[studyId]?.contains(it.first) ?: false
-                }
-            }
+            ), enabledStudiesSettings,
+            activeParticipants
+        )
 
-        val iosUploadViolations = getStudyParticipantsWithoutUploads(
+        val iosUploadViolations = getStudyParticipantsWithoutRecentUploads(
             buildSql(
                 RedshiftDataTables.IOS_SENSOR_DATA.name,
                 RedshiftColumns.RECORDED_DATE_TIME.name,
                 enabledStudiesSettings,
+                true,
                 storageResolver.getDefaultEventStorage().first
             ),
-            enabledStudiesSettings
-        )//Remove any studies without any active participants.
-            .filterKeys { activeParticipants.containsKey(it) }
-            .mapValues { (studyId, violations) ->
-                //Remove any participants that aren't actively enrolled in study
-                violations.filter {
-                    activeParticipants[studyId]?.contains(it.first) ?: false
-                }
-            }
+            enabledStudiesSettings,
+            activeParticipants
+        )
 
         //In the future we can add additional compliance checks above and below.
         return (androidUploadViolations.asSequence() + iosUploadViolations.asSequence())
             .groupBy({ it.key }, { it.value })
             .mapValues { participantViolations ->
-                participantViolations.value.flatten().groupBy({ it.first }, { it.second })
+                val participantViolations = participantViolations.value.flatten().groupBy({ it.first }, { it.second })
+                participantViolations
             }
 
 
     }
 
-    private fun getStudyParticipantsWithoutUploads(
+    private fun getStudyParticipantsWithUploads(
         sql: String,
         enabledStudiesSettings: Map<UUID, Map<StudySettingType, StudySetting>>,
     ): Map<UUID, List<Pair<String, ComplianceViolation>>> {
@@ -187,8 +185,39 @@ class StudyComplianceService(
         }
     }
 
-    private fun getActiveStudyParticipants(): Map<UUID, String> {
-        return BasePostgresIterable(
+    private fun getStudyParticipantsWithoutRecentUploads(
+        sql: String,
+        enabledStudiesSettings: Map<UUID, Map<StudySettingType, StudySetting>>,
+        activeParticipants: Map<UUID, Set<String>>,
+    ): Map<UUID, List<Pair<String, ComplianceViolation>>> {
+        val studyParticipants = mutableMapOf<UUID, MutableSet<String>>()
+        BasePostgresIterable(
+            StatementHolderSupplier(
+                storageResolver.getDefaultEventStorage().second,
+                sql
+            )
+        ) { rs ->
+            UUID.fromString(rs.getString(RedshiftColumns.STUDY_ID.name)) to rs.getString(RedshiftColumns.PARTICIPANT_ID.name)
+        }
+            .forEach { (studyId, participantId) ->
+                studyParticipants.getOrPut(studyId) { mutableSetOf() }.add(participantId)
+            }
+
+        return activeParticipants.mapValues{ (studyId, participantIds) ->
+            val violation = ComplianceViolation(
+                ViolationReason.NO_RECENT_DATA_UPLOADED,
+                buildDescription(studyId, getDurationPolicy(studyId, enabledStudiesSettings))
+            )
+
+            (participantIds - (studyParticipants[studyId]?: emptySet()).toSet())
+                .map { it to violation}
+
+        }
+    }
+
+    private fun getActiveStudyParticipants(): Map<UUID, Set<String>> {
+        val studyParticipants = mutableMapOf<UUID, MutableSet<String>>()
+        BasePostgresIterable(
             StatementHolderSupplier(
                 storageResolver.getPlatformStorage(),
                 ACTIVE_PARTICIPANTS,
@@ -199,7 +228,10 @@ class StudyComplianceService(
                 PostgresColumns.STUDY_ID.name,
                 UUID::class.java
             ) to rs.getString(PostgresColumns.PARTICIPANT_ID.name)
-        }.toMap()
+        }.forEach { (studyId, participantId) ->
+            studyParticipants.getOrPut(studyId) { mutableSetOf() }.add(participantId)
+        }
+        return studyParticipants
     }
 
 
