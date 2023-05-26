@@ -18,6 +18,7 @@ import com.openlattice.chronicle.services.studies.StudyService
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.study.StudyDuration
 import com.openlattice.chronicle.study.StudySettingType
+import org.slf4j.LoggerFactory
 import java.util.*
 import java.util.concurrent.TimeUnit
 
@@ -26,6 +27,9 @@ import java.util.concurrent.TimeUnit
  * @author Matthew Tamayo-Rios &lt;matthew@getmethodic.com&gt;
  */
 class StudyComplianceHazelcastTask : HazelcastFixedRateTask<StudyComplianceHazelcastTaskDependencies> {
+    companion object {
+        private val logger = LoggerFactory.getLogger(StudyComplianceHazelcastTask::class.java)
+    }
     override fun getInitialDelay(): Long = 0
 
     override fun getPeriod(): Long = 15
@@ -33,6 +37,7 @@ class StudyComplianceHazelcastTask : HazelcastFixedRateTask<StudyComplianceHazel
     override fun getTimeUnit(): TimeUnit = TimeUnit.MINUTES
 
     override fun runTask() {
+        logger.info("Running study compliance task.")
         val nonCompliantStudies = getDependency().studyComplianceManager.getAllNonCompliantStudies()
         val studyService = getDependency().studyService
         val storageResolver = getDependency().storageResolver

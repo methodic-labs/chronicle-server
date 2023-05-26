@@ -62,9 +62,9 @@ import com.openlattice.chronicle.services.jobs.JobService
 import com.openlattice.chronicle.services.notifications.NotificationService
 import com.openlattice.chronicle.services.settings.OrganizationSettingsManager
 import com.openlattice.chronicle.services.settings.OrganizationSettingsService
-import com.openlattice.chronicle.services.studies.StudyLimitsManager
-import com.openlattice.chronicle.services.studies.StudyLimitsService
-import com.openlattice.chronicle.services.studies.StudyService
+import com.openlattice.chronicle.services.studies.*
+import com.openlattice.chronicle.services.studies.tasks.StudyComplianceHazelcastTask
+import com.openlattice.chronicle.services.studies.tasks.StudyComplianceHazelcastTaskDependencies
 import com.openlattice.chronicle.services.surveys.SurveysManager
 import com.openlattice.chronicle.services.surveys.SurveysService
 import com.openlattice.chronicle.services.timeusediary.TimeUseDiaryService
@@ -449,11 +449,32 @@ class ChronicleServerServicesPod {
     }
 
     @Bean
-    fun moveToEventStorageTaskDependencies() :MoveToEventStorageTaskDependencies {
+    fun studyComplianceManager(): StudyComplianceManager {
+        return StudyComplianceService(storageResolver, auditingManager(), hazelcast)
+    }
+
+    @Bean
+    fun studyComplianceTask(): StudyComplianceHazelcastTask {
+        return StudyComplianceHazelcastTask()
+    }
+
+    @Bean
+    fun studyComplianceTaskDependencies(): StudyComplianceHazelcastTaskDependencies {
+        return StudyComplianceHazelcastTaskDependencies(
+            studyComplianceManager(),
+            studyService(),
+            storageResolver,
+            notificationService()
+        )
+    }
+
+    @Bean
+    fun moveToEventStorageTaskDependencies(): MoveToEventStorageTaskDependencies {
         return MoveToEventStorageTaskDependencies(storageResolver)
     }
+
     @Bean
-    fun moveToEventStorageTask() : MoveToEventStorageTask {
+    fun moveToEventStorageTask(): MoveToEventStorageTask {
         return MoveToEventStorageTask()
     }
 
