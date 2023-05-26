@@ -2,22 +2,14 @@ package com.openlattice.chronicle.services.studies.tasks
 
 import com.geekbeast.tasks.HazelcastFixedRateTask
 import com.geekbeast.tasks.HazelcastTaskDependencies
-import com.openlattice.chronicle.auditing.AuditEventType
-import com.openlattice.chronicle.auditing.AuditableEvent
-import com.openlattice.chronicle.auditing.AuditedTransactionBuilder
 import com.openlattice.chronicle.notifications.DeliveryType
 import com.openlattice.chronicle.notifications.NotificationType
-import com.openlattice.chronicle.notifications.StudyNotificationSettings
 import com.openlattice.chronicle.services.notifications.NotificationManager
-import com.openlattice.chronicle.services.notifications.NotificationService
 import com.openlattice.chronicle.services.notifications.ResearcherNotification
-import com.openlattice.chronicle.services.studies.ComplianceViolation
-import com.openlattice.chronicle.services.studies.StudyComplianceManager
+import com.openlattice.chronicle.study.ComplianceViolation
+import com.openlattice.chronicle.study.StudyComplianceManager
 import com.openlattice.chronicle.services.studies.StudyManager
-import com.openlattice.chronicle.services.studies.StudyService
 import com.openlattice.chronicle.storage.StorageResolver
-import com.openlattice.chronicle.study.StudyDuration
-import com.openlattice.chronicle.study.StudySettingType
 import org.slf4j.LoggerFactory
 import java.util.*
 import java.util.concurrent.TimeUnit
@@ -40,6 +32,10 @@ class StudyComplianceHazelcastTask : HazelcastFixedRateTask<StudyComplianceHazel
     override fun runTask() {
         logger.info("Running study compliance task.")
         val nonCompliantStudies = getDependency().studyComplianceManager.getAllNonCompliantStudies()
+        notifyNonCompliantStudies(nonCompliantStudies)
+    }
+
+    fun notifyNonCompliantStudies(nonCompliantStudies: Map<UUID, Map<String, List<ComplianceViolation>>>) {
         val studyService = getDependency().studyService
         val storageResolver = getDependency().storageResolver
         val notificationService = getDependency().notificationService

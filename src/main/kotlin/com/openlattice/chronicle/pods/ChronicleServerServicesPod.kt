@@ -77,6 +77,7 @@ import com.openlattice.chronicle.storage.tasks.MoveToEventStorageTask
 import com.openlattice.chronicle.storage.tasks.MoveToEventStorageTaskDependencies
 import com.openlattice.chronicle.studies.tasks.StudyLimitsEnforcementTask
 import com.openlattice.chronicle.studies.tasks.StudyLimitsEnforcementTaskDependencies
+import com.openlattice.chronicle.study.StudyComplianceManager
 import com.openlattice.chronicle.tasks.PostConstructInitializerTaskDependencies
 import com.openlattice.chronicle.users.*
 import com.openlattice.chronicle.users.export.Auth0ApiExtension

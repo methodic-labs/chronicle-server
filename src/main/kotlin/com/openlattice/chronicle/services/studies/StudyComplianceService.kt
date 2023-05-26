@@ -1,39 +1,21 @@
 package com.openlattice.chronicle.services.studies
 
 import com.geekbeast.configuration.postgres.PostgresFlavor
-import com.geekbeast.postgres.PostgresArrays
 import com.geekbeast.postgres.streams.BasePostgresIterable
-import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
 import com.geekbeast.postgres.streams.StatementHolderSupplier
 import com.hazelcast.core.HazelcastInstance
 import com.hazelcast.query.Predicates
 import com.openlattice.chronicle.auditing.*
-import com.openlattice.chronicle.authorization.AclKey
-import com.openlattice.chronicle.authorization.AuthorizationManager
 import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.hazelcast.HazelcastMap
-import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.mapstores.storage.StudyMapstore.Companion.NOTIFY_RESEARCHERS_INDEX
-import com.openlattice.chronicle.notifications.DeliveryType
-import com.openlattice.chronicle.notifications.NotificationType
 import com.openlattice.chronicle.notifications.StudyNotificationSettings
-import com.openlattice.chronicle.services.candidates.CandidateManager
-import com.openlattice.chronicle.services.enrollment.EnrollmentManager
-import com.openlattice.chronicle.services.notifications.NotificationManager
-import com.openlattice.chronicle.services.notifications.NotificationService
-import com.openlattice.chronicle.services.notifications.ResearcherNotification
-import com.openlattice.chronicle.services.surveys.SurveysManager
 import com.openlattice.chronicle.storage.*
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.STUDIES
-import com.openlattice.chronicle.study.Study
-import com.openlattice.chronicle.study.StudyDuration
-import com.openlattice.chronicle.study.StudySetting
-import com.openlattice.chronicle.study.StudySettingType
+import com.openlattice.chronicle.study.*
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
-import java.security.InvalidParameterException
 import java.util.*
-import javax.inject.Inject
 
 /**
  *
