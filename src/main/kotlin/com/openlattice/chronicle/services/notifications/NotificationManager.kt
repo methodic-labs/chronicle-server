@@ -20,6 +20,7 @@ interface NotificationManager {
     fun sendResearcherNotifications(
         connection: Connection,
         studyId: UUID,
-        researcherNotifications: List<ResearcherNotification>
+        researcherNotifications: List<ResearcherNotification>,
+        html: Boolean =  false
     ): Int
 }

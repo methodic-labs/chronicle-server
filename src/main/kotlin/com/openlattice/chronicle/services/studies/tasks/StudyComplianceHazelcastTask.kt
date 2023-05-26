@@ -30,6 +30,7 @@ class StudyComplianceHazelcastTask : HazelcastFixedRateTask<StudyComplianceHazel
     companion object {
         private val logger = LoggerFactory.getLogger(StudyComplianceHazelcastTask::class.java)
     }
+
     override fun getInitialDelay(): Long = 0
 
     override fun getPeriod(): Long = 15
@@ -59,7 +60,12 @@ class StudyComplianceHazelcastTask : HazelcastFixedRateTask<StudyComplianceHazel
                 )
             )
             storageResolver.getPlatformStorage().connection.use { connection ->
-                notificationService.sendResearcherNotifications(connection, studyId, listOf(researcherNotification))
+                notificationService.sendResearcherNotifications(
+                    connection,
+                    studyId,
+                    listOf(researcherNotification),
+                    true
+                )
             }
         }
     }

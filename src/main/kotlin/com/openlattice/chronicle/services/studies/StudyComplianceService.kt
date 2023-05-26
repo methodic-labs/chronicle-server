@@ -10,6 +10,7 @@ import com.hazelcast.query.Predicates
 import com.openlattice.chronicle.auditing.*
 import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.authorization.AuthorizationManager
+import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.hazelcast.HazelcastMap
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.mapstores.storage.StudyMapstore.Companion.NOTIFY_RESEARCHERS_INDEX
@@ -22,11 +23,8 @@ import com.openlattice.chronicle.services.notifications.NotificationManager
 import com.openlattice.chronicle.services.notifications.NotificationService
 import com.openlattice.chronicle.services.notifications.ResearcherNotification
 import com.openlattice.chronicle.services.surveys.SurveysManager
+import com.openlattice.chronicle.storage.*
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.STUDIES
-import com.openlattice.chronicle.storage.PostgresColumns
-import com.openlattice.chronicle.storage.RedshiftColumns
-import com.openlattice.chronicle.storage.RedshiftDataTables
-import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.study.Study
 import com.openlattice.chronicle.study.StudyDuration
 import com.openlattice.chronicle.study.StudySetting
@@ -51,6 +49,12 @@ class StudyComplianceService(
 
     companion object {
         private val logger = LoggerFactory.getLogger(StudyComplianceService::class.java)
+
+        private val ACTIVE_PARTICIPANTS = """
+            SELECT ${PostgresColumns.STUDY_ID.name}, ${PostgresColumns.PARTICIPANT_ID.name}
+            FROM ${ChroniclePostgresTables.STUDY_PARTICIPANTS.name}
+            WHERE ${PostgresColumns.PARTICIPATION_STATUS.name} = ${ParticipationStatus.ENROLLED}
+        """.trimIndent()
 
         //Will retrieve all studies that notifications enabled.
         private val ALL_NOTIFICATION_ENABLED_STUDIES = """
@@ -81,7 +85,7 @@ class StudyComplianceService(
             timestampColumn: String,
             flavor: PostgresFlavor
         ): String {
-            val nowFunction = when(flavor) {
+            val nowFunction = when (flavor) {
                 PostgresFlavor.REDSHIFT -> "GETDATE()"
                 PostgresFlavor.VANILLA -> "now()"
                 else -> "now()"
@@ -134,6 +138,8 @@ class StudyComplianceService(
             return mapOf()
         }
 
+        val activeParticipants = getActiveStudyParticipants()
+
         //One thing that will break here is that we are grouping studies by their flavor so if we ever store some studies
         //on postgres and some on redshift, we will need to fix that logic here.
         val androidUploadViolations = getStudyParticipantsWithoutUploads(
@@ -143,17 +149,31 @@ class StudyComplianceService(
                 enabledStudiesSettings,
                 storageResolver.getDefaultEventStorage().first
             ), enabledStudiesSettings
-        )
+        ) //Remove any studies without any active participants.
+            .filterKeys { activeParticipants.containsKey(it) }
+            .mapValues { (studyId, violations) ->
+                //Remove any participants that aren't actively enrolled in study
+                violations.filter {
+                    activeParticipants[studyId]?.contains(it.first) ?: false
+                }
+            }
 
         val iosUploadViolations = getStudyParticipantsWithoutUploads(
             buildSql(
                 RedshiftDataTables.IOS_SENSOR_DATA.name,
-                RedshiftColumns.RECORDED_DATE.name,
+                RedshiftColumns.RECORDED_DATE_TIME.name,
                 enabledStudiesSettings,
                 storageResolver.getDefaultEventStorage().first
             ),
             enabledStudiesSettings
-        )
+        )//Remove any studies without any active participants.
+            .filterKeys { activeParticipants.containsKey(it) }
+            .mapValues { (studyId, violations) ->
+                //Remove any participants that aren't actively enrolled in study
+                violations.filter {
+                    activeParticipants[studyId]?.contains(it.first) ?: false
+                }
+            }
 
         //In the future we can add additional compliance checks above and below.
         return (androidUploadViolations.asSequence() + iosUploadViolations.asSequence())
@@ -183,6 +203,21 @@ class StudyComplianceService(
             )
             participantId to violation
         }
+    }
+
+    private fun getActiveStudyParticipants(): Map<UUID, String> {
+        return BasePostgresIterable(
+            StatementHolderSupplier(
+                storageResolver.getPlatformStorage(),
+                ACTIVE_PARTICIPANTS,
+                1024
+            )
+        ) { rs ->
+            rs.getObject(
+                PostgresColumns.STUDY_ID.name,
+                UUID::class.java
+            ) to rs.getString(PostgresColumns.PARTICIPANT_ID.name)
+        }.toMap()
     }
 
 

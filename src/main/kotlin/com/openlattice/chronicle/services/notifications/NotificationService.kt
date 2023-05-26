@@ -153,7 +153,8 @@ class NotificationService(
     override fun sendResearcherNotifications(
         connection: Connection,
         studyId: UUID,
-        researcherNotifications: List<ResearcherNotification>
+        researcherNotifications: List<ResearcherNotification>,
+        html: Boolean
     ): Int {
         val notifications: List<Notification> =
             researcherNotifications.asSequence().mapNotNull { researcherNotification ->
@@ -169,7 +170,8 @@ class NotificationService(
                         notificationType = researcherNotification.notificationType,
                         deliveryType = DeliveryType.EMAIL,
                         body = researcherNotification.message,
-                        destination = checkNotNull(email) { "Email cannot be null for email delivery type." }
+                        destination = checkNotNull(email) { "Email cannot be null for email delivery type." },
+                        html = html
                     )
                 } + researcherNotification.phoneNumbers.map { phoneNumber ->
                     val notificationId = idGenerationService.getNextId()
