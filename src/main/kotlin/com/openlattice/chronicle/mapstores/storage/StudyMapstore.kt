@@ -5,6 +5,8 @@ import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
 import com.geekbeast.postgres.streams.StatementHolderSupplier
 import com.geekbeast.rhizome.mapstores.TestableSelfRegisteringMapStore
+import com.hazelcast.config.IndexConfig
+import com.hazelcast.config.IndexType
 import com.hazelcast.config.MapConfig
 import com.hazelcast.config.MapStoreConfig
 import com.openlattice.chronicle.hazelcast.HazelcastMap

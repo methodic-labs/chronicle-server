@@ -45,7 +45,7 @@ class StudyComplianceService(
     private val studyLimitsMgr: StudyLimitsManager,
     private val studyService: StudyService,
     override val auditingManager: AuditingManager,
-    hazelcast: HazelcastInstance,
+    private val hazelcast: HazelcastInstance,
 ) : StudyComplianceManager, AuditingComponent {
     private val studies = HazelcastMap.STUDIES.getMap(hazelcast)
 
@@ -55,9 +55,10 @@ class StudyComplianceService(
 
     companion object {
         private val logger = LoggerFactory.getLogger(StudyComplianceService::class.java)
+        //Will retrieve all studies that notifications enabled.
         private val NOTIFICATION_ENABLED_STUDIES = """
             SELECT ${PostgresColumns.STUDY_ID} FROM ${STUDIES.name}
-            WHERE ${PostgresColumns.NOTIFICATIONS_ENABLED.name} = true
+            WHERE COALESCE(${PostgresColumns.SETTINGS.name}->'Notifications'->'researchNotificationsEnabled','true')::bool = true
         """.trimIndent()
 
         val NO_DATA_STUDIES_SUFFIX = """
@@ -80,10 +81,10 @@ class StudyComplianceService(
         }
     }
 
-    fun buildSql(
+    private fun buildSql(
         dataTable: String,
         timestampColumn: String,
-        enabledStudiesSettings: Map<UUID, Map<StudySettingType, StudySetting>>
+        enabledStudiesSettings: Map<UUID, Map<StudySettingType, StudySetting>>,
     ): String {
         //Build the SQL to query all study participants that have not uploaded data within prescribed time.
         return getNoDataUploadSql(dataTable) + enabledStudiesSettings.map {
@@ -123,9 +124,9 @@ class StudyComplianceService(
         getStudyParticipantsWithoutUploads(sql, enabledStudiesSettings)
     }
 
-    fun getStudyParticipantsWithoutUploads(
+    private fun getStudyParticipantsWithoutUploads(
         sql: String,
-        enabledStudiesSettings: Map<UUID, Map<StudySettingType, StudySetting>>
+        enabledStudiesSettings: Map<UUID, Map<StudySettingType, StudySetting>>,
     ) {
         val participantsByStudy =
             BasePostgresIterable(StatementHolderSupplier(storageResolver.getEventStorageWithFlavor(), sql)) { rs ->
@@ -145,6 +146,7 @@ class StudyComplianceService(
                 buildMessage(
                     studyId,
                     study.title,
+                    participantIds,
                     (enabledStudiesSettings.getValue(studyId)
                         .getValue(StudySettingType.Notifications) as StudyNotificationSettings).noDataUploaded
                 )
@@ -171,8 +173,10 @@ class StudyComplianceService(
 
     }
 
+    fun getStudiesWithNotificationsEnabled(): Map<UUID, Map<StudySettingType, StudySetting>> {
 
-    private fun getStudiesWithNotificationsEnabled(): Map<UUID, Map<StudySettingType, StudySetting>> {
+        val studies = HazelcastMap.STUDIES.getMap(hazelcast);
+        studies.aggregate(Aggregators.)
         return studyService.getStudySettings(BasePostgresIterable(PreparedStatementHolderSupplier(
             storageResolver.getPlatformStorage(),
             NOTIFICATION_ENABLED_STUDIES, 1024
@@ -185,9 +189,14 @@ class StudyComplianceService(
             }
     }
 
-    private fun buildMessage(studyId: UUID, studyTitle: String, studyDuration: StudyDuration): String {
+    private fun buildMessage(
+        studyId: UUID,
+        studyTitle: String,
+        participantIds: Collection<String>,
+        studyDuration: StudyDuration,
+    ): String {
         var msg = """
-            The following participants in $studyTitle ($studyId) have not uploaded any data in the last 
+            The following participants in $studyTitle ($studyId) have not uploaded any data in the last
         """.trimIndent()
 
         if (studyDuration.years > 0) {
@@ -201,7 +210,9 @@ class StudyComplianceService(
         if (studyDuration.days > 0) {
             msg += "${studyDuration.days} days "
         }
-        return msg
+        return "$msg:\n" + participantIds.joinToString("\n") {
+            "- $it"
+        }
     }
 
 
