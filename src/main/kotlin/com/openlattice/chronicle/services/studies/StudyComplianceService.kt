@@ -110,15 +110,16 @@ class StudyComplianceService(
     }
 
     override fun getNonCompliantStudies(studies: Collection<UUID>): Map<UUID, Map<String, List<ComplianceViolation>>> {
-        return if (studies.isEmpty()) mapOf() else getNonCompliantStudiesById(studies)
+        return if (studies.isEmpty()) mapOf() else getNonCompliantParticipantsByStudy(studies)
 
     }
 
     override fun getAllNonCompliantStudies(): Map<UUID, Map<String, List<ComplianceViolation>>> {
-        return getNonCompliantStudiesById(emptyList())
+        return getNonCompliantParticipantsByStudy(emptyList())
     }
 
-    private fun getNonCompliantStudiesById(studies: Collection<UUID>): Map<UUID, Map<String, List<ComplianceViolation>>> {
+    private fun getNonCompliantParticipantsByStudy(studies: Collection<UUID>): Map<UUID, Map<String, List<ComplianceViolation>>> {
+        logger.info("Getting non-compliant participants for the following studies: $studies")
         //Studies being empty in this function means that it will return all studies.
         val enabledStudiesSettings = getStudiesWithNotificationsEnabled(studies)
         if (enabledStudiesSettings.isEmpty()) {
@@ -158,8 +159,7 @@ class StudyComplianceService(
         return (androidUploadViolations.asSequence() + iosUploadViolations.asSequence())
             .groupBy({ it.key }, { it.value })
             .mapValues { participantViolations ->
-                val participantViolations = participantViolations.value.flatten().groupBy({ it.first }, { it.second })
-                participantViolations
+                participantViolations.value.flatten().groupBy({ it.first }, { it.second })
             }
 
 
@@ -191,6 +191,7 @@ class StudyComplianceService(
         activeParticipants: Map<UUID, Set<String>>,
     ): Map<UUID, List<Pair<String, ComplianceViolation>>> {
         val studyParticipants = mutableMapOf<UUID, MutableSet<String>>()
+        //Load all participants with recent uploads.
         BasePostgresIterable(
             StatementHolderSupplier(
                 storageResolver.getDefaultEventStorage().second,
@@ -203,6 +204,7 @@ class StudyComplianceService(
                 studyParticipants.getOrPut(studyId) { mutableSetOf() }.add(participantId)
             }
 
+        //Take all active participants and remove any who have recently uploaded data.
         return activeParticipants.mapValues { (studyId, participantIds) ->
             val violation = ComplianceViolation(
                 ViolationReason.NO_RECENT_DATA_UPLOADED,

@@ -18,6 +18,7 @@ import com.openlattice.chronicle.study.StudyLimits
 import com.openlattice.chronicle.study.StudyLimitsApi.Companion.STUDY
 import com.openlattice.chronicle.study.StudyLimitsApi.Companion.STUDY_ID
 import com.openlattice.chronicle.study.StudyLimitsApi.Companion.STUDY_ID_PATH
+import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.*
 import java.util.*
@@ -38,6 +39,9 @@ class StudyComplianceController @Inject constructor(
     override val auditingManager: AuditingManager,
     override val authorizationManager: AuthorizationManager,
 ) : StudyComplianceApi, AuthorizingComponent {
+    companion object {
+        private val logger = LoggerFactory.getLogger(StudyComplianceController::class.java)
+    }
 
     @GetMapping(
         value = [STUDY + STUDY_ID_PATH],
@@ -58,6 +62,8 @@ class StudyComplianceController @Inject constructor(
     override fun triggerStudyComplianceNotifications(@RequestBody studyIds: Set<UUID>): OK {
         ensureAdminAccess()
         val nonCompliantStudies = studyComplianceManager.getNonCompliantStudies(studyIds)
+        check(studyIds == nonCompliantStudies.keys) { "Received unrequested non-compliant studies must be a bug." }
+        logger.info("Triggering notifications for the following non-compliant studies: $nonCompliantStudies")
         storageResolver.getPlatformStorage().connection.use { connection ->
             AuditedTransactionBuilder<Unit>(connection, auditingManager)
                 .transaction {
@@ -81,20 +87,20 @@ class StudyComplianceController @Inject constructor(
     )
     override fun triggerComplianceNotificationsForAllStudies(): OK {
         ensureAdminAccess()
-
+        logger.info("Triggering notifications for all non-compliant study participants.")
         val nonCompliantStudies = studyComplianceManager.getAllNonCompliantStudies()
         storageResolver.getPlatformStorage().connection.use { connection ->
             AuditedTransactionBuilder<Unit>(connection, auditingManager)
                 .transaction {
                     studyComplianceHazelcastTask.notifyNonCompliantStudies(nonCompliantStudies)
                 }.audit {
-                   listOf(
+                    listOf(
                         AuditableEvent(
                             AclKey(IdConstants.METHODIC.id),
                             eventType = AuditEventType.TRIGGER_STUDY_COMPLIANCE_NOTIFICATIONS,
                             description = "Trigger study compliance notification job"
                         )
-                   )
+                    )
                 }.buildAndRun()
         }
         return OK()
