@@ -62,8 +62,9 @@ class StudyComplianceController @Inject constructor(
     override fun triggerStudyComplianceNotifications(@RequestBody studyIds: Set<UUID>): OK {
         ensureAdminAccess()
         val nonCompliantStudies = studyComplianceManager.getNonCompliantStudies(studyIds)
-        check(studyIds == nonCompliantStudies.keys) { "Received unrequested non-compliant studies must be a bug." }
         logger.info("Triggering notifications for the following non-compliant studies: $nonCompliantStudies")
+        check(studyIds == nonCompliantStudies.keys) { "Received unrequested non-compliant studies must be a bug." }
+
         storageResolver.getPlatformStorage().connection.use { connection ->
             AuditedTransactionBuilder<Unit>(connection, auditingManager)
                 .transaction {

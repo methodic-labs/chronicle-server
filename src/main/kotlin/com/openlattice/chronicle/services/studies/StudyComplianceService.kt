@@ -253,7 +253,7 @@ class StudyComplianceService(
                     Predicates.equal(NOTIFY_RESEARCHERS_INDEX, true)
                 } else {
                     Predicates.and(
-                        Predicates.`in`<UUID, Study>(NOTIFY_RESEARCHERS_INDEX, *studyIds.toTypedArray()),
+                        Predicates.`in`<UUID, Study>("__key", *studyIds.toTypedArray()),
                         Predicates.equal<UUID, Study>(NOTIFY_RESEARCHERS_INDEX, true)
                     )
                 }
