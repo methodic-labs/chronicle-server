@@ -24,7 +24,9 @@ package com.openlattice.chronicle.authorization.initializers
 import com.geekbeast.tasks.HazelcastInitializationTask
 import com.geekbeast.tasks.Task
 import com.openlattice.chronicle.authorization.Role
+import com.openlattice.chronicle.authorization.SecurablePrincipal
 import com.openlattice.chronicle.authorization.SystemRole
+import com.openlattice.chronicle.authorization.SystemUser
 import com.openlattice.chronicle.ids.IdConstants
 import java.util.*
 import java.util.concurrent.TimeUnit
@@ -39,6 +41,7 @@ class AuthorizationInitializationTask : HazelcastInitializationTask<Authorizatio
         spm.createSecurablePrincipalIfNotExists(SystemRole.AUTHENTICATED_USER.principal, GLOBAL_USER_ROLE)
         spm.createSecurablePrincipalIfNotExists(SystemRole.ADMIN.principal, GLOBAL_ADMIN_ROLE)
         spm.createSecurablePrincipalIfNotExists(SystemRole.ANONYMOUS_USER.principal, ANONYMOUS_USER_ROLE)
+        spm.createSecurablePrincipalIfNotExists(SystemUser.METHODIC.principal, METHODIC_USER_ROLE)
         val source = spm.lookup(SystemRole.AUTHENTICATED_USER.principal)
         val target = spm.lookup(SystemRole.ADMIN.principal)
         spm.addPrincipalToPrincipal(source, target)
@@ -82,6 +85,14 @@ class AuthorizationInitializationTask : HazelcastInitializationTask<Authorizatio
             SystemRole.ADMIN.principal,
             "Global Admin Role",
             Optional.of("The global administrative role that allows management of entity data model.")
+        )
+
+        @JvmField
+        val METHODIC_USER_ROLE = SecurablePrincipal(
+            Optional.empty(),
+            SystemUser.METHODIC.principal,
+            "Anonymous User Role",
+            Optional.of("The system service role for operations that do not require authentication.")
         )
 
         @JvmField

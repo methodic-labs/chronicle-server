@@ -27,5 +27,12 @@ class PostgresDataTables {
             .addColumns(*RedshiftDataTables.AUDIT.columns.toTypedArray())
             .primaryKey(*RedshiftDataTables.AUDIT.columns.toTypedArray())
             .addDataSourceNames(RedshiftDataTables.REDSHIFT_DATASOURCE_NAME)
+
+        @JvmField
+        val IOS_SENSOR_DATA = PostgresTableDefinition(RedshiftDataTables.IOS_SENSOR_DATA.name)
+            .addColumns(*RedshiftDataTables.IOS_SENSOR_DATA.columns.toTypedArray())
+            .primaryKey(*RedshiftDataTables.IOS_SENSOR_DATA.columns.toTypedArray().sliceArray(0 until 32))
+            .addDataSourceNames(RedshiftDataTables.REDSHIFT_DATASOURCE_NAME)
+
     }
 }

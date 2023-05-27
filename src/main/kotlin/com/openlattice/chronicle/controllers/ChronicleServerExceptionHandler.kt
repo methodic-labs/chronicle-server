@@ -28,7 +28,6 @@ import com.openlattice.chronicle.auditing.AuditingComponent
 import com.openlattice.chronicle.auditing.AuditingManager
 import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.authorization.principals.Principals
-import com.openlattice.chronicle.controllers.ChronicleServerExceptionHandler
 import com.openlattice.chronicle.ids.IdConstants
 import org.apache.commons.io.IOUtils
 import org.slf4j.LoggerFactory
@@ -68,7 +67,7 @@ class ChronicleServerExceptionHandler @Inject constructor(override val auditingM
             }
             else -> {
                 AuditableEvent(
-                    AclKey(IdConstants.SYSTEM.id),
+                    AclKey(IdConstants.METHODIC.id),
                     principal.id,
                     principal.principal,
                     AuditEventType.STUDY_NOT_FOUND,

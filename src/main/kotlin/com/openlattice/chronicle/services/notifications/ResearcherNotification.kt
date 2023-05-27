@@ -14,6 +14,7 @@ data class ResearcherNotification(
     val phoneNumbers: Set<String>,
     val notificationType: NotificationType,
     val deliveryType: EnumSet<DeliveryType>,
+    val subject: String,
     val message: String,
     val dateTime: OffsetDateTime = OffsetDateTime.now(),
 )

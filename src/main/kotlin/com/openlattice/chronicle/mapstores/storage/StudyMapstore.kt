@@ -5,6 +5,8 @@ import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
 import com.geekbeast.postgres.streams.StatementHolderSupplier
 import com.geekbeast.rhizome.mapstores.TestableSelfRegisteringMapStore
+import com.hazelcast.config.IndexConfig
+import com.hazelcast.config.IndexType
 import com.hazelcast.config.MapConfig
 import com.hazelcast.config.MapStoreConfig
 import com.openlattice.chronicle.hazelcast.HazelcastMap
@@ -25,6 +27,7 @@ import java.util.*
  */
 @Component
 class StudyMapstore(val hds: HikariDataSource) : TestableSelfRegisteringMapStore<UUID, Study> {
+
     private val mapStoreConfig = MapStoreConfig()
         .setInitialLoadMode(MapStoreConfig.InitialLoadMode.EAGER)
         .setImplementation(this)
@@ -33,11 +36,17 @@ class StudyMapstore(val hds: HikariDataSource) : TestableSelfRegisteringMapStore
 
     private val mapConfig = MapConfig(mapName).setMapStoreConfig(mapStoreConfig)
 
-    override fun getMapConfig(): MapConfig = mapConfig
+    override fun getMapConfig(): MapConfig = mapConfig.addIndexConfig(
+        IndexConfig(
+            IndexType.HASH,
+            NOTIFY_RESEARCHERS_INDEX
+        )
+    )
+
     override fun getMapStoreConfig(): MapStoreConfig = mapStoreConfig
 
     companion object {
-
+        const val NOTIFY_RESEARCHERS_INDEX = "notifyResearchers"
         private val LOAD_KEYS_SQL = """
             SELECT ${STUDY_ID.name} FROM ${STUDIES.name} 
         """.trimIndent()
@@ -74,7 +83,7 @@ class StudyMapstore(val hds: HikariDataSource) : TestableSelfRegisteringMapStore
     }
 
     override fun delete(key: UUID) {
-         throw UnsupportedOperationException("The Study Mapstore is a READ ONLY cache.")
+        throw UnsupportedOperationException("The Study Mapstore is a READ ONLY cache.")
     }
 
     override fun deleteAll(keys: MutableCollection<UUID>) {

@@ -281,6 +281,16 @@ class StudyService(
             WHERE ${STUDY_ID.name} = ?
         """.trimIndent()
 
+        /**
+         * PreparedStatement bind order:
+         * 1) StudyIds
+         */
+        private val GET_STUDIES_SETTINGS_SQL = """
+            SELECT ${STUDY_ID.name},${SETTINGS.name}
+            FROM ${STUDIES.name}
+            WHERE ${STUDY_ID.name} = ANY(?)
+        """.trimIndent()
+
         private val SELECT_STUDY_PARTICIPANTS_SQL = """
             SELECT * FROM ${STUDY_PARTICIPANTS.name} WHERE ${STUDY_ID.name} = ?
         """.trimIndent()
@@ -677,6 +687,20 @@ class StudyService(
             }
         }
     }
+
+    override fun getStudySettings(studyIds: Collection<UUID>): Map<UUID, Map<StudySettingType, StudySetting>> {
+        return BasePostgresIterable(PreparedStatementHolderSupplier(
+            storageResolver.getPlatformStorage(),
+            GET_STUDIES_SETTINGS_SQL,
+            1024
+        ) { ps -> ps.setArray(1, PostgresArrays.createUuidArray(ps.connection, studyIds)) }) { rs ->
+            rs.getObject(
+                STUDY_ID.name,
+                UUID::class.java
+            ) to mapper.readValue<Map<StudySettingType, StudySetting>>(rs.getString(SETTINGS.name))
+        }.toMap()
+    }
+
 
     override fun getStudySensors(studyId: UUID): Set<SensorType> {
         val settings = getStudySettings(studyId)

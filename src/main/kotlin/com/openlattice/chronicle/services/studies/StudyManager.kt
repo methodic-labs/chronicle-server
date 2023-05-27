@@ -29,6 +29,7 @@ interface StudyManager {
     fun getStudyParticipants(studyId: UUID): Iterable<Participant>
     fun getStudySensors(studyId: UUID): Set<SensorType>
     fun getStudySettings(studyId: UUID): Map<StudySettingType, StudySetting>
+    fun getStudySettings(studyIds: Collection<UUID>): Map<UUID, Map<StudySettingType, StudySetting>>
     fun insertOrUpdateParticipantStats(stats: ParticipantStats)
     fun isNotificationsEnabled(studyId: UUID): Boolean
     fun isValidStudy(studyId: UUID): Boolean
@@ -49,7 +50,7 @@ interface StudyManager {
     fun countStudyParticipants(studyId: UUID): Long
     fun countStudyParticipants(studyIds: Set<UUID>): Map<UUID, Long>
 
-    fun updateLastDevicePing( studyId: UUID,participantId: String, sourceDevice:SourceDevice)
+    fun updateLastDevicePing(studyId: UUID, participantId: String, sourceDevice: SourceDevice)
     fun updateLastDevicePing(studyId: UUID, participantId: String)
     fun expireStudies(studyIds: Set<UUID>)
 }

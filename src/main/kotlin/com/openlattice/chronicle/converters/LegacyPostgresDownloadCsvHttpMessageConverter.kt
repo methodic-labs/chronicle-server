@@ -26,11 +26,8 @@ import com.fasterxml.jackson.datatype.guava.GuavaModule
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module
 import com.fasterxml.jackson.datatype.joda.JodaModule
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
-import com.fasterxml.jackson.module.afterburner.AfterburnerModule
-import com.geekbeast.postgres.PostgresDatatype
+import com.fasterxml.jackson.module.blackbird.BlackbirdModule
 import com.openlattice.chronicle.constants.CustomMediaType
-import com.openlattice.chronicle.storage.PostgresColumns
-import com.openlattice.chronicle.storage.RedshiftColumns
 import org.springframework.http.HttpInputMessage
 import org.springframework.http.HttpOutputMessage
 import org.springframework.http.converter.AbstractGenericHttpMessageConverter
@@ -47,7 +44,7 @@ class LegacyPostgresDownloadCsvHttpMessageConverter : AbstractGenericHttpMessage
     private val csvMapper = CsvMapper()
 
     init {
-        csvMapper.registerModule(AfterburnerModule())
+        csvMapper.registerModule(BlackbirdModule())
         csvMapper.registerModule(GuavaModule())
         csvMapper.registerModule(JodaModule())
         csvMapper.registerModule(JavaTimeModule())

@@ -62,9 +62,9 @@ import com.openlattice.chronicle.services.jobs.JobService
 import com.openlattice.chronicle.services.notifications.NotificationService
 import com.openlattice.chronicle.services.settings.OrganizationSettingsManager
 import com.openlattice.chronicle.services.settings.OrganizationSettingsService
-import com.openlattice.chronicle.services.studies.StudyLimitsManager
-import com.openlattice.chronicle.services.studies.StudyLimitsService
-import com.openlattice.chronicle.services.studies.StudyService
+import com.openlattice.chronicle.services.studies.*
+import com.openlattice.chronicle.services.studies.tasks.StudyComplianceHazelcastTask
+import com.openlattice.chronicle.services.studies.tasks.StudyComplianceHazelcastTaskDependencies
 import com.openlattice.chronicle.services.surveys.SurveysManager
 import com.openlattice.chronicle.services.surveys.SurveysService
 import com.openlattice.chronicle.services.timeusediary.TimeUseDiaryService
@@ -77,6 +77,7 @@ import com.openlattice.chronicle.storage.tasks.MoveToEventStorageTask
 import com.openlattice.chronicle.storage.tasks.MoveToEventStorageTaskDependencies
 import com.openlattice.chronicle.studies.tasks.StudyLimitsEnforcementTask
 import com.openlattice.chronicle.studies.tasks.StudyLimitsEnforcementTaskDependencies
+import com.openlattice.chronicle.study.StudyComplianceManager
 import com.openlattice.chronicle.tasks.PostConstructInitializerTaskDependencies
 import com.openlattice.chronicle.users.*
 import com.openlattice.chronicle.users.export.Auth0ApiExtension
@@ -449,11 +450,32 @@ class ChronicleServerServicesPod {
     }
 
     @Bean
-    fun moveToEventStorageTaskDependencies() :MoveToEventStorageTaskDependencies {
+    fun studyComplianceManager(): StudyComplianceManager {
+        return StudyComplianceService(storageResolver, auditingManager(), hazelcast)
+    }
+
+    @Bean
+    fun studyComplianceTask(): StudyComplianceHazelcastTask {
+        return StudyComplianceHazelcastTask()
+    }
+
+    @Bean
+    fun studyComplianceTaskDependencies(): StudyComplianceHazelcastTaskDependencies {
+        return StudyComplianceHazelcastTaskDependencies(
+            studyComplianceManager(),
+            studyService(),
+            storageResolver,
+            notificationService()
+        )
+    }
+
+    @Bean
+    fun moveToEventStorageTaskDependencies(): MoveToEventStorageTaskDependencies {
         return MoveToEventStorageTaskDependencies(storageResolver)
     }
+
     @Bean
-    fun moveToEventStorageTask() : MoveToEventStorageTask {
+    fun moveToEventStorageTask(): MoveToEventStorageTask {
         return MoveToEventStorageTask()
     }
 

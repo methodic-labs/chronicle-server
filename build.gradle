@@ -26,9 +26,9 @@ plugins {
     id 'maven-publish'
     id 'signing'
     id 'com.github.spotbugs' version '5.0.14'
-    id 'org.jetbrains.kotlin.jvm' version '1.6.10'
-    id 'org.jetbrains.kotlin.plugin.spring' version '1.6.10'
-    id 'org.jetbrains.dokka' version '1.6.10'
+    id 'org.jetbrains.kotlin.jvm' version '1.7.20'
+    id 'org.jetbrains.kotlin.plugin.spring' version '1.7.20'
+    id 'org.jetbrains.dokka' version '1.8.10'
     id 'com.github.jk1.dependency-license-report' version '1.16'
 }
 
@@ -103,8 +103,8 @@ applicationDefaultJvmArgs += [ "--add-modules", "java.base",
                                "--add-opens","java.management/sun.management=ALL-UNNAMED",
                                "--add-opens", "jdk.management/com.ibm.lang.management.internal=ALL-UNNAMED",
                                "--add-opens","jdk.management/com.sun.management.internal=ALL-UNNAMED"]
-sourceCompatibility = JavaVersion.VERSION_11
-targetCompatibility = JavaVersion.VERSION_11
+sourceCompatibility = JavaVersion.VERSION_17
+targetCompatibility = JavaVersion.VERSION_17
 
 jacoco {
     toolVersion = "${jacoco_tool_version}"
@@ -240,7 +240,7 @@ tasks.withType(Test) {
 
 tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
     kotlinOptions {
-        jvmTarget = "11"
+        jvmTarget = "17"
         freeCompilerArgs += '-Xjvm-default=compatibility'
     }
 }

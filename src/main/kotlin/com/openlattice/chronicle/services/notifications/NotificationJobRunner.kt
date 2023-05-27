@@ -35,23 +35,27 @@ class NotificationJobRunner(
         when (notification.deliveryType) {
             DeliveryType.SMS -> updateWithMessageId(connection, twilioService.sendNotification(notification))
             DeliveryType.EMAIL -> mailService.sendEmails(
-                listOf(EmailRequest(
-                    to = listOf(notification.destination),
-                    subject = notification.subject,
-                    body = notification.body,
-                    html = notification.html
-                ))
+                listOf(
+                    EmailRequest(
+                        to = listOf(notification.destination),
+                        subject = notification.subject,
+                        body = notification.body,
+                        html = notification.html
+                    )
+                )
             )
         }
 
-        return listOf(AuditableEvent(
-            AclKey(notification.studyId),
-            job.securablePrincipalId,
-            job.principal,
-            AuditEventType.NOTIFICATION_SENT,
-            "Sent ${notification.deliveryType} notification to ${notification.participantId}",
-            notification.studyId
-        ))
+        return listOf(
+            AuditableEvent(
+                AclKey(notification.studyId),
+                job.securablePrincipalId,
+                job.principal,
+                AuditEventType.NOTIFICATION_SENT,
+                "Sent ${notification.deliveryType} notification of type ${notification.notificationType} to ${notification.destination} (participantId = ${notification.participantId})",
+                notification.studyId
+            )
+        )
     }
 
     private fun updateWithMessageId(connection: Connection, notification: Notification) {

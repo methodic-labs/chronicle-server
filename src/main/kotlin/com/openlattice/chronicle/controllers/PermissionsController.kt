@@ -35,6 +35,7 @@ import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.authorization.principals.SecurePrincipalsManager
 import com.openlattice.chronicle.base.OK
 import com.openlattice.chronicle.base.OK.Companion.ok
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings
 import org.slf4j.LoggerFactory
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.RequestBody
@@ -48,6 +49,7 @@ import javax.inject.Inject
 
 @RestController
 @RequestMapping(PermissionsApi.CONTROLLER)
+@SuppressFBWarnings(value = ["NP_PARAMETER_MUST_BE_NONNULL_BUT_MARKED_AS_NULLABLE","NP_NULL_PARAM_DEREF","RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE"], justification = "https://github.com/spotbugs/spotbugs/issues/927")
 class PermissionsController @Inject constructor(
     val securePrincipalsManager: SecurePrincipalsManager,
     override val auditingManager: AuditingManager,

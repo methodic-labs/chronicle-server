@@ -29,6 +29,6 @@ data class ChronicleConfiguration(
     }
 
     override fun getKey(): ConfigurationKey {
-        return key
+        return ChronicleConfiguration.key
     }
 }

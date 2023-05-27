@@ -19,6 +19,7 @@ import com.zaxxer.hikari.HikariDataSource
 import org.apache.commons.lang3.RandomStringUtils
 import org.slf4j.LoggerFactory
 import org.slf4j.event.Level
+import java.security.InvalidParameterException
 import java.time.OffsetDateTime
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -85,6 +86,7 @@ class MoveToEventStorageTask : HazelcastFixedRateTask<MoveToEventStorageTaskDepe
                                     storageResolver.getEventStorageWithFlavor(PostgresFlavor.VANILLA),
                                     usageEventQueueEntries
                                 )
+                                else -> throw InvalidParameterException("Invalid postgres flavor: ${postgresFlavor.name}")
                             }
                         }
                     }
