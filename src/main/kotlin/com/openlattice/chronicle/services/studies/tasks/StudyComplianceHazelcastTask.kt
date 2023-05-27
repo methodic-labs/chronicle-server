@@ -2,6 +2,7 @@ package com.openlattice.chronicle.services.studies.tasks
 
 import com.geekbeast.tasks.HazelcastFixedRateTask
 import com.geekbeast.tasks.HazelcastTaskDependencies
+import com.geekbeast.tasks.Task
 import com.geekbeast.util.StopWatch
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.notifications.DeliveryType
@@ -31,20 +32,18 @@ class StudyComplianceHazelcastTask : HazelcastFixedRateTask<StudyComplianceHazel
     }
 
     override fun getInitialDelay(): Long {
-        return zoneIds.maxOf{ zoneId ->
+        return zoneIds.maxOf { zoneId ->
             //What time is it in the desired zoneId
             val current = OffsetDateTime.now().atZoneSameInstant(ZoneId.of(zoneId))
-            var currentTime = current.toOffsetDateTime().toOffsetTime()
+            val currentTime = current.toOffsetDateTime().toOffsetTime()
             //9 AM in the desired time zone
             val targetNextRunTime = LocalTime.of(9, 0).atOffset(current.offset)
-            var targetNextRunDateTime = targetNextRunTime.atDate(current.toLocalDate())
+            val targetNextRunDateTime = targetNextRunTime.atDate(current.toLocalDate())
 
-            if (currentTime > targetNextRunTime) {
-                targetNextRunDateTime = targetNextRunDateTime.plusDays(1)
-                ChronoUnit.MINUTES.between(current, targetNextRunDateTime)
-            } else {
-                ChronoUnit.MINUTES.between(targetNextRunDateTime, current)
-            }
+            ChronoUnit.MINUTES.between(
+                current,
+                if (currentTime > targetNextRunTime) targetNextRunDateTime.plusDays(1) else targetNextRunDateTime
+            )
         }
     }
 
@@ -135,7 +134,7 @@ class StudyComplianceHazelcastTask : HazelcastFixedRateTask<StudyComplianceHazel
 
     }
 
-    override fun getName(): String = "study_compliance_task"
+    override fun getName(): String = Task.STUDY_COMPLIANCE_TASK.name
 
     override fun getDependenciesClass(): Class<out StudyComplianceHazelcastTaskDependencies> =
         StudyComplianceHazelcastTaskDependencies::class.java
