@@ -206,8 +206,8 @@ class NotificationService(
             jobService.createJob(
                 connection,
                 ChronicleJob(
-                    id = idGenerationService.getNextId()
-                            definition = it,
+                    id = idGenerationService.getNextId(),
+                    definition = it,
                     securablePrincipalId = IdConstants.METHODIC.id,
                     principal = principal
                 )
