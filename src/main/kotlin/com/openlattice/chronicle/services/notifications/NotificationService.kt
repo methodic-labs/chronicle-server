@@ -24,6 +24,8 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.NOTIFICATION_
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STATUS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPDATED_AT
 import com.openlattice.chronicle.storage.StorageResolver
+import jodd.mail.Email
+import jodd.mail.RFC2822AddressParser
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.sql.Connection
@@ -164,24 +166,26 @@ class NotificationService(
         principal: Principal,
     ): Int {
         val notifications: List<Notification> =
-            researcherNotifications.asSequence().mapNotNull { researcherNotification ->
+            researcherNotifications.asSequence().map { researcherNotification ->
                 //val messageText = "Chronicle device enrollment:  Please download app from your app store and click on ${notificationDetails.url} to enroll your device."
-                researcherNotification.emails.map { email ->
-                    val notificationId = idGenerationService.getNextId()
-                    Notification(
-                        notificationId,
-                        studyId,
-                        "",
-                        status = INITIAL_STATUS,
-                        messageId = notificationId.toString(),
-                        notificationType = researcherNotification.notificationType,
-                        deliveryType = DeliveryType.EMAIL,
-                        subject = researcherNotification.subject,
-                        body = researcherNotification.message,
-                        destination = checkNotNull(email) { "Email cannot be null for email delivery type." },
-                        html = html
-                    )
-                } + researcherNotification.phoneNumbers.filter { it.isNotBlank() }.map { phoneNumber ->
+                //This ensure that we only send e-mails to valid e-mail addresses.
+                researcherNotification.emails.filter { it.isNotBlank() && RFC2822AddressParser.LOOSE.parse(it).isValid }
+                    .map { email ->
+                        val notificationId = idGenerationService.getNextId()
+                        Notification(
+                            notificationId,
+                            studyId,
+                            "",
+                            status = INITIAL_STATUS,
+                            messageId = notificationId.toString(),
+                            notificationType = researcherNotification.notificationType,
+                            deliveryType = DeliveryType.EMAIL,
+                            subject = researcherNotification.subject,
+                            body = researcherNotification.message,
+                            destination = email,
+                            html = html
+                        )
+                    } + researcherNotification.phoneNumbers.filter { it.isNotBlank() }.map { phoneNumber ->
                     val notificationId = idGenerationService.getNextId()
                     Notification(
                         notificationId,
