@@ -94,6 +94,7 @@ class StudyComplianceHazelcastTask : HazelcastFixedRateTask<StudyComplianceHazel
                     connection.commit()
                     connection.autoCommit = true
                 } catch (ex: Exception) {
+                    logger.info("Unable to send notifications.", ex)
                     connection.rollback()
                 }
             }

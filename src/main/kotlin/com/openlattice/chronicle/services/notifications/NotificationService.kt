@@ -206,7 +206,8 @@ class NotificationService(
             jobService.createJob(
                 connection,
                 ChronicleJob(
-                    definition = it,
+                    id = idGenerationService.getNextId()
+                            definition = it,
                     securablePrincipalId = IdConstants.METHODIC.id,
                     principal = principal
                 )
@@ -246,7 +247,7 @@ class NotificationService(
         logger.info("preparing to send batch of ${notifications.size} messages to participants")
         insertNotifications(connection, notifications)
         notifications.forEach {
-            jobService.createJob(connection, ChronicleJob(definition = it))
+            jobService.createJob(connection, ChronicleJob(id = idGenerationService.getNextId(), definition = it))
         }
         return notifications.size
     }
