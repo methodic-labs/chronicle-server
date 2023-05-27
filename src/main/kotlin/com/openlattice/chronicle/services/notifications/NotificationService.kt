@@ -200,7 +200,7 @@ class NotificationService(
                     )
                 }
             }.flatten().toList()
-        logger.info("preparing to send batch of ${notifications.size} messages to participants")
+        logger.info("Queueing batch of ${notifications.size} of notifications")
         insertNotifications(connection, notifications, principal)
         notifications.forEach {
             jobService.createJob(
