@@ -7,12 +7,14 @@ import com.geekbeast.util.StopWatch
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.notifications.DeliveryType
 import com.openlattice.chronicle.notifications.NotificationType
+import com.openlattice.chronicle.notifications.StudyNotificationSettings
 import com.openlattice.chronicle.services.notifications.NotificationManager
 import com.openlattice.chronicle.services.notifications.ResearcherNotification
 import com.openlattice.chronicle.study.ComplianceViolation
 import com.openlattice.chronicle.study.StudyComplianceManager
 import com.openlattice.chronicle.services.studies.StudyManager
 import com.openlattice.chronicle.storage.StorageResolver
+import com.openlattice.chronicle.study.StudySettingType
 import org.slf4j.LoggerFactory
 import java.time.LocalTime
 import java.time.OffsetDateTime
@@ -68,7 +70,8 @@ class StudyComplianceHazelcastTask : HazelcastFixedRateTask<StudyComplianceHazel
             logger.info("Sending non-compliance notification for study $studyId: $participantViolations")
             val study = studyService.getStudy(studyId)
             val studyEmails = study.contact.split(",").toSet()
-            val phoneNumbers = study.phoneNumber.split(",").toSet()
+            val phoneNumbers = (study.settings[StudySettingType.Notifications] as StudyNotificationSettings?)
+                ?.researcherPhoneNumbers?.split(",")?.toSet() ?: emptySet()
             val researcherNotification = ResearcherNotification(
                 studyEmails,
                 phoneNumbers,

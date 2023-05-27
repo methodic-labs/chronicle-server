@@ -106,7 +106,6 @@ class StudyComplianceService(
                 .getValue(studyId)
                 .getValue(StudySettingType.Notifications) as StudyNotificationSettings).noDataUploaded
         }
-
     }
 
     override fun getNonCompliantStudies(studies: Collection<UUID>): Map<UUID, Map<String, List<ComplianceViolation>>> {
