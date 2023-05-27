@@ -120,5 +120,7 @@ class Principals {
             securablePrincipals!!.evict(principalId)
             principals!!.evict(principalId)
         }
+
+        fun getMethodicPrincipal(): Principal = SystemUser.METHODIC.principal
     }
 }

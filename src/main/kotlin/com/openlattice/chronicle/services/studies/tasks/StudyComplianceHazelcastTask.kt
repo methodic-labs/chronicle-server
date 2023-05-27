@@ -2,6 +2,7 @@ package com.openlattice.chronicle.services.studies.tasks
 
 import com.geekbeast.tasks.HazelcastFixedRateTask
 import com.geekbeast.tasks.HazelcastTaskDependencies
+import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.notifications.DeliveryType
 import com.openlattice.chronicle.notifications.NotificationType
 import com.openlattice.chronicle.services.notifications.NotificationManager
@@ -11,6 +12,13 @@ import com.openlattice.chronicle.study.StudyComplianceManager
 import com.openlattice.chronicle.services.studies.StudyManager
 import com.openlattice.chronicle.storage.StorageResolver
 import org.slf4j.LoggerFactory
+import java.time.LocalDateTime
+import java.time.LocalTime
+import java.time.OffsetDateTime
+import java.time.OffsetTime
+import java.time.ZoneId
+import java.time.ZoneOffset
+import java.time.temporal.ChronoUnit
 import java.util.*
 import java.util.concurrent.TimeUnit
 
@@ -21,13 +29,31 @@ import java.util.concurrent.TimeUnit
 class StudyComplianceHazelcastTask : HazelcastFixedRateTask<StudyComplianceHazelcastTaskDependencies> {
     companion object {
         private val logger = LoggerFactory.getLogger(StudyComplianceHazelcastTask::class.java)
+        private val zoneIds = listOf("America/New_York", "Europe/Berlin")
     }
 
-    override fun getInitialDelay(): Long = 0
+    override fun getInitialDelay(): Long {
+        return zoneIds.map {zoneId ->
 
-    override fun getPeriod(): Long = 15
+            //What time is it in the desired zoneId
+            val current  = OffsetDateTime.now().atZoneSameInstant(ZoneId.of(zoneId))
+            var currentTime = current.toOffsetDateTime().toOffsetTime()
+            //9 AM in the desired time zone
+            val initialRun = LocalTime.of(9, 0).atOffset(current.offset)
+            var initialDateTime = initialRun.atDate(current.toLocalDate())
 
-    override fun getTimeUnit(): TimeUnit = TimeUnit.MINUTES
+            if( currentTime > initialRun ) {
+                initialDateTime = initialDateTime.plusDays(1)
+                ChronoUnit.MINUTES.between(current, initialDateTime)
+            } else {
+                ChronoUnit.MINUTES.between(initialDateTime, current)
+            }
+        }.min
+    }
+
+    override fun getPeriod(): Long = 12*60
+
+    override fun getTimeUnit(): TimeUnit = TimeUnit.HOURS
 
     override fun runTask() {
         logger.info("Running study compliance task.")
@@ -49,6 +75,7 @@ class StudyComplianceHazelcastTask : HazelcastFixedRateTask<StudyComplianceHazel
                 phoneNumbers,
                 NotificationType.PASSIVE_DATA_COLLECTION_COMPLIANCE,
                 EnumSet.of(DeliveryType.EMAIL, DeliveryType.SMS),
+                "Compliance violations for ${study.title} ($studyId)",
                 buildMessage(
                     studyId,
                     study.title,
@@ -56,12 +83,20 @@ class StudyComplianceHazelcastTask : HazelcastFixedRateTask<StudyComplianceHazel
                 )
             )
             storageResolver.getPlatformStorage().connection.use { connection ->
-                notificationService.sendResearcherNotifications(
-                    connection,
-                    studyId,
-                    listOf(researcherNotification),
-                    true
-                )
+                try {
+                    connection.autoCommit = false
+                    notificationService.sendResearcherNotifications(
+                        connection,
+                        studyId,
+                        listOf(researcherNotification),
+                        true,
+                        Principals.getMethodicPrincipal()
+                    )
+                    connection.commit()
+                    connection.autoCommit = true
+                } catch (ex: Exception) {
+                    connection.rollback()
+                }
             }
         }
     }
@@ -69,7 +104,7 @@ class StudyComplianceHazelcastTask : HazelcastFixedRateTask<StudyComplianceHazel
     private fun buildMessage(
         studyId: UUID,
         studyTitle: String,
-        participantViolations: Map<String, List<ComplianceViolation>>
+        participantViolations: Map<String, List<ComplianceViolation>>,
     ): String {
         val violationTableRows = participantViolations.map { (participantId, violations) ->
             violations.map { violation ->
@@ -111,5 +146,5 @@ data class StudyComplianceHazelcastTaskDependencies(
     val studyComplianceManager: StudyComplianceManager,
     val studyService: StudyManager,
     val storageResolver: StorageResolver,
-    val notificationService: NotificationManager
+    val notificationService: NotificationManager,
 ) : HazelcastTaskDependencies

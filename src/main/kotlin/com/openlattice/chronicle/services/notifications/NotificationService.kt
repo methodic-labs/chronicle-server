@@ -3,9 +3,11 @@ package com.openlattice.chronicle.services.notifications
 import com.openlattice.chronicle.auditing.*
 import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.authorization.AuthorizationManager
+import com.openlattice.chronicle.authorization.Principal
 import com.openlattice.chronicle.authorization.SecurableObjectType
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
+import com.openlattice.chronicle.ids.IdConstants
 import com.openlattice.chronicle.notifications.DeliveryType
 import com.openlattice.chronicle.notifications.ParticipantNotification
 import com.openlattice.chronicle.notifications.NotificationStatus
@@ -78,7 +80,11 @@ class NotificationService(
         }
     }
 
-    private fun insertNotifications(connection: Connection, notifications: List<Notification>): Int {
+    private fun insertNotifications(
+        connection: Connection,
+        notifications: List<Notification>,
+        principal: Principal = Principals.getCurrentUser(),
+    ): Int {
         val ps = connection.prepareStatement(INSERT_NOTIFICATION_SQL)
         notifications.forEach { notification ->
             ps.setObject(1, notification.id)
@@ -98,7 +104,7 @@ class NotificationService(
             authorizationService.createUnnamedSecurableObject(
                 connection = connection,
                 aclKey = AclKey(notification.id),
-                principal = Principals.getCurrentUser(),
+                principal = principal,
                 objectType = SecurableObjectType.Notification
             )
         }
@@ -154,7 +160,8 @@ class NotificationService(
         connection: Connection,
         studyId: UUID,
         researcherNotifications: List<ResearcherNotification>,
-        html: Boolean
+        html: Boolean,
+        principal: Principal,
     ): Int {
         val notifications: List<Notification> =
             researcherNotifications.asSequence().mapNotNull { researcherNotification ->
@@ -166,21 +173,22 @@ class NotificationService(
                         studyId,
                         "",
                         status = INITIAL_STATUS,
-                        messageId = "",
+                        messageId = notificationId.toString(),
                         notificationType = researcherNotification.notificationType,
                         deliveryType = DeliveryType.EMAIL,
+                        subject = researcherNotification.subject,
                         body = researcherNotification.message,
                         destination = checkNotNull(email) { "Email cannot be null for email delivery type." },
                         html = html
                     )
-                } + researcherNotification.phoneNumbers.map { phoneNumber ->
+                } + researcherNotification.phoneNumbers.filter { it.isNotBlank() }.map { phoneNumber ->
                     val notificationId = idGenerationService.getNextId()
                     Notification(
                         notificationId,
                         studyId,
                         "",
                         status = INITIAL_STATUS,
-                        messageId = "",
+                        messageId = notificationId.toString(),
                         notificationType = researcherNotification.notificationType,
                         deliveryType = DeliveryType.SMS,
                         body = researcherNotification.message,
@@ -189,9 +197,17 @@ class NotificationService(
                 }
             }.flatten().toList()
         logger.info("preparing to send batch of ${notifications.size} messages to participants")
-        insertNotifications(connection, notifications)
+        insertNotifications(connection, notifications, principal)
         notifications.forEach {
-            jobService.createJob(connection, ChronicleJob(definition = it))
+
+            jobService.createJob(
+                connection,
+                ChronicleJob(
+                    definition = it,
+                    securablePrincipalId = IdConstants.METHODIC.id,
+                    principal = principal
+                )
+            )
         }
         return notifications.size
     }

@@ -30,6 +30,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.EXPIRATION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.EXPIRATION_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.FEATURES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.FIRST_NAME
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.HTML
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.IOS_FIRST_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.IOS_LAST_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.IOS_LAST_PING
@@ -81,6 +82,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_GROUP
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_PHONE_NUMBER
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_VERSION
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBJECT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION_ID
@@ -118,8 +120,10 @@ class ChroniclePostgresTables {
                 STATUS,
                 NOTIFICATION_TYPE,
                 DELIVERY_TYPE,
+                SUBJECT,
                 BODY,
-                DESTINATION
+                DESTINATION,
+                HTML
             )
             .primaryKey(NOTIFICATION_ID)
             .overwriteOnConflict()

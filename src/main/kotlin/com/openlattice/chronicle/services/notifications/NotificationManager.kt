@@ -1,5 +1,7 @@
 package com.openlattice.chronicle.services.notifications
 
+import com.openlattice.chronicle.authorization.Principal
+import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.notifications.ParticipantNotification
 import java.sql.Connection
 import java.util.*
@@ -21,6 +23,7 @@ interface NotificationManager {
         connection: Connection,
         studyId: UUID,
         researcherNotifications: List<ResearcherNotification>,
-        html: Boolean =  false
+        html: Boolean =  false,
+        principal: Principal =  Principals.getCurrentUser()
     ): Int
 }
