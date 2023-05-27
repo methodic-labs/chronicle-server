@@ -199,7 +199,6 @@ class NotificationService(
         logger.info("preparing to send batch of ${notifications.size} messages to participants")
         insertNotifications(connection, notifications, principal)
         notifications.forEach {
-
             jobService.createJob(
                 connection,
                 ChronicleJob(

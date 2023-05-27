@@ -12,6 +12,8 @@ import com.openlattice.chronicle.services.twilio.TwilioService
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.NOTIFICATIONS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.MESSAGE_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.NOTIFICATION_ID
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import java.sql.Connection
 
 /**
@@ -26,11 +28,13 @@ class NotificationJobRunner(
         private val UPDATE_NOTIFICATION_MESSAGE_ID_SQL = """
             UPDATE ${NOTIFICATIONS.name} SET ${MESSAGE_ID.name} = ? WHERE ${NOTIFICATION_ID.name} = ?
         """
+        private val logger = LoggerFactory.getLogger(NotificationJobRunner::class.java)
     }
 
     override fun accepts(): Class<Notification> = Notification::class.java
 
     override fun runJob(connection: Connection, job: ChronicleJob): List<AuditableEvent> {
+
         val notification = job.definition as Notification
         when (notification.deliveryType) {
             DeliveryType.SMS -> updateWithMessageId(connection, twilioService.sendNotification(notification))

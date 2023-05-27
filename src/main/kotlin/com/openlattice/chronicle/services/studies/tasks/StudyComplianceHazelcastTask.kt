@@ -65,6 +65,7 @@ class StudyComplianceHazelcastTask : HazelcastFixedRateTask<StudyComplianceHazel
         val notificationService = getDependency().notificationService
         //For each study look up research contact email
         nonCompliantStudies.forEach { (studyId, participantViolations) ->
+            logger.info("Sending non-compliance notification for study $studyId: $participantViolations")
             val study = studyService.getStudy(studyId)
             val studyEmails = study.contact.split(",").toSet()
             val phoneNumbers = study.phoneNumber.split(",").toSet()

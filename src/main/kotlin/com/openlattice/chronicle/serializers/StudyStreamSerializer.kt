@@ -64,6 +64,7 @@ class StudyStreamSerializer : TestableSelfRegisteringStreamSerializer<Study> {
             out.writeString(study.storage)
             out.writeByteArray(mapper.writeValueAsBytes(study.settings))
             out.writeByteArray(mapper.writeValueAsBytes(study.modules))
+            out.writeString(study.phoneNumber)
         }
 
         @JvmStatic
@@ -86,7 +87,8 @@ class StudyStreamSerializer : TestableSelfRegisteringStreamSerializer<Study> {
                 notificationsEnabled = input.readBoolean(),
                 storage = input.readString()!!,
                 settings = mapper.readValue(input.readByteArray()!!),
-                modules = mapper.readValue(input.readByteArray()!!)
+                modules = mapper.readValue(input.readByteArray()!!),
+                phoneNumber = input.readString()!!
             )
         }
     }
