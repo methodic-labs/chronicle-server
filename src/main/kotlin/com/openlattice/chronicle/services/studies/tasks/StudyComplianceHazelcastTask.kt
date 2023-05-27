@@ -50,7 +50,7 @@ class StudyComplianceHazelcastTask : HazelcastFixedRateTask<StudyComplianceHazel
 
     override fun getPeriod(): Long = 12 * 60
 
-    override fun getTimeUnit(): TimeUnit = TimeUnit.HOURS
+    override fun getTimeUnit(): TimeUnit = TimeUnit.MINUTES
 
     override fun runTask() {
         logger.info("Running study compliance task.")
