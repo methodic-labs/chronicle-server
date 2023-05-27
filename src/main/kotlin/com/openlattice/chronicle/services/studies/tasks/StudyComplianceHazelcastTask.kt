@@ -2,6 +2,7 @@ package com.openlattice.chronicle.services.studies.tasks
 
 import com.geekbeast.tasks.HazelcastFixedRateTask
 import com.geekbeast.tasks.HazelcastTaskDependencies
+import com.geekbeast.util.StopWatch
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.notifications.DeliveryType
 import com.openlattice.chronicle.notifications.NotificationType
@@ -53,8 +54,10 @@ class StudyComplianceHazelcastTask : HazelcastFixedRateTask<StudyComplianceHazel
 
     override fun runTask() {
         logger.info("Running study compliance task.")
-        val nonCompliantStudies = getDependency().studyComplianceManager.getAllNonCompliantStudies()
-        notifyNonCompliantStudies(nonCompliantStudies)
+        StopWatch("Processing notification for non-compliant study participants").run {
+            val nonCompliantStudies = getDependency().studyComplianceManager.getAllNonCompliantStudies()
+            notifyNonCompliantStudies(nonCompliantStudies)
+        }
     }
 
     fun notifyNonCompliantStudies(nonCompliantStudies: Map<UUID, Map<String, List<ComplianceViolation>>>) {
