@@ -5,6 +5,7 @@ import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.authorization.AuthorizationManager
 import com.openlattice.chronicle.authorization.AuthorizingComponent
 import com.openlattice.chronicle.base.OK
+import com.openlattice.chronicle.ids.IdConstants
 import com.openlattice.chronicle.study.ComplianceViolation
 import com.openlattice.chronicle.study.StudyComplianceManager
 import com.openlattice.chronicle.services.studies.StudyLimitsManager
@@ -12,6 +13,7 @@ import com.openlattice.chronicle.services.studies.StudyService
 import com.openlattice.chronicle.services.studies.tasks.StudyComplianceHazelcastTask
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.study.StudyComplianceApi
+import com.openlattice.chronicle.study.StudyComplianceApi.Companion.NOTIFICATION
 import com.openlattice.chronicle.study.StudyLimits
 import com.openlattice.chronicle.study.StudyLimitsApi.Companion.STUDY
 import com.openlattice.chronicle.study.StudyLimitsApi.Companion.STUDY_ID
@@ -49,7 +51,7 @@ class StudyComplianceController @Inject constructor(
     }
 
     @PostMapping(
-        value = [STUDY],
+        value = [NOTIFICATION],
         consumes = [MediaType.APPLICATION_JSON_VALUE],
         produces = [MediaType.APPLICATION_JSON_VALUE]
     )
@@ -68,6 +70,31 @@ class StudyComplianceController @Inject constructor(
                             description = "Trigger study compliance notification job"
                         )
                     }
+                }.buildAndRun()
+        }
+        return OK()
+    }
+
+    @GetMapping(
+        value = [NOTIFICATION],
+        produces = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    override fun triggerComplianceNotificationsForAllStudies(): OK {
+        ensureAdminAccess()
+
+        val nonCompliantStudies = studyComplianceManager.getAllNonCompliantStudies()
+        storageResolver.getPlatformStorage().connection.use { connection ->
+            AuditedTransactionBuilder<Unit>(connection, auditingManager)
+                .transaction {
+                    studyComplianceHazelcastTask.notifyNonCompliantStudies(nonCompliantStudies)
+                }.audit {
+                   listOf(
+                        AuditableEvent(
+                            AclKey(IdConstants.METHODIC.id),
+                            eventType = AuditEventType.TRIGGER_STUDY_COMPLIANCE_NOTIFICATIONS,
+                            description = "Trigger study compliance notification job"
+                        )
+                   )
                 }.buildAndRun()
         }
         return OK()

@@ -126,7 +126,7 @@ class StudyComplianceService(
             return mapOf()
         }
 
-        val activeParticipants = getActiveStudyParticipants()
+        val activeParticipants = getActiveStudyParticipants(enabledStudiesSettings.keys)
 
 
         //One thing that will break here is that we are grouping studies by their flavor so if we ever store some studies
@@ -203,19 +203,19 @@ class StudyComplianceService(
                 studyParticipants.getOrPut(studyId) { mutableSetOf() }.add(participantId)
             }
 
-        return activeParticipants.mapValues{ (studyId, participantIds) ->
+        return activeParticipants.mapValues { (studyId, participantIds) ->
             val violation = ComplianceViolation(
                 ViolationReason.NO_RECENT_DATA_UPLOADED,
                 buildDescription(studyId, getDurationPolicy(studyId, enabledStudiesSettings))
             )
 
-            (participantIds - (studyParticipants[studyId]?: emptySet()).toSet())
-                .map { it to violation}
+            (participantIds - (studyParticipants[studyId] ?: emptySet()).toSet())
+                .map { it to violation }
 
         }
     }
 
-    private fun getActiveStudyParticipants(): Map<UUID, Set<String>> {
+    private fun getActiveStudyParticipants(studyFilter: Set<UUID>): Map<UUID, Set<String>> {
         val studyParticipants = mutableMapOf<UUID, MutableSet<String>>()
         BasePostgresIterable(
             StatementHolderSupplier(
@@ -228,9 +228,12 @@ class StudyComplianceService(
                 PostgresColumns.STUDY_ID.name,
                 UUID::class.java
             ) to rs.getString(PostgresColumns.PARTICIPANT_ID.name)
-        }.forEach { (studyId, participantId) ->
-            studyParticipants.getOrPut(studyId) { mutableSetOf() }.add(participantId)
         }
+            .asSequence()
+            .filter { studyFilter.contains(it.first) }
+            .forEach { (studyId, participantId) ->
+                studyParticipants.getOrPut(studyId) { mutableSetOf() }.add(participantId)
+            }
         return studyParticipants
     }
 

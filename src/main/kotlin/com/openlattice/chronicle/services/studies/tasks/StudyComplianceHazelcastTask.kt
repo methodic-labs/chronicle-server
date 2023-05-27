@@ -12,12 +12,9 @@ import com.openlattice.chronicle.study.StudyComplianceManager
 import com.openlattice.chronicle.services.studies.StudyManager
 import com.openlattice.chronicle.storage.StorageResolver
 import org.slf4j.LoggerFactory
-import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.OffsetDateTime
-import java.time.OffsetTime
 import java.time.ZoneId
-import java.time.ZoneOffset
 import java.time.temporal.ChronoUnit
 import java.util.*
 import java.util.concurrent.TimeUnit
@@ -33,25 +30,24 @@ class StudyComplianceHazelcastTask : HazelcastFixedRateTask<StudyComplianceHazel
     }
 
     override fun getInitialDelay(): Long {
-        return zoneIds.map {zoneId ->
-
+        return zoneIds.maxOf{ zoneId ->
             //What time is it in the desired zoneId
-            val current  = OffsetDateTime.now().atZoneSameInstant(ZoneId.of(zoneId))
+            val current = OffsetDateTime.now().atZoneSameInstant(ZoneId.of(zoneId))
             var currentTime = current.toOffsetDateTime().toOffsetTime()
             //9 AM in the desired time zone
-            val initialRun = LocalTime.of(9, 0).atOffset(current.offset)
-            var initialDateTime = initialRun.atDate(current.toLocalDate())
+            val targetNextRunTime = LocalTime.of(9, 0).atOffset(current.offset)
+            var targetNextRunDateTime = targetNextRunTime.atDate(current.toLocalDate())
 
-            if( currentTime > initialRun ) {
-                initialDateTime = initialDateTime.plusDays(1)
-                ChronoUnit.MINUTES.between(current, initialDateTime)
+            if (currentTime > targetNextRunTime) {
+                targetNextRunDateTime = targetNextRunDateTime.plusDays(1)
+                ChronoUnit.MINUTES.between(current, targetNextRunDateTime)
             } else {
-                ChronoUnit.MINUTES.between(initialDateTime, current)
+                ChronoUnit.MINUTES.between(targetNextRunDateTime, current)
             }
-        }.min
+        }
     }
 
-    override fun getPeriod(): Long = 12*60
+    override fun getPeriod(): Long = 12 * 60
 
     override fun getTimeUnit(): TimeUnit = TimeUnit.HOURS
 
