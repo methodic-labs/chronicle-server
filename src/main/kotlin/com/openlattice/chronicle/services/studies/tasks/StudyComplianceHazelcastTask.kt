@@ -76,7 +76,7 @@ class StudyComplianceHazelcastTask : HazelcastFixedRateTask<StudyComplianceHazel
                 studyEmails,
                 phoneNumbers,
                 NotificationType.PASSIVE_DATA_COLLECTION_COMPLIANCE,
-                EnumSet.of(DeliveryType.EMAIL, DeliveryType.SMS),
+                EnumSet.of(DeliveryType.EMAIL),
                 "Compliance violations for ${study.title} ($studyId)",
                 buildMessage(
                     studyId,
@@ -109,7 +109,7 @@ class StudyComplianceHazelcastTask : HazelcastFixedRateTask<StudyComplianceHazel
         studyTitle: String,
         participantViolations: Map<String, List<ComplianceViolation>>,
     ): String {
-        val violationTableRows = participantViolations.map { (participantId, violations) ->
+        val violationTableRows = participantViolations.flatMap { (participantId, violations) ->
             violations.map { violation ->
                 """
                 <tr>
@@ -121,13 +121,8 @@ class StudyComplianceHazelcastTask : HazelcastFixedRateTask<StudyComplianceHazel
             }
         }.joinToString("\n")
         return """
-            <style>
-            table, th, td {
-              border:1px solid black;
-            }
-            </style>
             The following compliance violations where found for $studyTitle ($studyId).
-            <table>
+            <table role = "presentation" border="1" width="75%">
             <tr>
             <th> Participant ID </th>
             <th> Violation </th>
