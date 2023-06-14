@@ -14,6 +14,7 @@ import com.openlattice.chronicle.authorization.*
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.base.OK
 import com.openlattice.chronicle.base.OK.Companion.ok
+import com.openlattice.chronicle.constants.CustomMediaType
 import com.openlattice.chronicle.data.FileType
 import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.deletion.*
@@ -34,8 +35,6 @@ import com.openlattice.chronicle.services.jobs.JobService
 import com.openlattice.chronicle.services.studies.StudyService
 import com.openlattice.chronicle.services.upload.AppDataUploadService
 import com.openlattice.chronicle.services.upload.SensorDataUploadService
-import com.openlattice.chronicle.sources.AndroidDevice
-import com.openlattice.chronicle.sources.IOSDevice
 import com.openlattice.chronicle.sources.SourceDevice
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.study.*
@@ -56,6 +55,7 @@ import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_ID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPATION_STATUS
+import com.openlattice.chronicle.study.StudyApi.Companion.FILE_TYPE
 import com.openlattice.chronicle.study.StudyApi.Companion.RETRIEVE
 import com.openlattice.chronicle.study.StudyApi.Companion.SENSORS_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.SETTINGS_PATH
@@ -507,6 +507,7 @@ class StudyController @Inject constructor(
                     participantId,
                     datasourceId,
                     dataByClass.map { it as ChronicleUsageEvent })
+
                 else -> 0
             }
         }.sum()
@@ -597,16 +598,19 @@ class StudyController @Inject constructor(
                 startDateTime,
                 endDateTime
             )
+
             ParticipantDataType.AppUsageSurvey -> downloadService.getParticipantsAppUsageSurveyData(
                 studyId,
                 participantIds,
                 startDateTime,
                 endDateTime
             )
+
             ParticipantDataType.IOSSensor -> {
                 val sensors = getStudySensors(studyId)
                 downloadService.getParticipantsSensorData(studyId, participantIds, sensors, startDateTime, endDateTime)
             }
+
             ParticipantDataType.UsageEvents -> {
                 downloadService.getParticipantsUsageEventsData(studyId, participantIds, startDateTime, endDateTime)
             }
@@ -629,7 +633,7 @@ class StudyController @Inject constructor(
     @Timed
     @GetMapping(
         path = [STUDY_ID_PATH + PARTICIPANTS_PATH + DATA_PATH],
-        produces = [MediaType.APPLICATION_JSON_VALUE]
+        produces = [MediaType.APPLICATION_JSON_VALUE, CustomMediaType.TEXT_CSV_VALUE]
     )
     fun getParticipantsData(
         @PathVariable(STUDY_ID) studyId: UUID,
@@ -637,9 +641,11 @@ class StudyController @Inject constructor(
         @RequestParam(value = PARTICIPANT_ID) participantIds: Set<String>,
         @RequestParam(value = START_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) startDateTime: OffsetDateTime?,
         @RequestParam(value = END_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) endDateTime: OffsetDateTime?,
+        @RequestParam(value = FILE_TYPE, defaultValue = "csv") fileType: FileType,
         @RequestParam(value = FILE_NAME) @Size(max = 64) fileName: String?,
         response: HttpServletResponse,
     ): Iterable<Map<String, Any>> {
+        check(fileType == FileType.csv || fileType == FileType.json) { "Requested file type must be json or CSV." }
         val data = getParticipantsData(
             studyId,
             dataType,
@@ -648,7 +654,7 @@ class StudyController @Inject constructor(
             MoreObjects.firstNonNull(endDateTime, OffsetDateTime.MAX)
         )
 
-        ChronicleServerUtil.setDownloadContentType(response, FileType.csv)
+        ChronicleServerUtil.setDownloadContentType(response, fileType)
         ChronicleServerUtil.setContentDisposition(
             response,
             MoreObjects.firstNonNull(
@@ -658,7 +664,7 @@ class StudyController @Inject constructor(
                         .format(DateTimeFormatter.BASIC_ISO_DATE)
                 }"
             ),
-            FileType.csv
+            fileType
         )
 
         recordEvent(
