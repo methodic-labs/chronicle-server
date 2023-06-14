@@ -55,7 +55,7 @@ import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_ID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPATION_STATUS
-import com.openlattice.chronicle.study.StudyApi.Companion.FILE_TYPE
+import com.openlattice.chronicle.study.StudyApi.Companion.RESPONSE_TYPE
 import com.openlattice.chronicle.study.StudyApi.Companion.RETRIEVE
 import com.openlattice.chronicle.study.StudyApi.Companion.SENSORS_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.SETTINGS_PATH
@@ -641,7 +641,7 @@ class StudyController @Inject constructor(
         @RequestParam(value = PARTICIPANT_ID) participantIds: Set<String>,
         @RequestParam(value = START_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) startDateTime: OffsetDateTime?,
         @RequestParam(value = END_DATE) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) endDateTime: OffsetDateTime?,
-        @RequestParam(value = FILE_TYPE, defaultValue = "csv") fileType: FileType,
+        @RequestParam(value = RESPONSE_TYPE, defaultValue = "csv") fileType: FileType,
         @RequestParam(value = FILE_NAME) @Size(max = 64) fileName: String?,
         response: HttpServletResponse,
     ): Iterable<Map<String, Any>> {

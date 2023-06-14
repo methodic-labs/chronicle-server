@@ -471,7 +471,7 @@ class ChronicleServerServicesPod {
 
     @Bean
     fun moveToEventStorageTaskDependencies(): MoveToEventStorageTaskDependencies {
-        return MoveToEventStorageTaskDependencies(storageResolver)
+        return MoveToEventStorageTaskDependencies(storageResolver, studyService())
     }
 
     @Bean
