@@ -39,6 +39,7 @@ class MoveToIosEventStorageTask : HazelcastFixedRateTask<MoveToEventStorageTaskD
     companion object {
         private val RS_BATCH_SIZE = (ChroniclePostgresTables.MAX_BIND_PARAMETERS / RedshiftDataTables.IOS_SENSOR_DATA.columns.size)
         private const val PERIOD = 5*60000L
+        private const val INITIAL_DELAY = 5000L
         private val UPLOAD_AT_INDEX = RedshiftDataTables.getInsertUsageEventColumnIndex(RedshiftColumns.UPLOADED_AT)
         
         private val logger = LoggerFactory.getLogger(MoveToIosEventStorageTask::class.java)
@@ -61,7 +62,7 @@ class MoveToIosEventStorageTask : HazelcastFixedRateTask<MoveToEventStorageTaskD
         }
     }
 
-    override fun getName(): String = Task.MOVE_TO_EVENT_STORAGE.name
+    override fun getName(): String = Task.MOVE_IOS_DATA_TO_EVENT_STORAGE.name
 
     private fun moveToEventStorage() {
         with(getDependency()) {
@@ -277,7 +278,7 @@ class MoveToIosEventStorageTask : HazelcastFixedRateTask<MoveToEventStorageTaskD
         studyService.insertOrUpdateParticipantStats(statsUpdate)
     }
 
-    override fun getInitialDelay(): Long = PERIOD
+    override fun getInitialDelay(): Long = INITIAL_DELAY
 
     override fun getPeriod(): Long = PERIOD
 
