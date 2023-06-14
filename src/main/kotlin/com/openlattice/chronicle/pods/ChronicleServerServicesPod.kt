@@ -75,6 +75,7 @@ import com.openlattice.chronicle.services.upload.SensorDataUploadService
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.storage.tasks.MoveToEventStorageTask
 import com.openlattice.chronicle.storage.tasks.MoveToEventStorageTaskDependencies
+import com.openlattice.chronicle.storage.tasks.MoveToIosEventStorageTask
 import com.openlattice.chronicle.studies.tasks.StudyLimitsEnforcementTask
 import com.openlattice.chronicle.studies.tasks.StudyLimitsEnforcementTaskDependencies
 import com.openlattice.chronicle.study.StudyComplianceManager
@@ -86,6 +87,7 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
 import org.springframework.context.annotation.Profile
+import java.beans.BeanProperty
 import java.io.IOException
 import java.util.concurrent.ExecutionException
 import javax.annotation.PostConstruct
@@ -472,6 +474,11 @@ class ChronicleServerServicesPod {
     @Bean
     fun moveToEventStorageTaskDependencies(): MoveToEventStorageTaskDependencies {
         return MoveToEventStorageTaskDependencies(storageResolver, studyService())
+    }
+
+    @Bean
+    fun moveIosDataToEventStorageTaskDependencies() : MoveToIosEventStorageTask {
+        return MoveToIosEventStorageTask()
     }
 
     @Bean
