@@ -25,7 +25,6 @@ import com.openlattice.chronicle.organizations.ChronicleDataCollectionSettings
 import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.participants.ParticipantStats
 import com.openlattice.chronicle.sensorkit.SensorDataSample
-import com.openlattice.chronicle.sensorkit.SensorSetting
 import com.openlattice.chronicle.sensorkit.SensorType
 import com.openlattice.chronicle.services.download.DataDownloadService
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
@@ -59,6 +58,8 @@ import com.openlattice.chronicle.study.StudyApi.Companion.RESPONSE_TYPE
 import com.openlattice.chronicle.study.StudyApi.Companion.RETRIEVE
 import com.openlattice.chronicle.study.StudyApi.Companion.SENSORS_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.SETTINGS_PATH
+import com.openlattice.chronicle.study.StudyApi.Companion.SETTING_TYPE
+import com.openlattice.chronicle.study.StudyApi.Companion.SETTING_TYPE_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.SOURCE_DEVICE_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.SOURCE_DEVICE_ID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.START_DATE
@@ -207,20 +208,26 @@ class StudyController @Inject constructor(
     }
 
     @Timed
-    @PutMapping(
-        path = [STUDY_ID_PATH + SETTINGS_PATH + SENSORS_PATH],
+    @PatchMapping(
+        path = [STUDY_ID_PATH + SETTINGS_PATH + SETTING_TYPE_PATH],
         consumes = [MediaType.APPLICATION_JSON_VALUE]
     )
-    override fun updateStudyAppleSettings(
+    override fun updateStudySettings(
         @PathVariable(STUDY_ID) studyId: UUID,
-        @RequestBody sensorSetting: SensorSetting,
+        @PathVariable(SETTING_TYPE) studySetting: StudySettingType,
+        @RequestBody setting: StudySetting,
     ): OK {
-        ensureAdminAccess()
+        when (studySetting) {
+            StudySettingType.Sensor -> ensureAdminAccess()
+            else -> ensureWriteAccess(AclKey(studyId))
+        }
 
         //We don't need to resolve real study id as this won't ever be called from legacy clients.
         val study = studyService.getStudy(studyId)
+
+        //Make sure we preserve existing settings and only replace the specify study setting.
         val studySettings = study.settings.toMutableMap()
-        studySettings[StudySettingType.Sensor] = sensorSetting
+        studySettings[studySetting] = setting
         updateStudy(studyId, StudyUpdate(settings = StudySettings(studySettings)))
 
         return ok
@@ -529,12 +536,30 @@ class StudyController @Inject constructor(
 
     @Timed
     @GetMapping(
+        path = [STUDY_ID_PATH + SETTINGS_PATH + SETTING_TYPE_PATH],
+        produces = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    override fun getStudySetting(
+        @PathVariable(STUDY_ID) studyId: UUID,
+        @PathVariable(SETTING_TYPE) settingType: StudySettingType,
+    ): StudySetting {
+        when (settingType) {
+            StudySettingType.Sensor -> ensureValidStudy(studyId)
+            else -> ensureReadAccess(AclKey(studyId))
+        }
+        return studyService.getStudySettings(studyId).getValue(settingType)
+    }
+
+    @Deprecated("Prefer getStudySetting, this is left in for app compat.")
+    @Timed
+    @GetMapping(
         path = [STUDY_ID_PATH + SETTINGS_PATH + SENSORS_PATH],
         produces = [MediaType.APPLICATION_JSON_VALUE]
     )
     override fun getStudySensors(@PathVariable(STUDY_ID) studyId: UUID): Set<SensorType> {
         return studyService.getStudySensors(studyId)
     }
+
 
     @Timed
     @GetMapping(
