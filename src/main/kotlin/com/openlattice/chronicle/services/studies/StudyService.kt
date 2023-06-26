@@ -514,7 +514,7 @@ class StudyService(
     override fun getStudyPhoneNumber(studyId: UUID): String? {
         val realStudyId = getStudyId(studyId)
         checkNotNull(realStudyId) { "invalid study id" }
-        return checkNotNull(studies.executeOnKey(realStudyId, STUDY_PHONEw_NUMBER_GETTER))
+        return checkNotNull(studies.executeOnKey(realStudyId, STUDY_PHONE_NUMBER_GETTER))
     }
 
     override fun updateParticipationStatus(
