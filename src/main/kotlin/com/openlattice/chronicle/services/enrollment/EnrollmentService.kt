@@ -2,20 +2,15 @@ package com.openlattice.chronicle.services.enrollment
 
 import com.geekbeast.controllers.exceptions.ResourceNotFoundException
 import com.geekbeast.mappers.mappers.ObjectMappers
-import com.openlattice.chronicle.auditing.AuditEventType
-import com.openlattice.chronicle.auditing.AuditableEvent
-import com.openlattice.chronicle.auditing.AuditingComponent
-import com.openlattice.chronicle.auditing.AuditingManager
-import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
-import com.openlattice.chronicle.ids.IdConstants
 import com.openlattice.chronicle.participants.Participant
 import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.services.candidates.CandidateManager
 import com.openlattice.chronicle.sources.AndroidDevice
 import com.openlattice.chronicle.sources.IOSDevice
 import com.openlattice.chronicle.sources.SourceDevice
+import com.openlattice.chronicle.sources.SourceDeviceType
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.DEVICES
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.STUDY_PARTICIPANTS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DEVICE_ID
@@ -25,7 +20,6 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.SOURCE_DEVICE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.util.ChronicleServerUtil
-import com.openlattice.chronicle.util.ensureVanilla
 import org.slf4j.LoggerFactory
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.stereotype.Service
@@ -112,11 +106,11 @@ class EnrollmentService(
 
     }
 
-    override fun registerDatasource(
+    override fun registerDevice(
         studyId: UUID,
         participantId: String,
         sourceDeviceId: String,
-        sourceDevice: SourceDevice
+        sourceDevice: SourceDevice,
     ): UUID {
         logger.info(
             "attempting to register data source" + ChronicleServerUtil.STUDY_PARTICIPANT_DATASOURCE,
@@ -124,8 +118,8 @@ class EnrollmentService(
             participantId,
             sourceDeviceId
         )
-        val isKnownParticipant = isKnownParticipant(studyId, participantId)
-        if (!isKnownParticipant) {
+
+        if (!isKnownParticipant(studyId, participantId)) {
             logger.error(
                 "unknown participant, unable to register datasource" + ChronicleServerUtil.STUDY_PARTICIPANT_DATASOURCE,
                 studyId,
@@ -137,21 +131,33 @@ class EnrollmentService(
 
 
         return when (sourceDevice) {
-            is AndroidDevice, is IOSDevice -> registerDatasourceOrGetId(
+            is AndroidDevice -> registerDeviceOrGetId(
                 studyId,
                 participantId,
+                SourceDeviceType.Android,
                 sourceDeviceId,
-                sourceDevice
+                sourceDevice,
+                sourceDevice.fcmRegistrationToken
+            )
+            is IOSDevice -> registerDeviceOrGetId(
+                studyId,
+                participantId,
+                SourceDeviceType.Ios,
+                sourceDeviceId,
+                sourceDevice,
+                sourceDevice.apnDeviceToken
             )
             else -> throw UnsupportedOperationException("${sourceDevice.javaClass.name} is not a supported datasource.")
         }
     }
 
-    private fun registerDatasourceOrGetId(
+    private fun registerDeviceOrGetId(
         studyId: UUID,
         participantId: String,
+        deviceType: SourceDeviceType,
         sourceDeviceId: String,
-        sourceDevice: SourceDevice
+        sourceDevice: SourceDevice,
+        deviceToken: String,
     ): UUID {
         val hds = storageResolver.getPlatformStorage()
         val deviceId = idGenerationService.getNextId()
@@ -160,8 +166,10 @@ class EnrollmentService(
                 ps.setObject(1, studyId)
                 ps.setObject(2, deviceId)
                 ps.setString(3, participantId)
-                ps.setString(4, sourceDeviceId)
-                ps.setString(5, mapper.writeValueAsString(sourceDevice))
+                ps.setString(4, deviceType.name)
+                ps.setString(5, sourceDeviceId)
+                ps.setString(6, mapper.writeValueAsString(sourceDevice))
+                ps.setString(7, deviceToken)
                 ps.executeUpdate()
             }
         }
@@ -202,7 +210,7 @@ class EnrollmentService(
         studyId: UUID,
         participantId: String,
         candidateId: UUID,
-        participationStatus: ParticipationStatus
+        participationStatus: ParticipationStatus,
     ) {
         connection.prepareStatement(INSERT_PARTICIPANT).use { ps ->
             ps.setObject(1, studyId)
@@ -216,7 +224,7 @@ class EnrollmentService(
     override fun isKnownDatasource(
         studyId: UUID,
         participantId: String,
-        sourceDeviceId: String
+        sourceDeviceId: String,
     ): Boolean {
         val hds = storageResolver.getPlatformStorage()
 
@@ -266,7 +274,7 @@ class EnrollmentService(
 
     override fun getParticipationStatus(
         studyId: UUID,
-        participantId: String
+        participantId: String,
     ): ParticipationStatus {
         logger.info(
             "getting participation status" + ChronicleServerUtil.STUDY_PARTICIPANT, studyId,

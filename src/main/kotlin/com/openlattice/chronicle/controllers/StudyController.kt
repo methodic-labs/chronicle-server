@@ -110,6 +110,12 @@ class StudyController @Inject constructor(
         private val logger = LoggerFactory.getLogger(StudyController::class.java)!!
     }
 
+    /**
+     * This call needs to be efficient as it is invoked at enrollment and everytime a phone attempts to upload data.
+     *
+     * TODO: Speed up getStudyId so that it uses in memory cache of legacy studies instead of postgres lookup everytime.
+     * Will probably save on aurora bill too. Filed under CHRONICLE-2
+     */
     @Timed
     @PostMapping(
         path = [STUDY_ID_PATH + PARTICIPANT_PATH + PARTICIPANT_ID_PATH + SOURCE_DEVICE_ID_PATH + ENROLL_PATH],
@@ -124,7 +130,7 @@ class StudyController @Inject constructor(
     ): UUID {
         val realStudyId = studyService.getStudyId(studyId)
         checkNotNull(realStudyId) { "invalid study id" }
-        val id = enrollmentService.registerDatasource(realStudyId, participantId, datasourceId, sourceDevice)
+        val id = enrollmentService.registerDevice(realStudyId, participantId, datasourceId, sourceDevice)
         studyService.updateLastDevicePing(realStudyId, participantId, sourceDevice)
         return id
     }

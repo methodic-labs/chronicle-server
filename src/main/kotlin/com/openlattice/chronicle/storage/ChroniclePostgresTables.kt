@@ -24,6 +24,8 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.DELIVERY_TYPE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DESCRIPTION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DESTINATION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DEVICE_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.DEVICE_TOKEN
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.DEVICE_TYPE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.EMAIL
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ENDED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.EXPIRATION
@@ -220,8 +222,10 @@ class ChroniclePostgresTables {
                 STUDY_ID,
                 DEVICE_ID,
                 PARTICIPANT_ID, //Make sure this is indexed.
+                DEVICE_TYPE,
                 SOURCE_DEVICE_ID,
-                SOURCE_DEVICE
+                SOURCE_DEVICE,
+                DEVICE_TOKEN
             )
             .primaryKey(STUDY_ID, DEVICE_ID) //Just in case device is used across multiple studies
 

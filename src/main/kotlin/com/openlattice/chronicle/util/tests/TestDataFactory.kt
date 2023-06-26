@@ -233,8 +233,7 @@ class TestDataFactory {
                 randomAlphanumeric(5),
                 randomAlphanumeric(5),
                 randomAlphanumeric(5),
-                randomAlphanumeric(5),
-                com.google.common.base.Optional.absent()
+                randomAlphanumeric(5)
             )
         }
 
