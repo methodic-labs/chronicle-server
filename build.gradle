@@ -26,8 +26,8 @@ plugins {
     id 'maven-publish'
     id 'signing'
     id 'com.github.spotbugs' version '5.0.14'
-    id 'org.jetbrains.kotlin.jvm' version '1.7.20'
-    id 'org.jetbrains.kotlin.plugin.spring' version '1.7.20'
+    id 'org.jetbrains.kotlin.jvm' version '1.8.20'
+    id 'org.jetbrains.kotlin.plugin.spring' version '1.8.20'
     id 'org.jetbrains.dokka' version '1.8.10'
     id 'com.github.jk1.dependency-license-report' version '1.16'
 }
@@ -192,7 +192,6 @@ dependencies {
     if (project.hasProperty('developmentMode') && project.developmentMode) {
         logger.quiet(project.name + " using project dependencies.")
         implementation project(":rhizome")
-      //  implementation project(":api")
         implementation(project(":chronicle-api")) {
             exclude group: 'com.google.guava', module: 'guava'
         }
@@ -201,7 +200,6 @@ dependencies {
     } else {
         logger.quiet(project.name + " using jar dependencies.")
         implementation "com.openlattice:rhizome:${rhizome_version}"
-    //    implementation "com.openlattice:api:${api_version}"
         implementation("com.openlattice:chronicle-api:${chronicle_api_version}") {
             exclude group: 'com.google.guava', module: 'guava'
         }
@@ -213,7 +211,6 @@ dependencies {
      * TESTING
      */
     testImplementation "junit:junit:${junit_version}"
-    //testImplementation "com.openlattice:conductor-client:${conductor_client_version}"
     testImplementation("org.mockito:mockito-all:${mockito_version}") {
         exclude module: 'hamcrest'
         exclude module: 'hamcrest-core'
