@@ -14,6 +14,7 @@ import com.openlattice.chronicle.sources.SourceDeviceType
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.DEVICES
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.STUDY_PARTICIPANTS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DEVICE_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.DEVICE_TOKEN
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPATION_STATUS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SOURCE_DEVICE_ID
@@ -47,11 +48,14 @@ class EnrollmentService(
          * 1. study id
          * 2. device id
          * 3. participant id
-         * 4. source device id
-         * 5. source device
+         * 4. device type
+         * 5. source device id
+         * 6. source device
+         * 7. device token
          */
         private val INSERT_DEVICE = """
-            INSERT INTO ${DEVICES.name} ($DEVICES_COLS) VALUES (?,?,?,?,?::jsonb) ON CONFLICT DO NOTHING             
+            INSERT INTO ${DEVICES.name} ($DEVICES_COLS) VALUES (?,?,?,?,?,?::jsonb,?) 
+            ON CONFLICT DO UPDATE SET ${DEVICE_TOKEN.name} = EXCLUDED.${DEVICE_TOKEN.name}             
         """
 
         /**

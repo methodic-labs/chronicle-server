@@ -187,7 +187,7 @@ dependencies {
     implementation "org.dmfs:lib-recur:0.10.2"
 
     implementation (group: "org.slf4j", name: "slf4j-api", version: "${slf4j_version}")
-
+    implementation 'com.google.firebase:firebase-admin:9.2.0'
 
     if (project.hasProperty('developmentMode') && project.developmentMode) {
         logger.quiet(project.name + " using project dependencies.")
