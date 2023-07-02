@@ -29,8 +29,7 @@ class SourceDeviceSerializationTest : AbstractJacksonSerializationTest<Optional<
                 "21",
                 "21",
                 "",
-                "",
-                Optional.of(mutableMapOf())
+                ""
             )
         )
 
