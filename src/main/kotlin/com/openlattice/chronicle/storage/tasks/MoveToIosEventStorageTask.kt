@@ -267,6 +267,7 @@ class MoveToIosEventStorageTask : HazelcastFixedRateTask<MoveToEventStorageTaskD
             androidFirstDate = currentStats?.androidFirstDate,
             androidLastDate = currentStats?.androidLastDate,
             androidUniqueDates = currentStats?.androidUniqueDates ?: setOf(),
+            androidLastPing = currentStats?.androidLastPing,
             iosUniqueDates = uniqueDates,
             iosLastPing = OffsetDateTime.now(),
             iosFirstDate = minDate,

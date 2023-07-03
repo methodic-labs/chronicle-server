@@ -793,7 +793,7 @@ class StudyService(
             is IOSDevice -> ParticipantStats(
                 studyId = studyId,
                 participantId = participantId,
-                androidLastPing = OffsetDateTime.now()
+                iosLastPing = OffsetDateTime.now()
             )
             else -> throw UnsupportedOperationException("${sourceDevice.javaClass.name} is not a supported datasource.")
         }
