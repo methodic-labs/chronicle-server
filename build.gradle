@@ -188,6 +188,8 @@ dependencies {
 
     implementation (group: "org.slf4j", name: "slf4j-api", version: "${slf4j_version}")
     implementation 'com.google.firebase:firebase-admin:9.2.0'
+//    implementation "com.amazonaws:aws-java-sdk-ec2:${aws_java_sdk_version}"
+    implementation 'software.amazon.awssdk:sns'
 
     if (project.hasProperty('developmentMode') && project.developmentMode) {
         logger.quiet(project.name + " using project dependencies.")
