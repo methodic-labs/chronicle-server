@@ -55,7 +55,7 @@ class EnrollmentService(
          */
         private val INSERT_DEVICE = """
             INSERT INTO ${DEVICES.name} ($DEVICES_COLS) VALUES (?,?,?,?,?,?::jsonb,?) 
-            ON CONFLICT DO UPDATE SET ${DEVICE_TOKEN.name} = EXCLUDED.${DEVICE_TOKEN.name}             
+            ON CONFLICT (${STUDY_ID.name},${PARTICIPANT_ID.name}, ${SOURCE_DEVICE_ID.name}) DO UPDATE SET ${DEVICE_TOKEN.name} = EXCLUDED.${DEVICE_TOKEN.name}             
         """
 
         /**
