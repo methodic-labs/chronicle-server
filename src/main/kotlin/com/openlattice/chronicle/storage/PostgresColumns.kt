@@ -32,6 +32,8 @@ class PostgresColumns {
         @JvmField val DELETED_ROWS = PostgresColumnDefinition("deleted_rows", PostgresDatatype.BIGINT).notNull()
         @JvmField val DESCRIPTION = PostgresColumnDefinition("description", PostgresDatatype.TEXT)
         @JvmField val DEVICE_ID = PostgresColumnDefinition("device_id", PostgresDatatype.UUID).notNull()
+        @JvmField val DEVICE_TOKEN = PostgresColumnDefinition("device_token", PostgresDatatype.TEXT)
+        @JvmField val DEVICE_TYPE = PostgresColumnDefinition("device_type", PostgresDatatype.TEXT)
         @JvmField val EMAIL = PostgresColumnDefinition("email", PostgresDatatype.TEXT).unique()
         @JvmField val EMAIL_NOT_UNIQUE = PostgresColumnDefinition("email", PostgresDatatype.TEXT)
         @JvmField val ENDED_AT = PostgresColumnDefinition("ended_at", PostgresDatatype.TIMESTAMPTZ).notNull().withDefault("'infinity'")

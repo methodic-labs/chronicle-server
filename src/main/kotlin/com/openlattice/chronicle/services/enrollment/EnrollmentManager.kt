@@ -14,7 +14,7 @@ import java.util.*
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
  */
 interface EnrollmentManager {
-    fun registerDatasource(
+    fun registerDevice(
         studyId: UUID,
         participantId: String,
         sourceDeviceId: String,

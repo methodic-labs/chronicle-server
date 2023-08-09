@@ -5,21 +5,17 @@ import com.google.common.base.Optional
 import com.google.common.collect.SetMultimap
 import com.openlattice.chronicle.api.ChronicleApi
 import com.openlattice.chronicle.data.ParticipationStatus
-import com.openlattice.chronicle.participants.ParticipantStats
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import com.openlattice.chronicle.services.legacy.LegacyEdmResolver
 import com.openlattice.chronicle.services.settings.OrganizationSettingsManager
 import com.openlattice.chronicle.services.studies.StudyService
 import com.openlattice.chronicle.services.surveys.SurveysManager
 import com.openlattice.chronicle.services.upload.AppDataUploadManager
-import com.openlattice.chronicle.sources.AndroidDevice
-import com.openlattice.chronicle.sources.IOSDevice
 import com.openlattice.chronicle.sources.SourceDevice
 import org.apache.olingo.commons.api.edm.FullQualifiedName
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.*
 import java.security.InvalidParameterException
-import java.time.OffsetDateTime
 import java.util.*
 import javax.inject.Inject
 
@@ -60,7 +56,7 @@ class ChronicleControllerV2 : ChronicleApi {
         val realStudyId = studyService.getStudyId(studyId)
         checkNotNull(realStudyId) { "invalid study id" }
         return if (sourceDevice.isPresent) {
-            val id = enrollmentManager.registerDatasource(realStudyId, participantId, datasourceId, sourceDevice.get())
+            val id = enrollmentManager.registerDevice(realStudyId, participantId, datasourceId, sourceDevice.get())
             studyService.updateLastDevicePing(realStudyId, participantId, sourceDevice.get())
             id
         } else {

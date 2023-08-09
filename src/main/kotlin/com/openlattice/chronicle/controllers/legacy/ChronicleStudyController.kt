@@ -4,12 +4,9 @@ import com.codahale.metrics.annotation.Timed
 import com.google.common.base.Optional
 import com.openlattice.chronicle.ChronicleStudyApi
 import com.openlattice.chronicle.data.ParticipationStatus
-import com.openlattice.chronicle.participants.ParticipantStats
 import com.openlattice.chronicle.services.enrollment.EnrollmentManager
 import com.openlattice.chronicle.services.studies.StudyService
 import com.openlattice.chronicle.services.surveys.SurveysManager
-import com.openlattice.chronicle.sources.AndroidDevice
-import com.openlattice.chronicle.sources.IOSDevice
 import com.openlattice.chronicle.sources.SourceDevice
 import org.apache.olingo.commons.api.edm.FullQualifiedName
 import org.springframework.http.MediaType
@@ -18,7 +15,6 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestMethod
 import org.springframework.web.bind.annotation.RestController
-import java.time.OffsetDateTime
 import java.util.UUID
 import javax.inject.Inject
 
@@ -51,7 +47,7 @@ class ChronicleStudyController : ChronicleStudyApi {
     ): UUID {
         val realStudyId = studyService.getStudyId(studyId)
         checkNotNull(realStudyId) { "invalid study id" }
-        val id = enrollmentManager.registerDatasource(realStudyId, participantId, datasourceId, sourceDevice.get())
+        val id = enrollmentManager.registerDevice(realStudyId, participantId, datasourceId, sourceDevice.get())
         studyService.updateLastDevicePing(realStudyId, participantId, sourceDevice.get())
         return id
     }

@@ -36,8 +36,7 @@ class EnrollmentTests : ChronicleServerTests() {
             "21",
             "21",
             "",
-            "",
-            Optional.of(mutableMapOf())
+            ""
         )
 
         val expected = Study(title = "This is a test study.", contact = "tests@openlattice.com")
@@ -83,8 +82,7 @@ class EnrollmentTests : ChronicleServerTests() {
             "21",
             "21",
             "",
-            "",
-            Optional.of(mutableMapOf())
+            ""
         )
 
         val expected = Study(title = "This is a test study.", contact = "tests@openlattice.com")
