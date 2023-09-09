@@ -1,6 +1,7 @@
 package com.openlattice.chronicle.storage
 
 import com.geekbeast.postgres.PostgresColumnDefinition
+import com.geekbeast.postgres.PostgresTableDefinition
 import com.geekbeast.postgres.RedshiftTableDefinition
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.MAX_BIND_PARAMETERS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.ACL_KEY
@@ -33,6 +34,7 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PHONE_USAGE_S
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PRINCIPAL_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PRINCIPAL_TYPE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.RUN_ID
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.SAMPLE_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.SECURABLE_PRINCIPAL_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.SHARED_SENSOR_COLS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.START_TIME
@@ -157,6 +159,17 @@ class RedshiftDataTables {
         }
 
         /**
+         * Returns the merge clause for matching duplicate rows on insert for ios data. Sample id is worthless
+         * as the same data can come back from multiple sample ids due to multiple invocations of sensorkit framework.
+         */
+        private fun getIosMergeClause(srcMergeTableName: String): String {
+            //Sample ID is worthless we need to delete eventually
+            return (IOS_SENSOR_DATA.columns - SAMPLE_ID).joinToString(
+                " AND "
+            ) { "${IOS_SENSOR_DATA.name}.${it.name} = ${srcMergeTableName}.${it.name}" }
+        }
+
+        /**
          * Inserts a row into the usage events table.
          * @param tableName The name of table that will serve as the source to merge into the
          * CHRONICLE_USAGE_EVENTS table.
@@ -267,15 +280,17 @@ class RedshiftDataTables {
 
         /**
          * Generates sql for creating a temp table of duplicates that may have been inserted into redshift.
+         *
+         * Default chronicle usage events table
          * 1. study id
          * 2. participant id
          * 3. event_timestamp lowerbound
          * 4. event_timestamp upperbound.
          * @param tempTableName The
          */
-        fun createTempTableOfDuplicates(tempTableName: String): String {
+        fun createTempTableOfDuplicates( tempTableName: String, likeTable: PostgresTableDefinition = CHRONICLE_USAGE_EVENTS): String {
             return """
-                CREATE TEMPORARY TABLE $tempTableName (LIKE ${CHRONICLE_USAGE_EVENTS.name}) 
+                CREATE TEMPORARY TABLE $tempTableName (LIKE ${likeTable.name}) 
             """.trimIndent()
         }
 
@@ -290,6 +305,24 @@ class RedshiftDataTables {
             """.trimIndent()
         }
 
+        fun buildTempTableOfDuplicatesForIos(tempTableName: String): String {
+            val groupByCols = (IOS_SENSOR_DATA.columns - SAMPLE_ID).joinToString(",") { it.name }
+            return """
+                INSERT INTO $tempTableName ($groupByCols,${SAMPLE_ID.name}) SELECT $groupByCols, listagg(${UPLOADED_AT.name}) as ${SAMPLE_ID.name} FROM ${CHRONICLE_USAGE_EVENTS.name}
+                                        WHERE ${STUDY_ID.name} = ANY(?) AND ${PARTICIPANT_ID.name} = ANY(?) AND
+                                            ${TIMESTAMP.name} >= ? AND ${TIMESTAMP.name} <= ? 
+                                        GROUP BY $groupByCols
+                                        HAVING count(${SAMPLE_ID.name}) > 1
+            """.trimIndent()
+        }
+
+        fun getDeleteIosSensorDataFromTempTable(tempTableName: String) : String {
+            return """
+            DELETE FROM ${IOS_SENSOR_DATA.name} 
+                USING $tempTableName 
+                WHERE ${getMergeClause(tempTableName)} 
+            """.trimIndent()
+        }
 
         fun getDeleteUsageEventsFromTempTable(tempTableName: String): String {
             return """
