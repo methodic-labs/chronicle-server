@@ -94,6 +94,7 @@ class StudyService(
     hazelcast: HazelcastInstance,
 ) : StudyManager, AuditingComponent {
     private val studies = HazelcastMap.STUDIES.getMap(hazelcast)
+    private val participantStats = HazelcastMap.PARTICIPANT_STATS.getMap(hazelcast)
 
     @Inject
     @org.springframework.context.annotation.Lazy

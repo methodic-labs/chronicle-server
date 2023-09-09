@@ -29,6 +29,7 @@ import com.openlattice.chronicle.authorization.*
 import com.openlattice.chronicle.candidates.Candidate
 import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.mapstores.ids.Range
+import com.openlattice.chronicle.mapstores.stats.ParticipantKey
 import com.openlattice.chronicle.notifications.DeliveryType
 import com.openlattice.chronicle.notifications.NotificationType
 import com.openlattice.chronicle.organizations.Organization
@@ -201,6 +202,7 @@ class ResultSetAdapters {
                     val organizationId: UUID = aclKey[0]
                     Role(Optional.of(id), organizationId, principal, title, Optional.of(description))
                 }
+
                 else -> SecurablePrincipal(aclKey, principal, title, Optional.of(description))
             }
         }
@@ -553,6 +555,11 @@ class ResultSetAdapters {
             val uploadedAt = rs.getObject(UPLOADED_AT.name, OffsetDateTime::class.java)
             val sourceDeviceId = rs.getString(SOURCE_DEVICE_ID.name)
             return SensorDataEntries(studyId, participantId, samples, uploadedAt, sourceDeviceId)
+        }
+
+        @Throws(SQLException::class)
+        fun participantKey(rs: ResultSet): ParticipantKey {
+            return ParticipantKey(studyId(rs), rs.getString(PARTICIPANT_ID.name))
         }
     }
 }
