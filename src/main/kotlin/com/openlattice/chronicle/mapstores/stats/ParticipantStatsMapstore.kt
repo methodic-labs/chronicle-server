@@ -22,7 +22,7 @@ import java.util.*
  * @author Matthew Tamayo-Rios &lt;matthew@getmethodic.com&gt;
  */
 @Service
-class ParticipantStatsMapstore(hds: HikariDataSource) : AbstractBasePostgresMapstore<ParticipantKey, ParticipantStats>(
+    class ParticipantStatsMapstore(hds: HikariDataSource) : AbstractBasePostgresMapstore<ParticipantKey, ParticipantStats>(
     HazelcastMap.PARTICIPANT_STATS,
     PARTICIPANT_STATS,
     hds
