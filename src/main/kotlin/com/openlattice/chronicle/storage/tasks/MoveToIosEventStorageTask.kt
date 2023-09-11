@@ -25,6 +25,8 @@ import java.security.InvalidParameterException
 import java.sql.PreparedStatement
 import java.time.LocalDate
 import java.time.OffsetDateTime
+import java.time.ZoneId
+import java.time.ZonedDateTime
 import java.util.*
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -37,11 +39,12 @@ import kotlin.math.min
  */
 class MoveToIosEventStorageTask : HazelcastFixedRateTask<MoveToEventStorageTaskDependencies> {
     companion object {
-        private val RS_BATCH_SIZE = (ChroniclePostgresTables.MAX_BIND_PARAMETERS / RedshiftDataTables.IOS_SENSOR_DATA.columns.size)
-        private const val PERIOD = 5*60000L
+        private val RS_BATCH_SIZE =
+            (ChroniclePostgresTables.MAX_BIND_PARAMETERS / RedshiftDataTables.IOS_SENSOR_DATA.columns.size)
+        private const val PERIOD = 5 * 60000L
         private const val INITIAL_DELAY = 5000L
         private val UPLOAD_AT_INDEX = RedshiftDataTables.getInsertUsageEventColumnIndex(RedshiftColumns.UPLOADED_AT)
-        
+
         private val logger = LoggerFactory.getLogger(MoveToIosEventStorageTask::class.java)
 
         private val executor: ListeningExecutorService =
@@ -217,9 +220,18 @@ class MoveToIosEventStorageTask : HazelcastFixedRateTask<MoveToEventStorageTaskD
         sensorType: SensorType,
         dataColumns: List<SensorDataColumn>
     ) {
-        ps.setString(offset + RedshiftDataTables.getInsertSensorDataColumnIndex(RedshiftColumns.STUDY_ID), studyId.toString())
-        ps.setString(offset + RedshiftDataTables.getInsertSensorDataColumnIndex(RedshiftColumns.PARTICIPANT_ID), participantId)
-        ps.setString(offset + RedshiftDataTables.getInsertSensorDataColumnIndex(RedshiftColumns.SENSOR_TYPE), sensorType.name)
+        ps.setString(
+            offset + RedshiftDataTables.getInsertSensorDataColumnIndex(RedshiftColumns.STUDY_ID),
+            studyId.toString()
+        )
+        ps.setString(
+            offset + RedshiftDataTables.getInsertSensorDataColumnIndex(RedshiftColumns.PARTICIPANT_ID),
+            participantId
+        )
+        ps.setString(
+            offset + RedshiftDataTables.getInsertSensorDataColumnIndex(RedshiftColumns.SENSOR_TYPE),
+            sensorType.name
+        )
 
         dataColumns.forEach { dataColumn ->
             val col = dataColumn.col
@@ -238,43 +250,47 @@ class MoveToIosEventStorageTask : HazelcastFixedRateTask<MoveToEventStorageTaskD
         }
     }
 
+    private fun getZonedDateTime(sensorDataColumns: List<SensorDataColumn>): ZonedDateTime {
+        var timezone: String? = null
+        var odt: OffsetDateTime? = null
+        sensorDataColumns.forEach {
+            if (odt == null && it.col == RedshiftColumns.RECORDED_DATE_TIME) {
+                odt = it.value as OffsetDateTime
+            } else if (timezone == null && it.col == RedshiftColumns.TIMEZONE) {
+                timezone = it.value as String
+            }
+        }
+        checkNotNull(odt) { "Recorded date was null while processing upload." }
+        checkNotNull(timezone) { "Timezone was null while processing upload." }
+        return odt!!.atZoneSameInstant(ZoneId.of(timezone))
+    }
+
     private fun updateParticipantStats(
         studyId: UUID,
         participantId: String,
         data: Map<SensorType, List<List<SensorDataColumn>>>,
         studyService: StudyManager
     ) {
-        val currentStats = studyService.getParticipantStats(studyId, participantId)
-        val dates: MutableSet<OffsetDateTime> =
-            data.values.asSequence().flatten().flatten().filter { it.col == RedshiftColumns.RECORDED_DATE_TIME }
-                .map { it.value as OffsetDateTime }.toMutableSet()
-        currentStats?.iosLastDate?.let {
-            dates += it
-        }
-        currentStats?.iosFirstDate?.let {
-            dates += it
-        }
+        //TODO: We should be able to use odt directly instead of decoding with timezone as timestamp from iphone
+        //should include timezone and it is preferred in upload buffer json
+        val dates = data
+            .values.asSequence()
+            .flatMap { sensorRowsOfType -> sensorRowsOfType.map { getZonedDateTime(it) } }
+            .toSet()
 
-        val currentUniqueDates = currentStats?.iosUniqueDates ?: setOf()
-        val uniqueDates: Set<LocalDate> = dates.map { it.toLocalDate() }.toSet() + currentUniqueDates
 
-        val minDate = dates.stream().min(OffsetDateTime::compareTo).get()
-        val maxDate = dates.stream().max(OffsetDateTime::compareTo).get()
+        val uniqueDates: Set<LocalDate> = dates.map { it.toLocalDate() }.toSet()
+
+        val minDate = dates.min()
+        val maxDate = dates.max()
 
         val statsUpdate = ParticipantStats(
             studyId = studyId,
             participantId = participantId,
-            androidFirstDate = currentStats?.androidFirstDate,
-            androidLastDate = currentStats?.androidLastDate,
-            androidUniqueDates = currentStats?.androidUniqueDates ?: setOf(),
-            androidLastPing = currentStats?.androidLastPing,
             iosUniqueDates = uniqueDates,
             iosLastPing = OffsetDateTime.now(),
-            iosFirstDate = minDate,
-            iosLastDate = maxDate,
-            tudFirstDate = currentStats?.tudFirstDate,
-            tudLastDate = currentStats?.tudLastDate,
-            tudUniqueDates = currentStats?.tudUniqueDates ?: setOf()
+            iosFirstDate = minDate.toOffsetDateTime(),
+            iosLastDate = maxDate.toOffsetDateTime(),
         )
         studyService.insertOrUpdateParticipantStats(statsUpdate)
     }
@@ -420,7 +436,8 @@ private fun mapDeviceUsageData(data: List<SensorDataSample>): List<List<SensorDa
 
 private fun mapKeyboardMetricsData(data: List<SensorDataSample>): List<List<SensorDataColumn>> {
     val result: MutableList<MutableList<SensorDataColumn>> = mutableListOf()
-    val nullCols = nullifyCols(RedshiftColumns.PHONE_USAGE_SENSOR_COLS + RedshiftColumns.MESSAGES_USAGE_SENSOR_COLS + RedshiftColumns.DEVICE_USAGE_SENSOR_COLS)
+    val nullCols =
+        nullifyCols(RedshiftColumns.PHONE_USAGE_SENSOR_COLS + RedshiftColumns.MESSAGES_USAGE_SENSOR_COLS + RedshiftColumns.DEVICE_USAGE_SENSOR_COLS)
 
     data.forEach { sample ->
         val keyboardMetricsData: KeyboardMetricsData = SensorDataUploadService.mapper.readValue(sample.data)
@@ -440,8 +457,18 @@ private fun mapKeyboardMetricsData(data: List<SensorDataSample>): List<List<Sens
         sentiments.forEach { sentiment ->
             val cols = mapDefaultKeyboardMetricsCols(keyboardMetricsData).toMutableList()
             cols.add(SensorDataColumn(RedshiftColumns.SENTIMENT, sentiment))
-            cols.add(SensorDataColumn(RedshiftColumns.SENTIMENT_WORD_COUNT, keyboardMetricsData.wordCountBySentiment[sentiment]))
-            cols.add(SensorDataColumn(RedshiftColumns.SENTIMENT_EMOJI_COUNT, keyboardMetricsData.emojiCountBySentiment[sentiment]))
+            cols.add(
+                SensorDataColumn(
+                    RedshiftColumns.SENTIMENT_WORD_COUNT,
+                    keyboardMetricsData.wordCountBySentiment[sentiment]
+                )
+            )
+            cols.add(
+                SensorDataColumn(
+                    RedshiftColumns.SENTIMENT_EMOJI_COUNT,
+                    keyboardMetricsData.emojiCountBySentiment[sentiment]
+                )
+            )
             cols.addAll(mapSharedColumns(sample))
             cols.addAll(nullCols)
             result.add(cols)

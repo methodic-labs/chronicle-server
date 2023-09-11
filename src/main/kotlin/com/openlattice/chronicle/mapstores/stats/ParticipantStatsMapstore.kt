@@ -2,6 +2,8 @@ package com.openlattice.chronicle.mapstores.stats
 
 import com.geekbeast.postgres.PostgresArrays
 import com.geekbeast.postgres.mapstores.AbstractBasePostgresMapstore
+import com.hazelcast.config.EvictionConfig
+import com.hazelcast.config.MapConfig
 import com.hazelcast.config.MapStoreConfig
 import com.openlattice.chronicle.hazelcast.HazelcastMap
 import com.openlattice.chronicle.participants.ParticipantStats
@@ -10,6 +12,7 @@ import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.PARTI
 import com.openlattice.chronicle.util.tests.TestDataFactory
 import com.zaxxer.hikari.HikariDataSource
 import org.apache.commons.lang3.RandomStringUtils
+import org.springframework.stereotype.Service
 import java.sql.PreparedStatement
 import java.sql.ResultSet
 import java.util.*
@@ -18,6 +21,7 @@ import java.util.*
  *
  * @author Matthew Tamayo-Rios &lt;matthew@getmethodic.com&gt;
  */
+@Service
 class ParticipantStatsMapstore(hds: HikariDataSource) : AbstractBasePostgresMapstore<ParticipantKey, ParticipantStats>(
     HazelcastMap.PARTICIPANT_STATS,
     PARTICIPANT_STATS,
@@ -25,7 +29,12 @@ class ParticipantStatsMapstore(hds: HikariDataSource) : AbstractBasePostgresMaps
 ) {
     override fun getMapStoreConfig(): MapStoreConfig {
         return super.getMapStoreConfig()
-            .setWriteDelaySeconds(1)
+            .setWriteDelaySeconds(5)
+    }
+
+    //TODO: Consider setting an eviction policy for this map store
+    override fun getMapConfig(): MapConfig {
+        return super.getMapConfig()
     }
 
     override fun bind(ps: PreparedStatement, key: ParticipantKey, value: ParticipantStats) {
