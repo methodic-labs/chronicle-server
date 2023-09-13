@@ -96,7 +96,7 @@ class RedshiftColumns {
 
         // SENSOR_DATA
         // these columns apply to all sensor types
-        @JvmField val SAMPLE_ID = PostgresColumnDefinition("sample_id", PostgresDatatype.TEXT_512).notNull()
+        @JvmField val SAMPLE_ID = PostgresColumnDefinition("sample_id", PostgresDatatype.TEXT_UUID).notNull()
         @JvmField val SENSOR_TYPE = PostgresColumnDefinition("sensor_type", PostgresDatatype.TEXT).notNull()
         @JvmField val SAMPLE_DURATION = PostgresColumnDefinition("sample_duration", PostgresDatatype.DOUBLE).notNull() // seconds
         @JvmField val DEVICE_VERSION = PostgresColumnDefinition("device_version", PostgresDatatype.TEXT).notNull()
