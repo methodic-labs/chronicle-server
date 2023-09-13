@@ -29,6 +29,8 @@ import java.security.InvalidParameterException
 import java.sql.PreparedStatement
 import java.time.LocalDate
 import java.time.OffsetDateTime
+import java.time.ZoneId
+import java.time.ZonedDateTime
 import java.util.*
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -323,43 +325,47 @@ class MoveToIosEventStorageTask : HazelcastFixedRateTask<MoveToEventStorageTaskD
         return minEventTimestamp to maxEventTimestamp
     }
 
+    private fun getZonedDateTime(sensorDataColumns: List<SensorDataColumn>): ZonedDateTime {
+        var timezone: String? = null
+        var odt: OffsetDateTime? = null
+        sensorDataColumns.forEach {
+            if (odt == null && it.col == RedshiftColumns.RECORDED_DATE_TIME) {
+                odt = it.value as OffsetDateTime
+            } else if (timezone == null && it.col == RedshiftColumns.TIMEZONE) {
+                timezone = it.value as String
+            }
+        }
+        checkNotNull(odt) { "Recorded date was null while processing upload." }
+        checkNotNull(timezone) { "Timezone was null while processing upload." }
+        return odt!!.atZoneSameInstant(ZoneId.of(timezone))
+    }
+
     private fun updateParticipantStats(
         studyId: UUID,
         participantId: String,
         data: Map<SensorType, List<List<SensorDataColumn>>>,
         studyService: StudyManager
     ) {
-        val currentStats = studyService.getParticipantStats(studyId, participantId)
-        val dates: MutableSet<OffsetDateTime> =
-            data.values.asSequence().flatten().flatten().filter { it.col == RedshiftColumns.RECORDED_DATE_TIME }
-                .map { it.value as OffsetDateTime }.toMutableSet()
-        currentStats?.iosLastDate?.let {
-            dates += it
-        }
-        currentStats?.iosFirstDate?.let {
-            dates += it
-        }
+        //TODO: We should be able to use odt directly instead of decoding with timezone as timestamp from iphone
+        //should include timezone and it is preferred in upload buffer json
+        val dates = data
+            .values.asSequence()
+            .flatMap { sensorRowsOfType -> sensorRowsOfType.map { getZonedDateTime(it) } }
+            .toSet()
 
-        val currentUniqueDates = currentStats?.iosUniqueDates ?: setOf()
-        val uniqueDates: Set<LocalDate> = dates.map { it.toLocalDate() }.toSet() + currentUniqueDates
 
-        val minDate = dates.stream().min(OffsetDateTime::compareTo).get()
-        val maxDate = dates.stream().max(OffsetDateTime::compareTo).get()
+        val uniqueDates: Set<LocalDate> = dates.map { it.toLocalDate() }.toSet()
+
+        val minDate = dates.min()
+        val maxDate = dates.max()
 
         val statsUpdate = ParticipantStats(
             studyId = studyId,
             participantId = participantId,
-            androidFirstDate = currentStats?.androidFirstDate,
-            androidLastDate = currentStats?.androidLastDate,
-            androidUniqueDates = currentStats?.androidUniqueDates ?: setOf(),
-            androidLastPing = currentStats?.androidLastPing,
             iosUniqueDates = uniqueDates,
             iosLastPing = OffsetDateTime.now(),
-            iosFirstDate = minDate,
-            iosLastDate = maxDate,
-            tudFirstDate = currentStats?.tudFirstDate,
-            tudLastDate = currentStats?.tudLastDate,
-            tudUniqueDates = currentStats?.tudUniqueDates ?: setOf()
+            iosFirstDate = minDate.toOffsetDateTime(),
+            iosLastDate = maxDate.toOffsetDateTime(),
         )
         studyService.insertOrUpdateParticipantStats(statsUpdate)
     }

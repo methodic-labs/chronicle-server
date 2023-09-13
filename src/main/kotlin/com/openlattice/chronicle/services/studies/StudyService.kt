@@ -16,6 +16,8 @@ import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.hazelcast.HazelcastMap
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.ids.IdConstants
+import com.openlattice.chronicle.mapstores.stats.ParticipantKey
+import com.openlattice.chronicle.mapstores.stats.ParticipantStatsMerger
 import com.openlattice.chronicle.notifications.DeliveryType
 import com.openlattice.chronicle.notifications.NotificationType
 import com.openlattice.chronicle.notifications.ParticipantNotification
@@ -94,6 +96,7 @@ class StudyService(
     hazelcast: HazelcastInstance,
 ) : StudyManager, AuditingComponent {
     private val studies = HazelcastMap.STUDIES.getMap(hazelcast)
+    private val participantStats = HazelcastMap.PARTICIPANT_STATS.getMap(hazelcast)
 
     @Inject
     @org.springframework.context.annotation.Lazy
@@ -718,52 +721,55 @@ class StudyService(
     }
 
     override fun getParticipantStats(studyId: UUID, participantId: String): ParticipantStats? {
-        val hds = storageResolver.getPlatformStorage()
-        return try {
-            BasePostgresIterable(
-                PreparedStatementHolderSupplier(
-                    hds, GET_PARTICIPANT_STATS
-                ) { ps ->
-                    ps.setObject(1, studyId)
-                    ps.setString(2, participantId)
-                }
-            ) { ResultSetAdapters.participantStats(it) }.first()
-        } catch (ex: Exception) {
-            return null
-        }
+        return participantStats[ParticipantKey(studyId,participantId)]
+//        val hds = storageResolver.getPlatformStorage()
+//        return try {
+//            BasePostgresIterable(
+//                PreparedStatementHolderSupplier(
+//                    hds, GET_PARTICIPANT_STATS
+//                ) { ps ->
+//                    ps.setObject(1, studyId)
+//                    ps.setString(2, participantId)
+//                }
+//            ) { ResultSetAdapters.participantStats(it) }.first()
+//        } catch (ex: Exception) {
+//            return null
+//        }
     }
 
     override fun insertOrUpdateParticipantStats(stats: ParticipantStats) {
-        storageResolver.getPlatformStorage().connection.use { connection ->
-            connection.prepareStatement(INSERT_OR_UPDATE_PARTICIPANT_STATS).use { ps ->
-                val androidDatesArr =
-                    connection.createArrayOf(PostgresDatatype.DATE.sql(), stats.androidUniqueDates.toTypedArray())
-                val iosDatesArr =
-                    connection.createArrayOf(PostgresDatatype.DATE.sql(), stats.iosUniqueDates.toTypedArray())
-                val tudDatesArr =
-                    connection.createArrayOf(PostgresDatatype.DATE.sql(), stats.tudUniqueDates.toTypedArray())
-
-                var index = 0
-
-                ps.setObject(++index, stats.studyId)
-                ps.setString(++index, stats.participantId)
-
-                ps.setObject(++index, stats.androidLastPing)
-                ps.setObject(++index, stats.androidFirstDate)
-                ps.setObject(++index, stats.androidLastDate)
-                ps.setArray(++index, androidDatesArr)
-                ps.setObject(++index, stats.iosLastPing)
-                ps.setObject(++index, stats.iosFirstDate)
-                ps.setObject(++index, stats.iosLastDate)
-                ps.setArray(++index, iosDatesArr)
-
-                ps.setObject(++index, stats.tudFirstDate)
-                ps.setObject(++index, stats.tudLastDate)
-                ps.setObject(++index, tudDatesArr)
-
-                ps.executeUpdate()
-            }
-        }
+        val key = ParticipantKey(stats.studyId,stats.participantId)
+        participantStats.executeOnKey(key, ParticipantStatsMerger(stats))
+//        storageResolver.getPlatformStorage().connection.use { connection ->
+//            connection.prepareStatement(INSERT_OR_UPDATE_PARTICIPANT_STATS).use { ps ->
+//                val androidDatesArr =
+//                    connection.createArrayOf(PostgresDatatype.DATE.sql(), stats.androidUniqueDates.toTypedArray())
+//                val iosDatesArr =
+//                    connection.createArrayOf(PostgresDatatype.DATE.sql(), stats.iosUniqueDates.toTypedArray())
+//                val tudDatesArr =
+//                    connection.createArrayOf(PostgresDatatype.DATE.sql(), stats.tudUniqueDates.toTypedArray())
+//
+//                var index = 0
+//
+//                ps.setObject(++index, stats.studyId)
+//                ps.setString(++index, stats.participantId)
+//
+//                ps.setObject(++index, stats.androidLastPing)
+//                ps.setObject(++index, stats.androidFirstDate)
+//                ps.setObject(++index, stats.androidLastDate)
+//                ps.setArray(++index, androidDatesArr)
+//                ps.setObject(++index, stats.iosLastPing)
+//                ps.setObject(++index, stats.iosFirstDate)
+//                ps.setObject(++index, stats.iosLastDate)
+//                ps.setArray(++index, iosDatesArr)
+//
+//                ps.setObject(++index, stats.tudFirstDate)
+//                ps.setObject(++index, stats.tudLastDate)
+//                ps.setObject(++index, tudDatesArr)
+//
+//                ps.executeUpdate()
+//            }
+//        }
 
     }
 

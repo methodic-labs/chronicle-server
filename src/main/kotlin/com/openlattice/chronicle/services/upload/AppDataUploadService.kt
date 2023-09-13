@@ -40,6 +40,7 @@ import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.getDeleteU
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.getInsertUsageEventColumnIndex
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.storage.odtFromUsageEventColumn
+import com.openlattice.chronicle.storage.zdtFromAndroidColumns
 import com.openlattice.chronicle.util.ChronicleServerUtil
 import com.zaxxer.hikari.HikariDataSource
 import org.apache.commons.lang3.RandomStringUtils
@@ -48,6 +49,7 @@ import org.slf4j.event.Level
 import java.security.InvalidParameterException
 import java.time.LocalDate
 import java.time.OffsetDateTime
+import java.time.ZonedDateTime
 import java.util.*
 import java.util.concurrent.Semaphore
 import kotlin.math.min
@@ -319,10 +321,12 @@ class AppDataUploadService(
                                 storageResolver.getEventStorageWithFlavor(PostgresFlavor.REDSHIFT),
                                 usageEventQueueEntries
                             )
+
                             PostgresFlavor.VANILLA -> writeToPostgres(
                                 storageResolver.getEventStorageWithFlavor(PostgresFlavor.VANILLA),
                                 usageEventQueueEntries
                             )
+
                             else -> throw InvalidParameterException("Invalid postgres flavor: ${postgresFlavor.name}")
                         }
                     }
@@ -482,6 +486,7 @@ class AppDataUploadService(
                                                             }
                                                         }
                                                     }
+
                                                     PostgresDatatype.INTEGER -> ps.setInt(colIndex, value as Int)
                                                     PostgresDatatype.BIGINT -> ps.setLong(colIndex, value as Long)
                                                     else -> ps.setObject(colIndex, value)
@@ -594,23 +599,18 @@ class AppDataUploadService(
     ) {
         // unique dates
         val dates = data
-            .mapNotNull { odtFromUsageEventColumn(it.getValue(TIMESTAMP.name).value) }
+            .mapNotNull {
+                zdtFromAndroidColumns(
+                    it.getValue(TIMESTAMP.name).value,
+                    it.getValue(TIMEZONE.name).value as String
+                )
+            }
             .toMutableSet()
 
-        val currentStats = studyManager.getParticipantStats(studyId, participantId)
-        currentStats?.androidFirstDate?.let {
-            dates += it
-        }
-        currentStats?.androidLastDate?.let {
-            dates + it
-        }
-        val uniqueDates: MutableSet<LocalDate> = dates.map { it.toLocalDate() }.toMutableSet()
-        currentStats?.androidUniqueDates?.let {
-            uniqueDates += it
-        }
 
-        val minDate = dates.stream().min(OffsetDateTime::compareTo).get()
-        val maxDate = dates.stream().max(OffsetDateTime::compareTo).get()
+        val uniqueDates = dates.map { it.toLocalDate() }.toMutableSet()
+        val minDate = dates.min().toOffsetDateTime()
+        val maxDate = dates.max().toOffsetDateTime()
 
         val participantStats = ParticipantStats(
             studyId = studyId,
@@ -619,12 +619,6 @@ class AppDataUploadService(
             androidUniqueDates = uniqueDates,
             androidFirstDate = minDate,
             androidLastDate = maxDate,
-            tudFirstDate = currentStats?.tudFirstDate,
-            tudLastDate = currentStats?.tudLastDate,
-            tudUniqueDates = currentStats?.tudUniqueDates ?: setOf(),
-            iosFirstDate = currentStats?.iosFirstDate,
-            iosLastDate = currentStats?.iosLastDate,
-            iosUniqueDates = currentStats?.iosUniqueDates ?: setOf()
         )
         studyManager.insertOrUpdateParticipantStats(participantStats)
     }

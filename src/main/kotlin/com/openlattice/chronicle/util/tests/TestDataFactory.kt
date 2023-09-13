@@ -15,6 +15,7 @@ import com.openlattice.chronicle.notifications.StudyNotificationSettings
 import com.openlattice.chronicle.organizations.ChronicleDataCollectionSettings
 import com.openlattice.chronicle.organizations.OrganizationPrincipal
 import com.openlattice.chronicle.participants.Participant
+import com.openlattice.chronicle.participants.ParticipantStats
 import com.openlattice.chronicle.sensorkit.SensorSetting
 import com.openlattice.chronicle.sensorkit.SensorType
 import com.openlattice.chronicle.services.legacy.LegacyEdmResolver
@@ -269,6 +270,24 @@ class TestDataFactory {
             }
 
             return ChronicleData( usageEvents )
+        }
+
+        fun participantStats(): ParticipantStats {
+            return ParticipantStats(
+                UUID.randomUUID(),
+                RandomStringUtils.randomAlphanumeric(8),
+                OffsetDateTime.now(),
+                OffsetDateTime.now(),
+                OffsetDateTime.now(),
+                setOf(LocalDate.now()),
+                OffsetDateTime.now(),
+                OffsetDateTime.now(),
+                OffsetDateTime.now(),
+                setOf(LocalDate.now()),
+                OffsetDateTime.now(),
+                OffsetDateTime.now(),
+                setOf(LocalDate.now()),
+            )
         }
     }
 }

@@ -43,8 +43,10 @@ import com.openlattice.chronicle.mapstores.apps.FilteredAppsMapstore
 import com.openlattice.chronicle.mapstores.authorization.PermissionMapstore
 import com.openlattice.chronicle.mapstores.authorization.PrincipalTreesMapstore
 import com.openlattice.chronicle.mapstores.ids.Range
+import com.openlattice.chronicle.mapstores.stats.ParticipantStatsMapstore
 import com.openlattice.chronicle.mapstores.storage.StudyLimitsMapstore
 import com.openlattice.chronicle.mapstores.storage.StudyMapstore
+import com.openlattice.chronicle.participants.ParticipantStats
 import com.openlattice.chronicle.storage.StorageResolver
 import org.slf4j.LoggerFactory
 import org.springframework.context.annotation.Bean
@@ -137,7 +139,12 @@ class MapstoresPod {
     @Bean
     fun principalTreesMapstore(): PrincipalTreesMapstore {
         return PrincipalTreesMapstore(storageResolver.getPlatformStorage())
-    } //
+    }
+
+    @Bean
+    fun participantStatsMapstore(): ParticipantStatsMapstore {
+        return ParticipantStatsMapstore(storageResolver.getPlatformStorage())
+    }
 
     //    @Bean
     //    public SecurablePrincipalsMapLoader securablePrincipalsMapLoader() {

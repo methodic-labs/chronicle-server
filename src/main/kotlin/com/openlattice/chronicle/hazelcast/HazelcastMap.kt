@@ -27,6 +27,8 @@ import com.openlattice.chronicle.authorization.*
 import com.openlattice.chronicle.mapstores.ids.Range
 import com.geekbeast.postgres.mapstores.TypedMapIdentifier
 import com.geekbeast.rhizome.KotlinDelegatedStringSet
+import com.openlattice.chronicle.mapstores.stats.ParticipantKey
+import com.openlattice.chronicle.participants.ParticipantStats
 import com.openlattice.chronicle.study.Study
 import com.openlattice.chronicle.study.StudyLimits
 import java.util.*
@@ -80,6 +82,7 @@ class HazelcastMap<K, V> internal constructor(val name: String) : TypedMapIdenti
 //        @JvmField val OBJECT_METADATA = HazelcastMap<AclKey, SecurableObjectMetadata>("OBJECT_METADATA")
 //        @JvmField val ORGANIZATION_DATABASES = HazelcastMap<UUID, OrganizationDatabase>("ORGANIZATION_DATABASES")
 //        @JvmField val ORGANIZATIONS = HazelcastMap<UUID, Organization>("ORGANIZATIONS")
+        @JvmField val PARTICIPANT_STATS = HazelcastMap<ParticipantKey,ParticipantStats>("PARTICIPANT_STATS")
         @JvmField val PERMISSIONS = HazelcastMap<AceKey, AceValue>("PERMISSIONS")
         @JvmField val PRINCIPAL_TREES = HazelcastMap<AclKey, AclKeySet>("PRINCIPAL_TREES")
         @JvmField val PRINCIPALS = HazelcastMap<AclKey, SecurablePrincipal>("PRINCIPALS")
