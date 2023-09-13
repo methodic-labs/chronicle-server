@@ -22,7 +22,7 @@ import java.util.*
  * @author Matthew Tamayo-Rios &lt;matthew@getmethodic.com&gt;
  */
 @Service
-    class ParticipantStatsMapstore(hds: HikariDataSource) : AbstractBasePostgresMapstore<ParticipantKey, ParticipantStats>(
+class ParticipantStatsMapstore(hds: HikariDataSource) : AbstractBasePostgresMapstore<ParticipantKey, ParticipantStats>(
     HazelcastMap.PARTICIPANT_STATS,
     PARTICIPANT_STATS,
     hds
@@ -38,7 +38,7 @@ import java.util.*
     }
 
     override fun bind(ps: PreparedStatement, key: ParticipantKey, value: ParticipantStats) {
-        val offset = bind(ps, key)
+        var offset = bind(ps, key)
 //        PostgresColumns.STUDY_ID,
 //        PostgresColumns.PARTICIPANT_ID,
 //        PostgresColumns.ANDROID_LAST_PING,
@@ -52,17 +52,30 @@ import java.util.*
 //        PostgresColumns.TUD_FIRST_DATE,
 //        PostgresColumns.TUD_LAST_DATE,
 //        PostgresColumns.TUD_UNIQUE_DATES
-        ps.setObject(offset , value.androidLastPing)
-        ps.setObject(offset + 1, value.androidFirstDate)
-        ps.setObject(offset + 2, value.androidLastDate)
-        ps.setArray(offset +  3, PostgresArrays.createDateArray(ps.connection, value.androidUniqueDates))
-        ps.setObject(offset + 4, value.iosLastPing)
-        ps.setObject(offset + 5, value.iosFirstDate)
-        ps.setObject(offset + 6, value.iosLastDate)
-        ps.setArray(offset + 7, PostgresArrays.createDateArray(ps.connection, value.iosUniqueDates))
-        ps.setObject(offset + 8, value.tudFirstDate)
-        ps.setObject(offset + 9, value.tudLastDate)
-        ps.setArray(offset + 10, PostgresArrays.createDateArray(ps.connection, value.tudUniqueDates))
+        ps.setObject(offset++, value.androidLastPing)
+        ps.setObject(offset++, value.androidFirstDate)
+        ps.setObject(offset++, value.androidLastDate)
+        ps.setArray(offset++, PostgresArrays.createDateArray(ps.connection, value.androidUniqueDates))
+        ps.setObject(offset++, value.iosLastPing)
+        ps.setObject(offset++, value.iosFirstDate)
+        ps.setObject(offset++, value.iosLastDate)
+        ps.setArray(offset++, PostgresArrays.createDateArray(ps.connection, value.iosUniqueDates))
+        ps.setObject(offset++, value.tudFirstDate)
+        ps.setObject(offset++, value.tudLastDate)
+        ps.setArray(offset++, PostgresArrays.createDateArray(ps.connection, value.tudUniqueDates))
+
+        //For update query
+        ps.setObject(offset++, value.androidLastPing)
+        ps.setObject(offset++, value.androidFirstDate)
+        ps.setObject(offset++, value.androidLastDate)
+        ps.setArray(offset++, PostgresArrays.createDateArray(ps.connection, value.androidUniqueDates))
+        ps.setObject(offset++, value.iosLastPing)
+        ps.setObject(offset++, value.iosFirstDate)
+        ps.setObject(offset++, value.iosLastDate)
+        ps.setArray(offset++, PostgresArrays.createDateArray(ps.connection, value.iosUniqueDates))
+        ps.setObject(offset++, value.tudFirstDate)
+        ps.setObject(offset++, value.tudLastDate)
+        ps.setArray(offset++, PostgresArrays.createDateArray(ps.connection, value.tudUniqueDates))
 
     }
 
