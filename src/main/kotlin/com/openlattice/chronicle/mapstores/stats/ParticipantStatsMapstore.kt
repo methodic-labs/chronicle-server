@@ -52,17 +52,17 @@ import java.util.*
 //        PostgresColumns.TUD_FIRST_DATE,
 //        PostgresColumns.TUD_LAST_DATE,
 //        PostgresColumns.TUD_UNIQUE_DATES
-        ps.setObject(offset + 1, value.androidLastPing)
-        ps.setObject(offset + 2, value.androidFirstDate)
-        ps.setObject(offset + 3, value.androidLastDate)
-        ps.setArray(offset + 4, PostgresArrays.createDateArray(ps.connection, value.androidUniqueDates))
-        ps.setObject(offset + 5, value.iosLastPing)
-        ps.setObject(offset + 6, value.iosFirstDate)
-        ps.setObject(offset + 7, value.iosLastDate)
-        ps.setArray(offset + 8, PostgresArrays.createDateArray(ps.connection, value.iosUniqueDates))
-        ps.setObject(offset + 9, value.tudFirstDate)
-        ps.setObject(offset + 10, value.tudLastDate)
-        ps.setArray(offset + 11, PostgresArrays.createDateArray(ps.connection, value.tudUniqueDates))
+        ps.setObject(offset , value.androidLastPing)
+        ps.setObject(offset + 1, value.androidFirstDate)
+        ps.setObject(offset + 2, value.androidLastDate)
+        ps.setArray(offset +  3, PostgresArrays.createDateArray(ps.connection, value.androidUniqueDates))
+        ps.setObject(offset + 4, value.iosLastPing)
+        ps.setObject(offset + 5, value.iosFirstDate)
+        ps.setObject(offset + 6, value.iosLastDate)
+        ps.setArray(offset + 7, PostgresArrays.createDateArray(ps.connection, value.iosUniqueDates))
+        ps.setObject(offset + 8, value.tudFirstDate)
+        ps.setObject(offset + 9, value.tudLastDate)
+        ps.setArray(offset + 10, PostgresArrays.createDateArray(ps.connection, value.tudUniqueDates))
 
     }
 
