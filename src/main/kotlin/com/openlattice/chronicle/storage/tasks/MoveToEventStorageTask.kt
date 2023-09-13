@@ -111,6 +111,7 @@ class MoveToEventStorageTask : HazelcastFixedRateTask<MoveToEventStorageTaskDepe
         return hds.connection.use { connection ->
             //Create the temporary merge table
             try {
+                //TODO: May be based this off data being inserted instead?
                 var minEventTimestamp: OffsetDateTime = OffsetDateTime.MAX
                 var maxEventTimestamp: OffsetDateTime = OffsetDateTime.MIN
 

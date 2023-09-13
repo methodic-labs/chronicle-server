@@ -25,3 +25,4 @@ fun zdtFromAndroidColumns(value: Any?, timezone: String): ZonedDateTime? {
         else -> throw UnsupportedOperationException("${value.javaClass.canonicalName} is not a supported date time class.")
     }.atZoneSameInstant(ZoneId.of(timezone))
 }
+

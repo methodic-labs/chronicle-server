@@ -2,6 +2,7 @@ package com.openlattice.chronicle.storage.tasks
 
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.geekbeast.configuration.postgres.PostgresFlavor
+import com.geekbeast.postgres.PostgresArrays
 import com.geekbeast.postgres.PostgresColumnDefinition
 import com.geekbeast.postgres.PostgresDatatype
 import com.geekbeast.tasks.HazelcastFixedRateTask
@@ -17,8 +18,11 @@ import com.openlattice.chronicle.services.upload.*
 import com.openlattice.chronicle.storage.ChroniclePostgresTables
 import com.openlattice.chronicle.storage.RedshiftColumns
 import com.openlattice.chronicle.storage.RedshiftDataTables
+import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.IOS_SENSOR_DATA
+import com.openlattice.chronicle.storage.odtFromUsageEventColumn
 import com.openlattice.chronicle.util.ChronicleServerUtil
 import com.zaxxer.hikari.HikariDataSource
+import org.apache.commons.lang3.RandomStringUtils
 import org.slf4j.LoggerFactory
 import org.slf4j.event.Level
 import java.security.InvalidParameterException
@@ -31,6 +35,7 @@ import java.util.*
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
+import kotlin.math.max
 import kotlin.math.min
 
 /**
@@ -122,6 +127,12 @@ class MoveToIosEventStorageTask : HazelcastFixedRateTask<MoveToEventStorageTaskD
         data: List<SensorDataRow>,
         includeOnConflict: Boolean
     ): Int {
+        val studies = data.map { it.studyId.toString() }.toSet()
+        val participants = data.map { it.participantId }.toSet()
+        //TODO: May be based this off data being inserted instead?
+        var minEventTimestamp: OffsetDateTime = OffsetDateTime.MAX
+        var maxEventTimestamp: OffsetDateTime = OffsetDateTime.MIN
+
         return StopWatch(
             log = "writing ${data.size} entries to event storage.",
             level = Level.INFO,
@@ -176,7 +187,9 @@ class MoveToIosEventStorageTask : HazelcastFixedRateTask<MoveToEventStorageTaskD
                                 sourceDeviceId
                             )
 
-                            writeSensorDataToRedshift(ps, offset, studyId, participantId, it.sensorType, it.row)
+                            val (minOdt, maxOdt) = writeSensorDataToRedshift(ps, offset, studyId, participantId, it.sensorType, it.row)
+                            minEventTimestamp = minOf(minOdt, minEventTimestamp)
+                            maxEventTimestamp = maxOf(maxOdt, maxEventTimestamp)
                             offset += RedshiftDataTables.IOS_SENSOR_DATA.columns.size
                         }
                         if (ps === pps)
@@ -194,10 +207,55 @@ class MoveToIosEventStorageTask : HazelcastFixedRateTask<MoveToEventStorageTaskD
                     pps.close()
                 }
 
+                /*
+                 * We need to remove any duplicates that were inserted. The general approach is to use min/max recorded date
+                 * and (study_id, participant_id) to count duplicates within that window and remove them. The reason for using
+                 * this approach is that we don't know when duplicate may be uploaded so we need a bounded way to maintain
+                 * the uniqueness invariant on each upload.
+                 */
+
+                val tempTableName = "duplicate_ios_events_${RandomStringUtils.randomAlphanumeric(10)}"
+
+                //Create a table that contains any duplicate values introduced by this latest upload for the minimum upload_at value
+                StopWatch(
+                    log = "Creating duplicates table for ios studies = {} and participants = {} ",
+                    level = Level.INFO,
+                    logger = logger,
+                    studies,
+                    participants
+                ).use {
+                    connection.createStatement()
+                        .use { stmt -> stmt.execute(RedshiftDataTables.createTempTableOfDuplicates(tempTableName, IOS_SENSOR_DATA)) }
+                    connection.prepareStatement(RedshiftDataTables.buildTempTableOfDuplicatesForIos(tempTableName))
+                        .use { ps ->
+                            ps.setArray(1, PostgresArrays.createTextArray(connection, studies))
+                            ps.setArray(2, PostgresArrays.createTextArray(connection, participants))
+                            ps.setObject(3, minEventTimestamp)
+                            ps.setObject(4, maxEventTimestamp)
+                            ps.execute()
+                        }
+                }
+
+                //Delete the duplicates, if any from chronicle_usage_events and drop the temporary table.
+                StopWatch(
+                    log = "Deleting duplicates for ios studies = {} and participants = {} ",
+                    level = Level.INFO,
+                    logger = logger,
+                    studies,
+                    participants
+                ).use {
+                    connection.createStatement().use { stmt ->
+                        stmt.execute(RedshiftDataTables.getDeleteIosSensorDataFromTempTable(tempTableName))
+                        stmt.execute("DROP TABLE $tempTableName")
+                    }
+                }
+
+
                 connection.commit()
                 connection.autoCommit = true
                 s
             }
+
             //Process all the participant updates. Being lazy hear since I don't have them batched.
             data.forEach {
                 updateParticipantStats(
@@ -211,15 +269,20 @@ class MoveToIosEventStorageTask : HazelcastFixedRateTask<MoveToEventStorageTaskD
         }
     }
 
-
+    /**
+     * @return A pair of [OffsetDateTime] where the first element in the pair is the minimum offset datetime in the
+     * data and the second element is maximum element in the data.
+     */
     private fun writeSensorDataToRedshift(
         ps: PreparedStatement,
         offset: Int,
         studyId: UUID,
         participantId: String,
         sensorType: SensorType,
-        dataColumns: List<SensorDataColumn>
-    ) {
+        dataColumns: List<SensorDataColumn>,
+    ): Pair<OffsetDateTime, OffsetDateTime> {
+        var minEventTimestamp: OffsetDateTime = OffsetDateTime.MAX
+        var maxEventTimestamp: OffsetDateTime = OffsetDateTime.MIN
         ps.setString(
             offset + RedshiftDataTables.getInsertSensorDataColumnIndex(RedshiftColumns.STUDY_ID),
             studyId.toString()
@@ -238,6 +301,17 @@ class MoveToIosEventStorageTask : HazelcastFixedRateTask<MoveToEventStorageTaskD
             val index = offset + dataColumn.colIndex
             val value = dataColumn.value
 
+            val odt = odtFromUsageEventColumn(value)
+
+            if (odt!=null && col.name == RedshiftColumns.RECORDED_DATE_TIME.name) {
+                if (odt.isBefore(minEventTimestamp)) {
+                    minEventTimestamp = odt
+                }
+                if (odt.isAfter(maxEventTimestamp)) {
+                    maxEventTimestamp = odt
+                }
+            }
+
             if (value == null) {
                 ps.setObject(index, null)
             } else {
@@ -248,6 +322,7 @@ class MoveToIosEventStorageTask : HazelcastFixedRateTask<MoveToEventStorageTaskD
                 }
             }
         }
+        return minEventTimestamp to maxEventTimestamp
     }
 
     private fun getZonedDateTime(sensorDataColumns: List<SensorDataColumn>): ZonedDateTime {
