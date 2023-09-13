@@ -308,7 +308,7 @@ class RedshiftDataTables {
         fun buildTempTableOfDuplicatesForIos(tempTableName: String): String {
             val groupByCols = (IOS_SENSOR_DATA.columns - SAMPLE_ID).joinToString(",") { it.name }
             return """
-                INSERT INTO $tempTableName ($groupByCols,${SAMPLE_ID.name}) SELECT $groupByCols, listagg(${UPLOADED_AT.name}) as ${SAMPLE_ID.name} FROM ${CHRONICLE_USAGE_EVENTS.name}
+                INSERT INTO $tempTableName ($groupByCols) SELECT $groupByCols, listagg(${SAMPLE_ID.name}) as ${SAMPLE_ID.name} FROM ${IOS_SENSOR_DATA.name}
                                         WHERE ${STUDY_ID.name} = ANY(?) AND ${PARTICIPANT_ID.name} = ANY(?) AND
                                             ${TIMESTAMP.name} >= ? AND ${TIMESTAMP.name} <= ? 
                                         GROUP BY $groupByCols

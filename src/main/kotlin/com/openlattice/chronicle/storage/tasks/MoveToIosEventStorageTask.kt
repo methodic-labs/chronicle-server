@@ -243,7 +243,7 @@ class MoveToIosEventStorageTask : HazelcastFixedRateTask<MoveToEventStorageTaskD
                     participants
                 ).use {
                     connection.createStatement().use { stmt ->
-                        stmt.execute(RedshiftDataTables.getDeleteUsageEventsFromTempTable(tempTableName))
+                        stmt.execute(RedshiftDataTables.getDeleteIosSensorDataFromTempTable(tempTableName))
                         stmt.execute("DROP TABLE $tempTableName")
                     }
                 }
