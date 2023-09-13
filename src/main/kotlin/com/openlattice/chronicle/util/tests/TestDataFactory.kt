@@ -285,7 +285,7 @@ class TestDataFactory {
                 OffsetDateTime.now(),
                 setOf(LocalDate.now()),
                 OffsetDateTime.now(),
-                OffsetDateTime.now(),
+                null,
                 setOf(LocalDate.now()),
             )
         }
