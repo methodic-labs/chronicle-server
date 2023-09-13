@@ -301,9 +301,8 @@ class MoveToIosEventStorageTask : HazelcastFixedRateTask<MoveToEventStorageTaskD
             val index = offset + dataColumn.colIndex
             val value = dataColumn.value
 
-            val odt = odtFromUsageEventColumn(value)
-
-            if (odt!=null && col.name == RedshiftColumns.RECORDED_DATE_TIME.name) {
+            if (value!=null && col.name == RedshiftColumns.RECORDED_DATE_TIME.name) {
+                val odt = odtFromUsageEventColumn(value)!!
                 if (odt.isBefore(minEventTimestamp)) {
                     minEventTimestamp = odt
                 }
