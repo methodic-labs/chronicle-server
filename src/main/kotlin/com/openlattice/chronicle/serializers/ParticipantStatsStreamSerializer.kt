@@ -10,6 +10,7 @@ import com.openlattice.chronicle.hazelcast.StreamSerializerTypeIds
 import com.openlattice.chronicle.participants.ParticipantStats
 import com.openlattice.chronicle.util.tests.TestDataFactory
 import org.springframework.stereotype.Component
+import java.time.OffsetDateTime
 
 /**
  *
@@ -28,16 +29,16 @@ class ParticipantStatsStreamSerializer : TestableSelfRegisteringStreamSerializer
         return ParticipantStats(
             studyId = uuidSerializer.read(input),
             participantId = input.readString()!!,
-            androidLastPing = IOUtil.readOffsetDateTime(input),
-            androidFirstDate = IOUtil.readOffsetDateTime(input),
-            androidLastDate = IOUtil.readOffsetDateTime(input),
+            androidLastPing = readDt(input),
+            androidFirstDate = readDt(input),
+            androidLastDate = readDt(input),
             androidUniqueDates = SetStreamSerializers.deserialize(input) { IOUtil.readLocalDate(it) },
-            iosLastPing = IOUtil.readOffsetDateTime(input),
-            iosFirstDate = IOUtil.readOffsetDateTime(input),
-            iosLastDate = IOUtil.readOffsetDateTime(input),
+            iosLastPing = readDt(input),
+            iosFirstDate = readDt(input),
+            iosLastDate = readDt(input),
             iosUniqueDates = SetStreamSerializers.deserialize(input) { IOUtil.readLocalDate(it) },
-            tudFirstDate = IOUtil.readOffsetDateTime(input),
-            tudLastDate = IOUtil.readOffsetDateTime(input),
+            tudFirstDate = readDt(input),
+            tudLastDate = readDt(input),
             tudUniqueDates = SetStreamSerializers.deserialize(input) { IOUtil.readLocalDate(it) },
         )
     }
@@ -45,25 +46,42 @@ class ParticipantStatsStreamSerializer : TestableSelfRegisteringStreamSerializer
     override fun write(out: ObjectDataOutput, obj: ParticipantStats) {
         uuidSerializer.write(out, obj.studyId)
         out.writeString(obj.participantId)
-        IOUtil.writeOffsetDateTime(out, obj.androidLastPing)
-        IOUtil.writeOffsetDateTime(out, obj.androidFirstDate)
-        IOUtil.writeOffsetDateTime(out, obj.androidLastDate)
+
+        writeDt(out, obj.androidLastPing)
+        writeDt(out, obj.androidFirstDate)
+        writeDt(out, obj.androidLastDate)
         SetStreamSerializers.serialize(out, obj.androidUniqueDates) { output, elem ->
             IOUtil.writeLocalDate(output, elem)
         }
-        IOUtil.writeOffsetDateTime(out, obj.iosLastPing)
-        IOUtil.writeOffsetDateTime(out, obj.iosFirstDate)
-        IOUtil.writeOffsetDateTime(out, obj.iosLastDate)
+        writeDt(out, obj.iosLastPing)
+        writeDt(out, obj.iosFirstDate)
+        writeDt(out, obj.iosLastDate)
         SetStreamSerializers.serialize(out, obj.iosUniqueDates) { output, elem ->
             IOUtil.writeLocalDate(output, elem)
         }
-        IOUtil.writeOffsetDateTime(out, obj.tudFirstDate)
-        IOUtil.writeOffsetDateTime(out, obj.tudLastDate)
+        writeDt(out, obj.tudFirstDate)
+        writeDt(out, obj.tudLastDate)
         SetStreamSerializers.serialize(out, obj.tudUniqueDates) { output, elem ->
             IOUtil.writeLocalDate(output, elem)
 
         }
     }
 
+    private fun writeDt( out:ObjectDataOutput, obj:OffsetDateTime? ) {
+        if( obj == null) {
+            out.writeBoolean(false)
+        } else {
+            out.writeBoolean(true)
+            IOUtil.writeOffsetDateTime(out, obj)
+        }
+    }
+
+    private fun readDt( input: ObjectDataInput) : OffsetDateTime? {
+        return if( input.readBoolean() ) {
+            IOUtil.readOffsetDateTime(input)
+        } else {
+            null
+        }
+    }
     override fun getClazz(): Class<out ParticipantStats> = ParticipantStats::class.java
 }
