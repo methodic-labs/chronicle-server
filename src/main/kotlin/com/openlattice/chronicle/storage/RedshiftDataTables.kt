@@ -33,6 +33,8 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PARTICIPANT_I
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PHONE_USAGE_SENSOR_COLS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PRINCIPAL_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PRINCIPAL_TYPE
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.RECORDED_DATE
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.RECORDED_DATE_TIME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.RUN_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.SAMPLE_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.SECURABLE_PRINCIPAL_ID
@@ -310,7 +312,7 @@ class RedshiftDataTables {
             return """
                 INSERT INTO $tempTableName ($groupByCols,${SAMPLE_ID.name}) SELECT $groupByCols, min(${SAMPLE_ID.name}) as ${SAMPLE_ID.name} FROM ${IOS_SENSOR_DATA.name}
                                         WHERE ${STUDY_ID.name} = ANY(?) AND ${PARTICIPANT_ID.name} = ANY(?) AND
-                                            ${TIMESTAMP.name} >= ? AND ${TIMESTAMP.name} <= ? 
+                                            ${RECORDED_DATE_TIME.name} >= ? AND ${RECORDED_DATE_TIME.name} <= ? 
                                         GROUP BY $groupByCols
                                         HAVING count(${SAMPLE_ID.name}) > 1
             """.trimIndent()
