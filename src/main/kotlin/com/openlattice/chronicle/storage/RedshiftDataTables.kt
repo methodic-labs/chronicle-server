@@ -319,15 +319,24 @@ class RedshiftDataTables {
         }
 
         fun buildTempTableOfDuplicatesForIos(tempTableName: String): String {
+            val excluded = setOf(
+                SAMPLE_ID,
+                START_DATE_TIME,
+                END_DATE_TIME
+            )
             //TODO: We don't have to run this on every insert, we could run it every 15 minutes to be more efficient,
             //with the trade off that users would see duplicates in downloads until it ran.
-            val groupByCols = (IOS_SENSOR_DATA.columns - SAMPLE_ID).joinToString(",") { it.name }
+            val groupByCols = (IOS_SENSOR_DATA.columns - excluded).joinToString(",") { it.name }
+
+            val excludedCols = excluded.joinToString(",") { it.name }
             return """
-                INSERT INTO $tempTableName ($groupByCols,${SAMPLE_ID.name}) SELECT $groupByCols, min(${SAMPLE_ID.name}) as ${SAMPLE_ID.name} FROM ${IOS_SENSOR_DATA.name}
-                                        WHERE ${STUDY_ID.name} = ANY(?) AND ${PARTICIPANT_ID.name} = ANY(?) AND
-                                            ${RECORDED_DATE_TIME.name} >= ? AND ${RECORDED_DATE_TIME.name} <= ? 
-                                        GROUP BY $groupByCols
-                                        HAVING count(${SAMPLE_ID.name}) > 1
+                INSERT INTO $tempTableName ($groupByCols,$excludedCols) 
+                    SELECT $groupByCols, min(${SAMPLE_ID.name}) as ${SAMPLE_ID.name},min(${START_DATE_TIME.name}),max(${START_DATE_TIME.name}) 
+                        FROM ${IOS_SENSOR_DATA.name}
+                        WHERE ${STUDY_ID.name} = ANY(?) AND ${PARTICIPANT_ID.name} = ANY(?) 
+                            AND ${RECORDED_DATE_TIME.name} >= ? AND ${RECORDED_DATE_TIME.name} <= ? 
+                        GROUP BY $groupByCols
+                        HAVING count(${SAMPLE_ID.name}) > 1
             """.trimIndent()
         }
 
