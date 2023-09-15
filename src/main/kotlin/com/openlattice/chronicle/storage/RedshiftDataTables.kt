@@ -23,6 +23,7 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DAY
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DESCRIPTION
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DEVICE_USAGE_SENSOR_COLS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DURATION
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.END_DATE_TIME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.END_TIME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.EVENT_TYPE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.INTERACTION_TYPE
@@ -39,6 +40,7 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.RUN_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.SAMPLE_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.SECURABLE_PRINCIPAL_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.SHARED_SENSOR_COLS
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.START_DATE_TIME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.START_TIME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMESTAMP
@@ -151,13 +153,19 @@ class RedshiftDataTables {
         private val USAGE_EVENT_COLS = CHRONICLE_USAGE_EVENTS.columns.joinToString(",") { it.name }
         private val USAGE_EVENT_PARAMS = CHRONICLE_USAGE_EVENTS.columns.joinToString(",") { "?" }
 
+
         /**
          * Returns the merge clause for matching duplicate rows on insert.
          */
-        private fun getMergeClause(srcMergeTableName: String): String {
-            return CHRONICLE_USAGE_EVENTS.columns.joinToString(
+        private fun getMergeClause(
+            srcMergeTableName: String,
+            table: PostgresTableDefinition = CHRONICLE_USAGE_EVENTS,
+            columnsToExclude: Set<PostgresColumnDefinition> = setOf()
+        ): String {
+            //These are the columns
+            return (table.columns - columnsToExclude).joinToString(
                 " AND "
-            ) { "${CHRONICLE_USAGE_EVENTS.name}.${it.name} = ${srcMergeTableName}.${it.name}" }
+            ) { "${table.name}.${it.name} = ${srcMergeTableName}.${it.name}" }
         }
 
         /**
@@ -205,21 +213,21 @@ class RedshiftDataTables {
          * @param numLines The number of lines containing usage events to insert
          * @param includeOnConflict Whether or not it should include the on conflict statement
          */
-        fun buildMultilineInsertUsageEvents(numLines: Int, includeOnConflict: Boolean) : String {
-            check( (CHRONICLE_USAGE_EVENTS.columns.size*numLines) < MAX_BIND_PARAMETERS) {
+        fun buildMultilineInsertUsageEvents(numLines: Int, includeOnConflict: Boolean): String {
+            check((CHRONICLE_USAGE_EVENTS.columns.size * numLines) < MAX_BIND_PARAMETERS) {
                 "Maximum number of postgres bind parameters would be exceeded with this amount of lines"
             }
             val columns = CHRONICLE_USAGE_EVENTS.columns.joinToString(",") { it.name }
             val header = "INSERT INTO ${CHRONICLE_USAGE_EVENTS.name} ($columns) VALUES"
             val params = CHRONICLE_USAGE_EVENTS.columns.joinToString(",") { "?" }
             val line = "($params)"
-            val lines = (1..numLines).joinToString(",\n" ) { line }
+            val lines = (1..numLines).joinToString(",\n") { line }
 
-            check( (header.length + (line.length * numLines )) < 16777216 ) {
+            check((header.length + (line.length * numLines)) < 16777216) {
                 "SQL exceeds maximum length allowed for redshift."
             }
 
-            return if(includeOnConflict) {
+            return if (includeOnConflict) {
                 "$header\n$lines ON CONFLICT DO NOTHING"
             } else {
                 "$header\n$lines"
@@ -231,21 +239,21 @@ class RedshiftDataTables {
          * @param numLines The number of lines containing usage events to insert
          * @param includeOnConflict Whether or not it should include the on conflict statement
          */
-        fun buildMultilineInsertSensorEvents(numLines: Int, includeOnConflict: Boolean) : String {
-            check( (IOS_SENSOR_DATA.columns.size*numLines) < MAX_BIND_PARAMETERS) {
+        fun buildMultilineInsertSensorEvents(numLines: Int, includeOnConflict: Boolean): String {
+            check((IOS_SENSOR_DATA.columns.size * numLines) < MAX_BIND_PARAMETERS) {
                 "Maximum number of postgres bind parameters would be exceeded with this amount of lines"
             }
             val columns = IOS_SENSOR_DATA.columns.joinToString(",") { it.name }
             val header = "INSERT INTO ${IOS_SENSOR_DATA.name} ($columns) VALUES"
             val params = IOS_SENSOR_DATA.columns.joinToString(",") { "?" }
             val line = "($params)"
-            val lines = (1..numLines).joinToString(",\n" ) { line }
+            val lines = (1..numLines).joinToString(",\n") { line }
 
-            check( (header.length + (line.length * numLines )) < 16777216 ) {
+            check((header.length + (line.length * numLines)) < 16777216) {
                 "SQL exceeds maximum length allowed for redshift."
             }
 
-            return if(includeOnConflict) {
+            return if (includeOnConflict) {
                 "$header\n$lines ON CONFLICT DO NOTHING"
             } else {
                 "$header\n$lines"
@@ -257,8 +265,8 @@ class RedshiftDataTables {
          * @param numLines The number of lines containing usage events to insert
          * @param includeOnConflict Whether or not it should include the on conflict statement
          */
-        fun buildMultilineInsertAuditEvents(numLines: Int, includeOnConflict: Boolean) : String {
-            check( (AUDIT.columns.size*numLines) < MAX_BIND_PARAMETERS) {
+        fun buildMultilineInsertAuditEvents(numLines: Int, includeOnConflict: Boolean): String {
+            check((AUDIT.columns.size * numLines) < MAX_BIND_PARAMETERS) {
                 "Maximum number of postgres bind parameters would be exceeded with this amount of lines"
             }
 
@@ -266,13 +274,13 @@ class RedshiftDataTables {
             val header = "INSERT INTO ${AUDIT.name} ($columns) VALUES"
             val params = AUDIT.columns.joinToString(",") { "?" }
             val line = "($params)"
-            val lines = (1..numLines).joinToString(",\n" ) { line }
+            val lines = (1..numLines).joinToString(",\n") { line }
 
-            check( (header.length + (line.length * numLines )) < 16777216 ) {
+            check((header.length + (line.length * numLines)) < 16777216) {
                 "SQL exceeds maximum length allowed for redshift."
             }
 
-            return if(includeOnConflict) {
+            return if (includeOnConflict) {
                 "$header\n$lines ON CONFLICT DO NOTHING"
             } else {
                 "$header\n$lines"
@@ -290,7 +298,10 @@ class RedshiftDataTables {
          * 4. event_timestamp upperbound.
          * @param tempTableName The
          */
-        fun createTempTableOfDuplicates( tempTableName: String, likeTable: PostgresTableDefinition = CHRONICLE_USAGE_EVENTS): String {
+        fun createTempTableOfDuplicates(
+            tempTableName: String,
+            likeTable: PostgresTableDefinition = CHRONICLE_USAGE_EVENTS
+        ): String {
             return """
                 CREATE TEMPORARY TABLE $tempTableName (LIKE ${likeTable.name}) 
             """.trimIndent()
@@ -308,6 +319,8 @@ class RedshiftDataTables {
         }
 
         fun buildTempTableOfDuplicatesForIos(tempTableName: String): String {
+            //TODO: We don't have to run this on every insert, we could run it every 15 minutes to be more efficient,
+            //with the trade off that users would see duplicates in downloads until it ran.
             val groupByCols = (IOS_SENSOR_DATA.columns - SAMPLE_ID).joinToString(",") { it.name }
             return """
                 INSERT INTO $tempTableName ($groupByCols,${SAMPLE_ID.name}) SELECT $groupByCols, min(${SAMPLE_ID.name}) as ${SAMPLE_ID.name} FROM ${IOS_SENSOR_DATA.name}
@@ -318,11 +331,17 @@ class RedshiftDataTables {
             """.trimIndent()
         }
 
-        fun getDeleteIosSensorDataFromTempTable(tempTableName: String) : String {
+        fun getDeleteIosSensorDataFromTempTable(tempTableName: String): String {
             return """
             DELETE FROM ${IOS_SENSOR_DATA.name} 
                 USING $tempTableName 
-                WHERE ${getMergeClause(tempTableName)} 
+                WHERE ${
+                getMergeClause(
+                    tempTableName,
+                    IOS_SENSOR_DATA,
+                    setOf(SAMPLE_ID, START_DATE_TIME, END_DATE_TIME)
+                )
+            } 
             """.trimIndent()
         }
 
