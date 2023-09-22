@@ -561,5 +561,10 @@ class ResultSetAdapters {
         fun participantKey(rs: ResultSet): ParticipantKey {
             return ParticipantKey(studyId(rs), rs.getString(PARTICIPANT_ID.name))
         }
+
+        @Throws(SQLException::class)
+        fun uniqueDates(rs: ResultSet): LocalDate {
+            return rs.getObject("unique_dates", LocalDate::class.java)
+        }
     }
 }

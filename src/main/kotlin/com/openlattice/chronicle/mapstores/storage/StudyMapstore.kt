@@ -12,6 +12,7 @@ import com.hazelcast.config.MapStoreConfig
 import com.openlattice.chronicle.hazelcast.HazelcastMap
 import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.services.studies.StudyService.Companion.GET_STUDIES_SQL
+import com.openlattice.chronicle.services.studies.StudyService.Companion.LOAD_STUDY_IDS
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.STUDIES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.study.Study
@@ -47,9 +48,7 @@ class StudyMapstore(val hds: HikariDataSource) : TestableSelfRegisteringMapStore
 
     companion object {
         const val NOTIFY_RESEARCHERS_INDEX = "notifyResearchers"
-        private val LOAD_KEYS_SQL = """
-            SELECT ${STUDY_ID.name} FROM ${STUDIES.name} 
-        """.trimIndent()
+
 
     }
 
@@ -71,7 +70,7 @@ class StudyMapstore(val hds: HikariDataSource) : TestableSelfRegisteringMapStore
     }
 
     override fun loadAllKeys(): Iterable<UUID> {
-        return BasePostgresIterable(StatementHolderSupplier(hds, LOAD_KEYS_SQL, fetchSize = 65536)) { mapKey(it) }
+        return BasePostgresIterable(StatementHolderSupplier(hds, LOAD_STUDY_IDS, fetchSize = 65536)) { mapKey(it) }
     }
 
     override fun store(key: UUID, value: Study) {
