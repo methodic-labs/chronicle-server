@@ -110,7 +110,7 @@ class RecalculateParticipantStatsTask : HazelcastFixedRateTask<RecalculatePartic
                         ParticipantStat.Android -> ParticipantStats(
                             studyId = it.key.studyId,
                             participantId = it.key.participantId,
-                            iosUniqueDates = it.value
+                            androidUniqueDates = it.value
                         )
 //This one won't get used for a while.
                         ParticipantStat.Tud -> ParticipantStats(
