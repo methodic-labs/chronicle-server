@@ -54,7 +54,7 @@ class RecalculateParticipantStatsTask : HazelcastFixedRateTask<RecalculatePartic
         }
     }
 
-    override fun getName(): String = Task.MOVE_IOS_DATA_TO_EVENT_STORAGE.name
+    override fun getName(): String = Task.RECALCULATE_PARTICIPANT_STATS.name
     override fun getDependenciesClass(): Class<out RecalculateParticipantStatsTaskDependencies> =
         RecalculateParticipantStatsTaskDependencies::class.java
 
