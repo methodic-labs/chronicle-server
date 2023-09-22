@@ -746,6 +746,7 @@ class StudyService(
 
     override fun insertOrUpdateParticipantStats(stats: ParticipantStats) {
         val key = ParticipantKey(stats.studyId, stats.participantId)
+
         participantStats.executeOnKey(key, ParticipantStatsMerger(stats))
 //        storageResolver.getPlatformStorage().connection.use { connection ->
 //            connection.prepareStatement(INSERT_OR_UPDATE_PARTICIPANT_STATS).use { ps ->

@@ -86,7 +86,7 @@ class RecalculateParticipantStatsTask : HazelcastFixedRateTask<RecalculatePartic
                     sql,
                     fetchSize = 65536,
                 ) {
-                    it.setObject(1, studyId)
+                    it.setString(1, studyId.toString())
                 }
             ) {
                 val studyId = ResultSetAdapters.studyId(it)
