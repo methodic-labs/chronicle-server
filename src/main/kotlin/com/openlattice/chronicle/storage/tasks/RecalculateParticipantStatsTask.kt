@@ -6,9 +6,12 @@ import com.geekbeast.tasks.HazelcastFixedRateTask
 import com.geekbeast.tasks.Task
 import com.google.common.util.concurrent.ListeningExecutorService
 import com.google.common.util.concurrent.MoreExecutors
+import com.openlattice.chronicle.mapstores.stats.ParticipantKey
 import com.openlattice.chronicle.participants.ParticipantStats
 import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.services.studies.StudyManager
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PARTICIPANT_ID
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.participantStatsAndroidSql
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.participantStatsIosSql
 import com.zaxxer.hikari.HikariDataSource
@@ -85,7 +88,12 @@ class RecalculateParticipantStatsTask : HazelcastFixedRateTask<RecalculatePartic
                 ) {
                     it.setString(1, studyId.toString())
                 }
-            ) { ResultSetAdapters.participantKey(it) to ResultSetAdapters.uniqueDates(it) }
+            ) {
+                ParticipantKey(
+                    UUID.fromString(it.getString(STUDY_ID.name)),
+                    it.getString(PARTICIPANT_ID.name)
+                ) to ResultSetAdapters.uniqueDates(it)
+            }
                 .toMap()
                 .forEach {
                     studyService.insertOrUpdateParticipantStats(
