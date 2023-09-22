@@ -7,6 +7,7 @@ import com.geekbeast.postgres.PostgresArrays
 import com.geekbeast.postgres.PostgresDatatype
 import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
+import com.geekbeast.postgres.streams.StatementHolderSupplier
 import com.hazelcast.core.HazelcastInstance
 import com.openlattice.chronicle.auditing.*
 import com.openlattice.chronicle.authorization.*
@@ -193,6 +194,10 @@ class StudyService(
             WHERE ${STUDY_ID.name} = ANY(?)
         """.trimIndent()
 
+        internal val LOAD_STUDY_IDS = """
+            SELECT ${STUDY_ID.name} FROM ${STUDIES.name} 
+        """.trimIndent()
+
         private val DELETE_STUDIES_SQL = """
             DELETE FROM ${STUDIES.name} WHERE ${STUDY_ID.name} = ANY(?)
         """.trimIndent()
@@ -303,9 +308,11 @@ class StudyService(
                 LEGACY_STUDY_IDS.name -> """
                     SELECT ${STUDY_ID.name} FROM ${LEGACY_STUDY_IDS.name} WHERE ${LEGACY_STUDY_ID.name} = ?                    
                 """.trimIndent()
+
                 STUDIES.name -> """
                     SELECT ${STUDY_ID.name} FROM ${STUDIES.name} WHERE ${STUDY_ID.name} = ?
                 """.trimIndent()
+
                 else -> ""
             }
         }
@@ -721,7 +728,7 @@ class StudyService(
     }
 
     override fun getParticipantStats(studyId: UUID, participantId: String): ParticipantStats? {
-        return participantStats[ParticipantKey(studyId,participantId)]
+        return participantStats[ParticipantKey(studyId, participantId)]
 //        val hds = storageResolver.getPlatformStorage()
 //        return try {
 //            BasePostgresIterable(
@@ -738,7 +745,7 @@ class StudyService(
     }
 
     override fun insertOrUpdateParticipantStats(stats: ParticipantStats) {
-        val key = ParticipantKey(stats.studyId,stats.participantId)
+        val key = ParticipantKey(stats.studyId, stats.participantId)
         participantStats.executeOnKey(key, ParticipantStatsMerger(stats))
 //        storageResolver.getPlatformStorage().connection.use { connection ->
 //            connection.prepareStatement(INSERT_OR_UPDATE_PARTICIPANT_STATS).use { ps ->
@@ -796,11 +803,13 @@ class StudyService(
                 participantId = participantId,
                 androidLastPing = OffsetDateTime.now()
             )
+
             is IOSDevice -> ParticipantStats(
                 studyId = studyId,
                 participantId = participantId,
                 iosLastPing = OffsetDateTime.now()
             )
+
             else -> throw UnsupportedOperationException("${sourceDevice.javaClass.name} is not a supported datasource.")
         }
 
@@ -836,6 +845,7 @@ class StudyService(
         ) { ResultSetAdapters.participant(it) }
     }
 
+
     override fun getStudyId(maybeLegacyMaybeRealStudyId: UUID): UUID? {
         return storageResolver.getPlatformStorage().connection.use { connection ->
             var maybeStudyId = connection.prepareStatement(selectStudyIdSql(LEGACY_STUDY_IDS.name)).use { ps ->
@@ -854,6 +864,17 @@ class StudyService(
             }
             maybeStudyId
         }
+    }
+
+    override fun getAllStudyIds(): Iterable<UUID> {
+        val (_, hds) = storageResolver.getDefaultPlatformStorage()
+        return BasePostgresIterable(
+            StatementHolderSupplier(
+                hds,
+                LOAD_STUDY_IDS,
+                fetchSize = 65536
+            )
+        ) { ResultSetAdapters.studyId(it) }
     }
 
     override fun isValidStudy(studyId: UUID): Boolean {

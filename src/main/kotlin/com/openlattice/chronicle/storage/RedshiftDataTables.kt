@@ -1,6 +1,7 @@
 package com.openlattice.chronicle.storage
 
 import com.geekbeast.postgres.PostgresColumnDefinition
+import com.geekbeast.postgres.PostgresDatatype
 import com.geekbeast.postgres.PostgresTableDefinition
 import com.geekbeast.postgres.RedshiftTableDefinition
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.MAX_BIND_PARAMETERS
@@ -50,6 +51,9 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.USERNAME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.WEEKDAY_MONDAY_FRIDAY
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.WEEKDAY_MONDAY_THURSDAY
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.WEEKDAY_SUNDAY_THURSDAY
+import java.security.InvalidParameterException
+import java.time.LocalDate
+import java.time.OffsetDateTime
 
 /**
  *
@@ -165,7 +169,18 @@ class RedshiftDataTables {
             //These are the columns
             return (table.columns - columnsToExclude).joinToString(
                 " AND "
-            ) { "${table.name}.${it.name} = ${srcMergeTableName}.${it.name}" }
+            ) {
+                val defaultValue = when (it.datatype) {
+                    PostgresDatatype.BOOLEAN -> "false"
+                    PostgresDatatype.TEXT_UUID, PostgresDatatype.TEXT, PostgresDatatype.TEXT_128, PostgresDatatype.TEXT_256, PostgresDatatype.TEXT_512 -> "''"
+                    PostgresDatatype.BIGINT, PostgresDatatype.INTEGER, PostgresDatatype.NUMERIC, PostgresDatatype.DECIMAL, PostgresDatatype.DOUBLE, PostgresDatatype.REAL, PostgresDatatype.SMALLINT, PostgresDatatype.SERIAL, PostgresDatatype.BIGSERIAL -> "0"
+                    PostgresDatatype.DATE -> LocalDate.MIN.toString()
+                    PostgresDatatype.TIMESTAMP, PostgresDatatype.TIMESTAMPTZ -> "to_timestamp(0, 'utc')"
+                    PostgresDatatype.SMALLINT_ARRAY,PostgresDatatype.UUID_ARRAY,PostgresDatatype.INTEGER_ARRAY, PostgresDatatype.TIMETZ_ARRAY, PostgresDatatype.TIMESTAMPTZ_ARRAY, PostgresDatatype.TIME_ARRAY, PostgresDatatype.BYTEA_ARRAY, PostgresDatatype.DATE_ARRAY, PostgresDatatype.DOUBLE_ARRAY, PostgresDatatype.BIGINT_ARRAY, PostgresDatatype.BOOLEAN_ARRAY -> "ARRAY()"
+                    else -> InvalidParameterException("Unsupported data type column encountered.")
+                }
+                "COALESCE(${table.name}.${it.name},$defaultValue) = COALESCE(${srcMergeTableName}.${it.name},$defaultValue)"
+            }
         }
 
         /**
@@ -331,7 +346,7 @@ class RedshiftDataTables {
             val excludedCols = excluded.joinToString(",") { it.name }
             return """
                 INSERT INTO $tempTableName ($groupByCols,$excludedCols) 
-                    SELECT $groupByCols, min(${SAMPLE_ID.name}) as ${SAMPLE_ID.name},min(${START_DATE_TIME.name}),max(${END_DATE_TIME.name}) 
+                    SELECT $groupByCols, min(${SAMPLE_ID.name}) as ${SAMPLE_ID.name},min(${START_DATE_TIME.name}) as ${START_DATE_TIME.name},max(${END_DATE_TIME.name} as ${END_DATE_TIME.name}) 
                         FROM ${IOS_SENSOR_DATA.name}
                         WHERE ${STUDY_ID.name} = ANY(?) AND ${PARTICIPANT_ID.name} = ANY(?) 
                             AND ${RECORDED_DATE_TIME.name} >= ? AND ${RECORDED_DATE_TIME.name} <= ? 
@@ -347,7 +362,7 @@ class RedshiftDataTables {
                 WHERE ${
                 getMergeClause(
                     tempTableName,
-                    IOS_SENSOR_DATA,
+                    table = IOS_SENSOR_DATA,
                     setOf(SAMPLE_ID, START_DATE_TIME, END_DATE_TIME)
                 )
             } 
@@ -388,6 +403,19 @@ class RedshiftDataTables {
         val INSERT_USAGE_STATS_COLUMN_INDICES: Map<String, Int> =
             CHRONICLE_USAGE_STATS.columns.mapIndexed { index, pcd -> pcd.name to (index + 1) }.toMap()
 
+        const val UNIQUE_DATES = "unique_dates"
+        val participantStatsIosSql = """
+                SELECT ${STUDY_ID.name}, ${PARTICIPANT_ID.name}, listagg(distinct TRUNC(${RECORDED_DATE_TIME.name} at time zone ${TIMEZONE.name}), ',') as $UNIQUE_DATES
+                FROM ${IOS_SENSOR_DATA.name} group by ${STUDY_ID.name}, ${PARTICIPANT_ID.name}
+                WHERE ${STUDY_ID.name} = ?;
+            """.trimIndent()
+
+        val participantStatsAndroidSql = """
+                SELECT ${STUDY_ID.name}, ${PARTICIPANT_ID.name}, listagg(distinct TRUNC(${RECORDED_DATE_TIME.name} at time zone ${TIMEZONE.name}), ',') as $UNIQUE_DATES
+                FROM ${CHRONICLE_USAGE_EVENTS.name} group by ${STUDY_ID.name}, ${PARTICIPANT_ID.name}
+                WHERE ${STUDY_ID.name} = ?;
+            """.trimIndent()
+
         fun getInsertUsageEventColumnIndex(
             column: PostgresColumnDefinition,
         ): Int = INSERT_USAGE_EVENT_COLUMN_INDICES.getValue(column.name)
@@ -399,6 +427,8 @@ class RedshiftDataTables {
         fun getInsertUsageStatColumnIndex(
             column: PostgresColumnDefinition,
         ): Int = INSERT_USAGE_STATS_COLUMN_INDICES.getValue(column.name)
+
+
     }
 }
 

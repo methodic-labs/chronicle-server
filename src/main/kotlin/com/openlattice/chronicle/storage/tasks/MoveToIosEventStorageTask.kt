@@ -35,7 +35,6 @@ import java.util.*
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
-import kotlin.math.max
 import kotlin.math.min
 
 /**
@@ -50,7 +49,7 @@ class MoveToIosEventStorageTask : HazelcastFixedRateTask<MoveToEventStorageTaskD
         private const val INITIAL_DELAY = 5000L
         private val UPLOAD_AT_INDEX = RedshiftDataTables.getInsertUsageEventColumnIndex(RedshiftColumns.UPLOADED_AT)
 
-        private val logger = LoggerFactory.getLogger(MoveToIosEventStorageTask::class.java)
+        private val logger = LoggerFactory.getLogger(RecalculateParticipantStatsTask::class.java)
 
         private val executor: ListeningExecutorService =
             MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(3))
@@ -246,6 +245,19 @@ class MoveToIosEventStorageTask : HazelcastFixedRateTask<MoveToEventStorageTaskD
                 ).use {
                     connection.createStatement().use { stmt ->
                         stmt.execute(RedshiftDataTables.getDeleteIosSensorDataFromTempTable(tempTableName))
+                        stmt.execute("DROP TABLE $tempTableName")
+                    }
+                }
+
+                StopWatch(
+                    log = "Inserting deleted rows for ios studies = {} and participants = {} ",
+                    level = Level.INFO,
+                    logger = logger,
+                    studies,
+                    participants
+                ).use {
+                    connection.createStatement().use { stmt ->
+                        stmt.execute("INSERT INTO ${IOS_SENSOR_DATA.name} SELECT * FROM $tempTableName")
                         stmt.execute("DROP TABLE $tempTableName")
                     }
                 }

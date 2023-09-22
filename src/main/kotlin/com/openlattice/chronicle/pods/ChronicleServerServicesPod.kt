@@ -73,9 +73,7 @@ import com.openlattice.chronicle.services.upload.AppDataUploadManager
 import com.openlattice.chronicle.services.upload.AppDataUploadService
 import com.openlattice.chronicle.services.upload.SensorDataUploadService
 import com.openlattice.chronicle.storage.StorageResolver
-import com.openlattice.chronicle.storage.tasks.MoveToEventStorageTask
-import com.openlattice.chronicle.storage.tasks.MoveToEventStorageTaskDependencies
-import com.openlattice.chronicle.storage.tasks.MoveToIosEventStorageTask
+import com.openlattice.chronicle.storage.tasks.*
 import com.openlattice.chronicle.studies.tasks.StudyLimitsEnforcementTask
 import com.openlattice.chronicle.studies.tasks.StudyLimitsEnforcementTaskDependencies
 import com.openlattice.chronicle.study.StudyComplianceManager
@@ -87,12 +85,10 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
 import org.springframework.context.annotation.Profile
-import java.beans.BeanProperty
 import java.io.IOException
 import java.util.concurrent.ExecutionException
 import javax.annotation.PostConstruct
 import javax.inject.Inject
-
 
 @Configuration
 @Import(Auth0Pod::class)
@@ -477,13 +473,23 @@ class ChronicleServerServicesPod {
     }
 
     @Bean
-    fun moveIosDataToEventStorageTaskDependencies() : MoveToIosEventStorageTask {
+    fun moveIosDataToEventStorageTaskDependencies(): MoveToIosEventStorageTask {
         return MoveToIosEventStorageTask()
     }
 
     @Bean
     fun moveToEventStorageTask(): MoveToEventStorageTask {
         return MoveToEventStorageTask()
+    }
+
+    @Bean
+    fun recalculateParticipantStatsTaskDependencies(): RecalculateParticipantStatsTaskDependencies {
+        return RecalculateParticipantStatsTaskDependencies(storageResolver, studyService())
+    }
+
+    @Bean
+    fun recalculateParticipantStatsTask(): RecalculateParticipantStatsTask {
+        return RecalculateParticipantStatsTask()
     }
 
     companion object {
@@ -496,3 +502,4 @@ class ChronicleServerServicesPod {
         storageResolver.setStudyStorage(hazelcast)
     }
 }
+
