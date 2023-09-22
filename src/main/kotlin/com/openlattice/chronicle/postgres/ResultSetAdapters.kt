@@ -134,6 +134,7 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMESTAMP
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMEZONE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.USERNAME
+import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.UNIQUE_DATES
 import com.openlattice.chronicle.storage.tasks.SensorDataEntries
 import com.openlattice.chronicle.study.Study
 import com.openlattice.chronicle.study.StudyFeature
@@ -421,9 +422,7 @@ class ResultSetAdapters {
         @Throws(SQLException::class)
         fun iosDeviceUsageByCategory(rs: ResultSet): IosDeviceUsageByCategory {
             return IosDeviceUsageByCategory(
-                rs.getString(BUNDLE_IDENTIFIER.name),
-                rs.getString(APP_CATEGORY.name),
-                rs.getDouble(APP_USAGE_TIME.name)
+                rs.getString(BUNDLE_IDENTIFIER.name), rs.getString(APP_CATEGORY.name), rs.getDouble(APP_USAGE_TIME.name)
             )
         }
 
@@ -563,8 +562,11 @@ class ResultSetAdapters {
         }
 
         @Throws(SQLException::class)
-        fun uniqueDates(rs: ResultSet): LocalDate {
-            return rs.getObject("unique_dates", LocalDate::class.java)
+        fun uniqueDates(rs: ResultSet): Set<LocalDate> {
+            return rs
+                .getString(UNIQUE_DATES)
+                .split(",")
+                .mapTo(mutableSetOf<LocalDate>()) { LocalDate.parse(it) }
         }
     }
 }

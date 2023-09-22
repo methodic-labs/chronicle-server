@@ -88,40 +88,32 @@ class RecalculateParticipantStatsTask : HazelcastFixedRateTask<RecalculatePartic
                 ) {
                     it.setString(1, studyId.toString())
                 }
-            ) {
-                val studyId = ResultSetAdapters.studyId(it)
-                val participantId = it.getString(PARTICIPANT_ID.name)
-                val uniqueDate = ResultSetAdapters.uniqueDates(it)
-                ParticipantKey(studyId, participantId) to uniqueDate
-            }.fold(mutableMapOf<ParticipantKey, MutableSet<LocalDate>>()) { uniqueDatesByStudyParticipant, p ->
-                uniqueDatesByStudyParticipant.getOrPut(p.first) {
-                    mutableSetOf()
-                }.add(p.second)
-                uniqueDatesByStudyParticipant
-            }.forEach {
-                studyService.insertOrUpdateParticipantStats(
-                    when (statType) {
-                        ParticipantStat.Ios -> ParticipantStats(
-                            studyId = it.key.studyId,
-                            participantId = it.key.participantId,
-                            iosUniqueDates = it.value
-                        )
+            ) { ResultSetAdapters.participantKey(it) to ResultSetAdapters.uniqueDates(it) }
+                .toMap()
+                .forEach {
+                    studyService.insertOrUpdateParticipantStats(
+                        when (statType) {
+                            ParticipantStat.Ios -> ParticipantStats(
+                                studyId = it.key.studyId,
+                                participantId = it.key.participantId,
+                                iosUniqueDates = it.value
+                            )
 
-                        ParticipantStat.Android -> ParticipantStats(
-                            studyId = it.key.studyId,
-                            participantId = it.key.participantId,
-                            androidUniqueDates = it.value
-                        )
+                            ParticipantStat.Android -> ParticipantStats(
+                                studyId = it.key.studyId,
+                                participantId = it.key.participantId,
+                                androidUniqueDates = it.value
+                            )
 //This one won't get used for a while.
-                        ParticipantStat.Tud -> ParticipantStats(
-                            studyId = it.key.studyId,
-                            participantId = it.key.participantId,
-                            tudUniqueDates = it.value
-                        )
+                            ParticipantStat.Tud -> ParticipantStats(
+                                studyId = it.key.studyId,
+                                participantId = it.key.participantId,
+                                tudUniqueDates = it.value
+                            )
 
-                    }
-                )
-            }
+                        }
+                    )
+                }
 
         }
     }
