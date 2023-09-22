@@ -406,14 +406,16 @@ class RedshiftDataTables {
         const val UNIQUE_DATES = "unique_dates"
         val participantStatsIosSql = """
                 SELECT ${STUDY_ID.name}, ${PARTICIPANT_ID.name}, listagg(distinct TRUNC(${RECORDED_DATE_TIME.name} at time zone ${TIMEZONE.name}), ',') as $UNIQUE_DATES
-                FROM ${IOS_SENSOR_DATA.name} group by ${STUDY_ID.name}, ${PARTICIPANT_ID.name}
-                WHERE ${STUDY_ID.name} = ?;
+                FROM ${IOS_SENSOR_DATA.name} 
+                WHERE ${STUDY_ID.name} = ?
+                GROUP BY ${STUDY_ID.name}, ${PARTICIPANT_ID.name}
             """.trimIndent()
 
         val participantStatsAndroidSql = """
                 SELECT ${STUDY_ID.name}, ${PARTICIPANT_ID.name}, listagg(distinct TRUNC(${TIMESTAMP.name} at time zone ${TIMEZONE.name}), ',') as $UNIQUE_DATES
-                FROM ${CHRONICLE_USAGE_EVENTS.name} group by ${STUDY_ID.name}, ${PARTICIPANT_ID.name}
-                WHERE ${STUDY_ID.name} = ?;
+                FROM ${CHRONICLE_USAGE_EVENTS.name}
+                WHERE ${STUDY_ID.name} = ?
+                GROUP BY ${STUDY_ID.name}, ${PARTICIPANT_ID.name}
             """.trimIndent()
 
         fun getInsertUsageEventColumnIndex(

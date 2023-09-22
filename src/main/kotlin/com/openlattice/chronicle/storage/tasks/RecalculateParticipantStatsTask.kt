@@ -6,17 +6,14 @@ import com.geekbeast.tasks.HazelcastFixedRateTask
 import com.geekbeast.tasks.Task
 import com.google.common.util.concurrent.ListeningExecutorService
 import com.google.common.util.concurrent.MoreExecutors
-import com.openlattice.chronicle.mapstores.stats.ParticipantKey
 import com.openlattice.chronicle.participants.ParticipantStats
 import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.services.studies.StudyManager
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.participantStatsAndroidSql
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.participantStatsIosSql
 import com.zaxxer.hikari.HikariDataSource
 import org.slf4j.LoggerFactory
 import java.security.InvalidParameterException
-import java.time.LocalDate
 import java.util.*
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
