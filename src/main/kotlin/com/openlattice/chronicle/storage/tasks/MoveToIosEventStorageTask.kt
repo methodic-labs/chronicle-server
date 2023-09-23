@@ -245,23 +245,10 @@ class MoveToIosEventStorageTask : HazelcastFixedRateTask<MoveToEventStorageTaskD
                 ).use {
                     connection.createStatement().use { stmt ->
                         stmt.execute(RedshiftDataTables.getDeleteIosSensorDataFromTempTable(tempTableName))
-                        stmt.execute("DROP TABLE $tempTableName")
-                    }
-                }
-
-                StopWatch(
-                    log = "Inserting deleted rows for ios studies = {} and participants = {} ",
-                    level = Level.INFO,
-                    logger = logger,
-                    studies,
-                    participants
-                ).use {
-                    connection.createStatement().use { stmt ->
                         stmt.execute("INSERT INTO ${IOS_SENSOR_DATA.name} SELECT * FROM $tempTableName")
                         stmt.execute("DROP TABLE $tempTableName")
                     }
                 }
-
 
                 connection.commit()
                 connection.autoCommit = true
