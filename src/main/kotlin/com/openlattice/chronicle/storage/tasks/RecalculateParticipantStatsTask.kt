@@ -47,10 +47,10 @@ class RecalculateParticipantStatsTask : HazelcastFixedRateTask<RecalculatePartic
         try {
             f.get(4, TimeUnit.HOURS)
         } catch (timeoutException: TimeoutException) {
-            logger.error("Timed out after one hour when moving events to event storage.", timeoutException)
+            logger.error("Timed out after one hour when recalculating participant stats", timeoutException)
             f.cancel(true)
         } catch (ex: Exception) {
-            logger.error("Exception when moving events to event storage.", ex)
+            logger.error("Exception when recalculating participant stats.", ex)
         }
     }
 

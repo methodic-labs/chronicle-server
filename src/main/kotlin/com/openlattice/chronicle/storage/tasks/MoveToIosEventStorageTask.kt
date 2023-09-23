@@ -49,7 +49,7 @@ class MoveToIosEventStorageTask : HazelcastFixedRateTask<MoveToEventStorageTaskD
         private const val INITIAL_DELAY = 5000L
         private val UPLOAD_AT_INDEX = RedshiftDataTables.getInsertUsageEventColumnIndex(RedshiftColumns.UPLOADED_AT)
 
-        private val logger = LoggerFactory.getLogger(RecalculateParticipantStatsTask::class.java)
+        private val logger = LoggerFactory.getLogger(MoveToIosEventStorageTask::class.java)
 
         private val executor: ListeningExecutorService =
             MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(3))
