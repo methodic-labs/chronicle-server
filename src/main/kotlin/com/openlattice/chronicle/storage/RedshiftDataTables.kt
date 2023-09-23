@@ -414,7 +414,7 @@ class RedshiftDataTables {
         val participantStatsAndroidSql = """
                 SELECT ${STUDY_ID.name}, ${PARTICIPANT_ID.name}, listagg(distinct TRUNC(${TIMESTAMP.name} at time zone ${TIMEZONE.name}), ',') as $UNIQUE_DATES
                 FROM ${CHRONICLE_USAGE_EVENTS.name}
-                WHERE ${STUDY_ID.name} = ?
+                WHERE ${STUDY_ID.name} = ? AND timezone != ''
                 GROUP BY ${STUDY_ID.name}, ${PARTICIPANT_ID.name}
             """.trimIndent()
 
