@@ -80,6 +80,7 @@ class RecalculateParticipantStatsTask : HazelcastFixedRateTask<RecalculatePartic
             ParticipantStat.Tud -> throw InvalidParameterException("Not yet implemented for time use diary.")
         }
         studyIds.asSequence().forEach { studyId ->
+            logger.info("Recalculating participant stats for study $studyId")
             BasePostgresIterable(
                 PreparedStatementHolderSupplier(
                     hds,
