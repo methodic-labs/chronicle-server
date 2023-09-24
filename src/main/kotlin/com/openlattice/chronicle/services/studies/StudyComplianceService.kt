@@ -10,8 +10,14 @@ import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.hazelcast.HazelcastMap
 import com.openlattice.chronicle.mapstores.storage.StudyMapstore.Companion.NOTIFY_RESEARCHERS_INDEX
 import com.openlattice.chronicle.notifications.StudyNotificationSettings
+import com.openlattice.chronicle.postgres.ResultSetAdapters
+import com.openlattice.chronicle.sources.SourceDeviceType
 import com.openlattice.chronicle.storage.*
+import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.DEVICES
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.STUDIES
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.DEVICE_TYPE
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.study.*
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
@@ -34,19 +40,21 @@ class StudyComplianceService(
 
 
         private val ACTIVE_PARTICIPANTS = """
-            SELECT ${PostgresColumns.STUDY_ID.name}, ${PostgresColumns.PARTICIPANT_ID.name}
-            FROM ${ChroniclePostgresTables.STUDY_PARTICIPANTS.name}
-            WHERE ${PostgresColumns.PARTICIPATION_STATUS.name} = '${ParticipationStatus.ENROLLED}'
+            SELECT ${STUDY_ID.name}, ${PARTICIPANT_ID.name}, array_agg(distinct coalesce(${DEVICE_TYPE.name},'${SourceDeviceType.None}')) as ${DEVICE_TYPE.name}
+            FROM ${ChroniclePostgresTables.STUDY_PARTICIPANTS.name} 
+            LEFT JOIN ${DEVICES.name} USING(${STUDY_ID.name}, ${PARTICIPANT_ID.name})
+            WHERE ${ChroniclePostgresTables.STUDY_PARTICIPANTS.name}.${PostgresColumns.PARTICIPATION_STATUS.name} = '${ParticipationStatus.ENROLLED}'
+            GROUP BY ${STUDY_ID.name}, ${PARTICIPANT_ID.name}
         """.trimIndent()
 
         //Will retrieve all studies that notifications enabled.
         private val ALL_NOTIFICATION_ENABLED_STUDIES = """
-            SELECT ${PostgresColumns.STUDY_ID.name} FROM ${STUDIES.name}
+            SELECT ${STUDY_ID.name} FROM ${STUDIES.name}
             WHERE COALESCE(${PostgresColumns.SETTINGS.name}->'Notifications'->'researchNotificationsEnabled','true')::bool = true
         """.trimIndent()
 
         private val NOTIFICATION_ENABLED_STUDIES = """
-            $ALL_NOTIFICATION_ENABLED_STUDIES AND ${PostgresColumns.STUDY_ID.name} = ANY(?)
+            $ALL_NOTIFICATION_ENABLED_STUDIES AND ${STUDY_ID.name} = ANY(?)
         """.trimIndent()
 
         val NO_DATA_STUDIES_SUFFIX = """
@@ -128,45 +136,49 @@ class StudyComplianceService(
 
         val activeParticipants = getActiveStudyParticipants(enabledStudiesSettings.keys)
 
+        return activeParticipants.flatMap { (sourceDeviceType, participants) ->
+            when (sourceDeviceType) {
+                SourceDeviceType.Android -> getStudyParticipantsWithoutRecentUploads(
+                    buildSql(
+                        RedshiftDataTables.CHRONICLE_USAGE_EVENTS.name,
+                        RedshiftColumns.TIMESTAMP.name,
+                        enabledStudiesSettings,
+                        true,
+                        storageResolver.getDefaultEventStorage().first
+                    ), enabledStudiesSettings,
+                    participants,
+                    sourceDeviceType
+                ).asSequence()
 
-        //One thing that will break here is that we are grouping studies by their flavor so if we ever store some studies
-        //on postgres and some on redshift, we will need to fix that logic here.
-        val androidUploadViolations = getStudyParticipantsWithoutRecentUploads(
-            buildSql(
-                RedshiftDataTables.CHRONICLE_USAGE_EVENTS.name,
-                RedshiftColumns.TIMESTAMP.name,
-                enabledStudiesSettings,
-                true,
-                storageResolver.getDefaultEventStorage().first
-            ), enabledStudiesSettings,
-            activeParticipants
-        )
+                SourceDeviceType.Ios -> getStudyParticipantsWithoutRecentUploads(
+                    buildSql(
+                        RedshiftDataTables.IOS_SENSOR_DATA.name,
+                        RedshiftColumns.RECORDED_DATE_TIME.name,
+                        enabledStudiesSettings,
+                        true,
+                        storageResolver.getDefaultEventStorage().first
+                    ),
+                    enabledStudiesSettings,
+                    participants,
+                    sourceDeviceType
+                ).asSequence()
 
-        val iosUploadViolations = getStudyParticipantsWithoutRecentUploads(
-            buildSql(
-                RedshiftDataTables.IOS_SENSOR_DATA.name,
-                RedshiftColumns.RECORDED_DATE_TIME.name,
-                enabledStudiesSettings,
-                true,
-                storageResolver.getDefaultEventStorage().first
-            ),
-            enabledStudiesSettings,
-            activeParticipants
-        )
-
-        //In the future we can add additional compliance checks above and below.
-        return (androidUploadViolations.asSequence() + iosUploadViolations.asSequence())
+                SourceDeviceType.None -> getStudyParticipantsWithoutEnrolledDevices(
+                    enabledStudiesSettings,
+                    participants
+                ).asSequence()
+            }
+        }
             .groupBy({ it.key }, { it.value })
             .mapValues { participantViolations ->
                 participantViolations.value.flatten().groupBy({ it.first }, { it.second })
             }
-
-
     }
 
     private fun getStudyParticipantsWithUploads(
         sql: String,
         enabledStudiesSettings: Map<UUID, Map<StudySettingType, StudySetting>>,
+        sourceDeviceType: SourceDeviceType
     ): Map<UUID, List<Pair<String, ComplianceViolation>>> {
         return BasePostgresIterable(
             StatementHolderSupplier(
@@ -178,9 +190,23 @@ class StudyComplianceService(
         }.groupBy({ (studyId, _) -> studyId }) { (studyId, participantId) ->
             val violation = ComplianceViolation(
                 ViolationReason.NO_DATA_UPLOADED,
-                buildDescription(studyId, getDurationPolicy(studyId, enabledStudiesSettings))
+                buildDescriptionNoUploads(studyId, getDurationPolicy(studyId, enabledStudiesSettings), sourceDeviceType)
             )
             participantId to violation
+        }
+    }
+
+    private fun getStudyParticipantsWithoutEnrolledDevices(
+        enabledStudiesSettings: Map<UUID, Map<StudySettingType, StudySetting>>,
+        activeParticipants: Map<UUID, Set<String>>,
+    ): Map<UUID, List<Pair<String, ComplianceViolation>>> {
+
+        return activeParticipants.mapValues { (studyId, participants) ->
+            val violation = ComplianceViolation(
+                ViolationReason.NOT_ENROLLED,
+                buildDescriptionNotEnrolled(studyId, getDurationPolicy(studyId, enabledStudiesSettings))
+            )
+            participants.map { it to violation }
         }
     }
 
@@ -188,6 +214,7 @@ class StudyComplianceService(
         sql: String,
         enabledStudiesSettings: Map<UUID, Map<StudySettingType, StudySetting>>,
         activeParticipants: Map<UUID, Set<String>>,
+        sourceDeviceType: SourceDeviceType,
     ): Map<UUID, List<Pair<String, ComplianceViolation>>> {
         val studyParticipants = mutableMapOf<UUID, MutableSet<String>>()
         //Load all participants with recent uploads.
@@ -207,7 +234,7 @@ class StudyComplianceService(
         return activeParticipants.mapValues { (studyId, participantIds) ->
             val violation = ComplianceViolation(
                 ViolationReason.NO_RECENT_DATA_UPLOADED,
-                buildDescription(studyId, getDurationPolicy(studyId, enabledStudiesSettings))
+                buildDescriptionNoUploads(studyId, getDurationPolicy(studyId, enabledStudiesSettings), sourceDeviceType)
             )
 
             (participantIds - (studyParticipants[studyId] ?: emptySet()).toSet())
@@ -216,8 +243,8 @@ class StudyComplianceService(
         }
     }
 
-    private fun getActiveStudyParticipants(studyFilter: Set<UUID>): Map<UUID, Set<String>> {
-        val studyParticipants = mutableMapOf<UUID, MutableSet<String>>()
+    private fun getActiveStudyParticipants(studyFilter: Set<UUID>): Map<SourceDeviceType, Map<UUID, Set<String>>> {
+        val studyParticipants = mutableMapOf<SourceDeviceType, MutableMap<UUID, MutableSet<String>>>()
         BasePostgresIterable(
             StatementHolderSupplier(
                 storageResolver.getPlatformStorage(),
@@ -225,23 +252,43 @@ class StudyComplianceService(
                 1024
             )
         ) { rs ->
-            rs.getObject(
-                PostgresColumns.STUDY_ID.name,
-                UUID::class.java
-            ) to rs.getString(PostgresColumns.PARTICIPANT_ID.name)
+            Triple(
+                ResultSetAdapters.deviceTypes(rs),
+                rs.getObject(
+                    STUDY_ID.name,
+                    UUID::class.java
+                ),
+                rs.getString(PARTICIPANT_ID.name)
+            )
         }
             .asSequence()
-            .filter { studyFilter.contains(it.first) }
-            .forEach { (studyId, participantId) ->
-                studyParticipants.getOrPut(studyId) { mutableSetOf() }.add(participantId)
+            .filter { studyFilter.contains(it.second) }
+            .forEach { (sourceDeviceTypes, studyId, participantId) ->
+                sourceDeviceTypes.forEach { sourceDeviceType ->
+                    studyParticipants
+                        .getOrPut(sourceDeviceType) { mutableMapOf() }
+                        .getOrPut(studyId) { mutableSetOf() }.add(participantId)
+                }
             }
         return studyParticipants
     }
 
-
-    private fun buildDescription(studyId: UUID, studyDuration: StudyDuration): String {
+    private fun buildDescriptionNotEnrolled(
+        studyId: UUID,
+        studyDuration: StudyDuration
+    ): String {
         return """
-            Study policy for $studyId requires uploads within the last ${studyDuration.years} years ${studyDuration.months} months ${studyDuration.days} days.
+            Study policy for $studyId requires enrollment within the last ${studyDuration.years} years ${studyDuration.months} months ${studyDuration.days} days.
+        """.trimIndent()
+    }
+
+    private fun buildDescriptionNoUploads(
+        studyId: UUID,
+        studyDuration: StudyDuration,
+        sourceDeviceType: SourceDeviceType
+    ): String {
+        return """
+            Study policy for $studyId requires ${sourceDeviceType.name} uploads within the last ${studyDuration.years} years ${studyDuration.months} months ${studyDuration.days} days.
         """.trimIndent()
     }
 

@@ -2,6 +2,9 @@ package com.openlattice.chronicle.services.enrollment
 
 import com.geekbeast.controllers.exceptions.ResourceNotFoundException
 import com.geekbeast.mappers.mappers.ObjectMappers
+import com.geekbeast.postgres.PostgresArrays
+import com.geekbeast.postgres.streams.BasePostgresIterable
+import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
 import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.participants.Participant
@@ -15,6 +18,7 @@ import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.DEVIC
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.STUDY_PARTICIPANTS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DEVICE_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DEVICE_TOKEN
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.DEVICE_TYPE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.PARTICIPATION_STATUS
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.SOURCE_DEVICE_ID
@@ -26,6 +30,7 @@ import org.springframework.security.access.AccessDeniedException
 import org.springframework.stereotype.Service
 import java.sql.Connection
 import java.util.*
+import javax.xml.transform.Source
 
 /**
  * @author alfoncenzioka &lt;alfonce@openlattice.com&gt;
@@ -66,6 +71,18 @@ class EnrollmentService(
         private val GET_DEVICE_ID = """
             SELECT ${DEVICE_ID.name} FROM ${DEVICES.name} 
                 WHERE ${STUDY_ID.name} = ? AND ${PARTICIPANT_ID.name} = ? AND ${SOURCE_DEVICE_ID.name} = ? 
+        """.trimIndent()
+
+        /**
+         * Retrieves the distinct enrolled device types
+         * 1. study id
+         * 2. participant id
+         */
+        private val GET_DEVICE_TYPES = """
+            SELECT DISTINCT ${STUDY_ID.name}, ${PARTICIPANT_ID.name}, array_agg(distinct ${DEVICE_TYPE.name}) as ${DEVICE_TYPE.name}
+            FROM ${DEVICES.name}
+            WHERE ${STUDY_ID.name} = ANY(?) AND ${PARTICIPANT_ID.name} = ANY(?)
+            GROUP BY ${STUDY_ID.name}, ${PARTICIPANT_ID.name}
         """.trimIndent()
 
         /**
@@ -143,6 +160,7 @@ class EnrollmentService(
                 sourceDevice,
                 sourceDevice.fcmRegistrationToken
             )
+
             is IOSDevice -> registerDeviceOrGetId(
                 studyId,
                 participantId,
@@ -151,6 +169,7 @@ class EnrollmentService(
                 sourceDevice,
                 sourceDevice.apnDeviceToken
             )
+
             else -> throw UnsupportedOperationException("${sourceDevice.javaClass.name} is not a supported datasource.")
         }
     }
