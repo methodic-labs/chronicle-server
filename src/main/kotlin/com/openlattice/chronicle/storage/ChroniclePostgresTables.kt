@@ -448,7 +448,11 @@ class ChroniclePostgresTables {
                         STUDY_ID,
                         PARTICIPANT_ID,
                         SOURCE_DEVICE_ID
-                    ).ifNotExists().unique()
+                    ).ifNotExists().unique(),
+                    PostgresColumnsIndexDefinition(
+                        DEVICES,
+                        STUDY_ID,
+                    ).ifNotExists()
                 )
             STUDY_LIMITS.addIndexes(
                 PostgresColumnsIndexDefinition(STUDY_LIMITS, STUDY_ENDS).ifNotExists(),

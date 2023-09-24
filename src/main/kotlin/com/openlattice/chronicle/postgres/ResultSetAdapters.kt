@@ -40,6 +40,7 @@ import com.openlattice.chronicle.services.jobs.ChronicleJob
 import com.openlattice.chronicle.services.notifications.Notification
 import com.openlattice.chronicle.services.surveys.IosDeviceUsageByCategory
 import com.openlattice.chronicle.services.upload.*
+import com.openlattice.chronicle.sources.SourceDeviceType
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACL_KEY
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ACTIVE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ANDROID_FIRST_DATE
@@ -60,6 +61,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.DELIVERY_TYPE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DESCRIPTION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DESTINATION
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.DEVICE_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.DEVICE_TYPE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.EMAIL
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.ENDED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.EXPIRATION_DATE
@@ -150,6 +152,7 @@ import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.util.*
 import java.util.UUID
+import javax.xml.transform.Source
 
 /**
  * Use for reading count field when performing an aggregation.
@@ -567,6 +570,17 @@ class ResultSetAdapters {
                 .getString(UNIQUE_DATES)
                 .split(",")
                 .mapTo(mutableSetOf<LocalDate>()) { LocalDate.parse(it) }
+        }
+
+        @Throws(SQLException::class)
+        fun deviceType(rs: ResultSet): SourceDeviceType {
+            return SourceDeviceType.valueOf(rs.getString(DEVICE_TYPE.name))
+        }
+
+        fun deviceTypes(rs: ResultSet): Set<SourceDeviceType> {
+            return PostgresArrays
+                .getTextArray(rs, DEVICE_TYPE.name)
+                .mapTo(EnumSet.noneOf(SourceDeviceType::class.java)) { SourceDeviceType.valueOf(it) }
         }
     }
 }
