@@ -31,6 +31,7 @@ import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
+import java.time.temporal.ChronoUnit
 import java.util.*
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -302,6 +303,7 @@ class MoveToIosEventStorageTask : HazelcastFixedRateTask<MoveToEventStorageTaskD
 
             if (value!=null && col.name == RedshiftColumns.RECORDED_DATE_TIME.name) {
                 val odt = odtFromUsageEventColumn(value)!!
+
                 if (odt.isBefore(minEventTimestamp)) {
                     minEventTimestamp = odt
                 }
@@ -607,7 +609,7 @@ private fun mapSharedColumns(dataSample: SensorDataSample): List<SensorDataColum
         SensorDataColumn(RedshiftColumns.SAMPLE_ID, dataSample.id.toString()),
         SensorDataColumn(RedshiftColumns.SENSOR_TYPE, dataSample.sensor.name),
         SensorDataColumn(RedshiftColumns.SAMPLE_DURATION, dataSample.duration),
-        SensorDataColumn(RedshiftColumns.RECORDED_DATE_TIME, dataSample.dateRecorded),
+        SensorDataColumn(RedshiftColumns.RECORDED_DATE_TIME, dataSample.dateRecorded.plusSeconds(30).truncatedTo(ChronoUnit.MINUTES)),
         SensorDataColumn(RedshiftColumns.START_DATE_TIME, dataSample.startDate),
         SensorDataColumn(RedshiftColumns.END_DATE_TIME, dataSample.endDate),
         SensorDataColumn(RedshiftColumns.TIMEZONE, dataSample.timezone),
@@ -615,6 +617,7 @@ private fun mapSharedColumns(dataSample: SensorDataSample): List<SensorDataColum
         SensorDataColumn(RedshiftColumns.DEVICE_NAME, device.name),
         SensorDataColumn(RedshiftColumns.DEVICE_MODEL, device.model),
         SensorDataColumn(RedshiftColumns.DEVICE_SYSTEM_NAME, device.name),
+        SensorDataColumn(RedshiftColumns.EXACT_RECORDED_DATE_TIME,dataSample.dateRecorded)
     )
 }
 
