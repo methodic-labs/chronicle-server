@@ -120,6 +120,7 @@ class MoveToIosEventStorageTask : HazelcastFixedRateTask<MoveToEventStorageTaskD
             } catch (ex: Exception) {
                 logger.info("Unable to move data from aurora to redshift.", ex)
                 platform.rollback()
+                stmt.close()
                 platform.autoCommit = true
                 platform.close()
                 throw ex
