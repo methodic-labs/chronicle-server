@@ -22,7 +22,7 @@ class ParticipantStatsMerger(val statsToMerge: ParticipantStats) :
                     participantId = current.participantId,
                     androidLastPing = maxOrFirstNotNull(current.androidLastPing, statsToMerge.androidLastPing),
                     androidFirstDate = minOrFirstNotNull(current.androidFirstDate, statsToMerge.androidFirstDate),
-                    androidLastDate = maxOrFirstNotNull(current.androidLastPing, statsToMerge.androidLastDate),
+                    androidLastDate = maxOrFirstNotNull(current.androidLastDate, statsToMerge.androidLastDate),
                     androidUniqueDates = current.androidUniqueDates + statsToMerge.androidUniqueDates,
                     iosLastPing = maxOrFirstNotNull(current.iosLastPing, statsToMerge.iosLastPing),
                     iosFirstDate = minOrFirstNotNull(current.iosFirstDate, statsToMerge.iosFirstDate),

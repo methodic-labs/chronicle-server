@@ -31,6 +31,7 @@ import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
+import java.time.temporal.ChronoUnit
 import java.util.*
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -72,50 +73,56 @@ class MoveToIosEventStorageTask : HazelcastFixedRateTask<MoveToEventStorageTaskD
     override fun getName(): String = Task.MOVE_IOS_DATA_TO_EVENT_STORAGE.name
 
     private fun moveToEventStorage() {
+
         with(getDependency()) {
+            val platform = storageResolver.getPlatformStorage().connection
+            platform.autoCommit = false
+            val stmt = platform.createStatement()
             try {
                 logger.info("Moving ios data from aurora to event storage.")
                 val queueEntriesByFlavor: MutableMap<PostgresFlavor, MutableList<SensorDataRow>> = mutableMapOf()
-                storageResolver.getPlatformStorage().connection.use { platform ->
-                    platform.autoCommit = false
-                    platform.createStatement().use { stmt ->
-                        stmt.executeQuery(ChroniclePostgresTables.getMoveSql(128, UploadType.Ios)).use { rs ->
-                            while (rs.next()) {
-                                val sensorDataSamples = ResultSetAdapters.sensorDataSamples(rs)
-                                val (flavor, _) = storageResolver.resolveAndGetFlavor(sensorDataSamples.studyId)
-                                queueEntriesByFlavor.getOrPut(flavor) { mutableListOf() }
-                                    .addAll(sensorDataSamples.toSensorDataRows())
-                            }
-                        }
 
-                        logger.info("Total number of entries for redshift: ${(queueEntriesByFlavor[PostgresFlavor.REDSHIFT] ?: listOf()).size}")
-                        logger.info("Total number of entries for postgres: ${(queueEntriesByFlavor[PostgresFlavor.VANILLA] ?: listOf()).size}")
-
-                        queueEntriesByFlavor.forEach { (postgresFlavor, sensorDataEntries) ->
-                            if (sensorDataEntries.isEmpty()) return@forEach
-                            when (postgresFlavor) {
-                                PostgresFlavor.REDSHIFT -> writeToEventStorage(
-                                    storageResolver.getEventStorageWithFlavor(PostgresFlavor.REDSHIFT),
-                                    sensorDataEntries,
-                                    false
-                                )
-
-                                PostgresFlavor.VANILLA -> writeToEventStorage(
-                                    storageResolver.getEventStorageWithFlavor(PostgresFlavor.VANILLA),
-                                    sensorDataEntries,
-                                    true
-                                )
-
-                                else -> throw InvalidParameterException("Invalid postgres flavor: ${postgresFlavor.name}")
-                            }
-                        }
+                stmt.executeQuery(ChroniclePostgresTables.getMoveSql(128, UploadType.Ios)).use { rs ->
+                    while (rs.next()) {
+                        val sensorDataSamples = ResultSetAdapters.sensorDataSamples(rs)
+                        val (flavor, _) = storageResolver.resolveAndGetFlavor(sensorDataSamples.studyId)
+                        queueEntriesByFlavor.getOrPut(flavor) { mutableListOf() }
+                            .addAll(sensorDataSamples.toSensorDataRows())
                     }
-                    platform.commit()
-                    platform.autoCommit = true
                 }
+
+                queueEntriesByFlavor.forEach { (postgresFlavor, sensorDataEntries) ->
+                    if (sensorDataEntries.isEmpty()) return@forEach
+                    when (postgresFlavor) {
+                        PostgresFlavor.REDSHIFT -> writeToEventStorage(
+                            storageResolver.getEventStorageWithFlavor(PostgresFlavor.REDSHIFT),
+                            sensorDataEntries,
+                            false
+                        )
+
+                        PostgresFlavor.VANILLA -> writeToEventStorage(
+                            storageResolver.getEventStorageWithFlavor(PostgresFlavor.VANILLA),
+                            sensorDataEntries,
+                            true
+                        )
+
+                        else -> throw InvalidParameterException("Invalid postgres flavor: ${postgresFlavor.name}")
+                    }
+                }
+
+                platform.commit()
+                platform.autoCommit = true
+                stmt.close()
+                platform.close()
                 logger.info("Successfully moved ios data to event storage.")
+                logger.info("Total number of entries for redshift: ${(queueEntriesByFlavor[PostgresFlavor.REDSHIFT] ?: listOf()).size}")
+                logger.info("Total number of entries for postgres: ${(queueEntriesByFlavor[PostgresFlavor.VANILLA] ?: listOf()).size}")
             } catch (ex: Exception) {
                 logger.info("Unable to move data from aurora to redshift.", ex)
+                platform.rollback()
+                stmt.close()
+                platform.autoCommit = true
+                platform.close()
                 throw ex
             }
         }
@@ -186,7 +193,14 @@ class MoveToIosEventStorageTask : HazelcastFixedRateTask<MoveToEventStorageTaskD
                                 sourceDeviceId
                             )
 
-                            val (minOdt, maxOdt) = writeSensorDataToRedshift(ps, offset, studyId, participantId, it.sensorType, it.row)
+                            val (minOdt, maxOdt) = writeSensorDataToRedshift(
+                                ps,
+                                offset,
+                                studyId,
+                                participantId,
+                                it.sensorType,
+                                it.row
+                            )
                             minEventTimestamp = minOf(minOdt, minEventTimestamp)
                             maxEventTimestamp = maxOf(maxOdt, maxEventTimestamp)
                             offset += RedshiftDataTables.IOS_SENSOR_DATA.columns.size
@@ -224,7 +238,14 @@ class MoveToIosEventStorageTask : HazelcastFixedRateTask<MoveToEventStorageTaskD
                     participants
                 ).use {
                     connection.createStatement()
-                        .use { stmt -> stmt.execute(RedshiftDataTables.createTempTableOfDuplicates(tempTableName, IOS_SENSOR_DATA)) }
+                        .use { stmt ->
+                            stmt.execute(
+                                RedshiftDataTables.createTempTableOfDuplicates(
+                                    tempTableName,
+                                    IOS_SENSOR_DATA
+                                )
+                            )
+                        }
                     connection.prepareStatement(RedshiftDataTables.buildTempTableOfDuplicatesForIos(tempTableName))
                         .use { ps ->
                             logger.info("Earliest timestamp for studies = {} and participants = {} is {}", studies, participants, minEventTimestamp)
@@ -238,19 +259,19 @@ class MoveToIosEventStorageTask : HazelcastFixedRateTask<MoveToEventStorageTaskD
                 }
 
                 //Delete the duplicates, if any from chronicle_usage_events and drop the temporary table.
-                StopWatch(
-                    log = "Deleting duplicates for ios studies = {} and participants = {} ",
-                    level = Level.INFO,
-                    logger = logger,
-                    studies,
-                    participants
-                ).use {
-                    connection.createStatement().use { stmt ->
-                        stmt.execute(RedshiftDataTables.getDeleteIosSensorDataFromTempTable(tempTableName))
-                        stmt.execute("INSERT INTO ${IOS_SENSOR_DATA.name} SELECT * FROM $tempTableName")
-                        stmt.execute("DROP TABLE $tempTableName")
-                    }
-                }
+//                StopWatch(
+//                    log = "Deleting duplicates for ios studies = {} and participants = {} ",
+//                    level = Level.INFO,
+//                    logger = logger,
+//                    studies,
+//                    participants
+//                ).use {
+//                    connection.createStatement().use { stmt ->
+//                        stmt.execute(RedshiftDataTables.getDeleteIosSensorDataFromTempTable(tempTableName))
+//                        stmt.execute("INSERT INTO ${IOS_SENSOR_DATA.name} SELECT * FROM $tempTableName")
+//                        stmt.execute("DROP TABLE $tempTableName")
+//                    }
+//                }
 
                 connection.commit()
                 connection.autoCommit = true
@@ -302,8 +323,9 @@ class MoveToIosEventStorageTask : HazelcastFixedRateTask<MoveToEventStorageTaskD
             val index = offset + dataColumn.colIndex
             val value = dataColumn.value
 
-            if (value!=null && col.name == RedshiftColumns.RECORDED_DATE_TIME.name) {
+            if (value != null && col.name == RedshiftColumns.RECORDED_DATE_TIME.name) {
                 val odt = odtFromUsageEventColumn(value)!!
+
                 if (odt.isBefore(minEventTimestamp)) {
                     minEventTimestamp = odt
                 }
@@ -609,7 +631,10 @@ private fun mapSharedColumns(dataSample: SensorDataSample): List<SensorDataColum
         SensorDataColumn(RedshiftColumns.SAMPLE_ID, dataSample.id.toString()),
         SensorDataColumn(RedshiftColumns.SENSOR_TYPE, dataSample.sensor.name),
         SensorDataColumn(RedshiftColumns.SAMPLE_DURATION, dataSample.duration),
-        SensorDataColumn(RedshiftColumns.RECORDED_DATE_TIME, dataSample.dateRecorded),
+        SensorDataColumn(
+            RedshiftColumns.RECORDED_DATE_TIME,
+            dataSample.dateRecorded.plusSeconds(30).truncatedTo(ChronoUnit.MINUTES)
+        ),
         SensorDataColumn(RedshiftColumns.START_DATE_TIME, dataSample.startDate),
         SensorDataColumn(RedshiftColumns.END_DATE_TIME, dataSample.endDate),
         SensorDataColumn(RedshiftColumns.TIMEZONE, dataSample.timezone),
@@ -617,6 +642,7 @@ private fun mapSharedColumns(dataSample: SensorDataSample): List<SensorDataColum
         SensorDataColumn(RedshiftColumns.DEVICE_NAME, device.name),
         SensorDataColumn(RedshiftColumns.DEVICE_MODEL, device.model),
         SensorDataColumn(RedshiftColumns.DEVICE_SYSTEM_NAME, device.name),
+        SensorDataColumn(RedshiftColumns.EXACT_RECORDED_DATE_TIME, dataSample.dateRecorded)
     )
 }
 

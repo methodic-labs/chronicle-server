@@ -27,7 +27,9 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DURATION
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.END_DATE_TIME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.END_TIME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.EVENT_TYPE
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.EXACT_RECORDED_DATE_TIME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.INTERACTION_TYPE
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.IOS_UTILITY_COLS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.KEYBOARD_METRICS_SENSOR_COLS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.MESSAGES_USAGE_SENSOR_COLS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.ORGANIZATION_ID
@@ -35,7 +37,6 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PARTICIPANT_I
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PHONE_USAGE_SENSOR_COLS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PRINCIPAL_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PRINCIPAL_TYPE
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.RECORDED_DATE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.RECORDED_DATE_TIME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.RUN_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.SAMPLE_ID
@@ -53,7 +54,6 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.WEEKDAY_MONDA
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.WEEKDAY_SUNDAY_THURSDAY
 import java.security.InvalidParameterException
 import java.time.LocalDate
-import java.time.OffsetDateTime
 
 /**
  *
@@ -143,7 +143,7 @@ class RedshiftDataTables {
         val IOS_SENSOR_DATA = RedshiftTableDefinition("sensor_data")
             .sortKey(STUDY_ID)
             .addColumns(
-                *(SHARED_SENSOR_COLS + DEVICE_USAGE_SENSOR_COLS + PHONE_USAGE_SENSOR_COLS + MESSAGES_USAGE_SENSOR_COLS + KEYBOARD_METRICS_SENSOR_COLS).toTypedArray()
+                *(SHARED_SENSOR_COLS + DEVICE_USAGE_SENSOR_COLS + PHONE_USAGE_SENSOR_COLS + MESSAGES_USAGE_SENSOR_COLS + KEYBOARD_METRICS_SENSOR_COLS + IOS_UTILITY_COLS).toTypedArray()
             )
             .addDataSourceNames(REDSHIFT_DATASOURCE_NAME)
 
@@ -337,7 +337,8 @@ class RedshiftDataTables {
             val excluded = setOf(
                 SAMPLE_ID,
                 START_DATE_TIME,
-                END_DATE_TIME
+                END_DATE_TIME,
+                EXACT_RECORDED_DATE_TIME
             )
             //TODO: We don't have to run this on every insert, we could run it every 15 minutes to be more efficient,
             //with the trade off that users would see duplicates in downloads until it ran.
@@ -346,7 +347,8 @@ class RedshiftDataTables {
             val excludedCols = excluded.joinToString(",") { it.name }
             return """
                 INSERT INTO $tempTableName ($groupByCols,$excludedCols) 
-                    SELECT $groupByCols, min(${SAMPLE_ID.name}) as ${SAMPLE_ID.name},min(${START_DATE_TIME.name}) as ${START_DATE_TIME.name},max(${END_DATE_TIME.name}) as ${END_DATE_TIME.name}
+                    SELECT $groupByCols, min(${SAMPLE_ID.name}) as ${SAMPLE_ID.name},min(${START_DATE_TIME.name}) as ${START_DATE_TIME.name},max(${END_DATE_TIME.name}) as ${END_DATE_TIME.name},
+                    max(${EXACT_RECORDED_DATE_TIME.name}) as ${EXACT_RECORDED_DATE_TIME.name}
                         FROM ${IOS_SENSOR_DATA.name}
                         WHERE ${STUDY_ID.name} = ANY(?) AND ${PARTICIPANT_ID.name} = ANY(?) 
                             AND ${RECORDED_DATE_TIME.name} >= ? AND ${RECORDED_DATE_TIME.name} <= ? 
@@ -363,7 +365,7 @@ class RedshiftDataTables {
                 getMergeClause(
                     tempTableName,
                     table = IOS_SENSOR_DATA,
-                    setOf(SAMPLE_ID, START_DATE_TIME, END_DATE_TIME)
+                    setOf(SAMPLE_ID, START_DATE_TIME, END_DATE_TIME, EXACT_RECORDED_DATE_TIME)
                 )
             } 
             """.trimIndent()
