@@ -259,19 +259,19 @@ class MoveToIosEventStorageTask : HazelcastFixedRateTask<MoveToEventStorageTaskD
                 }
 
                 //Delete the duplicates, if any from chronicle_usage_events and drop the temporary table.
-//                StopWatch(
-//                    log = "Deleting duplicates for ios studies = {} and participants = {} ",
-//                    level = Level.INFO,
-//                    logger = logger,
-//                    studies,
-//                    participants
-//                ).use {
-//                    connection.createStatement().use { stmt ->
-//                        stmt.execute(RedshiftDataTables.getDeleteIosSensorDataFromTempTable(tempTableName))
-//                        stmt.execute("INSERT INTO ${IOS_SENSOR_DATA.name} SELECT * FROM $tempTableName")
-//                        stmt.execute("DROP TABLE $tempTableName")
-//                    }
-//                }
+                StopWatch(
+                    log = "Deleting duplicates for ios studies = {} and participants = {} ",
+                    level = Level.INFO,
+                    logger = logger,
+                    studies,
+                    participants
+                ).use {
+                    connection.createStatement().use { stmt ->
+                        stmt.execute(RedshiftDataTables.getDeleteIosSensorDataFromTempTable(tempTableName))
+                        stmt.execute("INSERT INTO ${IOS_SENSOR_DATA.name} SELECT * FROM $tempTableName")
+                        stmt.execute("DROP TABLE $tempTableName")
+                    }
+                }
 
                 connection.commit()
                 connection.autoCommit = true

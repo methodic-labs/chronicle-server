@@ -348,7 +348,7 @@ class RedshiftDataTables {
             return """
                 INSERT INTO $tempTableName ($groupByCols,$excludedCols) 
                     SELECT $groupByCols, min(${SAMPLE_ID.name}) as ${SAMPLE_ID.name},min(${START_DATE_TIME.name}) as ${START_DATE_TIME.name},max(${END_DATE_TIME.name}) as ${END_DATE_TIME.name},
-                    max(${EXACT_RECORDED_DATE_TIME.name}) as ${EXACT_RECORDED_DATE_TIME.name}
+                    min(${EXACT_RECORDED_DATE_TIME.name}) as ${EXACT_RECORDED_DATE_TIME.name}
                         FROM ${IOS_SENSOR_DATA.name}
                         WHERE ${STUDY_ID.name} = ANY(?) AND ${PARTICIPANT_ID.name} = ANY(?) 
                             AND ${RECORDED_DATE_TIME.name} >= ? AND ${RECORDED_DATE_TIME.name} <= ? 
