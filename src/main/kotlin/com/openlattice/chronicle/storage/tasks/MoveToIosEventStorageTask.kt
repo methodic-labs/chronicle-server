@@ -227,6 +227,8 @@ class MoveToIosEventStorageTask : HazelcastFixedRateTask<MoveToEventStorageTaskD
                         .use { stmt -> stmt.execute(RedshiftDataTables.createTempTableOfDuplicates(tempTableName, IOS_SENSOR_DATA)) }
                     connection.prepareStatement(RedshiftDataTables.buildTempTableOfDuplicatesForIos(tempTableName))
                         .use { ps ->
+                            logger.info("Earliest timestamp for studies = {} and participants = {} is {}", studies, participants, minEventTimestamp)
+                            logger.info("Latest timestamp for studies = {} and participants = {} is {}", studies, participants, maxEventTimestamp)
                             ps.setArray(1, PostgresArrays.createTextArray(connection, studies))
                             ps.setArray(2, PostgresArrays.createTextArray(connection, participants))
                             ps.setObject(3, minEventTimestamp)

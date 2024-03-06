@@ -351,7 +351,7 @@ class RedshiftDataTables {
                         WHERE ${STUDY_ID.name} = ANY(?) AND ${PARTICIPANT_ID.name} = ANY(?) 
                             AND ${RECORDED_DATE_TIME.name} >= ? AND ${RECORDED_DATE_TIME.name} <= ? 
                         GROUP BY $groupByCols
-                        HAVING count(${SAMPLE_ID.name}) > 1
+                        HAVING count(*) > 1
             """.trimIndent()
         }
 
