@@ -32,6 +32,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.QUESTION_TITL
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.RECURRENCE_RULE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.RESPONSES
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.STUDY_ID
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION_DATE
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.TITLE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APPLICATION_LABEL
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_CATEGORY
@@ -100,7 +101,7 @@ class SurveysService(
          * 3) date
          */
         val GET_APP_USAGE_SQL = """
-            SELECT ${APP_PACKAGE_NAME.name}, ${APPLICATION_LABEL.name}, ${TIMESTAMP.name}, ${TIMEZONE.name}, ${EVENT_TYPE.name}
+            SELECT ${APP_PACKAGE_NAME.name}, ${APPLICATION_LABEL.name}, ${SUBMISSION_DATE.name}, ${TIMESTAMP.name}, ${TIMEZONE.name}, ${EVENT_TYPE.name}
             FROM ${CHRONICLE_USAGE_EVENTS.name}
             WHERE ${STUDY_ID.name} = ?
                 AND ${PARTICIPANT_ID.name} = ?
