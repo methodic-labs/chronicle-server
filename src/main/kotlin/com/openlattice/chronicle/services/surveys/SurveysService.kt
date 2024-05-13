@@ -57,6 +57,7 @@ import org.springframework.stereotype.Service
 import java.sql.Connection
 import java.time.LocalDate
 import java.time.OffsetDateTime
+import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.temporal.ChronoUnit
 import java.util.*
@@ -818,7 +819,7 @@ class SurveysService(
     // writes survey response to postgres table
     private fun writeToAppUsageTable(studyId: UUID, participantId: String, data: List<AppUsage>): Int {
 
-        val submissionDate = LocalDate.now()
+        val submissionDate = LocalDate.now(ZoneId.of(data[0].timezone))
 
         val hds = storageResolver.getPlatformStorage()
         return hds.connection.use { conn ->
