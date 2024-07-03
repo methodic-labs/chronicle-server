@@ -130,6 +130,7 @@ class DataDownloadService(
                 AND ${SENSOR_TYPE.name} = Any(?) 
                 AND ${RECORDED_DATE_TIME.name} >= ?
                 AND ${RECORDED_DATE_TIME.name} < ?
+                ORDER BY ${RECORDED_DATE_TIME.name} ASC
             """.trimIndent()
 
             return Pair(cols, sql)
