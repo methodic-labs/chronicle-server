@@ -126,6 +126,7 @@ import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPDATED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPLOADED_AT
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.UPLOAD_DATA
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.URL
+import com.openlattice.chronicle.storage.RedshiftColumns
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APPLICATION_LABEL
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_CATEGORY
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_PACKAGE_NAME
@@ -135,6 +136,7 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.EVENT_TYPE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMESTAMP
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMEZONE
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.UPLOADED_AT
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.USERNAME
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.UNIQUE_DATES
 import com.openlattice.chronicle.storage.tasks.SensorDataEntries
@@ -411,14 +413,16 @@ class ResultSetAdapters {
             val timezone = rs.getString(TIMEZONE.name)
             val timestamp = rs.getObject(TIMESTAMP.name, OffsetDateTime::class.java)
             val zoneId = ZoneId.of(timezone)
-
+            val uploadedAt = Optional.ofNullable(rs.getObject(RedshiftColumns.UPLOADED_AT.name, OffsetDateTime::class.java))
+            uploadedAt.map { it.toInstant().atZone(zoneId).toOffsetDateTime() }
             return AppUsage(
                 rs.getString(APP_PACKAGE_NAME.name),
                 rs.getString(APPLICATION_LABEL.name),
                 timestamp.toInstant().atZone(zoneId).toOffsetDateTime(),
                 users = listOf(),
                 timezone = timezone,
-                eventType = rs.getInt(EVENT_TYPE.name)
+                eventType = rs.getInt(EVENT_TYPE.name),
+                uploadedAt = uploadedAt
             )
         }
 
@@ -545,7 +549,7 @@ class ResultSetAdapters {
             val studyId = rs.getObject(STUDY_ID.name, UUID::class.java)
             val participantId = rs.getString(PARTICIPANT_ID.name)
             val data = mapper.readValue<List<Map<String, UsageEventColumn>>>(rs.getString(UPLOAD_DATA.name))
-            val uploadedAt = rs.getObject(UPLOADED_AT.name, OffsetDateTime::class.java)
+            val uploadedAt = rs.getObject(RedshiftColumns.UPLOADED_AT.name, OffsetDateTime::class.java)
             return UsageEventQueueEntries(studyId, participantId, data, uploadedAt)
         }
 
@@ -554,7 +558,7 @@ class ResultSetAdapters {
             val studyId = rs.getObject(STUDY_ID.name, UUID::class.java)
             val participantId = rs.getString(PARTICIPANT_ID.name)
             val samples = mapper.readValue<List<SensorDataSample>>(rs.getString(UPLOAD_DATA.name))
-            val uploadedAt = rs.getObject(UPLOADED_AT.name, OffsetDateTime::class.java)
+            val uploadedAt = rs.getObject(RedshiftColumns.UPLOADED_AT.name, OffsetDateTime::class.java)
             val sourceDeviceId = rs.getString(SOURCE_DEVICE_ID.name)
             return SensorDataEntries(studyId, participantId, samples, uploadedAt, sourceDeviceId)
         }
