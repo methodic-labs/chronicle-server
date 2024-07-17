@@ -13,6 +13,7 @@ import com.openlattice.chronicle.services.surveys.SurveysService
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.APP_USAGE_SURVEY
 import com.openlattice.chronicle.storage.PostgresColumns
 import com.openlattice.chronicle.storage.PostgresColumns.Companion.APP_USERS
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.SUBMISSION_DATE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APPLICATION_LABEL
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_DATETIME_START
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_PACKAGE_NAME
@@ -254,6 +255,7 @@ class DataDownloadService(
                 associateString(rs, APPLICATION_LABEL),
                 associateString(rs, APP_PACKAGE_NAME),
                 associateOffsetDatetimeWithTimezone(rs, TIMEZONE, TIMESTAMP),
+                associateOffsetDatetimeWithTimezone(rs, TIMEZONE, SUBMISSION_DATE),
                 associateString(rs, TIMEZONE),
                 associateString(rs, APP_USERS)
             )
