@@ -820,7 +820,7 @@ class SurveysService(
     // writes survey response to postgres table
     private fun writeToAppUsageTable(studyId: UUID, participantId: String, data: List<AppUsage>): Int {
 
-        val submissionDate = LocalDate.now(ZoneId.of(data[0].timezone))
+        val submissionDate = if(data.isNotEmpty()) LocalDate.now(ZoneId.of(data[0].timezone)) else LocalDate.now()
 
         val hds = storageResolver.getPlatformStorage()
         return hds.connection.use { conn ->
