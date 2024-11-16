@@ -60,6 +60,7 @@ class DataDownloadService(
             AND ${PARTICIPANT_ID.name} = ANY(?)
             AND ${TIMESTAMP.name} >= ?
             AND ${TIMESTAMP.name} < ?
+            ORDER BY ${TIMESTAMP.name} ASC
         """.trimIndent()
 
         private val PREPROCESSED_DATA_COLS = PREPROCESSED_USAGE_EVENTS.columns.map { it.name }
