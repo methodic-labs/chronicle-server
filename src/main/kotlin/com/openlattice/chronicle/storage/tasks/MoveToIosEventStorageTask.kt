@@ -48,6 +48,7 @@ class MoveToIosEventStorageTask : HazelcastFixedRateTask<MoveToEventStorageTaskD
             (ChroniclePostgresTables.MAX_BIND_PARAMETERS / RedshiftDataTables.IOS_SENSOR_DATA.columns.size)
         private const val PERIOD = 5 * 60000L
         private const val INITIAL_DELAY = 5000L
+        private const val TIMEOUT_HOURS = 6L
         private val UPLOAD_AT_INDEX = RedshiftDataTables.getInsertUsageEventColumnIndex(RedshiftColumns.UPLOADED_AT)
 
         private val logger = LoggerFactory.getLogger(MoveToIosEventStorageTask::class.java)
@@ -61,9 +62,9 @@ class MoveToIosEventStorageTask : HazelcastFixedRateTask<MoveToEventStorageTaskD
             moveToEventStorage()
         }
         try {
-            f.get(1, TimeUnit.HOURS)
+            f.get(TIMEOUT_HOURS, TimeUnit.HOURS)
         } catch (timeoutException: TimeoutException) {
-            logger.error("Timed out after one hour when moving events to event storage.", timeoutException)
+            logger.error("Timed out after ${TIMEOUT_HOURS} hour(s) when moving events to event storage.", timeoutException)
             f.cancel(true)
         } catch (ex: Exception) {
             logger.error("Exception when moving events to event storage.", ex)
@@ -140,7 +141,7 @@ class MoveToIosEventStorageTask : HazelcastFixedRateTask<MoveToEventStorageTaskD
         var maxEventTimestamp: OffsetDateTime = OffsetDateTime.MIN
 
         return StopWatch(
-            log = "writing ${data.size} entries to event storage.",
+            log = "writing ${data.size} entries to sensor storage.",
             level = Level.INFO,
             logger = logger
         ).use {
