@@ -180,7 +180,7 @@ dependencies {
     testCompileOnly "com.github.spotbugs:spotbugs-annotations:${spotbugs_annotations_version}"
 
     implementation "com.google.guava:guava:${guava_version}"
-    implementation "com.amazon.redshift:redshift-jdbc42:2.1.0.3"
+    implementation 'com.amazon.redshift:redshift-jdbc42:2.1.0.32'
     implementation "org.apache.commons:commons-text:${commonsText_version}"
 
     implementation group: "com.twilio.sdk", name: "twilio", version: "9.6.1"
