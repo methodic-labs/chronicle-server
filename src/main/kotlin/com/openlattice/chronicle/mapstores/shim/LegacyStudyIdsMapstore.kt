@@ -1,0 +1,90 @@
+package com.openlattice.chronicle.mapstores.shim
+
+import com.geekbeast.postgres.PostgresArrays
+import com.geekbeast.postgres.streams.BasePostgresIterable
+import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
+import com.geekbeast.postgres.streams.StatementHolderSupplier
+import com.geekbeast.rhizome.mapstores.TestableSelfRegisteringMapStore
+import com.hazelcast.config.IndexConfig
+import com.hazelcast.config.IndexType
+import com.hazelcast.config.MapConfig
+import com.hazelcast.config.MapStoreConfig
+import com.openlattice.chronicle.hazelcast.HazelcastMap
+import com.openlattice.chronicle.postgres.ResultSetAdapters
+import com.openlattice.chronicle.services.studies.StudyService.Companion.GET_STUDIES_SQL
+import com.openlattice.chronicle.services.studies.StudyService.Companion.LOAD_STUDY_IDS
+import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.LEGACY_STUDY_IDS
+import com.openlattice.chronicle.study.Study
+import com.openlattice.chronicle.util.tests.TestDataFactory
+import com.zaxxer.hikari.HikariDataSource
+import org.springframework.stereotype.Component
+import java.sql.ResultSet
+import java.util.UUID
+
+@Component
+class LegacyStudyIdsMapstore(val hds: HikariDataSource) : TestableSelfRegisteringMapStore<UUID, Study> {
+    private val mapStoreConfig = MapStoreConfig()
+        .setInitialLoadMode(MapStoreConfig.InitialLoadMode.EAGER)
+        .setImplementation(this)
+        .setEnabled(true)
+        .setWriteDelaySeconds(0)
+
+    private val mapConfig = MapConfig(mapName).setMapStoreConfig(mapStoreConfig)
+
+    override fun getMapConfig(): MapConfig = mapConfig.addIndexConfig(
+        IndexConfig(
+            IndexType.HASH,
+            NOTIFY_RESEARCHERS_INDEX
+        )
+    )
+
+    override fun getMapStoreConfig(): MapStoreConfig = mapStoreConfig
+
+    companion object {
+        const val NOTIFY_RESEARCHERS_INDEX = "notifyResearchers"
+
+
+    }
+
+    private fun mapKey(rs: ResultSet): UUID = ResultSetAdapters.studyId(rs)
+
+    private fun mapValue(rs: ResultSet): Study = ResultSetAdapters.study(rs)
+
+    override fun generateTestKey(): UUID = UUID.randomUUID()
+    override fun generateTestValue(): Study = TestDataFactory.study()
+
+    override fun load(key: UUID): Study? {
+        return loadAll(listOf(key)).values.firstOrNull()
+    }
+
+    override fun loadAll(keys: Collection<UUID>): Map<UUID, Study> {
+        return BasePostgresIterable(PreparedStatementHolderSupplier(hds, GET_STUDIES_SQL) { ps ->
+            ps.setArray(1, PostgresArrays.createUuidArray(ps.connection, keys))
+        }) { mapKey(it) to mapValue(it) }.toMap()
+    }
+
+    override fun loadAllKeys(): Iterable<UUID> {
+        return BasePostgresIterable(StatementHolderSupplier(hds, LOAD_STUDY_IDS, fetchSize = 65536)) { mapKey(it) }
+    }
+
+    override fun store(key: UUID, value: Study) {
+        throw UnsupportedOperationException("The Study Mapstore is a READ ONLY cache.")
+    }
+
+    override fun storeAll(map: Map<UUID, Study>) {
+        throw UnsupportedOperationException("The Study Mapstore is a READ ONLY cache.")
+    }
+
+    override fun delete(key: UUID) {
+        throw UnsupportedOperationException("The Study Mapstore is a READ ONLY cache.")
+    }
+
+    override fun deleteAll(keys: MutableCollection<UUID>) {
+        throw UnsupportedOperationException("The Study Mapstore is a READ ONLY cache.")
+    }
+
+    override fun getMapName(): String = HazelcastMap.STUDIES.name
+
+
+    override fun getTable(): String = LEGACY_STUDY_IDS.name
+}
