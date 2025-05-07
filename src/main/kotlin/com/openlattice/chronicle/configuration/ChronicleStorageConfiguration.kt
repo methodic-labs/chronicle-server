@@ -10,7 +10,7 @@ import com.openlattice.chronicle.storage.ChronicleStorage
 data class ChronicleStorageConfiguration(
     val defaultStorage: String = ChronicleStorage.PLATFORM.id,
     val platformStorage: String = ChronicleStorage.PLATFORM.id,
-    val platformReadStorage: String = ChronicleStorage.PLATFORM.id,
+    val platformReadStorage: String = ChronicleStorage.PLATFORM_READ.id,
     val defaultEventStorage: String = ChronicleStorage.CHRONICLE.id,
     val auditStorage: String = ChronicleStorage.CHRONICLE.id,
 )
