@@ -10,7 +10,6 @@ import com.openlattice.chronicle.hazelcast.processors.storage.StudyStorageRead
 import com.openlattice.chronicle.hazelcast.processors.storage.StudyStorageUpdate
 import com.openlattice.chronicle.study.Study
 import com.zaxxer.hikari.HikariDataSource
-import org.springframework.stereotype.Component
 import java.util.*
 
 /**
@@ -65,6 +64,18 @@ class StorageResolver constructor(
         val (flavor, hds) = getDefaultPlatformStorage()
         check(flavor == PostgresFlavor.ANY || flavor == requiredFlavor) { "Configured flavor $flavor does not match required flavor $requiredFlavor" }
         return hds
+    }
+
+    fun getPlatformReadStorage(requiredFlavor: PostgresFlavor = PostgresFlavor.VANILLA) : HikariDataSource {
+        val (flavor, hds) =  getDefaultPlatformReadStorage()
+        check(flavor == PostgresFlavor.ANY || flavor == requiredFlavor) { "Configured flavor $flavor does not match required flavor $requiredFlavor" }
+        return hds
+    }
+
+    fun getDefaultPlatformReadStorage(): Pair<PostgresFlavor, HikariDataSource> {
+        return with(dataSourceManager) {
+            getFlavor(storageConfiguration.platformReadStorage) to getDataSource(storageConfiguration.platformReadStorage)
+        }
     }
 
     fun getDefaultPlatformStorage(): Pair<PostgresFlavor, HikariDataSource> {

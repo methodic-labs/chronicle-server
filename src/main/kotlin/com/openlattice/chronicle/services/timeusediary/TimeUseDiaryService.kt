@@ -103,7 +103,7 @@ class TimeUseDiaryService(
     ): Map<OffsetDateTime, Set<UUID>> {
         val submissionsByDate = mutableMapOf<OffsetDateTime, MutableSet<UUID>>()
         try {
-            val hds = storageResolver.getPlatformStorage(PostgresFlavor.VANILLA)
+            val hds = storageResolver.getPlatformReadStorage(PostgresFlavor.VANILLA)
             val result = hds.connection.use { connection ->
                 executeGetSubmissionByDateSql(
                     connection,
@@ -134,7 +134,7 @@ class TimeUseDiaryService(
         endDate: OffsetDateTime,
     ): Map<LocalDate, Set<UUID>> {
         try {
-            val hds = storageResolver.getPlatformStorage(PostgresFlavor.VANILLA)
+            val hds = storageResolver.getPlatformReadStorage(PostgresFlavor.VANILLA)
             val submissions = BasePostgresIterable(
                 PreparedStatementHolderSupplier(
                     hds,
@@ -174,7 +174,7 @@ class TimeUseDiaryService(
             return getTimeUseDiarySummarizedData(studyId, participantIds, startDate, endDate)
         }
         try {
-            val hds = storageResolver.getPlatformStorage(PostgresFlavor.VANILLA)
+            val hds = storageResolver.getPlatformReadStorage(PostgresFlavor.VANILLA)
             val postgresIterable = BasePostgresIterable(
                 PreparedStatementHolderSupplier(
                     hds,
@@ -211,7 +211,7 @@ class TimeUseDiaryService(
         endDate: OffsetDateTime
     ): Iterable<List<Map<String, Any>>> {
         try {
-            val hds = storageResolver.getPlatformStorage()
+            val hds = storageResolver.getPlatformReadStorage()
             val iterable = BasePostgresIterable(
                 PreparedStatementHolderSupplier(
                     hds,
