@@ -103,8 +103,8 @@ applicationDefaultJvmArgs += [ "--add-modules", "java.base",
                                "--add-opens","java.management/sun.management=ALL-UNNAMED",
                                "--add-opens", "jdk.management/com.ibm.lang.management.internal=ALL-UNNAMED",
                                "--add-opens","jdk.management/com.sun.management.internal=ALL-UNNAMED"]
-sourceCompatibility = JavaVersion.VERSION_17
-targetCompatibility = JavaVersion.VERSION_17
+sourceCompatibility = JavaVersion.VERSION_21
+targetCompatibility = JavaVersion.VERSION_21
 
 jacoco {
     toolVersion = "${jacoco_tool_version}"
