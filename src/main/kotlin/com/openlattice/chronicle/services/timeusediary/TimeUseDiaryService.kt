@@ -307,6 +307,15 @@ class TimeUseDiaryService(
         return result
     }
 
+    private fun safeReadActivityDate( responsesByCode : Map<String, TimeUseDiaryResponse>) : LocalDate {
+        val maybeActivityDateStr = responsesByCode[TimeUseDiaryQuestionCodes.ACTIVITY_DATE]?.response?.first()
+        return if (maybeActivityDateStr == null) {
+            responsesByCode.values.first().startDateTime?.toLocalDate() ?: LocalDate.MIN.plusDays(2)
+        } else {
+            LocalDate.parse(maybeActivityDateStr)
+        }
+    }
+
     private fun getNightTimeDataColumnMapping(rs: ResultSet): List<Map<String, Any>> {
         val defaultColumnMapping = getDefaultColumnMapping(rs)
 
@@ -315,8 +324,8 @@ class TimeUseDiaryService(
 
         val zoneIdOfPrimaryActivity =
             responsesByCode.getValue(TimeUseDiaryQuestionCodes.PRIMARY_ACTIVITY).startDateTime!!.toZonedDateTime().zone
-        val activityDate =
-            LocalDate.parse(responsesByCode.getValue(TimeUseDiaryQuestionCodes.ACTIVITY_DATE).response.first())
+
+        val activityDate = safeReadActivityDate(responsesByCode)
 
         val activityDayStartTime =
             responsesByCode.getValue(TimeUseDiaryQuestionCodes.DAY_START_TIME).response.first() //HH:MM format
