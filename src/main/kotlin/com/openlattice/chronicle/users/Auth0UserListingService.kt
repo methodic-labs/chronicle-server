@@ -92,7 +92,7 @@ class Auth0UserListingService(
         val downloadUrl = exportJobResult.location.get()
 
         try {
-            val mapper = ObjectMappers.getMapper(ObjectMappers.Mapper.valueOf(exportJobResult.format.name.toUpperCase()))
+            val mapper = ObjectMappers.getMapper(ObjectMappers.Mapper.valueOf(exportJobResult.format.name.uppercase()))
 
             val connection = downloadUrl.openConnection()
             connection.setRequestProperty("Accept-Encoding", "gzip")
