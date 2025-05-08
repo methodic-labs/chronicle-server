@@ -474,6 +474,26 @@ class ChroniclePostgresTables {
                     RedshiftColumns.TIMESTAMP
                 ).ifNotExists()
             )
+            TIME_USE_DIARY_SUBMISSIONS.addIndexes(
+                PostgresColumnsIndexDefinition(
+                    TIME_USE_DIARY_SUBMISSIONS,
+                    STUDY_ID, PARTICIPANT_ID, SUBMISSION_DATE,
+                ).ifNotExists(),
+                PostgresColumnsIndexDefinition(
+                    TIME_USE_DIARY_SUBMISSIONS,
+                    STUDY_ID, SUBMISSION_DATE
+                )
+            )
+            TIME_USE_DIARY_SUMMARIZED.addIndexes(
+                PostgresColumnsIndexDefinition(
+                    TIME_USE_DIARY_SUMMARIZED,
+                    STUDY_ID, PARTICIPANT_ID, SUBMISSION_DATE,
+                ).ifNotExists(),
+                PostgresColumnsIndexDefinition(
+                    TIME_USE_DIARY_SUMMARIZED,
+                    STUDY_ID, SUBMISSION_DATE
+                )
+            )
         }
     }
 }

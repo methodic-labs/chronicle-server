@@ -66,7 +66,7 @@ class RedshiftDataTables {
 
         @JvmField
         val CHRONICLE_USAGE_EVENTS = RedshiftTableDefinition("chronicle_usage_events")
-            .sortKey(STUDY_ID)
+            .sortKey(STUDY_ID,PARTICIPANT_ID,TIMESTAMP)
             .addColumns(
                 STUDY_ID,
                 PARTICIPANT_ID,
@@ -83,7 +83,7 @@ class RedshiftDataTables {
 
         @JvmField
         val CHRONICLE_USAGE_STATS = RedshiftTableDefinition("chronicle_usage_stats")
-            .sortKey(STUDY_ID)
+            .sortKey(STUDY_ID,PARTICIPANT_ID,TIMESTAMP)
             .addColumns(
                 STUDY_ID,
                 PARTICIPANT_ID,
@@ -118,7 +118,7 @@ class RedshiftDataTables {
 
         @JvmField
         val PREPROCESSED_USAGE_EVENTS = RedshiftTableDefinition("preprocessed_usage_events")
-            .sortKey(STUDY_ID)
+            .sortKey(STUDY_ID, PARTICIPANT_ID)
             .addColumns(
                 RUN_ID,
                 STUDY_ID,
