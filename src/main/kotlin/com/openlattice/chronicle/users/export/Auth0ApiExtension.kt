@@ -23,11 +23,12 @@ package com.openlattice.chronicle.users.export
 import com.auth0.net.TelemetryInterceptor
 import com.openlattice.users.export.UserExportEntity
 import okhttp3.HttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 
 class Auth0ApiExtension(val domain: String, private val apiToken: () -> String) {
 
-    private val baseUrl = HttpUrl.parse("https://$domain")
+    private val baseUrl = "https://$domain".toHttpUrlOrNull()
             ?: throw IllegalArgumentException("Domain '$domain' couldn't be parsed as an URL.")
     private val client = OkHttpClient.Builder()
             .addInterceptor(TelemetryInterceptor())

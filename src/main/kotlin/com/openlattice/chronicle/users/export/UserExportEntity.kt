@@ -25,6 +25,8 @@ import com.geekbeast.mappers.mappers.ObjectMappers
 import com.openlattice.chronicle.users.export.UserExportJobRequest
 import com.openlattice.chronicle.users.export.UserExportJobResult
 import okhttp3.*
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.slf4j.LoggerFactory
 
 private const val JOBS_PATH = "api/v2/jobs"
@@ -47,9 +49,8 @@ class UserExportEntity(private val client: OkHttpClient, private val baseUrl: Ht
                 .build()
                 .toString()
 
-        val body = RequestBody.create(
-                MediaType.parse(CONTENT_TYPE_APPLICATION_JSON), mapper.writeValueAsBytes(exportJob)
-        )
+        val body = mapper.writeValueAsBytes(exportJob)
+            .toRequestBody(CONTENT_TYPE_APPLICATION_JSON.toMediaTypeOrNull())
 
         val request = Request.Builder()
                 .url(url)
@@ -60,7 +61,7 @@ class UserExportEntity(private val client: OkHttpClient, private val baseUrl: Ht
 
         try {
             val response = client.newCall(request).execute()
-            return mapper.readValue(response.body()?.bytes(), Job::class.java)
+            return mapper.readValue(response.body?.bytes(), Job::class.java)
         } catch (ex: Exception) {
             logger.info("Encountered exception $ex when submitting export job $exportJob.")
             throw ex
@@ -86,7 +87,7 @@ class UserExportEntity(private val client: OkHttpClient, private val baseUrl: Ht
 
         try {
             val response = client.newCall(request).execute()
-            return mapper.readValue(response.body()?.bytes(), UserExportJobResult::class.java)
+            return mapper.readValue(response.body?.bytes(), UserExportJobResult::class.java)
         } catch (ex: Exception) {
             logger.info("Encountered exception $ex when trying to get export job $jobId.")
             throw ex

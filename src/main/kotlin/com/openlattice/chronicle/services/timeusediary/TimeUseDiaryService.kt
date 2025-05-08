@@ -103,7 +103,7 @@ class TimeUseDiaryService(
     ): Map<OffsetDateTime, Set<UUID>> {
         val submissionsByDate = mutableMapOf<OffsetDateTime, MutableSet<UUID>>()
         try {
-            val hds = storageResolver.getPlatformStorage(PostgresFlavor.VANILLA)
+            val hds = storageResolver.getPlatformReadStorage(PostgresFlavor.VANILLA)
             val result = hds.connection.use { connection ->
                 executeGetSubmissionByDateSql(
                     connection,
@@ -134,7 +134,7 @@ class TimeUseDiaryService(
         endDate: OffsetDateTime,
     ): Map<LocalDate, Set<UUID>> {
         try {
-            val hds = storageResolver.getPlatformStorage(PostgresFlavor.VANILLA)
+            val hds = storageResolver.getPlatformReadStorage(PostgresFlavor.VANILLA)
             val submissions = BasePostgresIterable(
                 PreparedStatementHolderSupplier(
                     hds,
@@ -174,7 +174,7 @@ class TimeUseDiaryService(
             return getTimeUseDiarySummarizedData(studyId, participantIds, startDate, endDate)
         }
         try {
-            val hds = storageResolver.getPlatformStorage(PostgresFlavor.VANILLA)
+            val hds = storageResolver.getPlatformReadStorage(PostgresFlavor.VANILLA)
             val postgresIterable = BasePostgresIterable(
                 PreparedStatementHolderSupplier(
                     hds,
@@ -211,7 +211,7 @@ class TimeUseDiaryService(
         endDate: OffsetDateTime
     ): Iterable<List<Map<String, Any>>> {
         try {
-            val hds = storageResolver.getPlatformStorage()
+            val hds = storageResolver.getPlatformReadStorage()
             val iterable = BasePostgresIterable(
                 PreparedStatementHolderSupplier(
                     hds,
@@ -307,6 +307,15 @@ class TimeUseDiaryService(
         return result
     }
 
+    private fun safeReadActivityDate( responsesByCode : Map<String, TimeUseDiaryResponse>) : LocalDate {
+        val maybeActivityDateStr = responsesByCode[TimeUseDiaryQuestionCodes.ACTIVITY_DATE]?.response?.first()
+        return if (maybeActivityDateStr == null) {
+            responsesByCode.values.first().startDateTime?.toLocalDate() ?: LocalDate.MIN.plusDays(2)
+        } else {
+            LocalDate.parse(maybeActivityDateStr)
+        }
+    }
+
     private fun getNightTimeDataColumnMapping(rs: ResultSet): List<Map<String, Any>> {
         val defaultColumnMapping = getDefaultColumnMapping(rs)
 
@@ -315,8 +324,8 @@ class TimeUseDiaryService(
 
         val zoneIdOfPrimaryActivity =
             responsesByCode.getValue(TimeUseDiaryQuestionCodes.PRIMARY_ACTIVITY).startDateTime!!.toZonedDateTime().zone
-        val activityDate =
-            LocalDate.parse(responsesByCode.getValue(TimeUseDiaryQuestionCodes.ACTIVITY_DATE).response.first())
+
+        val activityDate = safeReadActivityDate(responsesByCode)
 
         val activityDayStartTime =
             responsesByCode.getValue(TimeUseDiaryQuestionCodes.DAY_START_TIME).response.first() //HH:MM format

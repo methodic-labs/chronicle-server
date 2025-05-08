@@ -42,7 +42,7 @@ fun getUpdatedUsersPage(
                     .withQuery("$UPDATED_AT={$lastSync TO $currentSync]")
                     .withFields(AUTH0_USER_FIELDS.joinToString(","), true)
                     .withPage(page, pageSize)
-    ).execute()
+    ).execute().body
 }
 
 @Throws(Auth0Exception::class)
@@ -53,7 +53,7 @@ fun getUser(managementApi: ManagementAPI, principalId: String): User {
                     .withSearchEngine(SEARCH_ENGINE_VERSION)
                     .withFields("$USER_ID,$EMAIL,$NICKNAME,$APP_METADATA,$IDENTITIES", true)
                     .withPage(0, MAX_PAGE_SIZE)
-    ).execute()
+    ).execute().body
 }
 
 internal fun parseAlgorithm(aac: Auth0AuthenticationConfiguration): Algorithm {
