@@ -186,7 +186,7 @@ class TimeUseDiaryService(
                     ps.setObject(++index, startDate)
                     ps.setObject(++index, endDate)
                     participantIds?.let {
-                        ps.setArray(++index, PostgresArrays.createTextArray(hds.connection, it))
+                        ps.setArray(++index, PostgresArrays.createTextArray(ps.connection, it))
                     }
                 }) { rs ->
                 when (downloadType) {
@@ -223,7 +223,7 @@ class TimeUseDiaryService(
                     ps.setObject(++index, startDate)
                     ps.setObject(++index, endDate)
                     participantIds?.let {
-                        ps.setArray(++index, PostgresArrays.createTextArray(hds.connection, it))
+                        ps.setArray(++index, PostgresArrays.createTextArray(ps.connection, it))
                     }
                 }
             ) { getSummarizedDataColumnMapping(it) }
