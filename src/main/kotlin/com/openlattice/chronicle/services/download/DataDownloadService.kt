@@ -236,7 +236,7 @@ class DataDownloadService(
         endDateTime: OffsetDateTime
     ): Iterable<Map<String, Any>> {
 
-        val hds = storageResolver.getPlatformStorage()
+        val hds = storageResolver.getPlatformReadStorage()
         val iterable = BasePostgresIterable<Map<String, Any>>(
             PreparedStatementHolderSupplier(
                 hds,
