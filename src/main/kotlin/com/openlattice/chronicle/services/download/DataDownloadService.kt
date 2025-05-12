@@ -212,8 +212,8 @@ class DataDownloadService(
             ) { ps ->
                 var index = 0
                 ps.setString(++index, studyId.toString())
-                ps.setArray(++index, PostgresArrays.createTextArray(hds.connection, participantIds))
-                ps.setArray(++index, PostgresArrays.createTextArray(hds.connection, sensors.map { it.name }))
+                ps.setArray(++index, PostgresArrays.createTextArray(ps.connection, participantIds))
+                ps.setArray(++index, PostgresArrays.createTextArray(ps.connection, sensors.map { it.name }))
                 ps.setObject(++index, startDateTime)
                 ps.setObject(++index, endDateTime)
             }
@@ -245,7 +245,7 @@ class DataDownloadService(
             ) { ps ->
                 var index = 0
                 ps.setObject(++index, studyId)
-                ps.setArray(++index, PostgresArrays.createTextArray(hds.connection, participantIds))
+                ps.setArray(++index, PostgresArrays.createTextArray(ps.connection, participantIds))
                 ps.setObject(++index, startDateTime)
                 ps.setObject(++index, endDateTime)
             }
@@ -280,7 +280,7 @@ class DataDownloadService(
             ) { ps ->
                 var index = 0
                 ps.setString(++index, studyId.toString())
-                ps.setArray(++index, PostgresArrays.createTextArray(hds.connection, participantIds))
+                ps.setArray(++index, PostgresArrays.createTextArray(ps.connection, participantIds))
                 ps.setObject(++index, startDateTime)
                 ps.setObject(++index, endDateTime)
             }) { rs ->
@@ -319,7 +319,7 @@ class DataDownloadService(
             ) { ps ->
                 var index = 0
                 ps.setString(++index, studyId.toString())
-                ps.setArray(++index, PostgresArrays.createTextArray(hds.connection, participantIds))
+                ps.setArray(++index, PostgresArrays.createTextArray(ps.connection, participantIds))
                 ps.setObject(++index, startDateTime)
                 ps.setObject(++index, endDateTime)
             }
