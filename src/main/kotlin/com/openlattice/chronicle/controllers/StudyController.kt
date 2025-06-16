@@ -54,6 +54,7 @@ import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_ID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPATION_STATUS
+import com.openlattice.chronicle.study.StudyApi.Companion.PERMISSIONS_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.RESPONSE_TYPE
 import com.openlattice.chronicle.study.StudyApi.Companion.RETRIEVE
 import com.openlattice.chronicle.study.StudyApi.Companion.SENSORS_PATH
@@ -237,6 +238,93 @@ class StudyController @Inject constructor(
         updateStudy(studyId, StudyUpdate(settings = StudySettings(studySettings)))
 
         return ok
+    }
+
+    @Timed
+    @GetMapping(
+        path = [STUDY_ID_PATH + PERMISSIONS_PATH],
+        consumes = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    override fun getStudyPermissions(@PathVariable(STUDY_ID) studyId: UUID): StudyPermissions {
+        val studyAclKey = AclKey(studyId)
+        ensureOwnerAccess(studyAclKey)
+        return authorizationManager.getAllSecurableObjectPermissions(studyAclKey).aces.fold(StudyPermissions()) { studyPermissions, ace ->
+            if (ace.expirationDate.isAfter(OffsetDateTime.now())) {
+                if (ace.permissions.containsAll(
+                        EnumSet.of(
+                            Permission.READ,
+                            Permission.WRITE,
+                            Permission.OWNER
+                        )
+                    )
+                ) {
+                    studyPermissions.owners.add(ace.principal)
+                } else if (ace.permissions.containsAll(
+                        EnumSet.of(
+                            Permission.READ,
+                            Permission.WRITE
+                        )
+                    )
+                ) {
+                    studyPermissions.managers.add(ace.principal)
+                } else if (ace.permissions.containsAll(
+                        EnumSet.of(
+                            Permission.READ,
+                        )
+                    )
+                ) {
+                    studyPermissions.viewers.add(ace.principal)
+                }
+            }
+            studyPermissions
+        }
+    }
+
+    @Timed
+    @GetMapping(
+        path = [STUDY_ID_PATH + PERMISSIONS_PATH],
+        consumes = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    override fun updateStudyPermissions(
+        @PathVariable(STUDY_ID) studyId: UUID,
+        @RequestBody permissionsUpdate: StudyPermissionsUpdate
+    ): StudyPermissions {
+        val studyAclKey = AclKey(studyId)
+        ensureOwnerAccess(studyAclKey)
+
+        val allPermissions = EnumSet.allOf(Permission::class.java)
+
+        permissionsUpdate.revokeViewStudy.forEach {
+            val p = Principal(PrincipalType.USER, it)
+            authorizationManager.removePermission(studyAclKey, p, EnumSet.of(Permission.READ, Permission.WRITE, Permission.OWNER))
+        }
+
+        permissionsUpdate.revokeManageStudy.forEach {
+            val p = Principal(PrincipalType.USER, it)
+            authorizationManager.removePermission(studyAclKey, p, EnumSet.of(Permission.OWNER, Permission.WRITE))
+        }
+
+        permissionsUpdate.revokeOwnerStudy.forEach {
+            val p = Principal(PrincipalType.USER, it)
+            authorizationManager.removePermission(studyAclKey, p, EnumSet.of(Permission.OWNER))
+        }
+
+        permissionsUpdate.grantViewStudy.forEach {
+            val p = Principal(PrincipalType.USER, it)
+            authorizationManager.addPermission(studyAclKey, p, EnumSet.of(Permission.READ))
+        }
+
+        permissionsUpdate.grantManageStudy.forEach {
+            val p = Principal(PrincipalType.USER, it)
+            authorizationManager.addPermission(studyAclKey, p, EnumSet.of(Permission.WRITE,Permission.READ))
+        }
+
+        permissionsUpdate.grantOwnerStudy.forEach {
+            val p = Principal(PrincipalType.USER, it)
+            authorizationManager.addPermission(studyAclKey, p, allPermissions)
+        }
+
+        return getStudyPermissions(studyId)
     }
 
     @Timed
