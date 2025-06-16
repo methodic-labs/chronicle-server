@@ -184,6 +184,7 @@ class PrincipalDirectoryController(
         produces = [MediaType.APPLICATION_JSON_VALUE]
     )
     override fun searchUsers(@RequestBody fields: Auth0UserSearchFields): Map<String, User> {
+        ensureAuthenticated()
         return userDirectoryService.searchAllUsers(fields)
     }
 
