@@ -281,7 +281,7 @@ class StudyController @Inject constructor(
     }
 
     @Timed
-    @GetMapping(
+    @PostMapping(
         path = [STUDY_ID_PATH + PERMISSIONS_PATH],
         consumes = [MediaType.APPLICATION_JSON_VALUE]
     )
