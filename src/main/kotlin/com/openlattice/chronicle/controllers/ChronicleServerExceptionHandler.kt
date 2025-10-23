@@ -31,6 +31,8 @@ import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.ids.IdConstants
 import org.apache.commons.io.IOUtils
 import org.slf4j.LoggerFactory
+import org.springframework.core.Ordered
+import org.springframework.core.annotation.Order
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.http.converter.HttpMessageNotReadableException
@@ -42,6 +44,7 @@ import javax.inject.Inject
 import javax.servlet.http.HttpServletRequest
 
 @RestControllerAdvice
+@Order(Ordered.HIGHEST_PRECEDENCE)
 class ChronicleServerExceptionHandler @Inject constructor(override val auditingManager: AuditingManager) :
     AuditingComponent {
     @ExceptionHandler(
@@ -128,6 +131,15 @@ class ChronicleServerExceptionHandler @Inject constructor(override val auditingM
         logException(req, e)
     }
 
+    @ExceptionHandler(HttpMessageNotReadableException::class)
+    fun handleHttpMessageNotReadableException(req: HttpServletRequest, e: Exception): ResponseEntity<ErrorsDTO> {
+        logException(req, e)
+        return ResponseEntity(
+            ErrorsDTO(ApiExceptions.OTHER_EXCEPTION, e.javaClass.simpleName + ": " + e.message),
+            HttpStatus.INTERNAL_SERVER_ERROR
+        )
+    }
+
     @ExceptionHandler(Exception::class)
     fun handleOtherExceptions(req: HttpServletRequest, e: Exception): ResponseEntity<ErrorsDTO> {
         logException(req, e)
@@ -136,6 +148,8 @@ class ChronicleServerExceptionHandler @Inject constructor(override val auditingM
             HttpStatus.INTERNAL_SERVER_ERROR
         )
     }
+
+
 
     private fun logException(req: HttpServletRequest, e: Exception) {
         logger.error("Encountered exception handling request of type ${req.method} to URL ${req.requestURL}", e)
@@ -154,4 +168,4 @@ class StudyRegistrationNotFoundException : RuntimeException {
 class CandidateNotFoundException(candidateId: UUID, message: String? = "$candidateId") : RuntimeException(message)
 class StudyNotFoundException(val studyId: UUID, message: String) : RuntimeException(message)
 class OrganizationNotFoundException(val organization: UUID, message: String) : RuntimeException(message)
-class TimeUseDiaryDownloadExcpetion(val studyId: UUID, message: String) : RuntimeException(message)
+class TimeUseDiaryDownloadException(val studyId: UUID, message: String) : RuntimeException(message)
