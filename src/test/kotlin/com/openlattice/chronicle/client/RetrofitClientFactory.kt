@@ -70,7 +70,7 @@ class RetrofitClientFactory{
             return createBaseRhizomeRetrofitBuilder(environment.baseUrl, httpBuilder.build())
         }
 
-        fun createBaseRhizomeRetrofitBuilder(baseUrl: String, httpClient: OkHttpClient?): Retrofit.Builder {
+        fun createBaseRhizomeRetrofitBuilder(baseUrl: String, httpClient: OkHttpClient): Retrofit.Builder {
             return Retrofit.Builder().baseUrl(baseUrl).client(httpClient)
         }
 
@@ -78,7 +78,7 @@ class RetrofitClientFactory{
             return decorateWithFactories(builder, RhizomeCallAdapterFactory())
         }
 
-        fun decorateWithFactories(builder: Retrofit.Builder, callFactory: CallAdapter.Factory?): Retrofit.Builder {
+        fun decorateWithFactories(builder: Retrofit.Builder, callFactory: CallAdapter.Factory): Retrofit.Builder {
             return builder.addConverterFactory(RhizomeByteConverterFactory())
                 .addConverterFactory(RhizomeJacksonConverterFactory(RetrofitClientFactory.jsonMapper))
                 .addCallAdapterFactory(callFactory)

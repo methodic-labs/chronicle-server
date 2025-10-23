@@ -32,6 +32,7 @@ import com.openlattice.chronicle.authorization.principals.SecurePrincipalsManage
 import com.openlattice.chronicle.authorization.reservations.AclKeyReservationService
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.util.tests.TestDataFactory
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings
 import org.junit.Assert
 import org.junit.BeforeClass
 import org.junit.Test
@@ -41,6 +42,10 @@ import java.util.concurrent.TimeUnit
 import java.util.function.Consumer
 import java.util.stream.Collectors
 
+@SuppressFBWarnings(
+    value = ["NP_NONNULL_RETURN_VIOLATION"],
+    justification = "Initialized in test framework; getter never returns null in practice"
+)
 open class HzAuthzTest : ChronicleServerTests() {
     @Test
     fun testAddEntitySetPermission() {
