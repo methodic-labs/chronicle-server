@@ -90,16 +90,8 @@ class ChronicleServerExceptionHandler @Inject constructor(override val auditingM
         } else ResponseEntity(HttpStatus.NOT_FOUND)
     }
 
-    @ExceptionHandler(IllegalArgumentException::class, HttpMessageNotReadableException::class)
+    @ExceptionHandler(IllegalArgumentException::class)
     fun handleIllegalArgumentException(req: HttpServletRequest, e: Exception): ResponseEntity<ErrorsDTO> {
-        when (e) {
-            is HttpMessageNotReadableException -> logger.error(
-                "Body that caused error if available: " + IOUtils.toString(
-                    e.httpInputMessage.body
-                )
-            )
-            else -> logger.error("Body is not available.")
-        }
         logException(req, e)
         return ResponseEntity(
             ErrorsDTO(ApiExceptions.ILLEGAL_ARGUMENT_EXCEPTION, e.message!!),
