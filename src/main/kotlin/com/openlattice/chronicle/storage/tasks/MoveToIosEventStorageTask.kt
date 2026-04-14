@@ -16,6 +16,7 @@ import com.openlattice.chronicle.sensorkit.*
 import com.openlattice.chronicle.services.studies.StudyManager
 import com.openlattice.chronicle.services.upload.*
 import com.openlattice.chronicle.storage.ChroniclePostgresTables
+import com.openlattice.chronicle.storage.PostgresDataTables
 import com.openlattice.chronicle.storage.RedshiftColumns
 import com.openlattice.chronicle.storage.RedshiftDataTables
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.IOS_SENSOR_DATA
@@ -81,33 +82,45 @@ class MoveToIosEventStorageTask : HazelcastFixedRateTask<MoveToEventStorageTaskD
             val stmt = platform.createStatement()
             try {
                 logger.info("Moving ios data from aurora to event storage.")
-                val queueEntriesByFlavor: MutableMap<PostgresFlavor, MutableList<SensorDataRow>> = mutableMapOf()
+                val allEntries = mutableListOf<SensorDataRow>()
 
                 stmt.executeQuery(ChroniclePostgresTables.getMoveSql(128, UploadType.Ios)).use { rs ->
                     while (rs.next()) {
                         val sensorDataSamples = ResultSetAdapters.sensorDataSamples(rs)
-                        val (flavor, _) = storageResolver.resolveAndGetFlavor(sensorDataSamples.studyId)
-                        queueEntriesByFlavor.getOrPut(flavor) { mutableListOf() }
-                            .addAll(sensorDataSamples.toSensorDataRows())
+                        allEntries.addAll(sensorDataSamples.toSensorDataRows())
                     }
                 }
 
-                queueEntriesByFlavor.forEach { (postgresFlavor, sensorDataEntries) ->
-                    if (sensorDataEntries.isEmpty()) return@forEach
-                    when (postgresFlavor) {
-                        PostgresFlavor.REDSHIFT -> writeToEventStorage(
-                            storageResolver.getEventStorageWithFlavor(PostgresFlavor.REDSHIFT),
-                            sensorDataEntries,
-                            false
-                        )
+                if (allEntries.isNotEmpty()) {
+                    logger.info("Total number of iOS entries to move: ${allEntries.size}")
+                    var anyWriteSucceeded = false
 
-                        PostgresFlavor.VANILLA -> writeToEventStorage(
-                            storageResolver.getEventStorageWithFlavor(PostgresFlavor.VANILLA),
-                            sensorDataEntries,
-                            true
-                        )
+                    // Write to Redshift (existing path, backward compat)
+                    try {
+                        val (flavor, hds) = storageResolver.getDefaultEventStorage()
+                        if (flavor == PostgresFlavor.REDSHIFT || flavor == PostgresFlavor.ANY) {
+                            writeToEventStorage(hds, allEntries, false)
+                            anyWriteSucceeded = true
+                        }
+                    } catch (ex: Exception) {
+                        logger.error("Failed to write iOS data to Redshift event storage.", ex)
+                    }
 
-                        else -> throw InvalidParameterException("Invalid postgres flavor: ${postgresFlavor.name}")
+                    // Write to Postgres via upsert (new path)
+                    try {
+                        writeToPostgresUpsert(storageResolver.getPlatformStorage(), allEntries)
+                        anyWriteSucceeded = true
+                    } catch (ex: Exception) {
+                        logger.error("Failed to write iOS data to Postgres event storage.", ex)
+                    }
+
+                    if (!anyWriteSucceeded) {
+                        logger.error("Both Redshift and Postgres writes failed. Rolling back upload_buffer delete.")
+                        platform.rollback()
+                        stmt.close()
+                        platform.autoCommit = true
+                        platform.close()
+                        return
                     }
                 }
 
@@ -116,10 +129,8 @@ class MoveToIosEventStorageTask : HazelcastFixedRateTask<MoveToEventStorageTaskD
                 stmt.close()
                 platform.close()
                 logger.info("Successfully moved ios data to event storage.")
-                logger.info("Total number of entries for redshift: ${(queueEntriesByFlavor[PostgresFlavor.REDSHIFT] ?: listOf()).size}")
-                logger.info("Total number of entries for postgres: ${(queueEntriesByFlavor[PostgresFlavor.VANILLA] ?: listOf()).size}")
             } catch (ex: Exception) {
-                logger.info("Unable to move data from aurora to redshift.", ex)
+                logger.info("Unable to move ios data from aurora to event storage.", ex)
                 platform.rollback()
                 stmt.close()
                 platform.autoCommit = true
@@ -280,6 +291,69 @@ class MoveToIosEventStorageTask : HazelcastFixedRateTask<MoveToEventStorageTaskD
             }
 
             //Process all the participant updates. Being lazy hear since I don't have them batched.
+            data.forEach {
+                updateParticipantStats(
+                    it.studyId,
+                    it.participantId,
+                    mapOf(it.sensorType to listOf(it.row)),
+                    getDependency().studyService
+                )
+            }
+            w
+        }
+    }
+
+    /**
+     * Writes iOS sensor data to Postgres using INSERT ... ON CONFLICT (dedup_hash_0, dedup_hash_1) upsert.
+     * The dedup hashes are computed in SQL via hashtextextended with seeds 0 and 1.
+     * On conflict, updates excluded columns with LEAST/GREATEST semantics.
+     */
+    private fun writeToPostgresUpsert(
+        hds: HikariDataSource,
+        data: List<SensorDataRow>,
+    ): Int {
+        val studies = data.map { it.studyId.toString() }.toSet()
+        val participants = data.map { it.participantId }.toSet()
+
+        return StopWatch(
+            log = "Postgres upsert of ${data.size} iOS entries to sensor storage.",
+            level = Level.INFO,
+            logger = logger
+        ).use {
+            val w = hds.connection.use { connection ->
+                val insertBatchSize = min(data.size, RS_BATCH_SIZE)
+                logger.info("Preparing Postgres upsert statement (sensor data) with batch size $insertBatchSize")
+                val insertSql = PostgresDataTables.buildMultilineUpsertSensorEvents(insertBatchSize)
+
+                val dr = data.size % RS_BATCH_SIZE
+                val finalInsertSql = if (data.size > RS_BATCH_SIZE && dr != 0) {
+                    logger.info("Preparing secondary Postgres upsert statement with batch size $dr")
+                    PostgresDataTables.buildMultilineUpsertSensorEvents(dr)
+                } else {
+                    insertSql
+                }
+
+                data.chunked(insertBatchSize).sumOf { sensorDataRows ->
+                    val ps = if (insertBatchSize == sensorDataRows.size) {
+                        connection.prepareStatement(insertSql)
+                    } else {
+                        connection.prepareStatement(finalInsertSql)
+                    }
+
+                    ps.use {
+                        var offset = 0
+                        sensorDataRows.forEach { row ->
+                            writeSensorDataToRedshift(
+                                ps, offset, row.studyId, row.participantId, row.sensorType, row.row
+                            )
+                            offset += RedshiftDataTables.IOS_SENSOR_DATA.columns.size
+                        }
+                        ps.executeUpdate()
+                    }
+                }
+            }
+
+            // Update participant stats
             data.forEach {
                 updateParticipantStats(
                     it.studyId,
