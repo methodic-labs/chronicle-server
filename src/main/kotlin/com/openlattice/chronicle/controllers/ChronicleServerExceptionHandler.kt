@@ -131,15 +131,6 @@ class ChronicleServerExceptionHandler @Inject constructor(override val auditingM
         logException(req, e)
     }
 
-    @ExceptionHandler(HttpMessageNotReadableException::class)
-    fun handleHttpMessageNotReadableException(req: HttpServletRequest, e: Exception): ResponseEntity<ErrorsDTO> {
-        logException(req, e)
-        return ResponseEntity(
-            ErrorsDTO(ApiExceptions.OTHER_EXCEPTION, e.javaClass.simpleName + ": " + e.message),
-            HttpStatus.INTERNAL_SERVER_ERROR
-        )
-    }
-
     @ExceptionHandler(Exception::class)
     fun handleOtherExceptions(req: HttpServletRequest, e: Exception): ResponseEntity<ErrorsDTO> {
         logException(req, e)
