@@ -74,15 +74,16 @@ class MoveToEventStorageTask : HazelcastFixedRateTask<MoveToEventStorageTaskDepe
                         }
 
                         if (allEntries.isNotEmpty()) {
-                            logger.info("Total number of entries to move: ${allEntries.size}")
-                            var anyWriteSucceeded = false
+                            logger.info("Total number of Android entries to move: ${allEntries.size}")
+                            var redshiftSuccess = false
+                            var postgresSuccess = false
 
                             // Write to Redshift (existing path, backward compat)
                             try {
                                 val (flavor, hds) = storageResolver.getDefaultEventStorage()
                                 if (flavor == PostgresFlavor.REDSHIFT || flavor == PostgresFlavor.ANY) {
                                     writeToRedshift(hds, allEntries)
-                                    anyWriteSucceeded = true
+                                    redshiftSuccess = true
                                 }
                             } catch (ex: Exception) {
                                 logger.error("Failed to write to Redshift event storage.", ex)
@@ -91,23 +92,25 @@ class MoveToEventStorageTask : HazelcastFixedRateTask<MoveToEventStorageTaskDepe
                             // Write to Postgres via upsert (new path)
                             try {
                                 writeToPostgresUpsert(storageResolver.getPlatformStorage(), allEntries)
-                                anyWriteSucceeded = true
+                                postgresSuccess = true
                             } catch (ex: Exception) {
                                 logger.error("Failed to write to Postgres event storage.", ex)
                             }
 
-                            if (!anyWriteSucceeded) {
-                                logger.error("Both Redshift and Postgres writes failed. Rolling back upload_buffer delete.")
+                            if (!redshiftSuccess && !postgresSuccess) {
+                                logger.error("Both Redshift and Postgres writes failed for ${allEntries.size} Android entries. Rolling back upload_buffer delete.")
                                 platform.rollback()
                                 platform.autoCommit = true
                                 return
                             }
+
+                            logger.info("Android write results: redshift={}, postgres={}", redshiftSuccess, postgresSuccess)
                         }
                     }
                     platform.commit()
+                    logger.info("Committed upload_buffer delete for ${allEntries.size} Android entries.")
                     platform.autoCommit = true
                 }
-                logger.info("Successfully moved data to event storage.")
             } catch (ex: Exception) {
                 logger.info("Unable to move data from aurora to event storage.", ex)
                 throw ex

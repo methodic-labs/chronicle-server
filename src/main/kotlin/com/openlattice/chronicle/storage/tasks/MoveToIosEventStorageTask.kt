@@ -93,14 +93,15 @@ class MoveToIosEventStorageTask : HazelcastFixedRateTask<MoveToEventStorageTaskD
 
                 if (allEntries.isNotEmpty()) {
                     logger.info("Total number of iOS entries to move: ${allEntries.size}")
-                    var anyWriteSucceeded = false
+                    var redshiftSuccess = false
+                    var postgresSuccess = false
 
                     // Write to Redshift (existing path, backward compat)
                     try {
                         val (flavor, hds) = storageResolver.getDefaultEventStorage()
                         if (flavor == PostgresFlavor.REDSHIFT || flavor == PostgresFlavor.ANY) {
                             writeToEventStorage(hds, allEntries, false)
-                            anyWriteSucceeded = true
+                            redshiftSuccess = true
                         }
                     } catch (ex: Exception) {
                         logger.error("Failed to write iOS data to Redshift event storage.", ex)
@@ -109,26 +110,28 @@ class MoveToIosEventStorageTask : HazelcastFixedRateTask<MoveToEventStorageTaskD
                     // Write to Postgres via upsert (new path)
                     try {
                         writeToPostgresUpsert(storageResolver.getPlatformStorage(), allEntries)
-                        anyWriteSucceeded = true
+                        postgresSuccess = true
                     } catch (ex: Exception) {
                         logger.error("Failed to write iOS data to Postgres event storage.", ex)
                     }
 
-                    if (!anyWriteSucceeded) {
-                        logger.error("Both Redshift and Postgres writes failed. Rolling back upload_buffer delete.")
+                    if (!redshiftSuccess && !postgresSuccess) {
+                        logger.error("Both Redshift and Postgres writes failed for ${allEntries.size} iOS entries. Rolling back upload_buffer delete.")
                         platform.rollback()
                         stmt.close()
                         platform.autoCommit = true
                         platform.close()
                         return
                     }
+
+                    logger.info("iOS write results: redshift={}, postgres={}", redshiftSuccess, postgresSuccess)
                 }
 
                 platform.commit()
+                logger.info("Committed upload_buffer delete for ${allEntries.size} iOS entries.")
                 platform.autoCommit = true
                 stmt.close()
                 platform.close()
-                logger.info("Successfully moved ios data to event storage.")
             } catch (ex: Exception) {
                 logger.info("Unable to move ios data from aurora to event storage.", ex)
                 platform.rollback()

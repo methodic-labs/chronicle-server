@@ -165,30 +165,35 @@ class PostgresDataTables {
             val tableName = RedshiftDataTables.CHRONICLE_USAGE_EVENTS.name
             val (hash0, hash1) = buildHashExpressions(USAGE_EVENTS_HASH_KEY_COLUMNS, "v")
 
-            // INSERT INTO table (original_cols, dedup_hash_0, dedup_hash_1)
-            val insertCols = originalColumns.joinToString(", ") { it.name } + ", $DEDUP_HASH_COLUMNS_SQL"
-
-            // SELECT v.col1, v.col2, ..., hashtextextended(..., 0), hashtextextended(..., 1)
-            val selectCols = originalColumns.joinToString(", ") { "v.${it.name}" } +
-                    ",\n       $hash0,\n       $hash1"
+            // Inner SELECT: compute hashes from VALUES
+            val innerSelectCols = originalColumns.joinToString(", ") { "v.${it.name}" } +
+                    ",\n           $hash0 AS dh0,\n           $hash1 AS dh1"
 
             // VALUES (?, ?, ...) with type casts
             val typedParams = originalColumns.joinToString(", ") { "?::${it.datatype.sql()}" }
             val valuesLine = "($typedParams)"
-            val valuesLines = (1..numLines).joinToString(",\n    ") { valuesLine }
+            val valuesLines = (1..numLines).joinToString(",\n        ") { valuesLine }
 
             // AS v(col1, col2, ...)
             val aliases = originalColumns.joinToString(", ") { it.name }
+
+            // Outer SELECT: dedup within batch via ROW_NUMBER, then insert
+            val insertCols = originalColumns.joinToString(", ") { it.name } + ", $DEDUP_HASH_COLUMNS_SQL"
+            val outerSelectCols = originalColumns.joinToString(", ") { it.name } + ", dh0, dh1"
 
             // ON CONFLICT collision guard
             val collisionGuard = buildCollisionGuard(tableName, USAGE_EVENTS_HASH_KEY_COLUMNS)
 
             return """
                 INSERT INTO $tableName ($insertCols)
-                SELECT $selectCols
-                FROM (VALUES
-                    $valuesLines
-                ) AS v($aliases)
+                SELECT $outerSelectCols FROM (
+                    SELECT $innerSelectCols,
+                           ROW_NUMBER() OVER (PARTITION BY $hash0, $hash1) AS rn
+                    FROM (VALUES
+                        $valuesLines
+                    ) AS v($aliases)
+                ) AS deduped
+                WHERE rn = 1
                 ON CONFLICT ($DEDUP_HASH_COLUMNS_SQL) DO UPDATE SET ${UPLOADED_AT.name} = EXCLUDED.${UPLOADED_AT.name}
                 WHERE $collisionGuard
             """.trimIndent()
@@ -218,20 +223,21 @@ class PostgresDataTables {
             val tableName = RedshiftDataTables.IOS_SENSOR_DATA.name
             val (hash0, hash1) = buildHashExpressions(SENSOR_DATA_HASH_KEY_COLUMNS, "v")
 
-            // INSERT INTO table (original_cols, dedup_hash_0, dedup_hash_1)
-            val insertCols = originalColumns.joinToString(", ") { it.name } + ", $DEDUP_HASH_COLUMNS_SQL"
-
-            // SELECT v.col1, v.col2, ..., hashtextextended(..., 0), hashtextextended(..., 1)
-            val selectCols = originalColumns.joinToString(", ") { "v.${it.name}" } +
-                    ",\n       $hash0,\n       $hash1"
+            // Inner SELECT: compute hashes from VALUES
+            val innerSelectCols = originalColumns.joinToString(", ") { "v.${it.name}" } +
+                    ",\n           $hash0 AS dh0,\n           $hash1 AS dh1"
 
             // VALUES (?, ?, ...) with type casts
             val typedParams = originalColumns.joinToString(", ") { "?::${it.datatype.sql()}" }
             val valuesLine = "($typedParams)"
-            val valuesLines = (1..numLines).joinToString(",\n    ") { valuesLine }
+            val valuesLines = (1..numLines).joinToString(",\n        ") { valuesLine }
 
             // AS v(col1, col2, ...)
             val aliases = originalColumns.joinToString(", ") { it.name }
+
+            // Outer SELECT: dedup within batch via ROW_NUMBER, then insert
+            val insertCols = originalColumns.joinToString(", ") { it.name } + ", $DEDUP_HASH_COLUMNS_SQL"
+            val outerSelectCols = originalColumns.joinToString(", ") { it.name } + ", dh0, dh1"
 
             // ON CONFLICT update: LEAST/GREATEST for excluded columns
             val conflictUpdate = listOf(
@@ -246,10 +252,14 @@ class PostgresDataTables {
 
             return """
                 INSERT INTO $tableName ($insertCols)
-                SELECT $selectCols
-                FROM (VALUES
-                    $valuesLines
-                ) AS v($aliases)
+                SELECT $outerSelectCols FROM (
+                    SELECT $innerSelectCols,
+                           ROW_NUMBER() OVER (PARTITION BY $hash0, $hash1) AS rn
+                    FROM (VALUES
+                        $valuesLines
+                    ) AS v($aliases)
+                ) AS deduped
+                WHERE rn = 1
                 ON CONFLICT ($DEDUP_HASH_COLUMNS_SQL) DO UPDATE SET
                     $conflictUpdate
                 WHERE $collisionGuard
