@@ -10,10 +10,11 @@ import com.openlattice.chronicle.mapstores.stats.ParticipantKey
 import com.openlattice.chronicle.participants.ParticipantStats
 import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.services.studies.StudyManager
+import com.geekbeast.configuration.postgres.PostgresFlavor
+import com.openlattice.chronicle.storage.PostgresDataTables
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PARTICIPANT_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.STUDY_ID
-import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.participantStatsAndroidSql
-import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.participantStatsIosSql
+import com.openlattice.chronicle.storage.RedshiftDataTables
 import com.zaxxer.hikari.HikariDataSource
 import org.slf4j.LoggerFactory
 import java.security.InvalidParameterException
@@ -61,10 +62,10 @@ class RecalculateParticipantStatsTask : HazelcastFixedRateTask<RecalculatePartic
     private fun recalculateParticipantStats() {
         logger.info("Starting recalculation of participant stats...")
         with(getDependency()) {
-            val (_, events) = storageResolver.getDefaultEventStorage()
+            val (flavor, events) = storageResolver.getDefaultEventStorage()
             val studyIds = studyService.getAllStudyIds()
-            recalculateParticipantStats(studyService, studyIds, events, ParticipantStat.Ios)
-            recalculateParticipantStats(studyService, studyIds, events, ParticipantStat.Android)
+            recalculateParticipantStats(studyService, studyIds, events, ParticipantStat.Ios, flavor)
+            recalculateParticipantStats(studyService, studyIds, events, ParticipantStat.Android, flavor)
         }
     }
 
@@ -72,11 +73,12 @@ class RecalculateParticipantStatsTask : HazelcastFixedRateTask<RecalculatePartic
         studyService: StudyManager,
         studyIds: Iterable<UUID>,
         hds: HikariDataSource,
-        statType: ParticipantStat
+        statType: ParticipantStat,
+        flavor: PostgresFlavor
     ) {
         val sql = when (statType) {
-            ParticipantStat.Ios -> participantStatsIosSql
-            ParticipantStat.Android -> participantStatsAndroidSql
+            ParticipantStat.Ios -> if (flavor == PostgresFlavor.REDSHIFT) RedshiftDataTables.participantStatsIosSql else PostgresDataTables.participantStatsIosSql
+            ParticipantStat.Android -> if (flavor == PostgresFlavor.REDSHIFT) RedshiftDataTables.participantStatsAndroidSql else PostgresDataTables.participantStatsAndroidSql
             ParticipantStat.Tud -> throw InvalidParameterException("Not yet implemented for time use diary.")
         }
         studyIds.asSequence().forEach { studyId ->
