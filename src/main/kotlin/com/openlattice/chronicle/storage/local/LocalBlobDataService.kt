@@ -1,6 +1,5 @@
 package com.openlattice.chronicle.storage.local
 
-import com.amazonaws.HttpMethod
 import com.openlattice.chronicle.storage.BinaryObjectWithMetadata
 import com.openlattice.chronicle.storage.ByteBlobDataManager
 import com.geekbeast.postgres.PostgresColumnDefinition
@@ -31,7 +30,7 @@ class LocalBlobDataService(private val hds: HikariDataSource) : ByteBlobDataMana
     }
 
     override fun getPresignedUrl(
-            key: Any, expiration: Date, httpMethod: HttpMethod, contentType: String?, contentDisposition: String?
+            key: Any, expiration: Date, httpMethod: String, contentType: String?, contentDisposition: String?
     ): URL {
         throw UnsupportedOperationException()
     }

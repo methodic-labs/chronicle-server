@@ -1,6 +1,6 @@
 package com.openlattice.chronicle.storage
 
-import com.amazonaws.HttpMethod
+import software.amazon.awssdk.services.s3.model.RequestPayer
 import java.net.URL
 import java.util.*
 
@@ -28,7 +28,7 @@ interface ByteBlobDataManager {
     fun getPresignedUrl(
             key: Any,
             expiration: Date,
-            httpMethod: HttpMethod = HttpMethod.GET,
+            httpMethod: String = "GET",
             contentType: String? = null,
             contentDisposition: String? = null
     ): URL
