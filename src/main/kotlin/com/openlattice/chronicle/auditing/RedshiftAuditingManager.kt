@@ -7,6 +7,7 @@ import com.geekbeast.util.StopWatch
 import com.google.common.util.concurrent.MoreExecutors
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.AUDIT_BUFFER
 import com.openlattice.chronicle.storage.RedshiftColumns
+import com.openlattice.chronicle.storage.PostgresDataTables
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.AUDIT
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.buildMultilineInsertAuditEvents
 import com.openlattice.chronicle.storage.StorageResolver
@@ -106,6 +107,12 @@ class RedshiftAuditingManager(private val storageResolver: StorageResolver) : Au
                         })
                     }
                 }
+                if (auditEvents.isEmpty()) {
+                    connection.commit()
+                    connection.autoCommit = true
+                    return 0
+                }
+
                 val insertBatchSize = min(auditEvents.size, RS_BATCH_SIZE)
                 val dr = auditEvents.size % RS_BATCH_SIZE
 
@@ -123,42 +130,94 @@ class RedshiftAuditingManager(private val storageResolver: StorageResolver) : Au
 
                 //Commit to redshift and then commit delete. At some point we should make this so that duplicates are deleted from redshift audit log
 
-                auditStorage.second.connection.use { auditConnection ->
-                    auditConnection.autoCommit = false
-                    val insertPs = auditConnection.prepareStatement(insertSql)
-                    var finalPs: PreparedStatement? = null
-                    auditEvents.chunked(RS_BATCH_SIZE).forEach { subList ->
-                        val ps = if (subList.size == insertBatchSize) {
-                            insertPs
-                        } else {
-                            finalPs = auditConnection.prepareStatement(finalInsertSql)
-                            finalPs
-                        }!!
-                        var indexBase = 0
-                        subList.forEach { auditRow ->
-                            auditRow.forEachIndexed { index, elem ->
-                                val pgIndex = indexBase + index + 1
-                                when (elem) {
-                                    is String -> ps.setString(pgIndex, elem)
-                                    is OffsetDateTime -> ps.setObject(pgIndex, elem)
-                                    else -> throw InvalidParameterException("Unexpected class in audit row.")
+                // Write to Redshift (existing path)
+                try {
+                    auditStorage.second.connection.use { auditConnection ->
+                        auditConnection.autoCommit = false
+                        val insertPs = auditConnection.prepareStatement(insertSql)
+                        var finalPs: PreparedStatement? = null
+                        auditEvents.chunked(RS_BATCH_SIZE).forEach { subList ->
+                            val ps = if (subList.size == insertBatchSize) {
+                                insertPs
+                            } else {
+                                finalPs = auditConnection.prepareStatement(finalInsertSql)
+                                finalPs
+                            }!!
+                            var indexBase = 0
+                            subList.forEach { auditRow ->
+                                auditRow.forEachIndexed { index, elem ->
+                                    val pgIndex = indexBase + index + 1
+                                    when (elem) {
+                                        is String -> ps.setString(pgIndex, elem)
+                                        is OffsetDateTime -> ps.setObject(pgIndex, elem)
+                                        else -> throw InvalidParameterException("Unexpected class in audit row.")
+                                    }
                                 }
+                                indexBase += AUDIT.columns.size
                             }
-                            indexBase+= AUDIT.columns.size
+
+                            if (ps === insertPs)
+                                ps.addBatch()
                         }
 
-                        if (ps === insertPs)
-                            ps.addBatch()
+                        val movedRows = insertPs.executeBatch().sum() + (finalPs?.executeUpdate() ?: 0)
+                        logger.info("Moved $movedRows audit events to redshift.")
+                        auditConnection.commit()
+                        movedRows
                     }
-
-                    val movedRows = insertPs.executeBatch().sum() + (finalPs?.executeUpdate() ?: 0)
-                    logger.info("Moved $movedRows audit events to redshift.")
-                    auditConnection.commit()
-                    connection.commit()
-                    auditConnection.autoCommit = true
-                    connection.autoCommit = true
-                    movedRows
+                } catch (e: Exception) {
+                    logger.error("Failed to write audit events to Redshift.", e)
                 }
+
+                // Write to Postgres (new dual-write path)
+                val pgInsertSql = PostgresDataTables.buildMultilineInsertAuditEvents(insertBatchSize)
+                val pgFinalInsertSql = if (auditEvents.size > RS_BATCH_SIZE && dr != 0) {
+                    PostgresDataTables.buildMultilineInsertAuditEvents(dr)
+                } else {
+                    pgInsertSql
+                }
+
+                try {
+                    storageResolver.getPlatformStorage().connection.use { pgConnection ->
+                        pgConnection.autoCommit = false
+                        val pgInsertPs = pgConnection.prepareStatement(pgInsertSql)
+                        var pgFinalPs: PreparedStatement? = null
+                        auditEvents.chunked(RS_BATCH_SIZE).forEach { subList ->
+                            val ps = if (subList.size == insertBatchSize) {
+                                pgInsertPs
+                            } else {
+                                pgFinalPs = pgConnection.prepareStatement(pgFinalInsertSql)
+                                pgFinalPs
+                            }!!
+                            var indexBase = 0
+                            subList.forEach { auditRow ->
+                                auditRow.forEachIndexed { index, elem ->
+                                    val pgIndex = indexBase + index + 1
+                                    when (elem) {
+                                        is String -> ps.setString(pgIndex, elem)
+                                        is OffsetDateTime -> ps.setObject(pgIndex, elem)
+                                        else -> throw InvalidParameterException("Unexpected class in audit row.")
+                                    }
+                                }
+                                indexBase += AUDIT.columns.size
+                            }
+
+                            if (ps === pgInsertPs)
+                                ps.addBatch()
+                        }
+
+                        val pgMovedRows = pgInsertPs.executeBatch().sum() + (pgFinalPs?.executeUpdate() ?: 0)
+                        logger.info("Moved $pgMovedRows audit events to Postgres.")
+                        pgConnection.commit()
+                        pgConnection.autoCommit = true
+                    }
+                } catch (e: Exception) {
+                    logger.error("Failed to write audit events to Postgres.", e)
+                }
+
+                connection.commit()
+                connection.autoCommit = true
+                auditEvents.size
             }
         } catch (e: Exception) {
             logger.error("Unable to save data to redshift.", e)

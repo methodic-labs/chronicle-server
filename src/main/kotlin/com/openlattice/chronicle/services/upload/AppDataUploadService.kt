@@ -32,6 +32,7 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMESTAMP
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMEZONE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.UPLOADED_AT
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.USERNAME
+import com.openlattice.chronicle.storage.PostgresDataTables
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.CHRONICLE_USAGE_EVENTS
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.buildMultilineInsertUsageEvents
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.buildTempTableOfDuplicates
@@ -300,43 +301,57 @@ class AppDataUploadService(
         try {
             if (!semaphore.tryAcquire()) return
             logger.info("Moving data from aurora to event storage.")
-            val queueEntriesByFlavor: MutableMap<PostgresFlavor, MutableList<UsageEventQueueEntry>> = mutableMapOf()
+            val allEntries = mutableListOf<UsageEventQueueEntry>()
             storageResolver.getPlatformStorage().connection.use { platform ->
                 platform.autoCommit = false
                 platform.createStatement().use { stmt ->
                     stmt.executeQuery(getMoveSql(128, UploadType.Android)).use { rs ->
                         while (rs.next()) {
                             val usageEventQueueEntries = ResultSetAdapters.usageEventQueueEntries(rs)
-                            val (flavor, _) = storageResolver.resolveAndGetFlavor(usageEventQueueEntries.studyId)
-                            queueEntriesByFlavor.getOrPut(flavor) { mutableListOf() }
-                                .addAll(usageEventQueueEntries.toEntryList())
+                            allEntries.addAll(usageEventQueueEntries.toEntryList())
                         }
                     }
-                    logger.info("Total number of entries for redshift: ${(queueEntriesByFlavor[PostgresFlavor.REDSHIFT] ?: listOf()).size}")
-                    logger.info("Total number of entries for postgres: ${(queueEntriesByFlavor[PostgresFlavor.VANILLA] ?: listOf()).size}")
-                    queueEntriesByFlavor.forEach { (postgresFlavor, usageEventQueueEntries) ->
-                        if (usageEventQueueEntries.isEmpty()) return@forEach
-                        when (postgresFlavor) {
-                            PostgresFlavor.REDSHIFT -> writeToRedshift(
-                                storageResolver.getEventStorageWithFlavor(PostgresFlavor.REDSHIFT),
-                                usageEventQueueEntries
-                            )
 
-                            PostgresFlavor.VANILLA -> writeToPostgres(
-                                storageResolver.getEventStorageWithFlavor(PostgresFlavor.VANILLA),
-                                usageEventQueueEntries
-                            )
+                    if (allEntries.isNotEmpty()) {
+                        logger.info("Total number of Android entries to move: ${allEntries.size}")
+                        var redshiftSuccess = false
+                        var postgresSuccess = false
 
-                            else -> throw InvalidParameterException("Invalid postgres flavor: ${postgresFlavor.name}")
+                        // Write to Redshift (existing path, backward compat)
+                        try {
+                            val (flavor, hds) = storageResolver.getDefaultEventStorage()
+                            if (flavor == PostgresFlavor.REDSHIFT || flavor == PostgresFlavor.ANY) {
+                                writeToRedshift(hds, allEntries)
+                                redshiftSuccess = true
+                            }
+                        } catch (ex: Exception) {
+                            logger.error("Failed to write to Redshift event storage.", ex)
                         }
+
+                        // Write to Postgres via upsert (new path)
+                        try {
+                            writeToPostgresUpsert(storageResolver.getPlatformStorage(), allEntries)
+                            postgresSuccess = true
+                        } catch (ex: Exception) {
+                            logger.error("Failed to write to Postgres event storage.", ex)
+                        }
+
+                        if (!redshiftSuccess && !postgresSuccess) {
+                            logger.error("Both Redshift and Postgres writes failed for ${allEntries.size} Android entries. Rolling back upload_buffer delete.")
+                            platform.rollback()
+                            platform.autoCommit = true
+                            return
+                        }
+
+                        logger.info("Android write results: redshift={}, postgres={}", redshiftSuccess, postgresSuccess)
                     }
                 }
                 platform.commit()
+                logger.info("Committed upload_buffer delete for ${allEntries.size} Android entries.")
                 platform.autoCommit = true
             }
-            logger.info("Successfully moved data to event storage.")
         } catch (ex: Exception) {
-            logger.info("Unable to move data from aurora to redshift.", ex)
+            logger.info("Unable to move data from aurora to event storage.", ex)
             throw ex
         } finally {
             semaphore.release()
@@ -623,14 +638,70 @@ class AppDataUploadService(
         studyManager.insertOrUpdateParticipantStats(participantStats)
     }
 
-    private fun writeToPostgres(
+    /**
+     * Writes usage events to Postgres using INSERT ... ON CONFLICT (dedup_hash_0, dedup_hash_1) upsert.
+     * The dedup hashes are computed in SQL via hashtextextended with seeds 0 and 1.
+     */
+    private fun writeToPostgresUpsert(
         hds: HikariDataSource,
         data: List<UsageEventQueueEntry>,
     ): Int {
-        return writeToRedshift(
-            hds,
-            data
-        )
+        if (data.isEmpty()) return 0
+
+        return hds.connection.use { connection ->
+            try {
+                val studies = data.map { it.studyId.toString() }.toSet()
+                val participants = data.map { it.participantId }.toSet()
+
+                val insertBatchSize = min(data.size, RS_BATCH_SIZE)
+                val insertSql = PostgresDataTables.buildMultilineUpsertUsageEvents(insertBatchSize)
+                val dr = data.size % RS_BATCH_SIZE
+                val finalInsertSql = if (data.size > RS_BATCH_SIZE && dr != 0) {
+                    PostgresDataTables.buildMultilineUpsertUsageEvents(dr)
+                } else {
+                    insertSql
+                }
+
+                val wc = data.chunked(RS_BATCH_SIZE).sumOf { subList ->
+                    connection.prepareStatement(if (subList.size == insertBatchSize) insertSql else finalInsertSql)
+                        .use { ps ->
+                            var indexBase = 0
+                            subList.forEach { usageEventCols ->
+                                ps.setString(indexBase + 1, usageEventCols.studyId.toString())
+                                ps.setString(indexBase + 2, usageEventCols.participantId)
+                                usageEventCols.data.values.forEach { usageEventCol ->
+                                    val colIndex = indexBase + usageEventCol.colIndex
+                                    val value = usageEventCol.value
+                                    if (value == null) {
+                                        ps.setObject(colIndex, null)
+                                    } else {
+                                        when (usageEventCol.datatype) {
+                                            PostgresDatatype.TEXT -> ps.setString(colIndex, value as String)
+                                            PostgresDatatype.TIMESTAMPTZ -> ps.setObject(colIndex, odtFromUsageEventColumn(value))
+                                            PostgresDatatype.INTEGER -> ps.setInt(colIndex, value as Int)
+                                            PostgresDatatype.BIGINT -> ps.setLong(colIndex, value as Long)
+                                            else -> ps.setObject(colIndex, value)
+                                        }
+                                    }
+                                }
+                                ps.setObject(indexBase + UPLOAD_AT_INDEX, usageEventCols.uploadedAt)
+                                indexBase += CHRONICLE_USAGE_EVENTS.columns.size
+                            }
+                            ps.executeUpdate()
+                        }
+                }
+
+                data.groupBy { it.studyId to it.participantId }.forEach { (key, qe) ->
+                    val (studyId, participantId) = key
+                    updateParticipantStats(qe.map { it.data }, studyId, participantId)
+                }
+
+                return@use wc
+            } catch (ex: Exception) {
+                logger.error("Unable to upsert data to Postgres.", ex)
+                throw ex
+            }
+        }
     }
 }
 

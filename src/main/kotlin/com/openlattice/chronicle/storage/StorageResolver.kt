@@ -26,7 +26,7 @@ class StorageResolver constructor(
         studyStorage.executeOnKey(studyId, StudyStorageUpdate(storage))
     }
 
-    fun resolve(studyId: UUID, requiredFlavor: PostgresFlavor = PostgresFlavor.REDSHIFT): HikariDataSource {
+    fun resolve(studyId: UUID, requiredFlavor: PostgresFlavor = PostgresFlavor.VANILLA): HikariDataSource {
         val (flavor, hds) = resolveAndGetFlavor(studyId)
         check(flavor == PostgresFlavor.ANY || flavor == requiredFlavor) { "Configured flavor $flavor does not much required flavor $requiredFlavor" }
         return hds
@@ -54,7 +54,7 @@ class StorageResolver constructor(
         }
     }
 
-    fun getEventStorageWithFlavor(requiredFlavor: PostgresFlavor = PostgresFlavor.REDSHIFT): HikariDataSource {
+    fun getEventStorageWithFlavor(requiredFlavor: PostgresFlavor = PostgresFlavor.VANILLA): HikariDataSource {
         val (flavor, hds) = getDefaultEventStorage()
         check(flavor == PostgresFlavor.ANY || flavor == requiredFlavor) { "Configured flavor $flavor does not match required flavor $requiredFlavor" }
         return hds
