@@ -19,6 +19,7 @@
  */
 package com.openlattice.chronicle.controllers
 
+import com.fasterxml.jackson.core.JsonProcessingException
 import com.fasterxml.jackson.databind.JsonMappingException
 import com.geekbeast.controllers.exceptions.wrappers.ErrorsDTO
 import com.geekbeast.controllers.util.ApiExceptions
@@ -30,6 +31,7 @@ import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.ids.IdConstants
 import org.apache.commons.io.IOUtils
+import org.eclipse.jetty.io.EofException
 import org.slf4j.LoggerFactory
 import org.springframework.core.Ordered
 import org.springframework.core.annotation.Order
@@ -39,6 +41,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
+import java.nio.charset.StandardCharsets
 import java.util.*
 import javax.inject.Inject
 import javax.servlet.http.HttpServletRequest
@@ -92,19 +95,58 @@ class ChronicleServerExceptionHandler @Inject constructor(override val auditingM
 
     @ExceptionHandler(IllegalArgumentException::class, HttpMessageNotReadableException::class)
     fun handleIllegalArgumentException(req: HttpServletRequest, e: Exception): ResponseEntity<ErrorsDTO> {
-        when (e) {
-            is HttpMessageNotReadableException -> logger.error(
-                "Body that caused error if available: " + IOUtils.toString(
-                    e.httpInputMessage.body
-                )
-            )
-            else -> logger.error("Body is not available.")
+        if (e is HttpMessageNotReadableException) {
+            logHttpMessageNotReadable(req, e)
         }
         logException(req, e)
         return ResponseEntity(
-            ErrorsDTO(ApiExceptions.ILLEGAL_ARGUMENT_EXCEPTION, e.message!!),
+            ErrorsDTO(ApiExceptions.ILLEGAL_ARGUMENT_EXCEPTION, e.message ?: e.javaClass.simpleName),
             HttpStatus.BAD_REQUEST
         )
+    }
+
+    private fun logHttpMessageNotReadable(req: HttpServletRequest, e: HttpMessageNotReadableException) {
+        val jsonMappingException = findCause(e, JsonMappingException::class.java)
+        val jsonProcessingException = findCause(e, JsonProcessingException::class.java)
+        val eofCause = findCause(e, EofException::class.java)
+
+        logger.error(
+            "HttpMessageNotReadable: method={} url={} contentLength={} contentType={} remoteAddr={} jacksonPath={} location={} clientDisconnected={}",
+            req.method,
+            req.requestURL,
+            req.contentLengthLong,
+            req.contentType,
+            req.remoteAddr,
+            jsonMappingException?.pathReference,
+            jsonProcessingException?.location,
+            eofCause != null
+        )
+
+        if (eofCause != null) {
+            logger.error("Client closed connection before sending complete request body; body is not available.")
+            return
+        }
+
+        try {
+            val body = IOUtils.toString(e.httpInputMessage.body, StandardCharsets.UTF_8)
+            if (body.isEmpty()) {
+                logger.error("Request body is empty or already consumed by the message converter; install a ContentCachingRequestWrapper filter to capture it after parsing fails.")
+            } else {
+                logger.error("Request body that caused error: {}", body)
+            }
+        } catch (ex: Exception) {
+            logger.error("Failed to re-read request body after message conversion failure: {}", ex.toString())
+        }
+    }
+
+    private fun <T : Throwable> findCause(e: Throwable, clazz: Class<T>): T? {
+        var cur: Throwable? = e
+        while (cur != null) {
+            if (clazz.isInstance(cur)) return clazz.cast(cur)
+            if (cur.cause === cur) return null
+            cur = cur.cause
+        }
+        return null
     }
 
     @ExceptionHandler(IllegalStateException::class)

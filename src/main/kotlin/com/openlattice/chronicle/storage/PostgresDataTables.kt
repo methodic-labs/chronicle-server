@@ -1,13 +1,18 @@
 package com.openlattice.chronicle.storage
 
 import com.geekbeast.postgres.PostgresColumnDefinition
+import com.geekbeast.postgres.PostgresColumnsIndexDefinition
 import com.geekbeast.postgres.PostgresDatatype
 import com.geekbeast.postgres.PostgresTableDefinition
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.MAX_BIND_PARAMETERS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.END_DATE_TIME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.EXACT_RECORDED_DATE_TIME
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PARTICIPANT_ID
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.RECORDED_DATE_TIME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.SAMPLE_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.START_DATE_TIME
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.STUDY_ID
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMESTAMP
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.UPLOADED_AT
 
 /**
@@ -399,6 +404,17 @@ class PostgresDataTables {
         @JvmStatic
         fun getInsertSensorDataColumnIndex(col: PostgresColumnDefinition): Int {
             return INSERT_SENSOR_DATA_COL_INDICES.getValue(col.name)
+        }
+
+        init {
+            CHRONICLE_USAGE_EVENTS.addIndexes(
+                PostgresColumnsIndexDefinition(CHRONICLE_USAGE_EVENTS, STUDY_ID, PARTICIPANT_ID).ifNotExists(),
+                PostgresColumnsIndexDefinition(CHRONICLE_USAGE_EVENTS, STUDY_ID, PARTICIPANT_ID, TIMESTAMP).ifNotExists()
+            )
+            IOS_SENSOR_DATA.addIndexes(
+                PostgresColumnsIndexDefinition(IOS_SENSOR_DATA, STUDY_ID, PARTICIPANT_ID).ifNotExists(),
+                PostgresColumnsIndexDefinition(IOS_SENSOR_DATA, STUDY_ID, PARTICIPANT_ID, RECORDED_DATE_TIME).ifNotExists()
+            )
         }
     }
 }
