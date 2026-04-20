@@ -49,9 +49,22 @@ class PostgresDataTables {
                 PostgresColumnDefinition(col.name, PostgresDatatype.UUID).notNull()
             else col
 
+        /**
+         * Nativized-type copies of the Redshift column lists. These are the source of truth
+         * for both the Postgres table definitions and the insert/upsert SQL builders — using
+         * them everywhere keeps bind-param casts (`?::uuid`) in sync with the actual column
+         * types. Do not read column types off `RedshiftDataTables.*.columns` for Postgres SQL;
+         * those still carry `varchar(36)` for Redshift compatibility.
+         */
+        private val CHRONICLE_USAGE_EVENTS_MIRRORED_COLUMNS: List<PostgresColumnDefinition> =
+            RedshiftDataTables.CHRONICLE_USAGE_EVENTS.columns.map(::nativizeUuid)
+
+        private val IOS_SENSOR_DATA_MIRRORED_COLUMNS: List<PostgresColumnDefinition> =
+            RedshiftDataTables.IOS_SENSOR_DATA.columns.map(::nativizeUuid)
+
         @JvmField
         val CHRONICLE_USAGE_EVENTS = PostgresTableDefinition(RedshiftDataTables.CHRONICLE_USAGE_EVENTS.name)
-            .addColumns(*RedshiftDataTables.CHRONICLE_USAGE_EVENTS.columns.map(::nativizeUuid).toTypedArray())
+            .addColumns(*CHRONICLE_USAGE_EVENTS_MIRRORED_COLUMNS.toTypedArray())
             .addColumns(DEDUP_HASH_0, DEDUP_HASH_1)
             .setUnique(DEDUP_HASH_0, DEDUP_HASH_1)
             .addDataSourceNames(RedshiftDataTables.REDSHIFT_DATASOURCE_NAME)
@@ -81,7 +94,7 @@ class PostgresDataTables {
 
         @JvmField
         val IOS_SENSOR_DATA = PostgresTableDefinition(RedshiftDataTables.IOS_SENSOR_DATA.name)
-            .addColumns(*RedshiftDataTables.IOS_SENSOR_DATA.columns.map(::nativizeUuid).toTypedArray())
+            .addColumns(*IOS_SENSOR_DATA_MIRRORED_COLUMNS.toTypedArray())
             .addColumns(DEDUP_HASH_0, DEDUP_HASH_1)
             .setUnique(DEDUP_HASH_0, DEDUP_HASH_1)
             .addDataSourceNames(RedshiftDataTables.REDSHIFT_DATASOURCE_NAME)
@@ -108,28 +121,27 @@ class PostgresDataTables {
          * Columns used to compute the dedup hash for usage events.
          * All columns except uploaded_at.
          */
-        private val USAGE_EVENTS_HASH_KEY_COLUMNS: List<PostgresColumnDefinition> by lazy {
-            (RedshiftDataTables.CHRONICLE_USAGE_EVENTS.columns - UPLOADED_AT).toList()
-        }
+        private val USAGE_EVENTS_HASH_KEY_COLUMNS: List<PostgresColumnDefinition> =
+            CHRONICLE_USAGE_EVENTS_MIRRORED_COLUMNS.filterNot { it.name == UPLOADED_AT.name }
 
         /**
-         * Columns excluded from the sensor data dedup hash.
-         * These are columns whose values legitimately differ between duplicate uploads
-         * (sample_id is unreliable, date bounds may vary across invocations).
+         * Column names excluded from the sensor data dedup hash.
+         * Name-based (not instance-based) so overridden column types don't break the exclusion.
+         * These values legitimately differ between duplicate uploads:
+         * sample_id is unreliable, date bounds may vary across invocations.
          */
-        private val SENSOR_DATA_EXCLUDED_FROM_HASH: Set<PostgresColumnDefinition> = setOf(
-            SAMPLE_ID,
-            START_DATE_TIME,
-            END_DATE_TIME,
-            EXACT_RECORDED_DATE_TIME
+        private val SENSOR_DATA_EXCLUDED_FROM_HASH: Set<String> = setOf(
+            SAMPLE_ID.name,
+            START_DATE_TIME.name,
+            END_DATE_TIME.name,
+            EXACT_RECORDED_DATE_TIME.name
         )
 
         /**
          * Columns used to compute the dedup hash for iOS sensor data.
          */
-        private val SENSOR_DATA_HASH_KEY_COLUMNS: List<PostgresColumnDefinition> by lazy {
-            (RedshiftDataTables.IOS_SENSOR_DATA.columns - SENSOR_DATA_EXCLUDED_FROM_HASH).toList()
-        }
+        private val SENSOR_DATA_HASH_KEY_COLUMNS: List<PostgresColumnDefinition> =
+            IOS_SENSOR_DATA_MIRRORED_COLUMNS.filterNot { it.name in SENSOR_DATA_EXCLUDED_FROM_HASH }
 
         // ========== Hash & Collision Guard Helpers ==========
 
@@ -204,7 +216,7 @@ class PostgresDataTables {
          */
         @JvmStatic
         fun buildMultilineUpsertUsageEvents(numLines: Int): String {
-            val originalColumns = RedshiftDataTables.CHRONICLE_USAGE_EVENTS.columns.toList()
+            val originalColumns = CHRONICLE_USAGE_EVENTS_MIRRORED_COLUMNS
             check((originalColumns.size * numLines) < MAX_BIND_PARAMETERS) {
                 "Maximum number of postgres bind parameters would be exceeded with $numLines lines"
             }
@@ -262,7 +274,7 @@ class PostgresDataTables {
          */
         @JvmStatic
         fun buildMultilineUpsertSensorEvents(numLines: Int): String {
-            val originalColumns = RedshiftDataTables.IOS_SENSOR_DATA.columns.toList()
+            val originalColumns = IOS_SENSOR_DATA_MIRRORED_COLUMNS
             check((originalColumns.size * numLines) < MAX_BIND_PARAMETERS) {
                 "Maximum number of postgres bind parameters would be exceeded with $numLines lines"
             }
@@ -348,14 +360,17 @@ class PostgresDataTables {
          */
         @JvmStatic
         fun buildFdwMigrationUsageEventsSql(foreignSchema: String): String {
-            val originalColumns = RedshiftDataTables.CHRONICLE_USAGE_EVENTS.columns.toList()
+            val originalColumns = CHRONICLE_USAGE_EVENTS_MIRRORED_COLUMNS
             val tableName = RedshiftDataTables.CHRONICLE_USAGE_EVENTS.name
             val foreignTable = "$foreignSchema.$tableName"
             val (hash0, hash1) = buildHashExpressions(USAGE_EVENTS_HASH_KEY_COLUMNS)
 
             val insertCols = originalColumns.joinToString(", ") { it.name } + ", $DEDUP_HASH_COLUMNS_SQL"
-            val selectCols = originalColumns.joinToString(", ") { it.name } +
-                    ",\n       $hash0,\n       $hash1"
+            // Cast varchar(36) -> uuid where the target column was nativized; the foreign
+            // table still exposes Redshift's varchar(36).
+            val selectCols = originalColumns.joinToString(", ") { col ->
+                if (col.datatype == PostgresDatatype.UUID) "${col.name}::uuid" else col.name
+            } + ",\n       $hash0,\n       $hash1"
             val collisionGuard = buildCollisionGuard(tableName, USAGE_EVENTS_HASH_KEY_COLUMNS)
 
             return """
@@ -376,14 +391,15 @@ class PostgresDataTables {
          */
         @JvmStatic
         fun buildFdwMigrationSensorDataSql(foreignSchema: String): String {
-            val originalColumns = RedshiftDataTables.IOS_SENSOR_DATA.columns.toList()
+            val originalColumns = IOS_SENSOR_DATA_MIRRORED_COLUMNS
             val tableName = RedshiftDataTables.IOS_SENSOR_DATA.name
             val foreignTable = "$foreignSchema.$tableName"
             val (hash0, hash1) = buildHashExpressions(SENSOR_DATA_HASH_KEY_COLUMNS)
 
             val insertCols = originalColumns.joinToString(", ") { it.name } + ", $DEDUP_HASH_COLUMNS_SQL"
-            val selectCols = originalColumns.joinToString(", ") { it.name } +
-                    ",\n       $hash0,\n       $hash1"
+            val selectCols = originalColumns.joinToString(", ") { col ->
+                if (col.datatype == PostgresDatatype.UUID) "${col.name}::uuid" else col.name
+            } + ",\n       $hash0,\n       $hash1"
 
             val conflictUpdate = listOf(
                 "${SAMPLE_ID.name} = LEAST($tableName.${SAMPLE_ID.name}, EXCLUDED.${SAMPLE_ID.name})",
