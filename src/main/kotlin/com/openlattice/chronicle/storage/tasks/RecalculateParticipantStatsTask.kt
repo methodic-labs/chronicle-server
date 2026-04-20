@@ -89,7 +89,10 @@ class RecalculateParticipantStatsTask : HazelcastFixedRateTask<RecalculatePartic
                     sql,
                     fetchSize = 65536,
                 ) {
-                    it.setString(1, studyId.toString())
+                    when (flavor) {
+                        PostgresFlavor.REDSHIFT -> it.setString(1, studyId.toString())
+                        else -> it.setObject(1, studyId)
+                    }
                 }
             ) {
                 ParticipantKey(

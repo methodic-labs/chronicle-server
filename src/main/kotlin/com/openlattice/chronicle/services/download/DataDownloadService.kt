@@ -1,5 +1,6 @@
 package com.openlattice.chronicle.services.download
 
+import com.geekbeast.configuration.postgres.PostgresFlavor
 import com.geekbeast.postgres.PostgresArrays
 import com.geekbeast.postgres.PostgresColumnDefinition
 import com.geekbeast.postgres.PostgresDatatype
@@ -37,6 +38,7 @@ import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.PREPROCESS
 import com.openlattice.chronicle.storage.StorageResolver
 import com.openlattice.chronicle.util.ChronicleServerUtil
 import org.slf4j.LoggerFactory
+import java.sql.PreparedStatement
 import java.sql.ResultSet
 import java.time.OffsetDateTime
 import java.time.ZoneId
@@ -95,6 +97,19 @@ class DataDownloadService(
 
         private const val FETCH_SIZE = 32768
 
+        /**
+         * Binds a studyId parameter against the mirrored data tables. Redshift's
+         * study_id is varchar(36); native Postgres uses uuid. Using setString against
+         * a uuid column fails with "operator does not exist: uuid = character varying",
+         * so pick the binding that matches the backing store.
+         */
+        private fun bindStudyId(ps: PreparedStatement, index: Int, studyId: UUID, flavor: PostgresFlavor) {
+            when (flavor) {
+                PostgresFlavor.REDSHIFT -> ps.setString(index, studyId.toString())
+                else -> ps.setObject(index, studyId)
+            }
+        }
+
         fun associateString(rs: ResultSet, pcd: PostgresColumnDefinition) = pcd.name to rs.getString(pcd.name)
         fun associateInteger(rs: ResultSet, pcd: PostgresColumnDefinition) = pcd.name to rs.getInt(pcd.name)
         fun associateDouble(rs: ResultSet, pcd: PostgresColumnDefinition) = pcd.name to rs.getDouble(pcd.name)
@@ -152,7 +167,7 @@ class DataDownloadService(
                 CHRONICLE_USAGE_EVENT_SQL,
                 FETCH_SIZE
             ) { ps ->
-                ps.setString(1, studyId.toString())
+                bindStudyId(ps, 1, studyId, flavor)
                 ps.setString(2, participantId)
             }) { rs ->
             mapOf(
@@ -199,7 +214,7 @@ class DataDownloadService(
             return listOf()
         }
 
-        val (_, hds) = storageResolver.resolveAndGetFlavor(studyId)
+        val (flavor, hds) = storageResolver.resolveAndGetFlavor(studyId)
         val colsAndSql = getSensorDataColsAndSql(sensors)
         val cols = colsAndSql.first
         val sql = colsAndSql.second
@@ -211,7 +226,7 @@ class DataDownloadService(
                 FETCH_SIZE
             ) { ps ->
                 var index = 0
-                ps.setString(++index, studyId.toString())
+                bindStudyId(ps, ++index, studyId, flavor)
                 ps.setArray(++index, PostgresArrays.createTextArray(ps.connection, participantIds))
                 ps.setArray(++index, PostgresArrays.createTextArray(ps.connection, sensors.map { it.name }))
                 ps.setObject(++index, startDateTime)
@@ -271,7 +286,7 @@ class DataDownloadService(
         startDateTime: OffsetDateTime,
         endDateTime: OffsetDateTime
     ): Iterable<Map<String, Any>> {
-        val (_, hds) = storageResolver.resolveAndGetFlavor(studyId)
+        val (flavor, hds) = storageResolver.resolveAndGetFlavor(studyId)
         val pgIter = BasePostgresIterable<Map<String, Any>>(
             PreparedStatementHolderSupplier(
                 hds,
@@ -279,7 +294,7 @@ class DataDownloadService(
                 FETCH_SIZE
             ) { ps ->
                 var index = 0
-                ps.setString(++index, studyId.toString())
+                bindStudyId(ps, ++index, studyId, flavor)
                 ps.setArray(++index, PostgresArrays.createTextArray(ps.connection, participantIds))
                 ps.setObject(++index, startDateTime)
                 ps.setObject(++index, endDateTime)
@@ -318,7 +333,7 @@ class DataDownloadService(
                 FETCH_SIZE
             ) { ps ->
                 var index = 0
-                ps.setString(++index, studyId.toString())
+                ps.setObject(++index, studyId)
                 ps.setArray(++index, PostgresArrays.createTextArray(ps.connection, participantIds))
                 ps.setObject(++index, startDateTime)
                 ps.setObject(++index, endDateTime)
@@ -331,6 +346,7 @@ class DataDownloadService(
                     PostgresDatatype.TEXT_256 -> associateString(rs, it)
                     PostgresDatatype.TIMESTAMPTZ -> associateOffsetDatetimeWithTimezone(rs, APP_TIMEZONE, it)
                     PostgresDatatype.TEXT_UUID -> associateString(rs, it)
+                    PostgresDatatype.UUID -> associateString(rs, it)
                     PostgresDatatype.INTEGER -> associateInteger(rs, it)
                     PostgresDatatype.DOUBLE -> associateDouble(rs, it)
                     else -> throw RuntimeException("Invalid column type: ${it.datatype}")

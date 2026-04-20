@@ -35,6 +35,29 @@ class RedshiftAuditingManager(private val storageResolver: StorageResolver) : Au
         private const val RS_BATCH_SIZE = 32767 / 10 // 32767 / AUDIT.columns.size
 
         /**
+         * Index of acl_key in the ordered AUDIT column list. Used to special-case
+         * the hex-concat → uuid[] transformation when writing to the Postgres audit
+         * table (which stores acl_key as uuid[] rather than varchar).
+         */
+        private val ACL_KEY_INDEX = AUDIT.columns.toList().indexOfFirst { it.name == RedshiftColumns.ACL_KEY.name }
+
+        /**
+         * Rebuilds the hyphen-stripped 32-char-per-uuid concat form written by
+         * AclKey.index into a Postgres uuid[] array literal ({u1,u2,...}) suitable
+         * for a ?::uuid[] bind. Empty input yields an empty array literal.
+         */
+        private fun aclKeyHexToPgArrayLiteral(concatHex: String): String {
+            if (concatHex.isEmpty()) return "{}"
+            require(concatHex.length % 32 == 0) {
+                "acl_key index length must be a multiple of 32, got ${concatHex.length}"
+            }
+            val uuids = concatHex.chunked(32).joinToString(",") { hex ->
+                "${hex.substring(0, 8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-${hex.substring(16, 20)}-${hex.substring(20, 32)}"
+            }
+            return "{$uuids}"
+        }
+
+        /**
          * 1. acl key
          * 2. securable principal id
          * 3. principal type
@@ -193,9 +216,11 @@ class RedshiftAuditingManager(private val storageResolver: StorageResolver) : Au
                             subList.forEach { auditRow ->
                                 auditRow.forEachIndexed { index, elem ->
                                     val pgIndex = indexBase + index + 1
-                                    when (elem) {
-                                        is String -> ps.setString(pgIndex, elem)
-                                        is OffsetDateTime -> ps.setObject(pgIndex, elem)
+                                    when {
+                                        index == ACL_KEY_INDEX && elem is String ->
+                                            ps.setString(pgIndex, aclKeyHexToPgArrayLiteral(elem))
+                                        elem is String -> ps.setString(pgIndex, elem)
+                                        elem is OffsetDateTime -> ps.setObject(pgIndex, elem)
                                         else -> throw InvalidParameterException("Unexpected class in audit row.")
                                     }
                                 }

@@ -5,6 +5,7 @@ import com.geekbeast.postgres.PostgresColumnsIndexDefinition
 import com.geekbeast.postgres.PostgresDatatype
 import com.geekbeast.postgres.PostgresTableDefinition
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.MAX_BIND_PARAMETERS
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_DATETIME_START
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.END_DATE_TIME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.EXACT_RECORDED_DATE_TIME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PARTICIPANT_ID
@@ -36,30 +37,71 @@ class PostgresDataTables {
 
         private const val DEDUP_HASH_COLUMNS_SQL = "dedup_hash_0, dedup_hash_1"
 
+        /**
+         * Upgrades Redshift-compat varchar(36) uuid columns to native Postgres uuid (16 bytes).
+         * TEXT_UUID is a kludge that exists only because Redshift lacks a uuid type; on Postgres
+         * the native uuid is smaller on disk, faster to compare, and indexes more densely.
+         * All TEXT_UUID columns in the mirrored tables are NOT NULL, so the replacement
+         * preserves that constraint.
+         */
+        private fun nativizeUuid(col: PostgresColumnDefinition): PostgresColumnDefinition =
+            if (col.datatype == PostgresDatatype.TEXT_UUID)
+                PostgresColumnDefinition(col.name, PostgresDatatype.UUID).notNull()
+            else col
+
         @JvmField
         val CHRONICLE_USAGE_EVENTS = PostgresTableDefinition(RedshiftDataTables.CHRONICLE_USAGE_EVENTS.name)
-            .addColumns(*RedshiftDataTables.CHRONICLE_USAGE_EVENTS.columns.toTypedArray())
+            .addColumns(*RedshiftDataTables.CHRONICLE_USAGE_EVENTS.columns.map(::nativizeUuid).toTypedArray())
             .addColumns(DEDUP_HASH_0, DEDUP_HASH_1)
             .setUnique(DEDUP_HASH_0, DEDUP_HASH_1)
             .addDataSourceNames(RedshiftDataTables.REDSHIFT_DATASOURCE_NAME)
 
         @JvmField
         val CHRONICLE_USAGE_STATS = PostgresTableDefinition(RedshiftDataTables.CHRONICLE_USAGE_STATS.name)
-            .addColumns(*RedshiftDataTables.CHRONICLE_USAGE_STATS.columns.toTypedArray())
+            .addColumns(*RedshiftDataTables.CHRONICLE_USAGE_STATS.columns.map(::nativizeUuid).toTypedArray())
             .addColumns(DEDUP_HASH_0, DEDUP_HASH_1)
             .setUnique(DEDUP_HASH_0, DEDUP_HASH_1)
             .addDataSourceNames(RedshiftDataTables.REDSHIFT_DATASOURCE_NAME)
 
         @JvmField
         val AUDIT = PostgresTableDefinition(RedshiftDataTables.AUDIT.name)
-            .addColumns(*RedshiftDataTables.AUDIT.columns.toTypedArray())
+            .addColumns(
+                *RedshiftDataTables.AUDIT.columns.map { col ->
+                    when (col.name) {
+                        // acl_key is a serialized UUID path on Redshift (varchar(256) of
+                        // hyphen-stripped 32-char hex chunks concatenated). On Postgres we
+                        // store it natively as uuid[] — smaller, faster, queryable with
+                        // containment operators.
+                        "acl_key" -> PostgresColumnDefinition("acl_key", PostgresDatatype.UUID_ARRAY).notNull()
+                        else -> nativizeUuid(col)
+                    }
+                }.toTypedArray()
+            )
             .addDataSourceNames(RedshiftDataTables.REDSHIFT_DATASOURCE_NAME)
 
         @JvmField
         val IOS_SENSOR_DATA = PostgresTableDefinition(RedshiftDataTables.IOS_SENSOR_DATA.name)
-            .addColumns(*RedshiftDataTables.IOS_SENSOR_DATA.columns.toTypedArray())
+            .addColumns(*RedshiftDataTables.IOS_SENSOR_DATA.columns.map(::nativizeUuid).toTypedArray())
             .addColumns(DEDUP_HASH_0, DEDUP_HASH_1)
             .setUnique(DEDUP_HASH_0, DEDUP_HASH_1)
+            .addDataSourceNames(RedshiftDataTables.REDSHIFT_DATASOURCE_NAME)
+
+        /**
+         * Mirror of the Redshift preprocessed_usage_events table. The upstream preprocessing
+         * writer is responsible for dedup, so this table has no dedup hash columns or
+         * uniqueness constraints beyond what the writer enforces.
+         * run_id is relaxed from varchar(128) to text since the writer imposes no fixed length.
+         */
+        @JvmField
+        val PREPROCESSED_USAGE_EVENTS = PostgresTableDefinition(RedshiftDataTables.PREPROCESSED_USAGE_EVENTS.name)
+            .addColumns(
+                *RedshiftDataTables.PREPROCESSED_USAGE_EVENTS.columns.map { col ->
+                    when (col.name) {
+                        "run_id" -> PostgresColumnDefinition("run_id", PostgresDatatype.TEXT)
+                        else -> nativizeUuid(col)
+                    }
+                }.toTypedArray()
+            )
             .addDataSourceNames(RedshiftDataTables.REDSHIFT_DATASOURCE_NAME)
 
         /**
@@ -279,15 +321,17 @@ class PostgresDataTables {
          */
         @JvmStatic
         fun buildMultilineInsertAuditEvents(numLines: Int): String {
-            val columns = RedshiftDataTables.AUDIT.columns.toList()
+            // Use the local Postgres column types (uuid, not TEXT_UUID) so the bind sites can
+            // keep using setString(uuid.toString()) — the ?::uuid cast coerces it server-side.
+            val columns = AUDIT.columns.toList()
             check((columns.size * numLines) < MAX_BIND_PARAMETERS) {
                 "Maximum number of postgres bind parameters would be exceeded with $numLines lines"
             }
 
-            val tableName = RedshiftDataTables.AUDIT.name
+            val tableName = AUDIT.name
             val colNames = columns.joinToString(", ") { it.name }
-            val params = columns.joinToString(", ") { "?" }
-            val line = "($params)"
+            val typedParams = columns.joinToString(", ") { "?::${it.datatype.sql()}" }
+            val line = "($typedParams)"
             val lines = (1..numLines).joinToString(",\n") { line }
 
             return "INSERT INTO $tableName ($colNames) VALUES\n$lines"
@@ -409,11 +453,23 @@ class PostgresDataTables {
         init {
             CHRONICLE_USAGE_EVENTS.addIndexes(
                 PostgresColumnsIndexDefinition(CHRONICLE_USAGE_EVENTS, STUDY_ID, PARTICIPANT_ID).ifNotExists(),
-                PostgresColumnsIndexDefinition(CHRONICLE_USAGE_EVENTS, STUDY_ID, PARTICIPANT_ID, TIMESTAMP).ifNotExists()
+                // Explicit short name: the auto-generated name would exceed Postgres's 63-byte
+                // identifier limit and get silently truncated, risking drift with manually-created indices.
+                PostgresColumnsIndexDefinition(CHRONICLE_USAGE_EVENTS, STUDY_ID, PARTICIPANT_ID, TIMESTAMP)
+                    .name("chronicle_usage_events_study_id_participant_id_ts_idx")
+                    .ifNotExists()
             )
             IOS_SENSOR_DATA.addIndexes(
                 PostgresColumnsIndexDefinition(IOS_SENSOR_DATA, STUDY_ID, PARTICIPANT_ID).ifNotExists(),
                 PostgresColumnsIndexDefinition(IOS_SENSOR_DATA, STUDY_ID, PARTICIPANT_ID, RECORDED_DATE_TIME).ifNotExists()
+            )
+            PREPROCESSED_USAGE_EVENTS.addIndexes(
+                PostgresColumnsIndexDefinition(PREPROCESSED_USAGE_EVENTS, STUDY_ID, PARTICIPANT_ID).ifNotExists(),
+                // Explicit short name: the auto-generated name would exceed Postgres's 63-byte
+                // identifier limit and get silently truncated.
+                PostgresColumnsIndexDefinition(PREPROCESSED_USAGE_EVENTS, STUDY_ID, PARTICIPANT_ID, APP_DATETIME_START)
+                    .name("preprocessed_usage_events_study_id_participant_id_start_idx")
+                    .ifNotExists()
             )
         }
     }

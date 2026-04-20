@@ -152,6 +152,29 @@ CREATE FOREIGN TABLE IF NOT EXISTS redshift_fdw.audit (
 SERVER redshift
 OPTIONS (schema_name 'public', table_name 'audit');
 
+-- 5e: preprocessed_usage_events
+CREATE FOREIGN TABLE IF NOT EXISTS redshift_fdw.preprocessed_usage_events (
+    run_id                  varchar(128),
+    study_id                varchar(36) NOT NULL,
+    participant_id          text NOT NULL,
+    app_record_type         text,
+    app_title               text NOT NULL,
+    app_full_name           text NOT NULL,
+    app_datetime_start      timestamptz,
+    app_datetime_end        timestamptz,
+    app_timezone            text,
+    app_duration_seconds    double precision,
+    day                     integer,
+    "weekdayMF"             integer,
+    "weekdayMTh"            integer,
+    "weekdaySTh"            integer,
+    app_engage_30s          integer,
+    app_switched_app        integer,
+    app_usage_flags         text
+)
+SERVER redshift
+OPTIONS (schema_name 'public', table_name 'preprocessed_usage_events');
+
 -- Step 6: Verify access
 -- Run these to confirm the foreign tables are accessible:
 
@@ -159,6 +182,7 @@ OPTIONS (schema_name 'public', table_name 'audit');
 -- SELECT count(*) FROM redshift_fdw.chronicle_usage_stats LIMIT 1;
 -- SELECT count(*) FROM redshift_fdw.sensor_data LIMIT 1;
 -- SELECT count(*) FROM redshift_fdw.audit LIMIT 1;
+-- SELECT count(*) FROM redshift_fdw.preprocessed_usage_events LIMIT 1;
 
 -- Step 7: Tune for large migrations (optional)
 -- Increase fetch_size for better throughput on large scans:

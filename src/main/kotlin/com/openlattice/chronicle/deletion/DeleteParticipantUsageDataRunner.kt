@@ -4,6 +4,7 @@ package com.openlattice.chronicle.deletion
  * @author Solomon Tang <solomon@openlattice.com>
  */
 
+import com.geekbeast.configuration.postgres.PostgresFlavor
 import com.geekbeast.postgres.PostgresArrays
 import com.geekbeast.rhizome.jobs.JobStatus
 import com.openlattice.chronicle.auditing.AuditEventType
@@ -38,12 +39,12 @@ class DeleteParticipantUsageDataRunner(
 
     override fun runJob(connection: Connection, job: ChronicleJob): List<AuditableEvent> {
         // delete usage data from redshift with separate connection
-        val (_, eventHds) = storageResolver.getDefaultEventStorage()
+        val (flavor, eventHds) = storageResolver.getDefaultEventStorage()
 
         job.definition as DeleteParticipantUsageData
 
         val deletedRows = eventHds.connection.use { eventConnection ->
-            deleteParticipantUsageData(eventConnection, job.definition)
+            deleteParticipantUsageData(eventConnection, job.definition, flavor)
         }
 
         // update jobData to include deletedRows
@@ -67,10 +68,17 @@ class DeleteParticipantUsageDataRunner(
     }
 
     // Delete participant usage data from event storage and return count of deleted rows
-    private fun deleteParticipantUsageData(connection: Connection, jobDefinition: DeleteParticipantUsageData): Long {
+    private fun deleteParticipantUsageData(
+        connection: Connection,
+        jobDefinition: DeleteParticipantUsageData,
+        flavor: PostgresFlavor
+    ): Long {
         logger.info("Deleting usage data with studyId = {} for participantIds = {}", jobDefinition.studyId, jobDefinition.participantIds)
         return connection.prepareStatement(DELETE_PARTICIPANT_USAGE_DATA_SQL).use { ps ->
-            ps.setObject(1, jobDefinition.studyId.toString())
+            when (flavor) {
+                PostgresFlavor.REDSHIFT -> ps.setString(1, jobDefinition.studyId.toString())
+                else -> ps.setObject(1, jobDefinition.studyId)
+            }
             val pgParticipantIds = PostgresArrays.createTextArray(ps.connection, jobDefinition.participantIds)
             ps.setArray(2, pgParticipantIds)
             ps.executeUpdate().toLong()
