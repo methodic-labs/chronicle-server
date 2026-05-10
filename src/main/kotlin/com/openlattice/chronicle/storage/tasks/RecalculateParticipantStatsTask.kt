@@ -1,137 +1,66 @@
 package com.openlattice.chronicle.storage.tasks
 
-import com.geekbeast.postgres.streams.BasePostgresIterable
-import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
+import com.geekbeast.configuration.postgres.PostgresFlavor
 import com.geekbeast.tasks.HazelcastFixedRateTask
 import com.geekbeast.tasks.Task
-import com.google.common.util.concurrent.ListeningExecutorService
-import com.google.common.util.concurrent.MoreExecutors
-import com.openlattice.chronicle.mapstores.stats.ParticipantKey
-import com.openlattice.chronicle.participants.ParticipantStats
-import com.openlattice.chronicle.postgres.ResultSetAdapters
-import com.openlattice.chronicle.services.studies.StudyManager
-import com.geekbeast.configuration.postgres.PostgresFlavor
 import com.openlattice.chronicle.storage.PostgresDataTables
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.PARTICIPANT_ID
-import com.openlattice.chronicle.storage.RedshiftColumns.Companion.STUDY_ID
-import com.openlattice.chronicle.storage.RedshiftDataTables
-import com.zaxxer.hikari.HikariDataSource
 import org.slf4j.LoggerFactory
-import java.security.InvalidParameterException
-import java.util.*
-import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
-import java.util.concurrent.TimeoutException
 
 /**
+ * Monthly true-up of `participant_stats.{ios,android}_unique_dates`.
+ *
+ * Incremental updates happen at ingestion time (`AppDataUploadService.updateParticipantStats` for
+ * Android, `MoveToIosEventStorageTask.updateParticipantStats` for iOS) and flow through the
+ * `participantStats` IMap with a 5-second write-behind. This task exists to recover any dates that
+ * the incremental path missed (crashes, races, late uploads inside the lookback window).
+ *
+ * The previous 12-hour, per-study, full-history streaming scan was the dominant Aurora read load.
+ * This replacement is a single bounded SQL upsert per platform with `ON CONFLICT` set-union, so
+ * older dates and concurrently-merged dates are preserved.
  *
  * @author Matthew Tamayo-Rios &lt;matthew@openlattice.com&gt;
  */
 class RecalculateParticipantStatsTask : HazelcastFixedRateTask<RecalculateParticipantStatsTaskDependencies> {
     companion object {
         private val logger = LoggerFactory.getLogger(RecalculateParticipantStatsTask::class.java)
-
-        private val executor: ListeningExecutorService =
-            MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(1))
     }
 
-    override fun getInitialDelay(): Long = 0
-
-    override fun getPeriod(): Long = 12
-
-    override fun getTimeUnit(): TimeUnit = TimeUnit.HOURS
-
-    override fun runTask() {
-        val f = executor.submit {
-            recalculateParticipantStats()
-        }
-        try {
-            f.get(4, TimeUnit.HOURS)
-        } catch (timeoutException: TimeoutException) {
-            logger.error("Timed out after one hour when recalculating participant stats", timeoutException)
-            f.cancel(true)
-        } catch (ex: Exception) {
-            logger.error("Exception when recalculating participant stats.", ex)
-        }
-    }
-
+    override fun getInitialDelay(): Long = 1
+    override fun getPeriod(): Long = 30
+    override fun getTimeUnit(): TimeUnit = TimeUnit.DAYS
     override fun getName(): String = Task.RECALCULATE_PARTICIPANT_STATS.name
     override fun getDependenciesClass(): Class<out RecalculateParticipantStatsTaskDependencies> =
         RecalculateParticipantStatsTaskDependencies::class.java
 
-    private fun recalculateParticipantStats() {
-        logger.info("Starting recalculation of participant stats...")
-        with(getDependency()) {
-            val (flavor, events) = storageResolver.getDefaultEventStorage()
-            val studyIds = studyService.getAllStudyIds()
-            recalculateParticipantStats(studyService, studyIds, events, ParticipantStat.Ios, flavor)
-            recalculateParticipantStats(studyService, studyIds, events, ParticipantStat.Android, flavor)
-        }
-    }
+    override fun runTask() {
+        try {
+            with(getDependency()) {
+                val (flavor, _) = storageResolver.getDefaultEventStorage()
+                if (flavor == PostgresFlavor.REDSHIFT) {
+                    logger.warn("Skipping participant stats reconciliation: only supported on Postgres-flavor event storage.")
+                    return
+                }
 
-    private fun recalculateParticipantStats(
-        studyService: StudyManager,
-        studyIds: Iterable<UUID>,
-        hds: HikariDataSource,
-        statType: ParticipantStat,
-        flavor: PostgresFlavor
-    ) {
-        val sql = when (statType) {
-            ParticipantStat.Ios -> if (flavor == PostgresFlavor.REDSHIFT) RedshiftDataTables.participantStatsIosSql else PostgresDataTables.participantStatsIosSql
-            ParticipantStat.Android -> if (flavor == PostgresFlavor.REDSHIFT) RedshiftDataTables.participantStatsAndroidSql else PostgresDataTables.participantStatsAndroidSql
-            ParticipantStat.Tud -> throw InvalidParameterException("Not yet implemented for time use diary.")
-        }
-        studyIds.asSequence().forEach { studyId ->
-            logger.info("Recalculating participant stats for study $studyId")
-            BasePostgresIterable(
-                PreparedStatementHolderSupplier(
-                    hds,
-                    sql,
-                    fetchSize = 65536,
-                ) {
-                    when (flavor) {
-                        PostgresFlavor.REDSHIFT -> it.setString(1, studyId.toString())
-                        else -> it.setObject(1, studyId)
+                logger.info(
+                    "Starting {}-day participant stats reconciliation...",
+                    PostgresDataTables.PARTICIPANT_STATS_RECONCILE_LOOKBACK_DAYS
+                )
+
+                storageResolver.getPlatformStorage().connection.use { connection ->
+                    connection.createStatement().use { stmt ->
+                        val ios = stmt.executeUpdate(PostgresDataTables.reconcileIosParticipantStatsSql)
+                        logger.info("Reconciled iOS unique dates for {} (study, participant) rows.", ios)
+                        val android = stmt.executeUpdate(PostgresDataTables.reconcileAndroidParticipantStatsSql)
+                        logger.info("Reconciled Android unique dates for {} (study, participant) rows.", android)
                     }
                 }
-            ) {
-                ParticipantKey(
-                    UUID.fromString(it.getString(STUDY_ID.name)),
-                    it.getString(PARTICIPANT_ID.name)
-                ) to ResultSetAdapters.uniqueDates(it)
+
+                studyService.evictParticipantStatsCache()
+                logger.info("Completed participant stats reconciliation.")
             }
-                .toMap()
-                .forEach {
-                    studyService.insertOrUpdateParticipantStats(
-                        when (statType) {
-                            ParticipantStat.Ios -> ParticipantStats(
-                                studyId = it.key.studyId,
-                                participantId = it.key.participantId,
-                                iosUniqueDates = it.value
-                            )
-
-                            ParticipantStat.Android -> ParticipantStats(
-                                studyId = it.key.studyId,
-                                participantId = it.key.participantId,
-                                androidUniqueDates = it.value
-                            )
-//This one won't get used for a while.
-                            ParticipantStat.Tud -> ParticipantStats(
-                                studyId = it.key.studyId,
-                                participantId = it.key.participantId,
-                                tudUniqueDates = it.value
-                            )
-
-                        }
-                    )
-                }
-
+        } catch (ex: Exception) {
+            logger.error("Exception during participant stats reconciliation.", ex)
         }
     }
-}
-
-internal enum class ParticipantStat {
-    Android,
-    Ios,
-    Tud
 }

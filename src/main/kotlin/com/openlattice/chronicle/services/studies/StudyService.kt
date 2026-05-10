@@ -748,6 +748,13 @@ class StudyService(
         val key = ParticipantKey(stats.studyId, stats.participantId)
 
         participantStats.executeOnKey(key, ParticipantStatsMerger(stats))
+    }
+
+    override fun evictParticipantStatsCache() {
+        // Mapstore upsert merges via array set-union (declared in unionColumns), so pending
+        // write-behind entries can no longer clobber reconciliation results — flush() is not
+        // needed. evictAll forces subsequent reads to load reconciled values from Postgres.
+        participantStats.evictAll()
 //        storageResolver.getPlatformStorage().connection.use { connection ->
 //            connection.prepareStatement(INSERT_OR_UPDATE_PARTICIPANT_STATS).use { ps ->
 //                val androidDatesArr =
