@@ -2,6 +2,7 @@ package com.openlattice.chronicle.auditing
 
 import com.geekbeast.configuration.postgres.PostgresFlavor
 import com.geekbeast.mappers.mappers.ObjectMappers
+import com.geekbeast.postgres.PostgresArrays
 import com.geekbeast.postgres.PostgresDatatype
 import com.geekbeast.util.StopWatch
 import com.google.common.util.concurrent.MoreExecutors
@@ -15,6 +16,7 @@ import org.slf4j.LoggerFactory
 import java.security.InvalidParameterException
 import java.sql.PreparedStatement
 import java.time.OffsetDateTime
+import java.util.UUID
 import java.util.concurrent.Executors
 import java.util.concurrent.Semaphore
 import kotlin.math.min
@@ -43,18 +45,19 @@ class RedshiftAuditingManager(private val storageResolver: StorageResolver) : Au
 
         /**
          * Rebuilds the hyphen-stripped 32-char-per-uuid concat form written by
-         * AclKey.index into a Postgres uuid[] array literal ({u1,u2,...}) suitable
-         * for a ?::uuid[] bind. Empty input yields an empty array literal.
+         * AclKey.index into a list of UUIDs for a real Postgres uuid[] array bind
+         * (via PostgresArrays.createUuidArray). Empty input yields an empty list.
          */
-        private fun aclKeyHexToPgArrayLiteral(concatHex: String): String {
-            if (concatHex.isEmpty()) return "{}"
+        private fun aclKeyHexToUuids(concatHex: String): List<UUID> {
+            if (concatHex.isEmpty()) return emptyList()
             require(concatHex.length % 32 == 0) {
                 "acl_key index length must be a multiple of 32, got ${concatHex.length}"
             }
-            val uuids = concatHex.chunked(32).joinToString(",") { hex ->
-                "${hex.substring(0, 8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-${hex.substring(16, 20)}-${hex.substring(20, 32)}"
+            return concatHex.chunked(32).map { hex ->
+                UUID.fromString(
+                    "${hex.substring(0, 8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-${hex.substring(16, 20)}-${hex.substring(20, 32)}"
+                )
             }
-            return "{$uuids}"
         }
 
         /**
@@ -153,8 +156,12 @@ class RedshiftAuditingManager(private val storageResolver: StorageResolver) : Au
 
                 //Commit to redshift and then commit delete. At some point we should make this so that duplicates are deleted from redshift audit log
 
-                // Write to Redshift (existing path)
-                try {
+                // Write to Redshift (existing path) — only when audit storage is actually Redshift.
+                // The Redshift SQL builder emits untyped `?` placeholders and bind-as-string for all
+                // columns, which is incompatible with the Aurora audit table where acl_key is uuid[].
+                // Once audit storage is migrated to Postgres flavor, the dual-write block below
+                // handles the Postgres path with a real array bind.
+                if (auditStorage.first == PostgresFlavor.REDSHIFT) try {
                     auditStorage.second.connection.use { auditConnection ->
                         auditConnection.autoCommit = false
                         val insertPs = auditConnection.prepareStatement(insertSql)
@@ -218,7 +225,10 @@ class RedshiftAuditingManager(private val storageResolver: StorageResolver) : Au
                                     val pgIndex = indexBase + index + 1
                                     when {
                                         index == ACL_KEY_INDEX && elem is String ->
-                                            ps.setString(pgIndex, aclKeyHexToPgArrayLiteral(elem))
+                                            ps.setArray(
+                                                pgIndex,
+                                                PostgresArrays.createUuidArray(ps.connection, aclKeyHexToUuids(elem))
+                                            )
                                         elem is String -> ps.setString(pgIndex, elem)
                                         elem is OffsetDateTime -> ps.setObject(pgIndex, elem)
                                         else -> throw InvalidParameterException("Unexpected class in audit row.")
