@@ -405,21 +405,6 @@ class RedshiftDataTables {
         val INSERT_USAGE_STATS_COLUMN_INDICES: Map<String, Int> =
             CHRONICLE_USAGE_STATS.columns.mapIndexed { index, pcd -> pcd.name to (index + 1) }.toMap()
 
-        const val UNIQUE_DATES = "unique_dates"
-        val participantStatsIosSql = """
-                SELECT ${STUDY_ID.name}, ${PARTICIPANT_ID.name}, listagg(distinct TRUNC(${RECORDED_DATE_TIME.name} at time zone ${TIMEZONE.name}), ',') as $UNIQUE_DATES
-                FROM ${IOS_SENSOR_DATA.name}
-                WHERE ${STUDY_ID.name} = ?
-                GROUP BY ${STUDY_ID.name}, ${PARTICIPANT_ID.name}
-            """.trimIndent()
-
-        val participantStatsAndroidSql = """
-                SELECT ${STUDY_ID.name}, ${PARTICIPANT_ID.name}, listagg(distinct TRUNC(${TIMESTAMP.name} at time zone ${TIMEZONE.name}), ',') as $UNIQUE_DATES
-                FROM ${CHRONICLE_USAGE_EVENTS.name}
-                WHERE ${STUDY_ID.name} = ? AND timezone != ''
-                GROUP BY ${STUDY_ID.name}, ${PARTICIPANT_ID.name}
-            """.trimIndent()
-
         fun getInsertUsageEventColumnIndex(
             column: PostgresColumnDefinition,
         ): Int = INSERT_USAGE_EVENT_COLUMN_INDICES.getValue(column.name)

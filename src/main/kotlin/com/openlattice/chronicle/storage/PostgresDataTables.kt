@@ -421,22 +421,50 @@ class PostgresDataTables {
             """.trimIndent()
         }
 
-        // ========== Postgres-compatible participant stats queries ==========
+        // ========== Participant stats reconciliation (30-day true-up) ==========
+        //
+        // Bounded scan of the last 30 days of events, aggregated to a per-(study, participant) set of
+        // local calendar dates. ON CONFLICT unions the new dates with whatever is already persisted
+        // so older history (and any dates added concurrently via the IMap mapstore) is preserved.
 
-        const val UNIQUE_DATES = RedshiftDataTables.UNIQUE_DATES
+        const val PARTICIPANT_STATS_RECONCILE_LOOKBACK_DAYS = 30
 
-        val participantStatsIosSql = """
-                SELECT ${RedshiftColumns.STUDY_ID.name}, ${RedshiftColumns.PARTICIPANT_ID.name}, string_agg(distinct (${RedshiftColumns.RECORDED_DATE_TIME.name} at time zone ${RedshiftColumns.TIMEZONE.name})::date::text, ',') as $UNIQUE_DATES
+        private val PARTICIPANT_STATS_TABLE = ChroniclePostgresTables.PARTICIPANT_STATS.name
+        private val IOS_UNIQUE_DATES_COL = PostgresColumns.IOS_UNIQUE_DATES.name
+        private val ANDROID_UNIQUE_DATES_COL = PostgresColumns.ANDROID_UNIQUE_DATES.name
+
+        val reconcileIosParticipantStatsSql = """
+                INSERT INTO $PARTICIPANT_STATS_TABLE (${RedshiftColumns.STUDY_ID.name}, ${RedshiftColumns.PARTICIPANT_ID.name}, $IOS_UNIQUE_DATES_COL)
+                SELECT ${RedshiftColumns.STUDY_ID.name},
+                       ${RedshiftColumns.PARTICIPANT_ID.name},
+                       array_agg(DISTINCT (${RedshiftColumns.RECORDED_DATE_TIME.name} AT TIME ZONE ${RedshiftColumns.TIMEZONE.name})::date)
                 FROM ${RedshiftDataTables.IOS_SENSOR_DATA.name}
-                WHERE ${RedshiftColumns.STUDY_ID.name} = ?
+                WHERE ${RedshiftColumns.RECORDED_DATE_TIME.name} >= now() - interval '$PARTICIPANT_STATS_RECONCILE_LOOKBACK_DAYS days'
+                  AND ${RedshiftColumns.TIMEZONE.name} IS NOT NULL
+                  AND ${RedshiftColumns.TIMEZONE.name} != ''
                 GROUP BY ${RedshiftColumns.STUDY_ID.name}, ${RedshiftColumns.PARTICIPANT_ID.name}
+                ON CONFLICT (${RedshiftColumns.STUDY_ID.name}, ${RedshiftColumns.PARTICIPANT_ID.name}) DO UPDATE
+                SET $IOS_UNIQUE_DATES_COL = (
+                    SELECT array_agg(DISTINCT d)
+                    FROM unnest($PARTICIPANT_STATS_TABLE.$IOS_UNIQUE_DATES_COL || EXCLUDED.$IOS_UNIQUE_DATES_COL) d
+                )
             """.trimIndent()
 
-        val participantStatsAndroidSql = """
-                SELECT ${RedshiftColumns.STUDY_ID.name}, ${RedshiftColumns.PARTICIPANT_ID.name}, string_agg(distinct (${RedshiftColumns.TIMESTAMP.name} at time zone ${RedshiftColumns.TIMEZONE.name})::date::text, ',') as $UNIQUE_DATES
+        val reconcileAndroidParticipantStatsSql = """
+                INSERT INTO $PARTICIPANT_STATS_TABLE (${RedshiftColumns.STUDY_ID.name}, ${RedshiftColumns.PARTICIPANT_ID.name}, $ANDROID_UNIQUE_DATES_COL)
+                SELECT ${RedshiftColumns.STUDY_ID.name},
+                       ${RedshiftColumns.PARTICIPANT_ID.name},
+                       array_agg(DISTINCT (${RedshiftColumns.TIMESTAMP.name} AT TIME ZONE ${RedshiftColumns.TIMEZONE.name})::date)
                 FROM ${RedshiftDataTables.CHRONICLE_USAGE_EVENTS.name}
-                WHERE ${RedshiftColumns.STUDY_ID.name} = ? AND timezone != ''
+                WHERE ${RedshiftColumns.TIMESTAMP.name} >= now() - interval '$PARTICIPANT_STATS_RECONCILE_LOOKBACK_DAYS days'
+                  AND ${RedshiftColumns.TIMEZONE.name} IS NOT NULL
+                  AND ${RedshiftColumns.TIMEZONE.name} != ''
                 GROUP BY ${RedshiftColumns.STUDY_ID.name}, ${RedshiftColumns.PARTICIPANT_ID.name}
+                ON CONFLICT (${RedshiftColumns.STUDY_ID.name}, ${RedshiftColumns.PARTICIPANT_ID.name}) DO UPDATE
+                SET $ANDROID_UNIQUE_DATES_COL = (
+                    SELECT array_agg(DISTINCT d)
+                    FROM unnest($PARTICIPANT_STATS_TABLE.$ANDROID_UNIQUE_DATES_COL || EXCLUDED.$ANDROID_UNIQUE_DATES_COL) d
+                )
             """.trimIndent()
 
         // ========== Column Index Helpers ==========

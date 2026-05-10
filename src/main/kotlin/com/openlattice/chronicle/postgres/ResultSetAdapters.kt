@@ -138,7 +138,6 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMESTAMP
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMEZONE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.UPLOADED_AT
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.USERNAME
-import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.UNIQUE_DATES
 import com.openlattice.chronicle.storage.tasks.SensorDataEntries
 import com.openlattice.chronicle.study.Study
 import com.openlattice.chronicle.study.StudyFeature
@@ -566,14 +565,6 @@ class ResultSetAdapters {
         @Throws(SQLException::class)
         fun participantKey(rs: ResultSet): ParticipantKey {
             return ParticipantKey(studyId(rs), rs.getString(PARTICIPANT_ID.name))
-        }
-
-        @Throws(SQLException::class)
-        fun uniqueDates(rs: ResultSet): Set<LocalDate> {
-            return rs
-                .getString(UNIQUE_DATES)
-                .split(",")
-                .mapTo(mutableSetOf<LocalDate>()) { LocalDate.parse(it) }
         }
 
         @Throws(SQLException::class)

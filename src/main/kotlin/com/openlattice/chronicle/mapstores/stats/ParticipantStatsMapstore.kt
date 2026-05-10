@@ -1,7 +1,9 @@
 package com.openlattice.chronicle.mapstores.stats
 
 import com.geekbeast.postgres.PostgresArrays
+import com.geekbeast.postgres.PostgresColumnDefinition
 import com.geekbeast.postgres.mapstores.AbstractBasePostgresMapstore
+import com.google.common.collect.ImmutableList
 import com.hazelcast.config.EvictionConfig
 import com.hazelcast.config.MapConfig
 import com.hazelcast.config.MapStoreConfig
@@ -9,6 +11,9 @@ import com.openlattice.chronicle.hazelcast.HazelcastMap
 import com.openlattice.chronicle.participants.ParticipantStats
 import com.openlattice.chronicle.postgres.ResultSetAdapters
 import com.openlattice.chronicle.storage.ChroniclePostgresTables.Companion.PARTICIPANT_STATS
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.ANDROID_UNIQUE_DATES
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.IOS_UNIQUE_DATES
+import com.openlattice.chronicle.storage.PostgresColumns.Companion.TUD_UNIQUE_DATES
 import com.openlattice.chronicle.util.tests.TestDataFactory
 import com.zaxxer.hikari.HikariDataSource
 import org.apache.commons.lang3.RandomStringUtils
@@ -37,21 +42,18 @@ class ParticipantStatsMapstore(hds: HikariDataSource) : AbstractBasePostgresMaps
         return super.getMapConfig()
     }
 
+    /**
+     * The unique-dates arrays must merge via set-union on conflict so concurrent writes from
+     * ingestion-time mergers and the periodic reconciliation SQL can't clobber each other's dates.
+     */
+    override fun initUnionColumns(): List<PostgresColumnDefinition> {
+        return ImmutableList.of(ANDROID_UNIQUE_DATES, IOS_UNIQUE_DATES, TUD_UNIQUE_DATES)
+    }
+
     override fun bind(ps: PreparedStatement, key: ParticipantKey, value: ParticipantStats) {
         var offset = bind(ps, key)
-//        PostgresColumns.STUDY_ID,
-//        PostgresColumns.PARTICIPANT_ID,
-//        PostgresColumns.ANDROID_LAST_PING,
-//        PostgresColumns.ANDROID_FIRST_DATE,
-//        PostgresColumns.ANDROID_LAST_DATE,
-//        PostgresColumns.ANDROID_UNIQUE_DATES,
-//        PostgresColumns.IOS_LAST_PING,
-//        PostgresColumns.IOS_FIRST_DATE,
-//        PostgresColumns.IOS_LAST_DATE,
-//        PostgresColumns.IOS_UNIQUE_DATES,
-//        PostgresColumns.TUD_FIRST_DATE,
-//        PostgresColumns.TUD_LAST_DATE,
-//        PostgresColumns.TUD_UNIQUE_DATES
+
+        // INSERT VALUES half — bind every value column.
         ps.setObject(offset++, value.androidLastPing)
         ps.setObject(offset++, value.androidFirstDate)
         ps.setObject(offset++, value.androidLastDate)
@@ -64,19 +66,16 @@ class ParticipantStatsMapstore(hds: HikariDataSource) : AbstractBasePostgresMaps
         ps.setObject(offset++, value.tudLastDate)
         ps.setArray(offset++, PostgresArrays.createDateArray(ps.connection, value.tudUniqueDates))
 
-        //For update query
+        // ON CONFLICT DO UPDATE SET half — skip the *_unique_dates columns (they're declared as
+        // unionColumns() so the SET clause merges via array set-union with no parameter binding).
         ps.setObject(offset++, value.androidLastPing)
         ps.setObject(offset++, value.androidFirstDate)
         ps.setObject(offset++, value.androidLastDate)
-        ps.setArray(offset++, PostgresArrays.createDateArray(ps.connection, value.androidUniqueDates))
         ps.setObject(offset++, value.iosLastPing)
         ps.setObject(offset++, value.iosFirstDate)
         ps.setObject(offset++, value.iosLastDate)
-        ps.setArray(offset++, PostgresArrays.createDateArray(ps.connection, value.iosUniqueDates))
         ps.setObject(offset++, value.tudFirstDate)
         ps.setObject(offset++, value.tudLastDate)
-        ps.setArray(offset++, PostgresArrays.createDateArray(ps.connection, value.tudUniqueDates))
-
     }
 
     override fun bind(ps: PreparedStatement, key: ParticipantKey, offset: Int): Int {

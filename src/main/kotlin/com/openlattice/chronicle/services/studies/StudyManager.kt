@@ -31,6 +31,7 @@ interface StudyManager {
     fun getStudySettings(studyId: UUID): Map<StudySettingType, StudySetting>
     fun getStudySettings(studyIds: Collection<UUID>): Map<UUID, Map<StudySettingType, StudySetting>>
     fun insertOrUpdateParticipantStats(stats: ParticipantStats)
+    fun evictParticipantStatsCache()
     fun isNotificationsEnabled(studyId: UUID): Boolean
     fun isValidStudy(studyId: UUID): Boolean
     fun refreshStudyCache(studyIds: Set<UUID>)
