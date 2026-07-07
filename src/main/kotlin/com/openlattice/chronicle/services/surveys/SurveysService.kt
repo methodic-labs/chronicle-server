@@ -1,6 +1,7 @@
 package com.openlattice.chronicle.services.surveys
 
 import com.codahale.metrics.annotation.Timed
+import com.geekbeast.configuration.postgres.PostgresFlavor
 import com.geekbeast.mappers.mappers.ObjectMappers
 import com.geekbeast.postgres.PostgresArrays
 import com.geekbeast.postgres.PostgresDatatype
@@ -56,6 +57,7 @@ import org.apache.olingo.commons.api.edm.FullQualifiedName
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.sql.Connection
+import java.sql.PreparedStatement
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.ZoneId
@@ -95,6 +97,18 @@ class SurveysService(
         )
         private val APP_USAGE_SURVEY_COLS = APP_USAGE_SURVEY.columns.joinToString(",") { it.name }
         private val APP_USAGE_SURVEY_PARAMS = APP_USAGE_SURVEY.columns.joinToString(",") { "?" }
+
+        /**
+         * The chronicle_usage_events and ios_sensor_data tables store study_id as TEXT on
+         * Redshift but as a native uuid on vanilla postgres, so pick the binding that matches
+         * the backing store.
+         */
+        private fun bindStudyId(ps: PreparedStatement, index: Int, studyId: UUID, flavor: PostgresFlavor) {
+            when (flavor) {
+                PostgresFlavor.REDSHIFT -> ps.setString(index, studyId.toString())
+                else -> ps.setObject(index, studyId)
+            }
+        }
 
         /**
          * PreparedStatement bind order
@@ -401,14 +415,14 @@ class SurveysService(
     ): DeviceUsage {
         try {
 
-            val (_, hds) = storageResolver.resolveAndGetFlavor(studyId)
+            val (flavor, hds) = storageResolver.resolveAndGetFlavor(studyId)
 
             //category = categoryByPackage[package]
             val categoryByPackage = mutableMapOf<String, String>()
 
             val result = BasePostgresIterable(
                 PreparedStatementHolderSupplier(hds, GET_DEVICE_USAGE_IOS_SQL) { ps ->
-                    ps.setString(1, studyId.toString())
+                    bindStudyId(ps, 1, studyId, flavor)
                     ps.setString(2, participantId)
                     ps.setObject(3, startDateTime)
                     ps.setObject(4, endDateTime)
@@ -468,12 +482,12 @@ class SurveysService(
     ): List<AppUsage> {
         try {
 
-            val (_, hds) = storageResolver.resolveAndGetFlavor(studyId)
+            val (flavor, hds) = storageResolver.resolveAndGetFlavor(studyId)
             val filtered = filteredApps[studyId] ?: scheduledTasksManager.systemAppPackageNames
 
             val result = BasePostgresIterable(
                 PreparedStatementHolderSupplier(hds, GET_APP_USAGE_SQL) { ps ->
-                    ps.setString(1, studyId.toString())
+                    bindStudyId(ps, 1, studyId, flavor)
                     ps.setString(2, participantId)
                     ps.setObject(3, startDateTime)
                     ps.setObject(4, endDateTime)
