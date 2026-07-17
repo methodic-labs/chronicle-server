@@ -30,6 +30,7 @@ import kotlin.Throws
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.web.filter.CharacterEncodingFilter
 import org.springframework.security.web.csrf.CsrfFilter
+import com.openlattice.chronicle.filters.ContentCachingRequestFilter
 import java.lang.Exception
 import java.nio.charset.StandardCharsets
 
@@ -69,5 +70,11 @@ class ChronicleServerSecurityPod : Auth0SecurityPod() {
         filter.encoding = StandardCharsets.UTF_8.toString()
         filter.setForceEncoding(true)
         http.addFilterBefore(filter, CsrfFilter::class.java)
+
+        // Cache request bodies so that, when a payload fails to parse (malformed JSON or a client that disconnects
+        // mid-upload), ChronicleServerExceptionHandler can recover and log the bytes that were actually received.
+        // Placed before the encoding filter so the wrapper is the request the rest of the chain (and the dispatcher's
+        // message converters) read from.
+        http.addFilterBefore(ContentCachingRequestFilter(), CharacterEncodingFilter::class.java)
     }
 }

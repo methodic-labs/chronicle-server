@@ -21,8 +21,10 @@ package com.openlattice.chronicle.controllers
 
 import com.fasterxml.jackson.core.JsonProcessingException
 import com.fasterxml.jackson.databind.JsonMappingException
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.geekbeast.controllers.exceptions.wrappers.ErrorsDTO
 import com.geekbeast.controllers.util.ApiExceptions
+import com.geekbeast.mappers.mappers.ObjectMappers
 import com.openlattice.chronicle.auditing.AuditEventType
 import com.openlattice.chronicle.auditing.AuditableEvent
 import com.openlattice.chronicle.auditing.AuditingComponent
@@ -30,21 +32,24 @@ import com.openlattice.chronicle.auditing.AuditingManager
 import com.openlattice.chronicle.authorization.AclKey
 import com.openlattice.chronicle.authorization.principals.Principals
 import com.openlattice.chronicle.ids.IdConstants
-import org.apache.commons.io.IOUtils
 import org.eclipse.jetty.io.EofException
 import org.slf4j.LoggerFactory
 import org.springframework.core.Ordered
 import org.springframework.core.annotation.Order
 import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.http.converter.HttpMessageNotReadableException
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
+import org.springframework.web.util.ContentCachingRequestWrapper
+import org.springframework.web.util.WebUtils
 import java.nio.charset.StandardCharsets
 import java.util.*
 import javax.inject.Inject
 import javax.servlet.http.HttpServletRequest
+import javax.servlet.http.HttpServletResponse
 
 @RestControllerAdvice
 @Order(Ordered.HIGHEST_PRECEDENCE)
@@ -93,11 +98,8 @@ class ChronicleServerExceptionHandler @Inject constructor(override val auditingM
         } else ResponseEntity(HttpStatus.NOT_FOUND)
     }
 
-    @ExceptionHandler(IllegalArgumentException::class, HttpMessageNotReadableException::class)
+    @ExceptionHandler(IllegalArgumentException::class)
     fun handleIllegalArgumentException(req: HttpServletRequest, e: Exception): ResponseEntity<ErrorsDTO> {
-        if (e is HttpMessageNotReadableException) {
-            logHttpMessageNotReadable(req, e)
-        }
         logException(req, e)
         return ResponseEntity(
             ErrorsDTO(ApiExceptions.ILLEGAL_ARGUMENT_EXCEPTION, e.message ?: e.javaClass.simpleName),
@@ -105,13 +107,51 @@ class ChronicleServerExceptionHandler @Inject constructor(override val auditingM
         )
     }
 
-    private fun logHttpMessageNotReadable(req: HttpServletRequest, e: HttpMessageNotReadableException) {
+    /**
+     * Handles failures to read/parse the request body. This is intentionally void-returning so that we own the
+     * response entirely: when the client has disconnected (EofException) or the response is already committed,
+     * attempting to serialize an error body throws while writing, which cascades into Spring's
+     * DefaultHandlerExceptionResolver calling sendError() on a committed response — the noisy
+     * "IllegalStateException: COMMITTED" we used to see. By writing nothing in that case we end the request cleanly.
+     */
+    @ExceptionHandler(HttpMessageNotReadableException::class)
+    fun handleHttpMessageNotReadable(
+        req: HttpServletRequest,
+        res: HttpServletResponse,
+        e: HttpMessageNotReadableException,
+    ) {
+        val clientDisconnected = findCause(e, EofException::class.java) != null
+        logHttpMessageNotReadable(req, e, clientDisconnected)
+
+        if (clientDisconnected) {
+            // The socket is gone; there is no one to send a response to. Anything we write here would fail and
+            // trigger a secondary "COMMITTED" failure, so we stop quietly.
+            return
+        }
+
+        if (res.isCommitted) {
+            logger.warn("Response already committed while handling unreadable request body; not writing an error body.")
+            return
+        }
+
+        writeErrorResponse(res, e.message ?: e.javaClass.simpleName)
+    }
+
+    private fun logHttpMessageNotReadable(
+        req: HttpServletRequest,
+        e: HttpMessageNotReadableException,
+        clientDisconnected: Boolean,
+    ) {
         val jsonMappingException = findCause(e, JsonMappingException::class.java)
         val jsonProcessingException = findCause(e, JsonProcessingException::class.java)
-        val eofCause = findCause(e, EofException::class.java)
 
-        logger.error(
-            "HttpMessageNotReadable: method={} url={} contentLength={} contentType={} remoteAddr={} jacksonPath={} location={} clientDisconnected={}",
+        val cachedBody = cachedRequestBody(req)
+
+        // Client disconnects mid-upload are an expected condition on flaky mobile networks rather than a server
+        // bug, so log them at WARN to keep the error stream actionable; genuine malformed payloads stay at ERROR.
+        val message =
+            "HttpMessageNotReadable: method={} url={} contentLength={} contentType={} remoteAddr={} jacksonPath={} location={} clientDisconnected={} capturedBody={}"
+        val args = arrayOf<Any?>(
             req.method,
             req.requestURL,
             req.contentLengthLong,
@@ -119,23 +159,52 @@ class ChronicleServerExceptionHandler @Inject constructor(override val auditingM
             req.remoteAddr,
             jsonMappingException?.pathReference,
             jsonProcessingException?.location,
-            eofCause != null
+            clientDisconnected,
+            cachedBody ?: "<unavailable>"
         )
-
-        if (eofCause != null) {
-            logger.error("Client closed connection before sending complete request body; body is not available.")
-            return
+        if (clientDisconnected) {
+            logger.warn(message, *args)
+        } else {
+            logger.error(message, *args)
         }
 
+        if (cachedBody == null) {
+            logger.warn(
+                "No cached request body available for ${req.method} ${req.requestURL}; the body may have exceeded the cache limit, been empty, or the ContentCachingRequestFilter did not wrap this request."
+            )
+        }
+    }
+
+    /**
+     * Recovers the bytes that were actually received for this request from the [ContentCachingRequestWrapper]
+     * installed by ContentCachingRequestFilter. For a truncated upload this is the partial body up to the point the
+     * stream died. Returns null when no cached content is available.
+     */
+    private fun cachedRequestBody(req: HttpServletRequest): String? {
+        val wrapper = WebUtils.getNativeRequest(req, ContentCachingRequestWrapper::class.java) ?: return null
+        val bytes = wrapper.contentAsByteArray
+        if (bytes.isEmpty()) {
+            return null
+        }
+        val capped = if (bytes.size > MAX_LOGGED_BODY_BYTES) bytes.copyOf(MAX_LOGGED_BODY_BYTES) else bytes
+        val body = String(capped, StandardCharsets.UTF_8)
+        return if (bytes.size > MAX_LOGGED_BODY_BYTES || bytes.size.toLong() < req.contentLengthLong) {
+            "$body …[captured ${bytes.size} bytes of contentLength=${req.contentLengthLong}; truncated]"
+        } else {
+            body
+        }
+    }
+
+    private fun writeErrorResponse(res: HttpServletResponse, message: String) {
         try {
-            val body = IOUtils.toString(e.httpInputMessage.body, StandardCharsets.UTF_8)
-            if (body.isEmpty()) {
-                logger.error("Request body is empty or already consumed by the message converter; install a ContentCachingRequestWrapper filter to capture it after parsing fails.")
-            } else {
-                logger.error("Request body that caused error: {}", body)
-            }
+            res.status = HttpStatus.BAD_REQUEST.value()
+            res.contentType = MediaType.APPLICATION_JSON_VALUE
+            res.characterEncoding = StandardCharsets.UTF_8.name()
+            mapper.writeValue(res.outputStream, ErrorsDTO(ApiExceptions.ILLEGAL_ARGUMENT_EXCEPTION, message))
         } catch (ex: Exception) {
-            logger.error("Failed to re-read request body after message conversion failure: {}", ex.toString())
+            // Writing failed (e.g. the connection dropped between our committed check and the write). Nothing more
+            // we can do for the client; log and move on rather than letting this escalate.
+            logger.warn("Failed to write error response for unreadable request body: {}", ex.toString())
         }
     }
 
@@ -169,7 +238,12 @@ class ChronicleServerExceptionHandler @Inject constructor(override val auditingM
     
     @ExceptionHandler(JsonMappingException::class)
     fun handleJsonExceptions(req: HttpServletRequest, e: JsonMappingException) {
-        logger.error("Body that caused error if available: " + e.originalMessage)
+        logger.error(
+            "JsonMapping error: path={} originalMessage={} capturedBody={}",
+            e.pathReference,
+            e.originalMessage,
+            cachedRequestBody(req) ?: "<unavailable>"
+        )
         logException(req, e)
     }
 
@@ -190,6 +264,11 @@ class ChronicleServerExceptionHandler @Inject constructor(override val auditingM
 
     companion object {
         private val logger = LoggerFactory.getLogger(ChronicleServerExceptionHandler::class.java)
+        private val mapper: ObjectMapper = ObjectMappers.newJsonMapper()
+
+        // Cap how much of a captured body we emit to the logs to keep individual log lines bounded even though the
+        // request cache itself is already limited by ContentCachingRequestFilter.
+        private const val MAX_LOGGED_BODY_BYTES = 16 * 1024
     }
 }
 
