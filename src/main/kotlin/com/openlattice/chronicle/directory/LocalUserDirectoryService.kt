@@ -19,7 +19,9 @@ class LocalUserDirectoryService(auth0Configuration: Auth0Configuration) : UserDi
     }
 
     override fun getUsers(userIds: Set<String>): Map<String, User> {
-        return userIds.associateWith { users.getValue(it) }
+        // Mirrors the Auth0 backed implementation, which drops ids it has no record for rather than throwing. A
+        // principal can outlive its directory entry, and callers resolving a stale one shouldn't fail the request.
+        return userIds.mapNotNull { id -> users[id]?.let { id to it } }.toMap()
     }
 
     override fun searchAllUsers(fields: Auth0UserSearchFields): Map<String, User> {
@@ -31,6 +33,18 @@ class LocalUserDirectoryService(auth0Configuration: Auth0Configuration) : UserDi
                     + user.identities.map { it.connection })
                 .any { email.contains(it) || name.contains(it) }
         }.associateBy { it.id }
+    }
+
+    override fun searchUsersByEmail(emailPrefix: String): Map<String, User> {
+        val trimmed = emailPrefix.trim()
+        require(trimmed.length >= MIN_EMAIL_SEARCH_LENGTH) {
+            "An email search requires at least $MIN_EMAIL_SEARCH_LENGTH characters."
+        }
+        return users.values
+            .filter { it.email?.startsWith(trimmed, ignoreCase = true) == true }
+            .sortedBy { it.email }
+            .take(MAX_SEARCH_RESULTS)
+            .associateBy { it.id }
     }
 
     override fun deleteUser(userId: String) {
