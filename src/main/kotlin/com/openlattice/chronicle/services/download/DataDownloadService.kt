@@ -6,7 +6,6 @@ import com.geekbeast.postgres.PostgresColumnDefinition
 import com.geekbeast.postgres.PostgresDatatype
 import com.geekbeast.postgres.streams.BasePostgresIterable
 import com.geekbeast.postgres.streams.PreparedStatementHolderSupplier
-import com.openlattice.chronicle.constants.OutputConstants
 import com.openlattice.chronicle.constants.ParticipantDataType
 import com.openlattice.chronicle.converters.PostgresDownloadWrapper
 import com.openlattice.chronicle.sensorkit.SensorType
@@ -40,6 +39,7 @@ import com.openlattice.chronicle.util.ChronicleServerUtil
 import org.slf4j.LoggerFactory
 import java.sql.PreparedStatement
 import java.sql.ResultSet
+import java.time.DateTimeException
 import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.util.*
@@ -118,10 +118,39 @@ class DataDownloadService(
             timezoneColumn: PostgresColumnDefinition,
             timestampColumn: PostgresColumnDefinition
         ): Pair<String, Any> {
-            val zoneId = ZoneId.of(rs.getString(timezoneColumn.name) ?: OutputConstants.DEFAULT_TIMEZONE)
             val odt = rs.getObject(timestampColumn.name, OffsetDateTime::class.java)
-            return if(odt == null ) timestampColumn.name to ""
-            else timestampColumn.name to odt.toInstant().atZone(zoneId).toOffsetDateTime()
+                ?: return timestampColumn.name to ""
+            val zoneId = resolveZoneId(rs.getString(timezoneColumn.name), timezoneColumn)
+                ?: return timestampColumn.name to odt
+            return timestampColumn.name to odt.toInstant().atZone(zoneId).toOffsetDateTime()
+        }
+
+        /**
+         * Some very old rows carry an empty or malformed timezone. ZoneId.of(..) throws on those values
+         * (an empty string surfaces as "Invalid ID for ZoneOffset, invalid format: "), which aborts the whole
+         * download stream, so log the offending value and leave the stored timestamp unconverted instead.
+         */
+        private fun resolveZoneId(timezone: String?, timezoneColumn: PostgresColumnDefinition): ZoneId? {
+            if (timezone.isNullOrBlank()) {
+                logger.warn(
+                    "Skipping timezone conversion, {} is missing or empty: [{}]",
+                    timezoneColumn.name,
+                    timezone
+                )
+                return null
+            }
+
+            return try {
+                ZoneId.of(timezone)
+            } catch (ex: DateTimeException) {
+                logger.warn(
+                    "Skipping timezone conversion, {} is not a valid timezone: [{}]",
+                    timezoneColumn.name,
+                    timezone,
+                    ex
+                )
+                null
+            }
         }
 
         fun associateObject(rs: ResultSet, pcd: PostgresColumnDefinition, clazz: Class<*>) =
