@@ -349,7 +349,7 @@ class DataDownloadService(
         startDateTime: OffsetDateTime,
         endDateTime: OffsetDateTime
     ): Iterable<Map<String, Any>> {
-        val (_, hds) = storageResolver.resolveAndGetFlavor(studyId)
+        val (flavor, hds) = storageResolver.resolveAndGetFlavor(studyId)
 
         val resultSetAwareCols = PREPROCESSED_USAGE_EVENTS.columns.map {
             val name = it.name.replace("\"", "")
@@ -362,7 +362,7 @@ class DataDownloadService(
                 FETCH_SIZE
             ) { ps ->
                 var index = 0
-                ps.setObject(++index, studyId)
+                bindStudyId(ps, ++index, studyId, flavor)
                 ps.setArray(++index, PostgresArrays.createTextArray(ps.connection, participantIds))
                 ps.setObject(++index, startDateTime)
                 ps.setObject(++index, endDateTime)
