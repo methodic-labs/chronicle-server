@@ -18,6 +18,7 @@ import com.openlattice.chronicle.constants.CustomMediaType
 import com.openlattice.chronicle.data.FileType
 import com.openlattice.chronicle.data.ParticipationStatus
 import com.openlattice.chronicle.deletion.*
+import com.openlattice.chronicle.directory.UserDirectoryService
 import com.openlattice.chronicle.hazelcast.HazelcastMap
 import com.openlattice.chronicle.ids.HazelcastIdGenerationService
 import com.openlattice.chronicle.ids.IdConstants
@@ -55,8 +56,10 @@ import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_ID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPANT_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.PARTICIPATION_STATUS
 import com.openlattice.chronicle.study.StudyApi.Companion.PERMISSIONS_PATH
+import com.openlattice.chronicle.study.StudyApi.Companion.EMAIL
 import com.openlattice.chronicle.study.StudyApi.Companion.RESPONSE_TYPE
 import com.openlattice.chronicle.study.StudyApi.Companion.RETRIEVE
+import com.openlattice.chronicle.study.StudyApi.Companion.SEARCH_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.SENSORS_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.SETTINGS_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.SETTING_TYPE
@@ -69,6 +72,8 @@ import com.openlattice.chronicle.study.StudyApi.Companion.STATUS_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.STUDY_ID
 import com.openlattice.chronicle.study.StudyApi.Companion.STUDY_ID_PATH
 import com.openlattice.chronicle.study.StudyApi.Companion.VERIFY_PATH
+import com.openlattice.chronicle.users.ChronicleUser
+import com.openlattice.chronicle.users.toChronicleUser
 import com.openlattice.chronicle.util.ChronicleServerUtil
 import org.slf4j.LoggerFactory
 import org.springframework.format.annotation.DateTimeFormat
@@ -102,6 +107,7 @@ class StudyController @Inject constructor(
     override val authorizationManager: AuthorizationManager,
     override val auditingManager: AuditingManager,
     val chronicleJobService: JobService,
+    val userDirectoryService: UserDirectoryService,
 //    private val managementApi: ManagementAPI,
 ) : StudyApi, AuthorizingComponent {
 
@@ -109,6 +115,26 @@ class StudyController @Inject constructor(
 
     companion object {
         private val logger = LoggerFactory.getLogger(StudyController::class.java)!!
+
+        /**
+         * What a study owner -- a study admin -- is granted on the study acl key. Owners can manage the study and
+         * manage who else has access to it.
+         */
+        private val STUDY_OWNER_PERMISSIONS: EnumSet<Permission> = EnumSet.allOf(Permission::class.java)
+
+        /** What someone who can manage a study, but not who has access to it, is granted. */
+        private val STUDY_MANAGE_PERMISSIONS: EnumSet<Permission> = EnumSet.of(Permission.READ, Permission.WRITE)
+
+        /** What someone who can only look at a study is granted. */
+        private val STUDY_VIEW_PERMISSIONS: EnumSet<Permission> = EnumSet.of(Permission.READ)
+
+        /**
+         * The minimum an existing ace must carry to count as owner access. Classification is deliberately looser than
+         * [STUDY_OWNER_PERMISSIONS] so that acls written before MATERIALIZE/LINK/INTEGRATE were handed out still read
+         * back as owners.
+         */
+        private val STUDY_OWNER_ACCESS: EnumSet<Permission> =
+            EnumSet.of(Permission.READ, Permission.WRITE, Permission.OWNER)
     }
 
     /**
@@ -243,47 +269,37 @@ class StudyController @Inject constructor(
     @Timed
     @GetMapping(
         path = [STUDY_ID_PATH + PERMISSIONS_PATH],
-        consumes = [MediaType.APPLICATION_JSON_VALUE]
+        produces = [MediaType.APPLICATION_JSON_VALUE]
     )
     override fun getStudyPermissions(@PathVariable(STUDY_ID) studyId: UUID): StudyPermissions {
         val studyAclKey = AclKey(studyId)
         ensureOwnerAccess(studyAclKey)
-        return authorizationManager.getAllSecurableObjectPermissions(studyAclKey).aces.fold(StudyPermissions()) { studyPermissions, ace ->
-            if (ace.expirationDate.isAfter(OffsetDateTime.now())) {
-                if (ace.permissions.containsAll(
-                        EnumSet.of(
-                            Permission.READ,
-                            Permission.WRITE,
-                            Permission.OWNER
-                        )
-                    )
-                ) {
-                    studyPermissions.owners.add(ace.principal)
-                } else if (ace.permissions.containsAll(
-                        EnumSet.of(
-                            Permission.READ,
-                            Permission.WRITE
-                        )
-                    )
-                ) {
-                    studyPermissions.managers.add(ace.principal)
-                } else if (ace.permissions.containsAll(
-                        EnumSet.of(
-                            Permission.READ,
-                        )
-                    )
-                ) {
-                    studyPermissions.viewers.add(ace.principal)
-                }
-            }
-            studyPermissions
-        }
+        return readStudyPermissions(studyAclKey)
+    }
+
+    @Timed
+    @GetMapping(
+        path = [STUDY_ID_PATH + PERMISSIONS_PATH + SEARCH_PATH],
+        produces = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    override fun searchUsersForStudy(
+        @PathVariable(STUDY_ID) studyId: UUID,
+        @RequestParam(EMAIL) email: String,
+    ): List<ChronicleUser> {
+        // Owner access is the bar because granting study access is the only reason to browse the directory from here,
+        // and only owners may grant it. A too-short query is rejected by the directory itself, as a 400.
+        ensureOwnerAccess(AclKey(studyId))
+
+        return userDirectoryService.searchUsersByEmail(email).values
+            .map { it.toChronicleUser() }
+            .sortedBy { it.email ?: it.principal.id }
     }
 
     @Timed
     @PostMapping(
         path = [STUDY_ID_PATH + PERMISSIONS_PATH],
-        consumes = [MediaType.APPLICATION_JSON_VALUE]
+        consumes = [MediaType.APPLICATION_JSON_VALUE],
+        produces = [MediaType.APPLICATION_JSON_VALUE]
     )
     override fun updateStudyPermissions(
         @PathVariable(STUDY_ID) studyId: UUID,
@@ -292,40 +308,172 @@ class StudyController @Inject constructor(
         val studyAclKey = AclKey(studyId)
         ensureOwnerAccess(studyAclKey)
 
-        val allPermissions = EnumSet.allOf(Permission::class.java)
+        ensureStudyRetainsAnOwner(studyId, permissionsUpdate)
 
+        // Revocations run first so that a single request can demote a principal -- revoke the level they hold, grant
+        // the level they should hold -- without the grant being undone by the revoke.
+
+        // Revoking view access revokes all access, so it strips every permission, including the ones only an owner
+        // would hold.
         permissionsUpdate.revokeViewStudy.forEach {
-            val p = Principal(PrincipalType.USER, it)
-            authorizationManager.removePermission(studyAclKey, p, EnumSet.of(Permission.READ, Permission.WRITE, Permission.OWNER))
+            authorizationManager.removePermission(studyAclKey, userPrincipal(it), STUDY_OWNER_PERMISSIONS)
         }
 
         permissionsUpdate.revokeManageStudy.forEach {
-            val p = Principal(PrincipalType.USER, it)
-            authorizationManager.removePermission(studyAclKey, p, EnumSet.of(Permission.OWNER, Permission.WRITE))
+            authorizationManager.removePermission(
+                studyAclKey,
+                userPrincipal(it),
+                EnumSet.of(Permission.OWNER, Permission.WRITE)
+            )
         }
 
         permissionsUpdate.revokeOwnerStudy.forEach {
-            val p = Principal(PrincipalType.USER, it)
-            authorizationManager.removePermission(studyAclKey, p, EnumSet.of(Permission.OWNER))
+            authorizationManager.removePermission(studyAclKey, userPrincipal(it), EnumSet.of(Permission.OWNER))
         }
 
         permissionsUpdate.grantViewStudy.forEach {
-            val p = Principal(PrincipalType.USER, it)
-            authorizationManager.addPermission(studyAclKey, p, EnumSet.of(Permission.READ))
+            authorizationManager.addPermission(studyAclKey, userPrincipal(it), STUDY_VIEW_PERMISSIONS)
         }
 
         permissionsUpdate.grantManageStudy.forEach {
-            val p = Principal(PrincipalType.USER, it)
-            authorizationManager.addPermission(studyAclKey, p, EnumSet.of(Permission.WRITE,Permission.READ))
+            authorizationManager.addPermission(studyAclKey, userPrincipal(it), STUDY_MANAGE_PERMISSIONS)
         }
 
         permissionsUpdate.grantOwnerStudy.forEach {
-            val p = Principal(PrincipalType.USER, it)
-            authorizationManager.addPermission(studyAclKey, p, allPermissions)
+            authorizationManager.addPermission(studyAclKey, userPrincipal(it), STUDY_OWNER_PERMISSIONS)
         }
 
-        return getStudyPermissions(studyId)
+        recordStudyPermissionEvents(studyId, permissionsUpdate)
+
+        return readStudyPermissions(studyAclKey)
     }
+
+    /**
+     * Buckets a study's live aces by level of access and resolves each principal against the user directory, so that
+     * callers get an email address and login type instead of an opaque Auth0 id.
+     */
+    private fun readStudyPermissions(studyAclKey: AclKey): StudyPermissions {
+        val aces = liveAces(studyAclKey)
+        val directory = resolveDirectoryEntries(aces.map { it.principal })
+
+        val owners = mutableSetOf<ChronicleUser>()
+        val managers = mutableSetOf<ChronicleUser>()
+        val viewers = mutableSetOf<ChronicleUser>()
+
+        aces.forEach { ace ->
+            val bucket = when {
+                ace.permissions.containsAll(STUDY_OWNER_ACCESS) -> owners
+                ace.permissions.containsAll(STUDY_MANAGE_PERMISSIONS) -> managers
+                ace.permissions.containsAll(STUDY_VIEW_PERMISSIONS) -> viewers
+                else -> null
+            }
+            bucket?.add(directory[ace.principal] ?: ChronicleUser(ace.principal))
+        }
+
+        return StudyPermissions(owners, managers, viewers)
+    }
+
+    /** A study's aces, minus any whose grant has already expired. */
+    private fun liveAces(studyAclKey: AclKey): List<Ace> {
+        val now = OffsetDateTime.now()
+        return authorizationManager.getAllSecurableObjectPermissions(studyAclKey).aces
+            .filter { it.expirationDate.isAfter(now) }
+    }
+
+    /**
+     * Looks up the directory entry for every user principal in [principals].
+     *
+     * A principal can outlive its directory entry, and the directory itself is a remote dependency, so anything that
+     * can't be resolved is simply left unresolved -- the caller still gets the principal, just without an email
+     * address. Failing the whole request would take out the access management screen over a cosmetic lookup.
+     */
+    private fun resolveDirectoryEntries(principals: Collection<Principal>): Map<Principal, ChronicleUser> {
+        val userIds = principals.filter { it.type == PrincipalType.USER }.map { it.id }.toSet()
+        if (userIds.isEmpty()) {
+            return mapOf()
+        }
+        return try {
+            userDirectoryService.getUsers(userIds).values.associate { user ->
+                Principal(PrincipalType.USER, user.id) to user.toChronicleUser()
+            }
+        } catch (ex: Exception) {
+            logger.warn("Unable to resolve {} principal(s) against the user directory.", userIds.size, ex)
+            mapOf()
+        }
+    }
+
+    /**
+     * Rejects an update that would leave a study with no owner. Every level of revocation strips OWNER, so an
+     * unguarded revoke can orphan a study -- nobody left who can read the acl, let alone grant access back.
+     */
+    private fun ensureStudyRetainsAnOwner(studyId: UUID, permissionsUpdate: StudyPermissionsUpdate) {
+        val revoked = permissionsUpdate.revokeOwnerStudy +
+                permissionsUpdate.revokeManageStudy +
+                permissionsUpdate.revokeViewStudy
+
+        if (revoked.isEmpty()) {
+            return
+        }
+
+        val remainingOwners = liveAces(AclKey(studyId))
+            .filter { it.permissions.containsAll(STUDY_OWNER_ACCESS) }
+            .map { it.principal.id }
+            .filterNot { revoked.contains(it) }
+            .toSet() + permissionsUpdate.grantOwnerStudy
+
+        // IllegalArgumentException rather than BadRequestException: only the former is mapped to a 400 by
+        // ChronicleServerExceptionHandler -- BadRequestException falls through to the catch-all and surfaces as a 500.
+        require(remainingOwners.isNotEmpty()) {
+            "Study $studyId must have at least one owner. Grant owner access to someone else before revoking the " +
+                    "last owner."
+        }
+    }
+
+    private fun recordStudyPermissionEvents(studyId: UUID, permissionsUpdate: StudyPermissionsUpdate) {
+        val events = mutableListOf<AuditableEvent>()
+
+        val granted = mapOf(
+            "owner" to permissionsUpdate.grantOwnerStudy,
+            "manage" to permissionsUpdate.grantManageStudy,
+            "view" to permissionsUpdate.grantViewStudy,
+        ).filterValues { it.isNotEmpty() }
+
+        val revoked = mapOf(
+            "owner" to permissionsUpdate.revokeOwnerStudy,
+            "manage" to permissionsUpdate.revokeManageStudy,
+            "view" to permissionsUpdate.revokeViewStudy,
+        ).filterValues { it.isNotEmpty() }
+
+        if (granted.isNotEmpty()) {
+            events.add(
+                AuditableEvent(
+                    AclKey(studyId),
+                    eventType = AuditEventType.ADD_PERMISSION,
+                    description = "Study access granted through StudyApi.updateStudyPermissions",
+                    study = studyId,
+                    data = mapOf("granted" to granted)
+                )
+            )
+        }
+
+        if (revoked.isNotEmpty()) {
+            events.add(
+                AuditableEvent(
+                    AclKey(studyId),
+                    eventType = AuditEventType.REMOVE_PERMISSION,
+                    description = "Study access revoked through StudyApi.updateStudyPermissions",
+                    study = studyId,
+                    data = mapOf("revoked" to revoked)
+                )
+            )
+        }
+
+        if (events.isNotEmpty()) {
+            recordEvents(events)
+        }
+    }
+
+    private fun userPrincipal(userId: String) = Principal(PrincipalType.USER, userId)
 
     @Timed
     @PatchMapping(

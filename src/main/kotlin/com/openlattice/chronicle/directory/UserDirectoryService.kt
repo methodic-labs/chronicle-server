@@ -28,6 +28,17 @@ import com.openlattice.chronicle.users.Auth0UserSearchFields
 internal const val DEFAULT_PAGE_SIZE = 100
 internal const val SEARCH_ENGINE_VERSION = "v3"
 
+/**
+ * Shortest email prefix that may be searched for. Anything shorter matches too much of the directory to be a search.
+ */
+const val MIN_EMAIL_SEARCH_LENGTH = 2
+
+/**
+ * Cap on how many users a single directory search will return. A study admin picks one person out of the results, so
+ * a result set larger than this means the query needs to be narrowed rather than paged through.
+ */
+const val MAX_SEARCH_RESULTS = 50
+
 interface UserDirectoryService {
 
     @Timed
@@ -42,6 +53,20 @@ interface UserDirectoryService {
     //TODO: Switch over to a Hazelcast map to relieve pressure from Auth0
     @Timed
     fun searchAllUsers(fields: Auth0UserSearchFields): Map<String, User>
+
+    /**
+     * Finds users whose email address starts with [emailPrefix], case insensitively.
+     *
+     * This backs "find the person I want to grant access to" flows, where the caller has typed part of an email
+     * address rather than a whole one. [searchAllUsers] is an exact match search and is kept as-is for callers that
+     * already know the full address.
+     *
+     * @param emailPrefix At least [MIN_EMAIL_SEARCH_LENGTH] characters, so that a search can't be used to walk the
+     * whole directory.
+     * @return The matching users, keyed by user id, capped at [MAX_SEARCH_RESULTS].
+     */
+    @Timed
+    fun searchUsersByEmail(emailPrefix: String): Map<String, User>
 
     @Timed
     fun deleteUser(userId: String)

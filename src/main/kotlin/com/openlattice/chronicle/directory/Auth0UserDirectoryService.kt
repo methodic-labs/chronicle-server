@@ -11,6 +11,16 @@ import org.springframework.stereotype.Service
 
 private val logger = LoggerFactory.getLogger(Auth0UserDirectoryService::class.java)
 
+/**
+ * Characters Lucene treats as syntax. A raw email address can legally contain several of them, so they are escaped
+ * before being interpolated into a query -- otherwise a "+" in an address silently changes what is being searched for.
+ */
+private val LUCENE_SPECIAL_CHARACTERS = """+-&|!(){}[]^"~*?:\/""".toSet()
+
+private fun escapeLucene(value: String): String = value
+    .map { if (LUCENE_SPECIAL_CHARACTERS.contains(it)) "\\$it" else "$it" }
+    .joinToString("")
+
 @Service
 class Auth0UserDirectoryService(
     auth0TokenProvider: Auth0TokenProvider,
@@ -38,6 +48,27 @@ class Auth0UserDirectoryService(
     override fun deleteUser(userId: String) {
         auth0ManagementApi.deleteUser(userId)
         users.delete(userId)
+    }
+
+    override fun searchUsersByEmail(emailPrefix: String): Map<String, User> {
+        val trimmed = emailPrefix.trim()
+        require(trimmed.length >= MIN_EMAIL_SEARCH_LENGTH) {
+            "An email search requires at least $MIN_EMAIL_SEARCH_LENGTH characters."
+        }
+
+        // Auth0's v3 search engine is Lucene backed, so a trailing wildcard gives us a prefix search. It does not
+        // support a leading wildcard, which is why this can't match on the domain portion of an address.
+        val searchQuery = "email:${escapeLucene(trimmed.lowercase())}*"
+        logger.info("searching auth0 users with query: {}", searchQuery)
+
+        val matches = auth0ManagementApi.searchAllUsers(
+            searchQuery,
+            0,
+            MAX_SEARCH_RESULTS,
+            SEARCH_ENGINE_VERSION
+        ) ?: setOf()
+
+        return matches.associateBy { it.id }
     }
 
     //TODO: Switch over to a Hazelcast map to relieve pressure from Auth0
