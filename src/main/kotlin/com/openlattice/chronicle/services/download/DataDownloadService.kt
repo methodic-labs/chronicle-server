@@ -19,6 +19,7 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_DATETIME_
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_PACKAGE_NAME
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.APP_TIMEZONE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.DEVICE_USAGE_SENSOR_COLS
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.EVENT_TYPE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.INTERACTION_TYPE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.KEYBOARD_METRICS_SENSOR_COLS
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.MESSAGES_USAGE_SENSOR_COLS
@@ -31,6 +32,7 @@ import com.openlattice.chronicle.storage.RedshiftColumns.Companion.STUDY_ID
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMESTAMP
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.TIMEZONE
 import com.openlattice.chronicle.storage.RedshiftColumns.Companion.USERNAME
+import com.openlattice.chronicle.storage.RedshiftColumns.Companion.UPLOADED_AT
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.CHRONICLE_USAGE_EVENTS
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.IOS_SENSOR_DATA
 import com.openlattice.chronicle.storage.RedshiftDataTables.Companion.PREPROCESSED_USAGE_EVENTS
@@ -153,6 +155,16 @@ class DataDownloadService(
             }
         }
 
+        /**
+         * Reads a timestamp that is not participant-local and so gets no timezone conversion.
+         * uploaded_at is a server-side ingest time, not something the participant experienced, so it stays in
+         * the frame it was stored in. Mirrors the null handling of [associateOffsetDatetimeWithTimezone].
+         */
+        fun associateOffsetDatetime(rs: ResultSet, pcd: PostgresColumnDefinition): Pair<String, Any> {
+            val odt = rs.getObject(pcd.name, OffsetDateTime::class.java)
+            return pcd.name to (odt ?: "")
+        }
+
         fun associateObject(rs: ResultSet, pcd: PostgresColumnDefinition, clazz: Class<*>) =
             pcd.name to rs.getObject(pcd.name, clazz)
 
@@ -204,10 +216,12 @@ class DataDownloadService(
                 associateString(rs, PARTICIPANT_ID),
                 associateString(rs, APP_PACKAGE_NAME),
                 associateString(rs, INTERACTION_TYPE),
+                associateInteger(rs, EVENT_TYPE),
                 associateOffsetDatetimeWithTimezone(rs, TIMEZONE, TIMESTAMP),
                 associateString(rs, TIMEZONE),
                 associateString(rs, USERNAME),
-                associateString(rs, APPLICATION_LABEL)
+                associateString(rs, APPLICATION_LABEL),
+                associateOffsetDatetime(rs, UPLOADED_AT)
             )
         }
 
@@ -333,10 +347,12 @@ class DataDownloadService(
                 associateString(rs, PARTICIPANT_ID),
                 associateString(rs, APP_PACKAGE_NAME),
                 associateString(rs, INTERACTION_TYPE),
+                associateInteger(rs, EVENT_TYPE),
                 associateOffsetDatetimeWithTimezone(rs, TIMEZONE, TIMESTAMP),
                 associateString(rs, TIMEZONE),
                 associateString(rs, USERNAME),
-                associateString(rs, APPLICATION_LABEL)
+                associateString(rs, APPLICATION_LABEL),
+                associateOffsetDatetime(rs, UPLOADED_AT)
             )
         }
 
