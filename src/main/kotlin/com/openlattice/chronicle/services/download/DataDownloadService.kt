@@ -44,6 +44,8 @@ import java.sql.ResultSet
 import java.time.DateTimeException
 import java.time.OffsetDateTime
 import java.time.ZoneId
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicLong
 import java.util.*
 
 /**
@@ -55,6 +57,11 @@ class DataDownloadService(
 ) : DataDownloadManager {
     companion object {
         private val logger = LoggerFactory.getLogger(DataDownloadService::class.java)
+
+        private const val BAD_TIMEZONE_LOG_INTERVAL = 10_000L
+        private const val MAX_TRACKED_BAD_TIMEZONES = 64
+        private const val OVERFLOW_TIMEZONE_KEY = "<other>"
+        private val badTimezoneCounts = ConcurrentHashMap<String, AtomicLong>()
         private val CHRONICLE_USAGE_EVENTS_DEFS = CHRONICLE_USAGE_EVENTS.columns.map { it.name }
         private val CHRONICLE_USAGE_EVENTS_COLS = CHRONICLE_USAGE_EVENTS_DEFS.joinToString(",")
         private val CHRONICLE_USAGE_EVENT_SQL = """
@@ -134,25 +141,56 @@ class DataDownloadService(
          */
         private fun resolveZoneId(timezone: String?, timezoneColumn: PostgresColumnDefinition): ZoneId? {
             if (timezone.isNullOrBlank()) {
-                logger.warn(
-                    "Skipping timezone conversion, {} is missing or empty: [{}]",
-                    timezoneColumn.name,
-                    timezone
-                )
+                countBadTimezone("${timezoneColumn.name}/missing/$timezone")?.let { occurrence ->
+                    logger.warn(
+                        "Skipping timezone conversion, {} is missing or empty: [{}] (occurrence {} since startup)",
+                        timezoneColumn.name,
+                        timezone,
+                        occurrence
+                    )
+                }
                 return null
             }
 
             return try {
                 ZoneId.of(timezone)
             } catch (ex: DateTimeException) {
-                logger.warn(
-                    "Skipping timezone conversion, {} is not a valid timezone: [{}]",
-                    timezoneColumn.name,
-                    timezone,
-                    ex
-                )
+                countBadTimezone("${timezoneColumn.name}/invalid/$timezone")?.let { occurrence ->
+                    logger.warn(
+                        "Skipping timezone conversion, {} is not a valid timezone: [{}] (occurrence {} since startup)",
+                        timezoneColumn.name,
+                        timezone,
+                        occurrence,
+                        ex
+                    )
+                }
                 null
             }
+        }
+
+        /**
+         * Counts an occurrence of a bad timezone and returns the running total when it is worth logging,
+         * or null to suppress it.
+         *
+         * A blank timezone is the norm rather than the exception in older studies — 405k of the 520k rows in
+         * one production study — and the guard runs per row, so logging every occurrence buried the logs in
+         * hundreds of thousands of identical lines per download. Log the first occurrence of each distinct
+         * value and then every [BAD_TIMEZONE_LOG_INTERVAL]-th, carrying the running count so the true scale
+         * is still visible from a single line.
+         *
+         * Counts are cumulative for the life of the process, so a repeat download of the same bad data stays
+         * quiet rather than re-announcing what was already reported.
+         */
+        private fun countBadTimezone(key: String): Long? {
+            // size() is only approximate under concurrency, so the cap may be overshot by a few entries.
+            // That is fine: the point is to stop a stream of distinct malformed values growing the map without
+            // bound, not to hold an exact ceiling.
+            val trackedKey = if (
+                badTimezoneCounts.size >= MAX_TRACKED_BAD_TIMEZONES && !badTimezoneCounts.containsKey(key)
+            ) OVERFLOW_TIMEZONE_KEY else key
+
+            val occurrence = badTimezoneCounts.computeIfAbsent(trackedKey) { AtomicLong() }.incrementAndGet()
+            return if (occurrence == 1L || occurrence % BAD_TIMEZONE_LOG_INTERVAL == 0L) occurrence else null
         }
 
         /**
