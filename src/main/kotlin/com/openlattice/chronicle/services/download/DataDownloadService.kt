@@ -156,6 +156,16 @@ class DataDownloadService(
         }
 
         /**
+         * Reads an integer column, distinguishing SQL NULL from a real zero. [associateInteger] uses
+         * rs.getInt, which silently maps NULL to 0; event_type is NULL for every row of some studies, so
+         * that would stamp a fabricated 0 across the whole download instead of leaving the cell empty.
+         */
+        fun associateIntegerOrBlank(rs: ResultSet, pcd: PostgresColumnDefinition): Pair<String, Any> {
+            val value = rs.getInt(pcd.name)
+            return pcd.name to if (rs.wasNull()) "" else value
+        }
+
+        /**
          * Reads a timestamp that is not participant-local and so gets no timezone conversion.
          * uploaded_at is a server-side ingest time, not something the participant experienced, so it stays in
          * the frame it was stored in. Mirrors the null handling of [associateOffsetDatetimeWithTimezone].
@@ -216,7 +226,7 @@ class DataDownloadService(
                 associateString(rs, PARTICIPANT_ID),
                 associateString(rs, APP_PACKAGE_NAME),
                 associateString(rs, INTERACTION_TYPE),
-                associateInteger(rs, EVENT_TYPE),
+                associateIntegerOrBlank(rs, EVENT_TYPE),
                 associateOffsetDatetimeWithTimezone(rs, TIMEZONE, TIMESTAMP),
                 associateString(rs, TIMEZONE),
                 associateString(rs, USERNAME),
@@ -347,7 +357,7 @@ class DataDownloadService(
                 associateString(rs, PARTICIPANT_ID),
                 associateString(rs, APP_PACKAGE_NAME),
                 associateString(rs, INTERACTION_TYPE),
-                associateInteger(rs, EVENT_TYPE),
+                associateIntegerOrBlank(rs, EVENT_TYPE),
                 associateOffsetDatetimeWithTimezone(rs, TIMEZONE, TIMESTAMP),
                 associateString(rs, TIMEZONE),
                 associateString(rs, USERNAME),
